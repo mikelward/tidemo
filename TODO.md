@@ -202,6 +202,12 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **Focus follows mouse skips a tile with another app's float in front of
+  it** (2026-11-01), since macOS buries the float once the tile is focused
+  and tilemo's re-raise doesn't bring it back. Moving onto the float, or
+  clicking the tile, still moves focus. The alternative is focusing the
+  tile and losing the float behind it. Reversible: `under_float` in
+  `ffm.lua`.
 - **The Actions tab comes last,** after Attention, and has no key of its
   own (2026-11-01). Its order puts the session and power first, then
   tilemo, the toggles and the screenshots. Reversible: `SCOPE_ORDER` and

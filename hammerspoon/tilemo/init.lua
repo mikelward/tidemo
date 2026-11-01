@@ -207,6 +207,12 @@ function M.start(config)
     config.layout, layout_errors = layout.load_settings(
         dashboard.clock_dir(os.getenv), self.adapter.read, self.adapter.decode, layout_base)
     self.wm = wm_mod.new(self.adapter, config)
+    -- Hammerspoon's console floats (rules.lua) at a floating window level of
+    -- its own, so no tile's raise can bury it (SPEC.md §5.1).
+    local ok, err = pcall(hs.console.level, hs.drawing.windowLevels.floating)
+    if not ok then
+        self.adapter.log("the console's window level: " .. tostring(err))
+    end
     self.wm.ffm = ffm_mod.new(self.wm, self.adapter, {
         enabled = config.focus_follows_mouse ~= false,
         keep_focus = config.keep_focus,

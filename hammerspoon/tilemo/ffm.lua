@@ -10,6 +10,8 @@
 --   menu, popover or anything tilemo doesn't manage stops the lookup and
 --   focus stays put.
 -- - A window's own dialog wins over the window.
+-- - A tile with another app's float in front of it is left alone: focusing
+--   it would bury the float, and macOS won't raise the float back.
 -- - It pauses while a menu is open, while a button is held, while Super is
 --   held, outside every
 --   display's work area (the menu bar and the Dock), over tilemo's own
@@ -25,6 +27,10 @@ M.KEEP_FOCUS = {
     ["com.apple.screencaptureui"] = true,
     ["com.apple.SecurityAgent"] = true,
 }
+
+-- Hammerspoon's own windows: its console, and tilemo's settings, which
+-- keep a floating window level of their own, so no raise can bury them.
+M.OWN_APP = "org.hammerspoon.Hammerspoon"
 
 -- How long a focus is in flight before another may start, if macOS never
 -- confirms it.
@@ -162,6 +168,43 @@ function M:prefer_dialog(id)
     return id
 end
 
+local function overlap(a, b)
+    return a and b and a.x < b.x + b.w and b.x < a.x + a.w and a.y < b.y + b.h and b.y < a.y + a.h
+end
+
+-- Whether tile `id` has another app's float in front of it. Focusing the
+-- tile raises it, and macOS won't put the other app's window back over it
+-- (SPEC.md §13), so the float would be buried. Floats of the tile's own app
+-- go back over it with it, and the Hammerspoon windows tilemo raises to a
+-- floating level (M.ELEVATED) stay over it anyway. Hammerspoon's other floats,
+-- such as its Preferences, are buried like any app's.
+M.ELEVATED = { ["Hammerspoon Console"] = true }
+
+local function elevated(f)
+    return f.app == M.OWN_APP and M.ELEVATED[f.title] == true
+end
+
+function M:under_float(id)
+    local w = self.wm.windows[id]
+    if not w or w.floating then
+        return false
+    end
+    local st = self.a.state(id)
+    local frame = st and st.frame
+    for _, fid in ipairs(self.a.ordered()) do
+        if fid == id then
+            return false
+        end
+        local f = self.wm.windows[fid]
+        local ok = f and f.floating and f.pid ~= w.pid and not elevated(f) and self.wm:screen_of_ws(f.ws)
+        local fs = ok and self.a.state(fid)
+        if fs and not fs.minimized and not fs.hidden and overlap(fs.frame, frame) then
+            return true
+        end
+    end
+    return false
+end
+
 function M:focus(target)
     if self.pending then
         self.queued = target
@@ -202,7 +245,7 @@ function M:settled(id)
     end
     local now = self:hit(x, y)
     local target = now and self:prefer_dialog(now)
-    if target and target ~= self.a.focused() then
+    if target and target ~= self.a.focused() and not self:under_float(target) then
         self:focus(target)
     end
 end
@@ -232,11 +275,14 @@ function M:move(x, y, super_held)
     local target = self:prefer_dialog(id)
     -- With a focus in flight, the latest crossing decides what follows it,
     -- including going back to the window being focused.
+    if self:under_float(target) then
+        target = nil
+    end
     if self.pending then
         self.queued = target ~= self.pending and target or nil
         return
     end
-    if target ~= self.a.focused() then
+    if target and target ~= self.a.focused() then
         self:focus(target)
     end
 end

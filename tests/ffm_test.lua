@@ -478,4 +478,73 @@ t.test("a focus macOS confirms after its wait ran out isn't taken for theft", fu
     t.eq(marked(wm, 2), false)
 end)
 
+-- macOS won't raise another app's window back over the app that was just
+-- focused (SPEC.md §13), so focusing a tile under a float buries the float
+-- for good. Focus follows mouse leaves such a tile alone; a click focuses it.
+t.test("a tile under another app's float isn't focused by the pointer", function()
+    local a, wm, ffm = setup()
+    a.add(3, { subrole = "AXDialog", app = "com.example.other", pid = 300, frame = { x = 1400, y = 300, w = 300, h = 200 } })
+    wm:sync()
+    a.wins[3].frame = { x = 1400, y = 300, w = 300, h = 200 }
+    a.focus_ = 1
+    ffm:remember(1)
+    a.calls = {}
+    ffm:move(1200, 900) -- window 2, outside the float over it
+    t.eq(focuses(a), {})
+    t.eq(a.ordered()[1], 3, "the float stays in front")
+end)
+
+t.test("a tile no float covers is still focused", function()
+    local a, wm, ffm = setup()
+    a.add(3, { subrole = "AXDialog", app = "com.example.other", pid = 300, frame = { x = 100, y = 300, w = 300, h = 200 } })
+    wm:sync()
+    a.wins[3].frame = { x = 100, y = 300, w = 300, h = 200 }
+    a.focus_ = 1
+    ffm:remember(1)
+    a.calls = {}
+    ffm:move(1500, 900)
+    t.eq(focuses(a), { "focus 2" })
+end)
+
+t.test("Hammerspoon's own floats don't hold focus back: they keep a floating level", function()
+    local a, wm, ffm = setup()
+    a.add(3, { app = "org.hammerspoon.Hammerspoon", title = "Hammerspoon Console", pid = 300, frame = { x = 1400, y = 300, w = 300, h = 200 } })
+    wm:sync()
+    a.wins[3].frame = { x = 1400, y = 300, w = 300, h = 200 }
+    t.eq(wm.windows[3].floating, true)
+    a.focus_ = 1
+    ffm:remember(1)
+    a.calls = {}
+    ffm:move(1200, 900)
+    t.eq(focuses(a), { "focus 2" })
+end)
+
+t.test("Hammerspoon's Preferences, with no floating level, holds focus back", function()
+    local a, wm, ffm = setup()
+    a.add(3, { app = "org.hammerspoon.Hammerspoon", title = "Hammerspoon Preferences", pid = 300, frame = { x = 1400, y = 300, w = 300, h = 200 } })
+    wm:sync()
+    a.wins[3].frame = { x = 1400, y = 300, w = 300, h = 200 }
+    t.eq(wm.windows[3].floating, true)
+    a.focus_ = 1
+    ffm:remember(1)
+    a.calls = {}
+    ffm:move(1200, 900)
+    t.eq(focuses(a), {})
+end)
+
+t.test("a queued focus skips a tile under another app's float", function()
+    local a, wm, ffm = setup()
+    a.add(3, { subrole = "AXDialog", app = "com.example.other", pid = 300, frame = { x = 1400, y = 300, w = 300, h = 200 } })
+    wm:sync()
+    a.wins[3].frame = { x = 1400, y = 300, w = 300, h = 200 }
+    a.focus_ = 2
+    ffm:remember(2)
+    a.calls = {}
+    ffm:move(500, 500) -- window 1, in flight
+    ffm:move(1200, 900) -- back over window 2, under the float
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(focuses(a), { "focus 1" })
+end)
+
 t.done("ffm")

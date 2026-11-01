@@ -285,6 +285,9 @@ function M.new(tilemo)
         local frame = { x = s.area.x + (s.area.w - w) / 2, y = s.area.y + (s.area.h - h) / 2, w = w, h = h }
         view = hs.webview.new(frame, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "titled", "closable" })
+        -- tilemo leaves it untiled, so a floating level keeps it over the
+        -- tiles, as a float is (SPEC.md §5.1).
+        view:level(hs.drawing.windowLevels.floating)
         -- tilemo leaves its own windows alone, by this title.
         view:windowTitle(brand.title("settings"))
         view:allowTextEntry(true)
