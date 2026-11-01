@@ -279,7 +279,9 @@ end
 -- The status icons, from what Hammerspoon reports (bar_hs.lua reads it):
 --   battery = { percent, charging, charged, remaining, to_full } or nil on
 --     a Mac without one, the times in minutes and negative when unknown,
---   audio = { volume = 0…100, muted } or nil with no output device,
+--   audio = { volume = 0…100, muted, name } or nil with no output device,
+--     volume nil on one with no volume control, muted nil on one that
+--     can't mute,
 --   mic = { muted } or nil with no input device,
 --   camera = { in_use } or nil with no camera,
 --   source = { current, list = { { name, method }, … } },
@@ -300,20 +302,37 @@ function ITEMS.battery(raw)
     end
 end
 
+-- The speaker, in four levels with mute and its level as a %, as tide's
+-- (tide §7.4). An output with no volume control of its own (a display's
+-- speakers over HDMI or DisplayPort, many USB interfaces) still shows,
+-- marked `fixed`, with no %: macOS reads no volume there, and a click
+-- mutes it only if it can mute (`can_mute`), else opens Sound settings.
 function ITEMS.volume(raw)
     local a = raw.audio
-    if a and a.volume then
-        local v = math.floor(a.volume + 0.5)
-        local level = "high"
-        if a.muted or v <= 0 then
-            level = "mute"
-        elseif v < 34 then
-            level = "low"
-        elseif v < 67 then
-            level = "mid"
-        end
-        return { level = level, muted = a.muted or false }
+    if not a then
+        return nil
     end
+    local muted = a.muted == true
+    if a.volume == nil then
+        local tip = "Sound: " .. ((a.name and a.name ~= "") and a.name or "this output") .. " has no volume control"
+        return {
+            level = muted and "mute" or "fixed",
+            muted = muted,
+            fixed = true,
+            can_mute = a.muted ~= nil,
+            tip = muted and "Sound muted" or tip,
+        }
+    end
+    local v = math.max(0, math.min(100, math.floor(a.volume + 0.5)))
+    local level = "high"
+    if muted or v <= 0 then
+        level = "mute"
+    elseif v < 34 then
+        level = "low"
+    elseif v < 67 then
+        level = "mid"
+    end
+    return { level = level, muted = muted, text = v .. "%", tip = muted and "Sound muted" or ("Sound " .. v .. "%") }
 end
 
 -- Each Bluetooth audio device connected, by name (SPEC.md §8), as tide's

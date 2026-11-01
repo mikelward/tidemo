@@ -103,7 +103,9 @@ function M.new(tilemo)
         end)
         raw.audio = try("the volume", function()
             local dev = hs.audiodevice.defaultOutputDevice()
-            return dev and { volume = dev:outputVolume(), muted = dev:outputMuted() }
+            -- outputVolume() is nil on an output with no volume control, and
+            -- outputMuted() on one that can't mute; bar.lua shows it anyway.
+            return dev and { volume = dev:outputVolume(), muted = dev:outputMuted(), name = dev:name() }
         end)
         -- Bluetooth audio devices, outputs then inputs, by name; bar.lua
         -- lists each once.
@@ -222,7 +224,8 @@ function M.new(tilemo)
 
     local function step_volume(d)
         local dev = hs.audiodevice.defaultOutputDevice()
-        if not dev then
+        -- No volume control: nothing to step.
+        if not dev or dev:outputVolume() == nil then
             return
         end
         local v, unmute = bar.volume_step(dev:outputVolume(), dev:outputMuted(), d)
