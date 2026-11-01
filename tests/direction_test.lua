@@ -166,4 +166,29 @@ t.test("past the last display that way, nothing", function()
     t.eq(s, nil)
 end)
 
+t.test("the next display is the one that way, by the same rule", function()
+    local displays = { { name = "A", box = A }, { name = "B", box = B }, { name = "C", box = C } }
+    t.eq(direction.next_monitor(displays[1], displays, 1).name, "B")
+    t.eq(direction.next_monitor(displays[1], displays, -1).name, "C")
+    t.eq(direction.next_monitor(displays[2], displays, 1), nil, "none past the last")
+end)
+
+-- A float moving from a 1920x1046 work area to one half its size.
+local FROM, TO = box(0, 34, 1920, 1046), box(1920, 34, 960, 523)
+
+t.test("a float in the top left lands in the top left", function()
+    t.eq(direction.place(box(96, 86, 400, 300), FROM, TO), box(1968, 60, 400, 300))
+end)
+
+t.test("a float in the bottom right lands in the bottom right", function()
+    t.eq(direction.place(box(1420, 680, 500, 400), FROM, TO), box(2380, 157, 500, 400), "held inside")
+    t.eq(direction.place(box(1420, 680, 500, 400), FROM, box(1920, 34, 1920, 1046)), box(3340, 680, 500, 400),
+        "the same spot on a display the same size")
+end)
+
+t.test("a float too big for the next display shrinks to fit inside it", function()
+    t.eq(direction.place(box(100, 100, 1200, 600), FROM, TO), box(1920, 34, 960, 523))
+    t.eq(direction.place(box(800, 100, 1200, 300), FROM, TO), box(1920, 67, 960, 300), "only the side too big")
+end)
+
 t.done("direction")

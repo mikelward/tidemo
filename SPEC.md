@@ -1188,7 +1188,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+Shift+E` | log out | hotkey; System Events, which asks first |
 | `Super+Home` | show "in" (§6.2) | hotkey |
 | `Super+Left` / `Right` | select the window left / right of this one; at a display's edge, the nearest on the next display that way (below) | hotkey |
-| `Super+Shift+Left` / `Right` | move the window left / right the same way, onto the next display at the edge (below) | hotkey |
+| `Super+Shift+Left` / `Right` | move the window left / right the same way, onto the next display at the edge; a float straight onto the next display (below) | hotkey |
 | `Super+PgUp` / `PgDn` | previous / next workspace | hotkey |
 | `Super+Shift+PgUp` / `PgDn` | move the window to the previous / next workspace, and follow it | hotkey |
 | `Super+J` / `K`, with Shift | focus / move down and up the stack | hotkey |
@@ -1259,8 +1259,24 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   order isn't left to right (threecol's third tile is on the left), so
   tilemo lays out each place and picks by where the window would land;
   ties go to the place sharing the most height with where it was, then
-  the nearest *(a guess, to confirm)*. Focus stays on it. A float doesn't
-  move.
+  the nearest *(a guess, to confirm)*. Focus stays on it.
+- **A focused float goes straight onto the next display that way,**
+  **decided** (2026-11-01), picked by the same rule from the display it's
+  on. It stays floating and in its workspace, joining that display's part
+  of it, and focus stays on it. Past the last display, nothing. It keeps
+  its place and size as far as it can, by tide's rule (tide §6.6,
+  `direction.place`):
+  - It keeps its relative spot. Its top-left corner's offset in the old
+    display's work area, as a share of that area's width and height, gives
+    the offset in the new one. One near the top left lands near the top
+    left.
+  - It keeps its size, unless it is wider or taller than the new work
+    area. Then it shrinks to that width or height, and no further.
+  - It is then moved just enough to be wholly inside the new work area.
+    One in the bottom-right corner stays at that corner on a smaller
+    display.
+  - The work area is the display's area below the menu bar and tilemo's
+    bar, where a new float is placed (§5.1).
 - **`Super+PgUp` and `PgDn` step through workspaces;** with Shift they
   move the window there and follow it. These took the jobs tide gives
   `Super+Left` / `Right` and `Super+Shift+Left` / `Right` (tide §6.6).
