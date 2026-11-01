@@ -1461,6 +1461,40 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
       with no % and no scrolling, and its tip names the device and says it
       has no volume control. A click mutes it if it can mute, else opens
       Sound settings.
+    - **A monitor's speakers answer over DDC/CI** (`ddc.lua`): MCCS's
+      audio speaker volume (VCP `0x62`) and mute (`0x8D`). With a reading,
+      the speaker shows as any other output's, level and %, and a click and
+      a scroll set the monitor's own volume and mute. The change shows at
+      once, then goes to the monitor.
+      - The tool is Homebrew's `m1ddc` on Apple silicon or `ddcctl` on
+        Intel, found at `/opt/homebrew/bin` or `/usr/local/bin`; scripts'
+        `setup-macos --wm tilemo` installs the one for the Mac. `m1ddc`
+        comes first: `ddcctl`'s `IOFramebuffer` calls don't reach displays
+        on Apple silicon.
+      - The output's display is the one with the device's name, as macOS
+        names a monitor's speakers, else the only external one. It's
+        matched to the tool's own list by UUID (`m1ddc display list`, or
+        bare `ddcctl`'s display lines), then by name, then by being the
+        only one *(unverified that `m1ddc`'s UUIDs are `hs.screen`'s)*.
+      - Read as tilemo starts, when the output or the displays change, on
+        wake, and every 30 s, since the monitor's own buttons change it
+        without telling anyone. Runs go through `hs.task`, never waiting,
+        one at a time.
+      - A reading belongs to the display it came from, and a change goes
+        only there. Switching outputs, or a display coming or going (which
+        can renumber `ddcctl`'s), forgets the reading at once and drops any
+        read still out, and any change still queued, so a click or scroll
+        can't reach the wrong monitor.
+      - With no tool, no matching display, or a monitor that doesn't
+        answer, the speaker stays as above, and the log says why once,
+        until the reason changes or clears.
+      - **Cost and reliability:** both tools are free and open source
+        (MIT and GPL-3.0), from Homebrew. A read is three short `m1ddc`
+        runs or one `ddcctl` run, every 30 s, only while the output has no
+        volume of its own. DDC is slow and some monitors don't answer it,
+        or not over a built-in HDMI port; then only the reading is lost.
+      - The volume keys still do nothing for a monitor's speakers, as
+        macOS's own don't *(a follow-up)*.
   - network: Wi-Fi through `hs.wifi`, on or off with signal in three bars
     from the RSSI, or a wire, or no network, by which interface
     `hs.network.primaryInterfaces` says carries traffic. The Wi-Fi
