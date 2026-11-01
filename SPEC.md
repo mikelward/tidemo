@@ -292,8 +292,9 @@ can open before its page names it, and a title rule needs that name.
    window. Popovers, menus, tooltips and the menu bar aren't `AXWindow`s.
    tilemo never moves, focuses or counts any of them.
 2. **A user rule** by app bundle ID and, optionally, title, as tide's float
-   rules (tide §6.4). Rules come first so a misbehaving app can always be
-   fixed. tilemo's own rules follow the user's: System Settings floats,
+   rules (tide §6.4): `start()`'s `rules` first, then the ones you make on
+   the settings window's Floating section (§15). Rules come first so a
+   misbehaving app can always be fixed. tilemo's own rules follow the user's: System Settings floats,
    since its width is fixed though its height isn't, so step 4 misses it
    and a tile would leave a gap beside it. Notification Center's windows
    are left alone, whatever they report: they're macOS's own, over every
@@ -344,6 +345,25 @@ Placing and keeping floats:
   opens unfocused and is marked for attention (§14).
 - **Super+Shift+F toggles** a window between tiled and floating, as on tide
   and tileco.
+- **A window floated by hand can become a rule,** as on tide (tide §6.4).
+  The Floating section's *Floating now* lists it, and `Super+Shift+I` opens
+  that section filled in for the focused window (§15).
+  - Floating one with `Super+Shift+F` or `Super+Insert`, when no rule
+    covers it, asks once: a notification, *Always float APP?*, with
+    **Always float**, which adds the app's rule at once, and **Edit
+    rule…**, which opens the section filled in for it. A click on the
+    notification itself is Edit rule… too.
+    - Closing it, or letting it expire after 30 s, is Not now. That app
+      isn't asked about again until the next login, whatever the answer.
+      The apps asked about are kept in `hs.settings` with the login, so a
+      reload doesn't ask again.
+    - "Covers" counts every rule and the steps above that float a dialog,
+      as tide counts `conf`'s dialog rules.
+    - Only the keys ask. A window that floats on its own, by a rule or as
+      a dialog, never does. tilemo has no drag that floats a window.
+    - macOS shows the two buttons only as an alert, or on a banner you
+      hover over; Edit rule… is under the Always float button's menu
+      *(unverified on macOS 26)*.
 
 Chrome's windows, from tileco §5.4 and tide §6.4:
 
@@ -1132,6 +1152,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | ``Super+` ``, `Super+O` | monocle | hotkey |
 | `Super+Up` / `Super+Shift+Up` / `Super+Down` | maximize / full screen / restore (§5.4) | hotkey |
 | `Super+Shift+F`, `Super+Insert` | float or tile | hotkey |
+| `Super+Shift+I` | the settings window's Floating section, filled in for the focused window (§15), tide's `Super+Alt+F` | hotkey |
 | `Super+Shift+R` | resize mode for a float (§5.3) | hotkey, then plain keys until Esc |
 | `Super`+drag, `Super`+right-drag, `Super`+middle-click | move, resize, maximize (§5.3) | event tap |
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
@@ -2042,6 +2063,87 @@ Each one names a workaround, or says there is none.
       the list's foot is muted with Enter. One the list wouldn't take back
       on loading, or one muted already, is refused, and the section says
       why.
+- **Built: Floating,** a section of the settings window, as tide's
+  Floating page (tide §16): the rules that float a window by its app and
+  title, and the floating windows no rule covers yet. Its launcher row is
+  "Settings: floating windows".
+  - The rules are in `floating-macos.json` and `floating-macos.local.json`
+    in tide's folder, `rules`, a list of `{"app": "com.apple.Preview"}`,
+    each with an optional `"title"`. They're tilemo's own, not tide's
+    `floating.json`: a bundle ID isn't a Wayland class, so the two lists
+    can't be one.
+    - A local list replaces the shared one whole (tide §16.1), and
+      tilemo writes only the local file, keeping its other keys, so the
+      first change copies the shared list. The shared file is for a list
+      every Mac of yours takes, such as one `conf` installs; tilemo
+      installs none.
+    - The app is the window's bundle ID, matched exactly. The title is a
+      **Lua pattern**, found anywhere in the title, as `start()`'s rules
+      have always been: `^Save` for a title starting "Save", `%.` for a
+      dot. Lua patterns have no `|` and match bytes, not characters, so
+      `.` is one byte of a UTF-8 letter. tide's JavaScript and RE2
+      dialect doesn't apply: the two desktops share no rules.
+    - An entry with no app, an app with a space, a key other than these
+      two, a title that isn't a Lua pattern, or one listed already is an
+      error at load naming the file, `rules` and the entry. So is a list
+      of more than 64, as on tide. The last good rules stay, and a
+      notification says so once.
+    - A pattern is checked whole, as Lua's matcher reads it: Lua says a
+      pattern is malformed only when a match reaches the bad part, so a
+      trial match would pass `^Save[`. `start()`'s titles are checked the
+      same way. A bad one that gets past anyway matches nothing, and the
+      log names it once, so it can't stop windows being decided.
+    - They come after `start()`'s `rules` and before tilemo's own
+      (§5.1). `start()`'s can tile or leave a window alone, and the
+      section can't change them, so one there wins over the section's.
+  - **A new rule floats the windows open now that it covers,** as tide's
+    does (tide §16):
+    - the tiled ones the new rules float and the old ones didn't, on every
+      workspace and display, minimized ones included;
+    - not one you tiled by hand under a rule that already covered it, or
+      that a dialog step (§5.1) floated, so a broader rule doesn't
+      re-float a tiled Save As;
+    - not a full screen or maximized one;
+    - each placed as a new float is, at the size it opened at, centered.
+      One that isn't showing, minimized or on a hidden workspace, is
+      placed the first time it shows again, by the same step.
+    - A list only reordered, the same rules again, or a rule taken out
+      floats nothing, and taking one out tiles nothing.
+    - tilemo decides every window again as it starts, so unlike tide it
+      keeps no record of what it last swept: a reload floats every window
+      a rule covers, as `start()`'s rules always have.
+  - The section lists the rules, with ↑ and ↓ to move one and ✕ to take it
+    out. An app and a title typed at the foot are added with Enter or
+    *Add*. tilemo makes each change, since the page can't check a Lua
+    pattern, and names a rule by its place, app and title, so a hand edit
+    that has moved it since is refused. A refusal says why under the
+    fields.
+  - *Floating now* lists the floating windows no rule covers, one per app,
+    by app name. Every rule counts, and so do the dialog steps (§5.1). A
+    window with no bundle ID can't be named, so it isn't listed.
+  - *Always float* adds nothing yet. It fills the fields with the
+    window's bundle ID and a pattern for its exact title: the title with
+    Lua's magic characters escaped (`.` as `%.`), between `^` and `$`.
+    - The title field takes the keys with its text selected, to trim, or
+      clear for every window of the app.
+    - Enter or *Add* adds the rule. Esc clears the fields; with them
+      empty, it closes the window.
+    - When something floats the window already, the section says what,
+      under the fields: one of your rules, `start()`'s, tilemo's own, or
+      the dialog step that does.
+    - *More about this window*, under the fields, lists what macOS says of
+      it, read-only: its role, subrole, whether it's modal, resizable and
+      standard, its app's name and the app's path, each only when macOS
+      says. Nothing matches on these but the rules' app and title; they
+      show what a rule could need. The section starts closed, and stays as
+      you leave it while the settings window is open.
+  - `Super+Shift+I` opens the section filled in for the focused window, as
+    *Always float* fills it (§7.2). tide's key is `Super+Alt+F`, which
+    tilemo can't have: Super's chord holds Option already, with Karabiner
+    or without. A focused window with no bundle ID, or none at all, is a
+    notification saying so.
+  - **Cost and reliability:** nothing to pay, and nothing new to run. A
+    change reads every managed window's facts once, as a sync does.
 - **One owner per job** (tide §5): tilemo tiles, binds keys and draws the
   bar. Karabiner remaps the keyboard. macOS owns notifications, lock and
   idle. Nothing else tiles.

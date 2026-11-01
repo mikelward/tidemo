@@ -8,7 +8,8 @@
 // muted }) and hears back through the "tilemo" message handler:
 // { write: text } for clocks.local.json, { writeLayouts: text } for
 // layouts.local.json, { writeStartup: text } for startup.local.json,
-// { unmute: entry }, or { close: true }. tilemo.reveal(id) scrolls to a
+// { unmute: entry }, the Floating section's { floatAdd }, { floatMove } and
+// { floatRemove }, or { close: true }. tilemo.reveal(id) scrolls to a
 // section, for the launcher's rows.
 
 import { editableClocks, editedClocks, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
@@ -353,8 +354,118 @@ document.getElementById("add-muted").addEventListener("keydown", (e) => {
   e.target.value = "";
 });
 
+// The Floating section (SPEC.md §15), as tide's Floating page: rules by
+// bundle ID and title pattern, which tilemo edits, since only it can check
+// a Lua pattern. It answers a change with tilemo.update(), and then
+// tilemo.floatingDone() or tilemo.floatingError(why).
+let floatingState = { rules: [], now: [] };
+
+const floatApp = () => document.getElementById("floating-app");
+const floatTitle = () => document.getElementById("floating-title");
+
+function showFloatingError(text) {
+  document.getElementById("floating-error").textContent = text;
+}
+
+// What the fields were filled in for, if anything: what floats it already,
+// and what macOS says of it.
+function showFill(fill) {
+  document.getElementById("floating-covered").textContent = fill?.covered ? `Already floating: ${fill.covered}.` : "";
+  const about = document.getElementById("floating-about");
+  const rows = document.getElementById("floating-about-rows");
+  rows.replaceChildren();
+  const list = Array.isArray(fill?.about) ? fill.about : [];
+  for (const r of list) rows.append(el("dt", r.label), el("dd", r.value));
+  // Closed to start with; opened, it stays as you leave it while the window's open.
+  about.hidden = list.length === 0;
+}
+
+function fillFloating(fill) {
+  if (!fill || typeof fill.app !== "string") return;
+  floatApp().value = fill.app;
+  floatTitle().value = typeof fill.title === "string" ? fill.title : "";
+  showFloatingError("");
+  showFill(fill);
+  // The title takes the keys selected, to trim, or clear for the whole app.
+  floatTitle().focus?.();
+  floatTitle().select?.();
+}
+
+function clearFloating() {
+  floatApp().value = "";
+  floatTitle().value = "";
+  showFloatingError("");
+  showFill(null);
+}
+
+function addFloating() {
+  const app = floatApp().value.trim();
+  if (app === "") {
+    showFloatingError("type an app's bundle ID, such as com.apple.Preview");
+    return;
+  }
+  showFloatingError("");
+  send({ floatAdd: { app, title: floatTitle().value } });
+}
+
+function renderFloating() {
+  const f = floatingState;
+  const broken = typeof f.error === "string" && f.error !== "";
+  document.getElementById("floating-source").textContent = f.source === "floating-macos.local.json"
+    ? "From floating-macos.local.json, this Mac's own list."
+    : f.source === "floating-macos.json"
+      ? "From floating-macos.json, shared by your Macs. A change saves this Mac's own list to floating-macos.local.json."
+      : "None yet. The first saves this Mac's own list to floating-macos.local.json.";
+  if (broken) showFloatingError(`${f.error}. Fix the file to change the rules here.`);
+  floatApp().disabled = broken;
+  floatTitle().disabled = broken;
+  document.getElementById("floating-add-button").disabled = broken;
+  const list = document.getElementById("floating-list");
+  list.replaceChildren();
+  const rules = Array.isArray(f.rules) ? f.rules : [];
+  if (rules.length === 0) list.append(el("li", "No rules of your own yet."));
+  rules.forEach((r, i) => {
+    const index = i + 1;
+    const name = r.title ? `${r.app}, ${r.title}` : r.app;
+    const li = el("li");
+    li.append(
+      el("span", r.app),
+      el("code", r.title || "every window"),
+      button("↑", `Move ${name} up`, broken || i === 0, () => send({ floatMove: { index, app: r.app, title: r.title, step: -1 } })),
+      button("↓", `Move ${name} down`, broken || i === rules.length - 1, () => send({ floatMove: { index, app: r.app, title: r.title, step: 1 } })),
+      button("✕", `Remove ${name}`, broken, () => send({ floatRemove: { index, app: r.app, title: r.title } })),
+    );
+    list.append(li);
+  });
+  const now = document.getElementById("floating-now");
+  now.replaceChildren();
+  const windows = Array.isArray(f.now) ? f.now : [];
+  if (windows.length === 0) now.append(el("li", "None: every floating window has a rule, or is a dialog."));
+  for (const w of windows) {
+    const li = el("li");
+    li.append(el("span", w.name), el("span", w.title), button("Always float", `Always float ${w.name}`, broken, () => fillFloating(w)));
+    now.append(li);
+  }
+}
+
+for (const input of [floatApp(), floatTitle()]) {
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      addFloating();
+    } else if (e.key === "Escape") {
+      // Esc clears the fields; with nothing in them, it closes the window.
+      if (floatApp().value !== "" || floatTitle().value !== "") {
+        e.stopPropagation?.();
+        e.handled = true;
+        clearFloating();
+      }
+    }
+  });
+}
+document.getElementById("floating-add-button").addEventListener("click", addFloating);
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") send({ close: true });
+  if (e.key === "Escape" && !e.handled) send({ close: true });
 });
 
 window.tilemo = {
@@ -378,6 +489,22 @@ window.tilemo = {
     renderStartup();
     renderClipboard();
     renderMuted();
+    if (state.floating && typeof state.floating === "object") {
+      floatingState = state.floating;
+      showFloatingError("");
+      renderFloating();
+    }
+  },
+  // A Floating change saved: an added rule clears the fields.
+  floatingDone(added) {
+    if (added) clearFloating();
+  },
+  floatingError(why) {
+    showFloatingError(String(why ?? ""));
+  },
+  // Super+Shift+I or the question's Edit rule…: the fields filled in.
+  floatingFill(fill) {
+    fillFloating(fill);
   },
   // The clipboard history's count, from tilemo as copies come and go:
   // only the Clipboard section redraws.

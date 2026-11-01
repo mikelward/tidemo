@@ -44,6 +44,8 @@ t.test("each list's rows have a column for every part, so none wraps", function(
     -- settings_page.cjs checks each row has this many parts.
     t.eq(columns(html, ".settings #startup-list li"), 4, "a command, up, down and remove")
     t.eq(columns(html, ".settings #muted-list li"), 2, "an entry and Unmute")
+    t.eq(columns(html, ".settings #floating-list li"), 5, "an app, its title, up, down and remove")
+    t.eq(columns(html, ".settings #floating-now li"), 3, "an app, its title and Always float")
     t.eq(columns(html, ".settings li"), 5, "a zone, its label, left, right and remove")
 end)
 
@@ -89,7 +91,7 @@ t.test("the settings page builds, and changes the clocks as tide's page does", f
     t.eq(html:find('id="add-zone"', 1, true) ~= nil, true)
     t.eq(html:find('id="add-command"', 1, true) ~= nil, true)
     t.eq(html:find('id="clipboard-history"', 1, true) ~= nil, true)
-    for _, id in ipairs({ "clocks", "layouts", "startup", "clipboard", "muted" }) do
+    for _, id in ipairs({ "clocks", "layouts", "startup", "clipboard", "muted", "floating" }) do
         t.eq(html:find('<h1 id="' .. id .. '"', 1, true) ~= nil, true, "a section to reveal: " .. id)
     end
     local node = io.popen("command -v node"):read("l")

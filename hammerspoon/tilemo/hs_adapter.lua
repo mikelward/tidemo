@@ -138,6 +138,29 @@ function M.new()
         end)
     end
 
+    -- What macOS says of window `id`, for the Floating page's "More about
+    -- this window" (floating.about): read only when the page asks, as the
+    -- app's path isn't needed to decide a window. Nil for a window gone.
+    function a.about(id)
+        local w = win(id)
+        if not w then
+            return nil
+        end
+        return try(function()
+            local app = w:application()
+            local el = hs.axuielement.windowElement(w)
+            return {
+                role = w:role(),
+                subrole = w:subrole(),
+                modal = el and el:attributeValue("AXModal"),
+                size_settable = el and el:isAttributeSettable("AXSize"),
+                standard = w:isStandard(),
+                name = app and app:name(),
+                path = app and app:path(),
+            }
+        end)
+    end
+
     -- Visible windows, front to back.
     function a.ordered()
         local ids = {}

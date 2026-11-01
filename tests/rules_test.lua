@@ -129,4 +129,67 @@ t.test("a user rule can still tile System Settings", function()
     t.eq(rules.decide(std({ app = "com.apple.systempreferences" }), user), "tile")
 end)
 
+
+-- Lua says a pattern is malformed only when a match reaches the bad part,
+-- so a trial match against "" passes "^Save[" (Codex on #76).
+t.test("a title pattern is checked whole, not by one trial match", function()
+    for p, why in pairs({
+        ["^Save["] = "has a [ with no ] to end it",
+        ["Save%"] = "ends with %",
+        ["%"] = "ends with %",
+        ["a%b("] = "has a %b without two characters after it",
+        ["a%fx"] = "has a %f without a [set] after it",
+        ["a%f[x"] = "has a [ with no ] to end it",
+        ["a(b"] = "has a ( with no ) to end it",
+        ["a)b"] = "has a ) with no ( before it",
+        ["(a%1)"] = "has %1, which names no capture closed before it",
+        ["a%0"] = "has %0, which names no capture closed before it",
+        ["[%"] = "has a [ with no ] to end it",
+    }) do
+        t.eq(rules.pattern_problem(p), why, p)
+        local ok = pcall(rules.check, { { title = p, action = "float" } })
+        t.eq(ok, false, "start()'s rules refuse " .. p)
+    end
+    for _, p in ipairs({ "^Save", "^Save As%.%.%.$", "[]]", "[^]a]", "%b()", "%f[%w]x", "(a)%1", "()", "a$b",
+        "x^", "a-*", "[a-z]+", "%%", "%[", "" }) do
+        t.eq(rules.pattern_problem(p), nil, p)
+    end
+end)
+
+-- The check's one promise, tried on many patterns: what it passes, Lua can
+-- match against any title without an error.
+t.test("no pattern the check passes errors when matched", function()
+    local alphabet = { "a", "b", "^", "$", "(", ")", "%", "[", "]", "f", "1", "-", "*", "+", "?", ".", " " }
+    local titles = { "", "a", "ab", "aab", "ba", "a b", "(a)", "[a]", "%", "ab1", "a-b*c" }
+    math.randomseed(76)
+    for _ = 1, 20000 do
+        local parts = {}
+        for i = 1, math.random(1, 8) do
+            parts[i] = alphabet[math.random(#alphabet)]
+        end
+        local p = table.concat(parts)
+        if not rules.pattern_problem(p) then
+            for _, title in ipairs({ p, table.unpack(titles) }) do
+                local ok, err = pcall(string.find, title, p)
+                if not ok then
+                    error(string.format("%q passed, but matching %q: %s", p, title, err))
+                end
+            end
+        end
+    end
+end)
+
+t.test("a bad pattern that reaches decide is skipped and logged, and the window decided", function()
+    local said = {}
+    rules.report = function(msg)
+        said[#said + 1] = msg
+    end
+    local bad = { { app = "com.example.app", title = "^Doc[", action = "float" } }
+    t.eq(rules.decide(std({ title = "Doc" }), bad), "tile")
+    t.eq(rules.decide(std({ title = "Doc" }), bad), "tile")
+    t.eq(#said, 1, "said once")
+    t.eq(said[1]:find('com.example.app, title "^Doc["', 1, true) ~= nil, true, said[1])
+    rules.report = function() end
+end)
+
 t.done("rules")

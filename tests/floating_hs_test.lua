@@ -1,0 +1,250 @@
+-- floating_hs.lua against the fake adapter and a stand-in hs: the files
+-- loaded into the window manager, the settings window's edits, and the
+-- "Always float" question after Super+Shift+F.
+
+local t = require("t")
+local fake = require("fake")
+local json = require("json")
+local wm_mod = require("tilemo.wm")
+local floating = require("tilemo.floating")
+
+local DIR = "/home/user/.config/tide"
+local LOCAL = DIR .. "/" .. floating.LOCAL_FILE
+
+local ACTION, OTHER, CONTENTS = "action", "other", "contents"
+
+-- A stand-in hs: notifications kept to be answered by hand, and a settings
+-- store.
+local function stub()
+    local s = { notes = {}, settings = {} }
+    _G.hs = {
+        json = { encode = json.encode },
+        settings = {
+            get = function(k)
+                return s.settings[k]
+            end,
+            set = function(k, v)
+                s.settings[k] = v
+            end,
+        },
+        notify = {
+            activationTypes = { actionButtonClicked = ACTION, additionalActionClicked = OTHER, contentsClicked = CONTENTS },
+            new = function(fn, attrs)
+                local n = { attrs = attrs, fn = fn }
+                function n:send()
+                    s.notes[#s.notes + 1] = n
+                end
+                function n:activationType()
+                    return n.kind
+                end
+                function n:additionalActivationAction()
+                    return n.extra
+                end
+                function n.answer(kind, extra)
+                    n.kind, n.extra = kind, extra
+                    fn(n)
+                end
+                return n
+            end,
+        },
+    }
+    return s
+end
+
+local function setup()
+    local s = stub()
+    package.loaded["tilemo.floating_hs"] = nil
+    local floating_hs = require("tilemo.floating_hs")
+    local a = fake.new()
+    a.add(1, { app = "com.example.alpha", name = "Alpha", title = "Big (1).txt" })
+    a.add(2, { app = "com.example.beta", name = "Beta", title = "Beta" })
+    function a.write_file(p, text)
+        a.files[p] = text
+        return true
+    end
+    a.decode = json.decode
+    local logins = 0
+    local tilemo = { adapter = a, clock_dir = DIR }
+    tilemo.wm = wm_mod.new(a, {})
+    tilemo.settings = {
+        shown = {},
+        refreshed = 0,
+        show = function(section, fill)
+            tilemo.settings.shown[#tilemo.settings.shown + 1] = { section = section, fill = fill }
+        end,
+        refresh = function()
+            tilemo.settings.refreshed = tilemo.settings.refreshed + 1
+        end,
+    }
+    tilemo.floating = floating_hs.new(tilemo, function()
+        logins = logins + 1
+        return "login 1"
+    end)
+    tilemo.floating.load()
+    tilemo.wm.floated_by_hand = function(id)
+        tilemo.floating.ask(id)
+    end
+    tilemo.wm:sync()
+    tilemo.wm:retile()
+    return s, a, tilemo, function()
+        return logins
+    end
+end
+
+t.test("floating a window by the key asks once whether to always float its app", function()
+    local s, a, tilemo, logins = setup()
+    a.focus_ = 1
+    tilemo.wm:act("toggle_float")
+    t.eq(#s.notes, 1)
+    local n = s.notes[1].attrs
+    t.eq(n.title, "tide")
+    t.eq(n.informativeText, "Always float Alpha?")
+    t.eq(n.actionButtonTitle, "Always float")
+    t.eq(n.additionalActions, { "Edit rule…" })
+    -- Tiled and floated again, or reloaded in the same login: not again.
+    tilemo.wm:act("toggle_float")
+    tilemo.wm:act("toggle_float")
+    t.eq(#s.notes, 1)
+    t.eq(logins(), 1, "the login is told once")
+    a.focus_ = 2
+    tilemo.wm:act("toggle_float")
+    t.eq(#s.notes, 2, "another app is asked about")
+end)
+
+t.test("a reload in the same login doesn't ask again; a new login does", function()
+    local s, a, tilemo = setup()
+    a.focus_ = 1
+    tilemo.wm:act("toggle_float")
+    local kept = s.settings
+    local s2, a2, tilemo2 = setup()
+    s2.settings[next(kept)] = kept[next(kept)]
+    a2.focus_ = 1
+    tilemo2.wm:act("toggle_float")
+    t.eq(#s2.notes, 0)
+    s2.settings[next(kept)].login = "an earlier login"
+    tilemo2.wm:act("toggle_float")
+    tilemo2.wm:act("toggle_float")
+    t.eq(#s2.notes, 1)
+    t.eq(a.files[LOCAL], nil, "asking writes nothing")
+end)
+
+t.test("Always float adds the app's rule at once", function()
+    local s, a, tilemo = setup()
+    a.focus_ = 1
+    tilemo.wm:act("toggle_float")
+    t.eq(#tilemo.wm:floating_now(), 1)
+    s.notes[1].answer(ACTION)
+    t.eq(json.decode(a.files[LOCAL]).rules, { { app = "com.example.alpha" } })
+    t.eq(tilemo.wm.float_rules, { { app = "com.example.alpha", action = "float" } })
+    t.eq(#tilemo.wm:floating_now(), 0, "a rule covers it now")
+    t.eq(tilemo.settings.refreshed, 1)
+end)
+
+t.test("Edit rule… and a click on the notification open the page filled in", function()
+    local s, a, tilemo = setup()
+    a.focus_ = 1
+    tilemo.wm:act("toggle_float")
+    s.notes[1].answer(OTHER, "Edit rule…")
+    local shown = tilemo.settings.shown[1]
+    t.eq(shown.section, "floating")
+    t.eq(shown.fill.app, "com.example.alpha")
+    t.eq(shown.fill.title, "^Big %(1%)%.txt$")
+    s.notes[1].answer(CONTENTS)
+    t.eq(#tilemo.settings.shown, 2)
+    t.eq(a.files[LOCAL], nil, "neither adds a rule")
+end)
+
+t.test("the key with no window, or one with no app, says so", function()
+    local _, a, tilemo = setup()
+    tilemo.floating.open(nil)
+    a.add(3, { title = "x" })
+    a.wins[3].app = nil
+    tilemo.wm:sync()
+    tilemo.floating.open(3)
+    t.eq(a.notes, { "No window is focused to make a float rule for.", "This window has no app to name in a float rule." })
+    tilemo.floating.open(1)
+    t.eq(tilemo.settings.shown[1].fill.app, "com.example.alpha")
+end)
+
+t.test("a file that's wrong is said once, and the last good rules stay", function()
+    local _, a, tilemo = setup()
+    a.files[LOCAL] = '{"rules": [{"app": "com.example.beta"}]}'
+    tilemo.floating.load()
+    t.eq(tilemo.wm.windows[2].floating, true, "the new rule floated it")
+    a.files[LOCAL] = '{"rules": [{"app": "x", "title": "("}]}'
+    tilemo.floating.load()
+    tilemo.floating.load()
+    t.eq(#a.notes, 1)
+    t.eq(a.notes[1]:find("The float rules stay as they were: " .. floating.LOCAL_FILE .. ": rules[1]", 1, true), 1)
+    t.eq(tilemo.wm.float_rules, { { app = "com.example.beta", action = "float" } })
+    t.eq(tilemo.floating.error ~= nil, true)
+end)
+
+t.test("the settings window's messages add, move and remove rules", function()
+    local _, a, tilemo = setup()
+    _G.hs.webview = nil
+    package.loaded["tilemo.settings_hs"] = nil
+    local settings_hs = require("tilemo.settings_hs")
+    local edit = function(body)
+        return settings_hs.float_edit(tilemo.floating, body)
+    end
+    t.eq(edit({ floatAdd = { app = "com.example.alpha", title = "^Big" } }), true)
+    t.eq(edit({ floatAdd = { app = "com.example.beta", title = "" } }), true)
+    t.eq(edit({ floatMove = { index = 2, app = "com.example.beta", title = "", step = -1 } }), true)
+    t.eq(json.decode(a.files[LOCAL]).rules, { { app = "com.example.beta" }, { app = "com.example.alpha", title = "^Big" } })
+    local ok, why = edit({ floatRemove = { index = 1, app = "com.example.alpha", title = "^Big" } })
+    t.eq(ok, nil)
+    t.eq(why:find("changed", 1, true) ~= nil, true)
+    t.eq(edit({ floatRemove = { index = 2, app = "com.example.alpha", title = "^Big" } }), true)
+    t.eq(json.decode(a.files[LOCAL]).rules, { { app = "com.example.beta" } })
+    ok, why = edit({ floatAdd = { app = "x", title = "%" } })
+    t.eq(ok, nil)
+    t.eq(why:find("isn't a Lua pattern", 1, true) ~= nil, true, why)
+end)
+
+t.test("showing an open settings window again redraws Floating now", function()
+    local _, _, tilemo = setup()
+    local pushed = 0
+    local view = {}
+    for _, m in ipairs({ "windowStyle", "windowTitle", "allowTextEntry", "html", "show", "delete" }) do
+        view[m] = function() end
+    end
+    function view.navigationCallback(_, fn)
+        view.nav = fn
+    end
+    function view.windowCallback() end
+    function view.hswindow()
+        return nil
+    end
+    function view.evaluateJavaScript(_, js)
+        if js:find("tilemo.update(", 1, true) == 1 then
+            pushed = pushed + 1
+        end
+    end
+    _G.hs.inspect = tostring
+    _G.hs.webview = {
+        new = function()
+            return view
+        end,
+        usercontent = {
+            new = function()
+                return { setCallback = function() end }
+            end,
+        },
+    }
+    tilemo.wm.screen_by_uuid = function()
+        return { area = { x = 0, y = 0, w = 1000, h = 800 } }
+    end
+    tilemo.wm.current_screen = function()
+        return "s"
+    end
+    package.loaded["tilemo.settings_hs"] = nil
+    local settings = require("tilemo.settings_hs").new(tilemo)
+    settings.show("floating")
+    view.nav("didFinishNavigation")
+    t.eq(pushed, 1)
+    settings.show("floating")
+    t.eq(pushed, 2, "no fill, but Floating now is redrawn")
+end)
+
+t.done("floating_hs")

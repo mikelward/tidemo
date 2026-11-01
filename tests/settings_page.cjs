@@ -334,4 +334,81 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.strictEqual(layoutRow("New windows go").children[3].disabled, true);
 }
 
+// Floating: the rules tilemo hands over, each with up, down and remove,
+// which ask tilemo to make the change; Floating now's Always float fills
+// the fields, and Enter or Add asks tilemo to add it.
+{
+  const get = (id) => sandbox.document.getElementById(id);
+  const rules = () => get("floating-list").children;
+  const now = () => get("floating-now").children;
+  const fill = {
+    app: "com.example.viewer",
+    name: "Viewer",
+    title: "^Info %(1%)$",
+    covered: "rule 1, com.example.viewer, floats it",
+    about: [{ label: "Role", value: "AXWindow" }, { label: "Subrole", value: "AXDialog" }],
+  };
+  sandbox.tilemo.update({ clockFiles: [], floating: { rules: [], now: [] } });
+  assert.strictEqual(rules()[0].textContent, "No rules of your own yet.");
+  assert.match(now()[0].textContent, /^None/);
+  assert.match(get("floating-source").textContent, /None yet/);
+  sandbox.tilemo.update({
+    clockFiles: [],
+    floating: {
+      rules: [{ app: "com.example.a", title: "" }, { app: "com.example.b", title: "^Save" }],
+      source: "floating-macos.local.json",
+      now: [{ ...fill, covered: undefined, about: [] }],
+    },
+  });
+  assert.match(get("floating-source").textContent, /this Mac's own list/);
+  assert.deepStrictEqual(rules().map((li) => li.children.map((c) => c.textContent)),
+    [["com.example.a", "every window", "↑", "↓", "✕"], ["com.example.b", "^Save", "↑", "↓", "✕"]]);
+  assert.strictEqual(rules()[0].children[2].disabled, true, "the first can't move up");
+  assert.strictEqual(rules()[1].children[3].disabled, true, "the last can't move down");
+  sent.length = 0;
+  rules()[1].children[2].listeners.click();
+  rules()[1].children[4].listeners.click();
+  assert.deepStrictEqual(sent, [
+    { floatMove: { index: 2, app: "com.example.b", title: "^Save", step: -1 } },
+    { floatRemove: { index: 2, app: "com.example.b", title: "^Save" } },
+  ]);
+  // Always float fills the fields, adding nothing yet.
+  assert.deepStrictEqual(now()[0].children.map((c) => c.textContent), ["Viewer", "^Info %(1%)$", "Always float"]);
+  sent.length = 0;
+  now()[0].children[2].listeners.click();
+  assert.deepStrictEqual(sent, []);
+  assert.strictEqual(get("floating-app").value, "com.example.viewer");
+  assert.strictEqual(get("floating-title").value, "^Info %(1%)$");
+  assert.strictEqual(get("floating-about").hidden, true, "nothing more to say, no section");
+  // Enter adds it; tilemo answers, and the fields clear.
+  get("floating-title").listeners.keydown({ key: "Enter", target: get("floating-title") });
+  assert.deepStrictEqual(sent, [{ floatAdd: { app: "com.example.viewer", title: "^Info %(1%)$" } }]);
+  sandbox.tilemo.floatingDone(true);
+  assert.strictEqual(get("floating-app").value, "");
+  // The key's fill-in: what covers it and what macOS says of it.
+  sandbox.tilemo.floatingFill(fill);
+  assert.strictEqual(get("floating-covered").textContent, "Already floating: rule 1, com.example.viewer, floats it.");
+  assert.strictEqual(get("floating-about").hidden, false);
+  assert.deepStrictEqual(get("floating-about-rows").children.map((c) => c.textContent), ["Role", "AXWindow", "Subrole", "AXDialog"]);
+  // An error from tilemo shows; Esc clears the fields, and doesn't close.
+  sandbox.tilemo.floatingError("the title isn't a Lua pattern: malformed pattern");
+  assert.match(get("floating-error").textContent, /isn't a Lua pattern/);
+  const esc = { key: "Escape", target: get("floating-app") };
+  get("floating-app").listeners.keydown(esc);
+  assert.strictEqual(esc.handled, true);
+  assert.strictEqual(get("floating-title").value, "");
+  assert.strictEqual(get("floating-error").textContent, "");
+  assert.strictEqual(get("floating-about").hidden, true);
+  // An empty app is refused here, sending nothing.
+  sent.length = 0;
+  get("floating-add-button").listeners.click();
+  assert.deepStrictEqual(sent, []);
+  assert.match(get("floating-error").textContent, /bundle ID/);
+  // A file that's wrong: named, and nothing changes here until it's fixed.
+  sandbox.tilemo.update({ clockFiles: [], floating: { rules: [{ app: "com.example.a", title: "" }], now: [], error: "floating-macos.local.json: rules[2] names no app" } });
+  assert.match(get("floating-error").textContent, /rules\[2\] names no app\. Fix the file/);
+  assert.strictEqual(get("floating-app").disabled, true);
+  assert.strictEqual(rules()[0].children[4].disabled, true);
+}
+
 console.log("settings page: ok");

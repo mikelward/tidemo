@@ -22,6 +22,7 @@ local layout = require("tilemo.layout")
 local mouse = require("tilemo.mouse")
 local names = require("tilemo.names")
 local rules = require("tilemo.rules")
+local floating = require("tilemo.floating")
 
 local M = {}
 
@@ -253,7 +254,10 @@ function M.new(adapter, config)
         -- The height tilemo's bar takes from the top of each display, or 0
         -- with the bar off (bar.lua).
         top = config.top or 0,
-        rules = rules.check(config.rules or {}, "rules"),
+        -- start()'s rules, then the ones you made on the Floating page
+        -- (floating.lua), together as `rules`, tried before tilemo's own.
+        start_rules = rules.check(config.rules or {}, "rules"),
+        float_rules = {},
         home_apps = M.check_home_apps(config.home_apps or M.HOME_APPS),
         standing = standing,
         -- The home workspace: the first standing one, "in" by default.
@@ -287,6 +291,12 @@ function M.new(adapter, config)
         asked = {},     -- { id, app, at }, oldest first
         last_steal = nil, -- { id, at }
     }, M)
+    self.rules = floating.combined(self.start_rules, self.float_rules)
+    rules.report = function(msg)
+        if adapter.log then
+            adapter.log(msg)
+        end
+    end
     -- What the last run saved (snapshot()). Window ids may come back as
     -- strings from the settings store. A saved window that doesn't come back
     -- by id is matched by app and title until M.KEEP after this start.
@@ -1469,10 +1479,23 @@ function M:follow_floats()
         local w = self.windows[id]
         local uuid = w and w.ws and self:shown(w.ws)
         local st = uuid and self.a.state(id)
-        if st and not st.minimized then
-            local to = self:screen_by_uuid(uuid)
+        local to = st and not st.minimized and self:screen_by_uuid(uuid)
+        local f = to and w.place_pending and self.a.facts(id)
+        if f then
+            -- A float waiting to be placed (M:set_float_rules) is placed as
+            -- a new float is, now it shows, at the size it asked for, on
+            -- the display showing its workspace.
+            local size = w.place_pending
+            w.place_pending = nil
+            local placed = {}
+            for k, v in pairs(f) do
+                placed[k] = v
+            end
+            placed.frame = { x = to.area.x, y = to.area.y, w = size.w, h = size.h }
+            self:place_float(id, placed)
+        elseif to then
             local from = self:screen_for(st.frame)
-            if to and from and from.uuid ~= to.uuid then
+            if from and from.uuid ~= to.uuid then
                 local f = st.frame
                 local a = to.area
                 local x = a.x + (f.x - from.area.x)
@@ -2245,6 +2268,92 @@ function M:float_tile(id, f)
     end
 end
 
+-- New float rules from the Floating page's files (SPEC.md §15). A new rule
+-- floats the windows open now that it covers, on every workspace, as tide's
+-- does (tide §16): each tiled window the new rules float and the old ones
+-- didn't. One the old rules floated was tiled by hand, and stays; full
+-- screen and maximized ones are left as they are; nothing is tiled.
+-- Returns the ids floated.
+function M:set_float_rules(list)
+    local old = self.rules
+    self.float_rules = list or {}
+    self.rules = floating.combined(self.start_rules, self.float_rules)
+    local ws = {}
+    for id, w in pairs(self.windows) do
+        if w.ws then
+            ws[#ws + 1] = { id = id, facts = self.a.facts(id), tiled = not w.floating, big = w.big ~= nil }
+        end
+    end
+    table.sort(ws, function(a, b)
+        return tostring(a.id) < tostring(b.id)
+    end)
+    local ids = floating.sweep(ws, old, self.rules)
+    for _, id in ipairs(ids) do
+        local w = self.windows[id]
+        w.kind = "float"
+        for i = #self.asking, 1, -1 do
+            if self.asking[i].window == id then
+                table.remove(self.asking, i)
+            end
+        end
+        -- Placed as a new float is, at the size it opened at, by the next
+        -- retile that finds it showing (M:follow_floats): at once if it
+        -- shows now, else once its workspace shows or it's restored.
+        local f = self.a.facts(id)
+        local size = w.opened or (f and f.frame)
+        w.place_pending = size and { w = size.w, h = size.h } or nil
+        self:float_tile(id, nil)
+    end
+    if #ids > 0 then
+        self:reconcile()
+        self:retile()
+        self:changed()
+    end
+    return ids
+end
+
+-- Whether a rule, or the steps that float dialogs, floats window `id`
+-- without your asking.
+function M:covered(id)
+    local f = self.a.facts(id)
+    return f ~= nil and rules.decide(f, self.rules) == "float"
+end
+
+-- The Floating page's "Floating now": the floating windows no rule covers,
+-- one per app, each the page's fill-in for it (floating.prefill), ordered
+-- by app name.
+function M:floating_now()
+    local out, seen = {}, {}
+    local ids = {}
+    for id, w in pairs(self.windows) do
+        if w.ws and w.floating then
+            ids[#ids + 1] = id
+        end
+    end
+    table.sort(ids, function(a, b)
+        return tostring(a) < tostring(b)
+    end)
+    for _, id in ipairs(ids) do
+        local f = self.a.facts(id)
+        if f and f.app and f.app ~= "" and not seen[f.app] and rules.decide(f, self.rules) ~= "float" then
+            seen[f.app] = true
+            out[#out + 1] = self:float_prefill(id, f)
+        end
+    end
+    table.sort(out, function(a, b)
+        return a.name:lower() < b.name:lower()
+    end)
+    return out
+end
+
+-- The Floating page's fill-in for window `id` (floating.prefill), or nil
+-- when it has no app to name.
+function M:float_prefill(id, f)
+    f = f or self.a.facts(id)
+    local info = self.a.about and self.a.about(id) or nil
+    return floating.prefill(f, info, self.start_rules, self.float_rules)
+end
+
 -- Window `id`'s title changed. One tilemo tiled by its rules, in its first
 -- M.SETTLE, is decided again with the new title, as if it had opened with
 -- it: a browser's popup, such as Bitwarden's sign-in, autofill and passkey
@@ -2433,12 +2542,26 @@ function A.toggle_float(self)
     w.chosen = true
     if w.floating then
         w.floating = false
+        w.place_pending = nil
         remove_value(self.floats, id)
         layout.insert(self.workspaces[w.ws], id, nil, self.layout)
     else
         self:float_tile(id, self.a.facts(id))
+        -- Floated by the key, with no rule covering it: tide asks whether
+        -- to always float its app (floating_hs.lua).
+        if self.floated_by_hand and not self:covered(id) then
+            self.floated_by_hand(id)
+        end
     end
     self:retile()
+end
+
+-- Super+Shift+I: the settings window's Floating section, filled in for
+-- the focused window (SPEC.md §15).
+function A.float_rule(self)
+    if self.open_float_rule then
+        self.open_float_rule(self.a.focused())
+    end
 end
 
 -- Super+Z: minimize the focused window to its display's tray (SPEC.md

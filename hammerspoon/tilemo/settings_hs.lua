@@ -10,8 +10,31 @@ local dashboard = require("tilemo.dashboard")
 local layout = require("tilemo.layout")
 local mute = require("tilemo.mute")
 local picker = require("tilemo.picker")
+local floating = require("tilemo.floating")
 
 local M = {}
+
+-- `list` as a JSON array, each item by `encode`, so an empty one is [].
+function M.list(list, encode)
+    local out = {}
+    for i, v in ipairs(list or {}) do
+        out[i] = encode(v)
+    end
+    return "[" .. table.concat(out, ",") .. "]"
+end
+
+-- A Floating fill-in (floating.prefill) as JSON, its `about` rows a list.
+function M.encode_fill(fill)
+    local about = fill.about
+    local copy = {}
+    for k, v in pairs(fill) do
+        copy[k] = v
+    end
+    copy.about = "__about__"
+    return (hs.json.encode(copy):gsub('"__about__"', function()
+        return M.list(about, hs.json.encode)
+    end))
+end
 
 local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
 
@@ -32,6 +55,37 @@ local function build()
         sources[name] = read(name)
     end
     return dashboard.page(read("settings.html"), read("launcher.css"), sources, dashboard.SETTINGS_MODULES)
+end
+
+-- One of the Floating section's messages, { floatAdd = { app, title } },
+-- { floatMove = { index, app, title, step } } or { floatRemove = { index,
+-- app, title } }, through `floats` (floating_hs.new). Returns true, or nil
+-- and why.
+function M.float_edit(floats, body)
+    if not floats then
+        return nil, "the float rules aren't loaded"
+    end
+    local str = function(v)
+        return type(v) == "string" and v or ""
+    end
+    local int = function(v)
+        return math.tointeger(v) or 0
+    end
+    if body.floatAdd then
+        local m = body.floatAdd
+        return floats.edit(function(list)
+            return floating.with(list, str(m.app), str(m.title))
+        end)
+    elseif body.floatMove then
+        local m = body.floatMove
+        return floats.edit(function(list)
+            return floating.moved(list, int(m.index), str(m.app), str(m.title), int(m.step) < 0 and -1 or 1)
+        end)
+    end
+    local m = body.floatRemove
+    return floats.edit(function(list)
+        return floating.without(list, int(m.index), str(m.app), str(m.title))
+    end)
 end
 
 -- `tilemo` is the started tilemo module: its wm, adapter, clock_dir,
@@ -64,9 +118,24 @@ function M.new(tilemo)
                 maxItems = tilemo.clipboard_settings.max_items,
             } or nil,
             muted = "__muted__",
+            floating = tilemo.floating and {
+                rules = "__float_rules__",
+                source = tilemo.floating.source,
+                error = tilemo.floating.error,
+                now = "__float_now__",
+            } or nil,
         })
         json = json:gsub('"__muted__"', function()
             return mute.encode_list(tilemo.wm.muted.list)
+        end)
+        -- Lists that may be empty, which must reach the page as lists.
+        json = json:gsub('"__float_rules__"', function()
+            return M.list(tilemo.floating.rules, function(r)
+                return hs.json.encode({ app = r.app, title = r.title or "" })
+            end)
+        end)
+        json = json:gsub('"__float_now__"', function()
+            return M.list(tilemo.wm:floating_now(), M.encode_fill)
         end)
         view:evaluateJavaScript("tilemo.update(" .. json .. ")", function(_, err)
             if err and next(err) then
@@ -75,8 +144,8 @@ function M.new(tilemo)
         end)
     end
 
-    -- Scroll to section `id` ("clocks", "layouts", "startup", "clipboard" or
-    -- "muted").
+    -- Scroll to section `id` ("clocks", "layouts", "startup", "clipboard",
+    -- "muted" or "floating").
     local function reveal(id)
         if not (view and id) then
             return
@@ -130,6 +199,18 @@ function M.new(tilemo)
                 if not mute.has(tilemo.wm.muted, body.unmute) or tilemo.toggle_mute(body.unmute) == nil then
                     push()
                 end
+            elseif type(body.floatAdd) == "table" or type(body.floatMove) == "table"
+                or type(body.floatRemove) == "table" then
+                -- The Floating section's edits, which tilemo makes, since the
+                -- page can't check a Lua pattern (floating.lua).
+                local ok, why = M.float_edit(tilemo.floating, body)
+                if view then
+                    if ok then
+                        view:evaluateJavaScript("tilemo.floatingDone(" .. (body.floatAdd and "true" or "false") .. ")")
+                    else
+                        view:evaluateJavaScript("tilemo.floatingError(" .. hs.json.encode({ tostring(why) }):sub(2, -2) .. ")")
+                    end
+                end
             elseif body.close and view then
                 view:delete()
                 view = nil
@@ -153,17 +234,35 @@ function M.new(tilemo)
         end)
     end
 
-    -- Open the window, or bring it forward, showing `section` if given.
-    function self.show(section)
+    -- Fill in the Floating section's fields (floating.prefill).
+    local function fill_in(fill)
+        if not (view and fill) then
+            return
+        end
+        view:evaluateJavaScript("tilemo.floatingFill(" .. M.encode_fill(fill) .. ")", function(_, err)
+            if err and next(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+    local wanted_fill
+
+    -- Open the window, or bring it forward, showing `section` if given,
+    -- with the Floating section filled in by `fill` if given.
+    function self.show(section, fill)
         if view then
             local w = view:hswindow()
             if w then
                 w:focus()
             end
+            -- Floating now may have changed since it drew.
+            push()
             reveal(section)
+            fill_in(fill)
             return
         end
         wanted = section
+        wanted_fill = fill
         local s = tilemo.wm:screen_by_uuid(tilemo.wm:current_screen())
         if not s then
             tilemo.adapter.log("settings: no display to show it on")
@@ -180,7 +279,8 @@ function M.new(tilemo)
             if action == "didFinishNavigation" then
                 push()
                 reveal(wanted)
-                wanted = nil
+                fill_in(wanted_fill)
+                wanted, wanted_fill = nil, nil
             end
         end)
         view:windowCallback(function(action)

@@ -517,6 +517,7 @@ M.COMMANDS = {
     { title = "Settings: start at login", action = "settings", arg = "startup" },
     { title = "Settings: clipboard history", action = "settings", arg = "clipboard" },
     { title = "Settings: muted apps and sites", action = "settings", arg = "muted" },
+    { title = "Settings: floating windows", action = "settings", arg = "floating" },
     { title = "Monocle", action = "monocle" },
     { title = "Float or tile the window", action = "toggle_float" },
     { title = "Maximize the window", action = "maximize" },
