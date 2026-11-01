@@ -13,6 +13,7 @@ local mute = require("tilemo.mute")
 local picker = require("tilemo.picker")
 local floating = require("tilemo.floating")
 local links = require("tilemo.links")
+local linearmouse = require("tilemo.linearmouse")
 
 local M = {}
 
@@ -120,8 +121,10 @@ function M.new(tilemo)
                 maxItems = tilemo.clipboard_settings.max_items,
             } or nil,
             muted = "__muted__",
-            -- Each section's buttons.
+            -- Each section's buttons, and what's wrong with LinearMouse, if
+            -- anything, for the Mouse section.
             links = links.page_list(),
+            mouse = { problem = linearmouse.say(tilemo.linearmouse, "section") or "" },
             floating = tilemo.floating and {
                 rules = "__float_rules__",
                 source = tilemo.floating.source,

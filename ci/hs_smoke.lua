@@ -495,13 +495,20 @@ if not ok then
     return
 end
 say("tilemo started")
--- The runner has no Karabiner: tilemo doctor says so, and what it costs.
+-- The runner has no Karabiner and no LinearMouse: tilemo doctor says so,
+-- and what each costs.
 do
-    local report = tilemo.doctor()
-    if not tostring(report):find("Karabiner isn't running", 1, true) then
-        fail("tilemo.doctor() says %s", tostring(report))
+    local report = tostring(tilemo.doctor())
+    if not report:find("Karabiner isn't running", 1, true) then
+        fail("tilemo.doctor() says %s", report)
     else
         say("tilemo doctor: no Karabiner, as expected")
+    end
+    if tilemo.linearmouse ~= "missing" or not report:find("LinearMouse isn't installed", 1, true) then
+        fail("LinearMouse: %s, Launch Services' path %s; tilemo.doctor() says %s", tostring(tilemo.linearmouse),
+            hs.inspect(hs.application.pathForBundleID("com.lujjjh.LinearMouse")), report)
+    else
+        say("tilemo doctor: no LinearMouse, as expected")
     end
 end
 -- tide's logo, as the menu bar, notifications and the switcher show it:

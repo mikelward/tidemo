@@ -507,6 +507,8 @@ window.tilemo = {
     renderClipboard();
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
+    // What's wrong with LinearMouse, only when something is.
+    document.getElementById("mouse-error").textContent = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
     if (state.floating && typeof state.floating === "object") {
       floatingState = state.floating;
       showFloatingError("");

@@ -419,7 +419,7 @@ sandbox.tilemo.reveal("nothing-by-this-id");
     { section: "mouse", name: "linearmouse", label: "LinearMouse settings" },
     { section: "idle", name: "lock_screen", label: "Lock Screen settings" },
   ];
-  sandbox.tilemo.update({ clockFiles: [], links });
+  sandbox.tilemo.update({ clockFiles: [], links, mouse: { problem: "" } });
   const mouse = ids["mouse-links"].children;
   assert.deepStrictEqual(mouse.map((b) => b.textContent), ["Mouse settings", "LinearMouse settings"]);
   assert.deepStrictEqual(ids["idle-links"].children.map((b) => b.textContent), ["Lock Screen settings"]);
@@ -427,8 +427,14 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   mouse[1].listeners.click();
   assert.deepStrictEqual(sent, [{ open: "linearmouse" }]);
   // Drawn again, not added to.
-  sandbox.tilemo.update({ clockFiles: [], links });
+  sandbox.tilemo.update({ clockFiles: [], links, mouse: { problem: "" } });
   assert.strictEqual(ids["mouse-links"].children.length, 2);
+  // What's wrong with LinearMouse shows only when something is.
+  assert.strictEqual(ids["mouse-error"].textContent, "");
+  sandbox.tilemo.update({ clockFiles: [], links, mouse: { problem: "LinearMouse isn't running." } });
+  assert.strictEqual(ids["mouse-error"].textContent, "LinearMouse isn't running.");
+  sandbox.tilemo.update({ clockFiles: [], links, mouse: { problem: "" } });
+  assert.strictEqual(ids["mouse-error"].textContent, "");
 }
 
 console.log("settings page: ok");
