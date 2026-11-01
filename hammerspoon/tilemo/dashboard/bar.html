@@ -29,13 +29,67 @@ body {
 #logo svg {
   display: block;
 }
+/* The chips look as tide's do (tide's shell/Workspaces.qml and Theme.qml):
+   26px tall with 7px corners, the name semibold, 7px either side of it
+   inside the 1px border, and at least 28px wide. An occupied chip sits on
+   tide's surface, the current one on its accent; an empty one has no fill
+   and a faint name; one shown on another display is ringed in the accent;
+   one wanting attention is tinted and ringed amber, over the current one's
+   fill too. The colors are tide's palette's (theme/palette.json), which
+   `make check-tide` compares. */
+:root {
+  --chip-surface: #ffffff;
+  --chip-current: #3584e4;
+  --chip-on-current: #ffffff;
+  --chip-faint: #a8a8b3;
+  --chip-ring: #1c71d8;
+  --chip-urgent: #8a5d00;
+  --chip-urgent-bg: rgba(229, 165, 10, 0.26);
+  --chip-urgent-ring: #e5a50a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chip-surface: #2a2a2f;
+    --chip-current: #3584e4;
+    --chip-on-current: #ffffff;
+    --chip-faint: #5d5d68;
+    --chip-ring: #78aeed;
+    --chip-urgent: #f8e45c;
+    --chip-urgent-bg: rgba(246, 211, 45, 0.20);
+    --chip-urgent-ring: #f6d32d;
+  }
+}
 /* A chip's window icons follow its number. */
 nav button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
+  min-width: 28px;
   padding: 0 6px;
+  border-radius: 7px;
+  color: var(--chip-faint);
+  font-weight: 600;
+}
+nav button:not(.occupied):not(.current):not(.urgent) {
+  min-width: 24px;
+  padding: 0 3px;
+}
+nav button.occupied {
+  background: var(--chip-surface);
+  color: var(--fg);
+}
+nav button.elsewhere {
+  border-color: var(--chip-ring);
+}
+nav button.current {
+  background: var(--chip-current);
+  color: var(--chip-on-current);
+}
+nav button.urgent {
+  background: var(--chip-urgent-bg);
+  border-color: var(--chip-urgent-ring);
+  color: var(--chip-urgent);
 }
 /* A window icon's click target is the chip's full height and halfway to
    its neighbors (the chip's gap is 3px), from padding the margin takes back,

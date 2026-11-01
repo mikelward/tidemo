@@ -1405,7 +1405,14 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     always the clicked bar's: `hs.chooser` centers itself there *(a
     guess, to confirm on two displays)*;
   - workspace chips in list order, each with its name, that show current,
-    occupied and wanting attention. Every display shows the same
+    occupied and wanting attention, **drawn as tide's** (tide's
+    `shell/Workspaces.qml`): 26 px tall, 7 px corners, the name semibold; an
+    occupied chip on tide's surface color, the current one filled with its
+    accent, an empty one bare with a faint name, one on another display
+    ringed in the accent, and one wanting attention tinted and ringed amber,
+    the current one's too. The colors are tide's palette's, light and dark,
+    and `make check-tide` compares them; CI's smoke test checks the chips
+    as Hammerspoon's WebKit draws them, light and dark. Every display shows the same
     workspace, so every bar marks the same one current. A long
     name is cut with an ellipsis at 16 characters *(a guess, to confirm)*. The only empty chips are "in" and
     the standing workspaces, dimmed: any other empty workspace goes once
