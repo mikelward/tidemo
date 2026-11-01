@@ -692,22 +692,28 @@ function M:tiled(n)
     return out
 end
 
--- Place a new float centered on its parent, the app's focused window, or on
--- its display, at what it asked for capped at 80% (SPEC.md §5.1).
+-- Place a new float centered on its parent, the app's focused window, at
+-- what it asked for capped at 80% (SPEC.md §5.1). One with no parent, such
+-- as System Settings, centers on the pointer when that's on its display,
+-- else on the display: opening under the pointer, it isn't buried by the
+-- tile beside it, which focus follows mouse would raise at the pointer's
+-- next move.
 function M:place_float(id, f)
     local s = self:screen_for(f.frame)
     local area = s.area
     local w = math.min(f.frame.w, math.floor(area.w * M.FLOAT_CAP))
     local h = math.min(f.frame.h, math.floor(area.h * M.FLOAT_CAP))
-    local over = area
+    local cx, cy = center(area)
     local parent = self.a.app_focused(f.pid)
-    if parent and parent ~= id then
-        local pf = self.a.state(parent)
-        if pf then
-            over = pf.frame
+    local pf = parent and parent ~= id and self.a.state(parent)
+    if pf then
+        cx, cy = center(pf.frame)
+    else
+        local px, py = self.a.pointer()
+        if px and py and px >= area.x and px < area.x + area.w and py >= area.y and py < area.y + area.h then
+            cx, cy = px, py
         end
     end
-    local cx, cy = center(over)
     local x = math.floor(cx - w / 2 + 0.5)
     local y = math.floor(cy - h / 2 + 0.5)
     -- Keep it on its display.
