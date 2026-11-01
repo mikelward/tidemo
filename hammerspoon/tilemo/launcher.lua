@@ -315,7 +315,7 @@ function M.tab_window(tab, bundle, windows)
 end
 
 -- Items from what the adapter found: apps { name, path }, tabs { title, url,
--- browser, window, tab, win, ws }, commands { title, action, arg, quick }, System
+-- browser, window, tab, win, ws }, commands { title, action, arg, quick, logo, key }, System
 -- Settings' panes { name, id }, the windows wanting attention { window,
 -- title, app, bundle, ws }, newest first, the workspaces { name, apps, where }, in
 -- bar order, and every window { id, title, app_name, bundle, ws, minimized }, most
@@ -399,7 +399,8 @@ function M.items(apps, tabs, commands, settings, attention, workspaces, windows)
             action = c.action,
             arg = c.arg,
             quick = c.quick,
-            key = "command:" .. c.title,
+            logo = c.logo,
+            key = "command:" .. (c.key or c.title),
         }
     end
     for _, item in ipairs(out) do
@@ -506,7 +507,9 @@ end
 
 -- tilemo's commands, as the launcher lists them. `action` names a window
 -- manager action; `quick` names one of the adapter's quick actions
--- (tide SPEC.md §8).
+-- (tide SPEC.md §8). `logo` shows tide's logo on the row. `key`, when
+-- set, is the name the switcher remembers the row's use by, kept from
+-- before its title changed, so it doesn't lose its place.
 M.COMMANDS = {
     { title = "Layout: tile", action = "layout", arg = "tile" },
     { title = "Layout: three columns", action = "layout", arg = "threecol" },
@@ -535,8 +538,8 @@ M.COMMANDS = {
     { title = "Presenter mode: Do Not Disturb and keep awake", quick = "presenter" },
     { title = "Dark style", quick = "dark" },
     { title = "Focus follows mouse on or off", quick = "toggle_ffm" },
-    { title = "Reload tilemo", quick = "reload" },
-    { title = "Check tilemo (doctor)", quick = "doctor" },
+    { title = "Reload tide", key = "Reload tilemo", quick = "reload", logo = true },
+    { title = "Check tide (doctor)", key = "Check tilemo (doctor)", quick = "doctor", logo = true },
 }
 -- Workspaces are in the Workspaces tab, by name, not commands by number.
 

@@ -3,6 +3,7 @@
 -- again, Esc, or clicking another window closes it; a workspace's chip
 -- shows that workspace. Not runnable outside Hammerspoon.
 
+local brand = require("tilemo.brand")
 local dashboard = require("tilemo.dashboard")
 
 local M = {}
@@ -12,7 +13,7 @@ local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
 local function read(name)
     local f, err = io.open(DIR .. name)
     if not f then
-        error("tilemo: can't read the dashboard's " .. name .. ": " .. tostring(err))
+        error("tide: can't read the dashboard's " .. name .. ": " .. tostring(err))
     end
     local text = f:read("a")
     f:close()
@@ -105,7 +106,7 @@ function M.new(tilemo)
         view = hs.webview.new(s.full, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "borderless" })
         -- A title for the rules to see: tilemo leaves its own windows alone.
-        view:windowTitle("tilemo dashboard")
+        view:windowTitle(brand.title("dashboard"))
         view:level(hs.drawing.windowLevels.modalPanel)
         view:allowTextEntry(true)
         view:navigationCallback(function(action, v)

@@ -178,6 +178,31 @@ tests and the bar page's test cover it. **Check on a Mac:**
   (SPEC.md §15), not while minimized, which Accessibility may refuse
   *(unverified)*. The alternative is placing it at once, minimized.
   Reversible: `wm:set_float_rules` and `follow_floats`.
+- **tide on screen, tilemo in the code** (SPEC.md §17). Each of these is a
+  one-line change to undo or redo:
+  - The Karabiner notices say "tide's Karabiner rule" but still tell you to
+    remove the `"tilemo:"` rule, since that's its name in conf; when conf
+    renames it, add `"tide:"` to `keys.RULE_PREFIXES`, first.
+  - "Reload tide" and "Check tide (doctor)" keep "Reload tilemo" and "Check
+    tilemo (doctor)" as the key their use is remembered by, so they don't
+    drop down the switcher. Typing "tilemo" no longer finds them.
+  - Console errors and the log say `tide:`; `require("timo")`'s note still
+    names `require("tilemo")`, which is what to write. `setup-macos --wm
+    tilemo` in the blueutil hint is that script's flag, so it stays.
+  - The logo is a PNG pair, not drawn with `hs.canvas`, so it's tide's SVG
+    as rendered, and one file to swap: a 16 pt template (64 px) for the menu
+    bar, and a 64 pt one (256 px) in the light accent blue, `#3584e4`, for
+    notifications and the switcher's two rows. The dark accent, `#78aeed`,
+    would read better on a dark notification; macOS gives a notification no
+    way to switch.
+  - The settings page gets a header, the logo and "tide", above Clocks; the
+    dashboard, tileco's page, gets no logo.
+  - Only the switcher's own two commands show the logo; the other commands'
+    rows stay without an image.
+- **Check the logo on a Mac:** the menu bar item with `bar = false` in light
+  and dark, a notification's image, and the two switcher rows. Only
+  `tests/brand_test.lua` and CI's smoke test (the PNGs load, the menu bar's
+  as a template) cover them.
 
 - **The switcher's tab keys go in the search field's hint,** after where
   Tab goes: "Cmd+Return: new workspace" on Launch, "Cmd+M: mute" on

@@ -47,7 +47,7 @@ local function check_tab(tab)
             return
         end
     end
-    error("tilemo: not a picker tab: " .. tostring(tab), 3)
+    error("tide: not a picker tab: " .. tostring(tab), 3)
 end
 
 -- The tab after `tab`, or before it when `back`, round in a circle.
@@ -339,7 +339,7 @@ function M.empty_text(tab, query, err)
     if (query or ""):find("%S") then
         return "Nothing matches"
     end
-    return tab == "clipboard" and "Nothing copied since tilemo started" or "No characters"
+    return tab == "clipboard" and "Nothing copied since tide started" or "No characters"
 end
 
 return M

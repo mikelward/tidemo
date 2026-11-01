@@ -7,6 +7,7 @@
 -- switcher opens; and commands from launcher.COMMANDS. Tab and Shift+Tab
 -- move between its tabs. Not runnable outside Hammerspoon.
 
+local brand = require("tilemo.brand")
 local launcher = require("tilemo.launcher")
 local mute = require("tilemo.mute")
 local saved = require("tilemo.saved")
@@ -45,7 +46,7 @@ function M.scan()
             return ok and t or nil
         end)
         if #panes == 0 then
-            print("tilemo: found no System Settings panes in " .. launcher.SETTINGS_DIR)
+            print("tide: found no System Settings panes in " .. launcher.SETTINGS_DIR)
         end
     end
     return launcher.scan_apps(list_dir, os.getenv("HOME") or ""), panes
@@ -159,7 +160,7 @@ end
 local function open_tab(tilemo, item)
     local b = launcher.browser(item.browser)
     if not b then
-        tilemo.adapter.notify("Couldn't open that tab: tilemo doesn't know " .. tostring(item.browser))
+        tilemo.adapter.notify("Couldn't open that tab: tide doesn't know " .. tostring(item.browser))
         return
     end
     if item.win and tilemo.wm.windows[item.win] then
@@ -287,6 +288,8 @@ function M.new(tilemo)
                 text = item.title,
                 subText = launcher.subtitle(item),
                 id = item.id,
+                -- tide's own commands show its logo.
+                image = item.logo and tilemo.adapter.logo(brand.LOGO) or nil,
             }
         end
         -- An empty scope says so, in a row that can't be chosen.

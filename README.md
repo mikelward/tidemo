@@ -74,8 +74,14 @@ alone (§7.1). By hand:
    its place; the menu bar still shows when the pointer reaches the top.
 4. Reload Hammerspoon's config.
 
-`tilemo.start({ bar = false })` leaves the bar out and shows the workspaces in
-the menu bar instead.
+`tilemo.start({ bar = false })` leaves the bar out and shows tide's logo and
+the workspaces in the menu bar instead.
+
+On screen it's tide: notifications, window titles, the switcher's own
+commands and the settings page say tide and show tide's wave logo. The code
+keeps the name tilemo, so `require("tilemo")`, `start()`'s options and what
+it has saved are unchanged. `make icons` renders the logo's PNGs from tide's
+SVG with Playwright's Chromium.
 
 `workspaces` names the standing workspaces, which are always on the bar and
 never removed. It defaults to `{ "in", "re", "oc", "me" }`. The first is the

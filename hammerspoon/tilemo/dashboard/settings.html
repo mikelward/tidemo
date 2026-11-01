@@ -2,13 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>tilemo settings</title>
+<title>tide settings</title>
 <style>
 /*TILEMO_CSS*/
 body.settings {
   margin: 0;
   padding: 20px 24px;
   font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+}
+/* tide's logo and name, atop the page. */
+.settings .brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+.settings .brand svg {
+  color: var(--accent);
 }
 .settings h1 {
   font-size: 17px;
@@ -121,6 +132,7 @@ body.settings {
 </style>
 </head>
 <body class="settings">
+<p class="brand"><svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg><span>tide</span></p>
 <h1 id="clocks">Clocks</h1>
 <p class="source" id="source"></p>
 <ol id="clock-list"></ol>
@@ -141,7 +153,7 @@ body.settings {
 <input id="add-command" placeholder="Add a command, such as google-calendar" aria-label="Add a command" spellcheck="false">
 </p>
 <p class="error" id="startup-error" role="alert"></p>
-<p class="note">tilemo runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
+<p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
 <h1 id="clipboard">Clipboard</h1>
 <p class="source" id="clipboard-summary"></p>
 <p class="row">

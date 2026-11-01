@@ -316,9 +316,9 @@ end
 -- What a stale rule costs, said once per change, in a notification and by
 -- tilemo.doctor().
 function M.gaps_notice(gaps)
-    return "tilemo's Karabiner rule is out of date, so " .. table.concat(gaps, " and ")
+    return "tide's Karabiner rule is out of date, so " .. table.concat(gaps, " and ")
         .. (#gaps == 1 and " doesn't" or " don't") .. " work. In Karabiner-Elements, remove the"
-        .. " \"tilemo:\" rule under Complex Modifications and add it again."
+        .. " \"" .. M.RULE_PREFIXES[1] .. "\" rule under Complex Modifications and add it again."
 end
 
 -- Whether exactly Super's modifiers are held, Shift aside, in Hammerspoon's
@@ -378,8 +378,8 @@ function M.super(read, running, home, decode)
 end
 
 -- What the fallback costs, said once when tilemo starts without Karabiner.
-M.FALLBACK_NOTICE = "Karabiner isn't running with tilemo's rules, so tilemo's keys"
+M.FALLBACK_NOTICE = "Karabiner isn't running with tide's rules, so tide's keys"
     .. " are on Option. Option+Backspace, Option+arrows and Option accents"
-    .. " now belong to tilemo. Install conf's Karabiner rules to get them back."
+    .. " now belong to tide. Install conf's Karabiner rules to get them back."
 
 return M

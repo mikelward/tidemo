@@ -66,7 +66,7 @@ local function wrap(name, src)
         return "const " .. names:gsub("%s+as%s+", ": ") .. ' = modules["' .. from .. '"];'
     end)
     if src:find("%f[%w]import%s") then
-        error("tilemo: dashboard/" .. name .. " has an import bundle() can't read")
+        error("tide: dashboard/" .. name .. " has an import bundle() can't read")
     end
     src = src:gsub("export%s+(async%s+function%s+)([%w_$]+)", function(kw, n)
         exports[#exports + 1] = n
@@ -85,7 +85,7 @@ local function wrap(name, src)
         return "let " .. n
     end)
     if src:find("%f[%w]export%f[%W]") then
-        error("tilemo: dashboard/" .. name .. " has an export bundle() can't read")
+        error("tide: dashboard/" .. name .. " has an export bundle() can't read")
     end
     return string.format('modules["./%s"] = (() => {\n%s\nreturn { %s };\n})();\n',
         name, src, table.concat(exports, ", "))
@@ -98,7 +98,7 @@ function M.bundle(sources, modules)
     for _, name in ipairs(modules or M.MODULES) do
         local src = sources[name]
         if not src then
-            error("tilemo: dashboard/" .. name .. " is missing")
+            error("tide: dashboard/" .. name .. " is missing")
         end
         out[#out + 1] = wrap(name, src)
         if M.ALIASES[name] then

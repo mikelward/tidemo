@@ -8,6 +8,8 @@
 #                 by default)
 #   make check-tileco   compare the dashboard's copies of tileco's clock
 #                 modules with a tileco checkout (TILECO=../tileco by default)
+#   make icons    render tide's logo to hammerspoon/tilemo/icons/*.png (needs
+#                 Node and Playwright's Chromium; skips with a note without them)
 #   make mocks    render the bar in fixed states to mocks/*.png (needs Node
 #                 and Playwright's Chromium; skips with a note without them)
 
@@ -23,7 +25,7 @@ export LUA_PATH := hammerspoon/?.lua;hammerspoon/?/init.lua;tests/?.lua;;
 LUA_FILES := $(wildcard hammerspoon/tilemo/*.lua hammerspoon/timo/*.lua tests/*.lua ci/*.lua)
 TESTS := $(wildcard tests/*_test.lua)
 
-.PHONY: test lint install check-tide check-geometry check-tileco mocks
+.PHONY: test lint install check-tide check-geometry check-tileco mocks icons
 
 test:
 	@status=0; for t in $(TESTS); do $(LUA) $$t || status=1; done; exit $$status
@@ -37,6 +39,8 @@ install:
 	mkdir -p $(HAMMERSPOON_DIR)/tilemo
 	cp hammerspoon/tilemo/*.lua $(HAMMERSPOON_DIR)/tilemo/
 	cp hammerspoon/tilemo/chars.tsv hammerspoon/tilemo/LICENSE-UNICODE $(HAMMERSPOON_DIR)/tilemo/
+	mkdir -p $(HAMMERSPOON_DIR)/tilemo/icons
+	cp hammerspoon/tilemo/icons/*.png $(HAMMERSPOON_DIR)/tilemo/icons/
 	mkdir -p $(HAMMERSPOON_DIR)/tilemo/dashboard
 	cp hammerspoon/tilemo/dashboard/* $(HAMMERSPOON_DIR)/tilemo/dashboard/
 	mkdir -p $(HAMMERSPOON_DIR)/timo
@@ -47,7 +51,8 @@ install:
 
 # geometry.lua is tide's, copied unchanged, so a workspace looks the same on
 # both desktops; so is its clocks module, so tilemo reads and writes tide's
-# clocks files as tide does, and its startup and clipboard modules, for startup.json and clipboard.json; so is the picker's character list.
+# clocks files as tide does, and its startup and clipboard modules, for startup.json and clipboard.json; so is the picker's character list, and
+# the logo, which `make icons` renders.
 check-tide:
 	cmp $(TIDE)/hypr/tide/geometry.lua hammerspoon/tilemo/geometry.lua
 	cmp $(TIDE)/shell/lib/clocks.mjs hammerspoon/tilemo/dashboard/tide-clocks.js
@@ -56,6 +61,7 @@ check-tide:
 	cmp $(TIDE)/shell/lib/steps.mjs hammerspoon/tilemo/dashboard/tide-steps.js
 	cmp $(TIDE)/shell/lib/layouts.mjs hammerspoon/tilemo/dashboard/tide-layouts.js
 	cmp $(TIDE)/shell/chars/chars.tsv hammerspoon/tilemo/chars.tsv
+	cmp $(TIDE)/shell/icons/tide-symbolic.svg hammerspoon/tilemo/icons/tide-symbolic.svg
 
 check-geometry: check-tide
 
@@ -75,3 +81,7 @@ mocks:
 		status=1; \
 	fi; \
 	rm -rf "$$dir"; exit $$status
+
+# tide's logo as tilemo shows it (brand.lua), from the copy of tide's SVG.
+icons:
+	NODE_PATH="$$(npm root -g)" node hammerspoon/tilemo/icons/render.cjs
