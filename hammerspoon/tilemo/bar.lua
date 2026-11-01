@@ -13,6 +13,8 @@
 -- Every workspace is listed: only "in" is ever empty and not showing, since
 -- the rest go once they're left empty (SPEC.md §6.1).
 
+local links = require("tilemo.links")
+
 local M = {}
 
 -- tide's bar height (tide §7.1).
@@ -431,13 +433,14 @@ function M.volume_step(volume, muted, d)
     return v, muted and d > 0
 end
 
--- The System Settings pane each icon opens *(unverified on macOS 26)*.
+-- The System Settings pane each icon opens *(unverified on macOS 26)*: the
+-- settings window's, so the two agree.
 M.PANES = {
-    battery = "x-apple.systempreferences:com.apple.Battery-Settings.extension",
-    volume = "x-apple.systempreferences:com.apple.Sound-Settings.extension",
-    wifi = "x-apple.systempreferences:com.apple.wifi-settings-extension",
-    network = "x-apple.systempreferences:com.apple.Network-Settings.extension",
-    bluetooth = "x-apple.systempreferences:com.apple.BluetoothSettings",
+    battery = links.PANES.battery,
+    volume = links.PANES.sound,
+    wifi = links.PANES.wifi,
+    network = links.PANES.network,
+    bluetooth = links.PANES.bluetooth,
 }
 
 -- The managed window a page names: ids come back through JSON, which may

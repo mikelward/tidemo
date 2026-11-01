@@ -1,10 +1,10 @@
--- tilemo's settings window on Hammerspoon (SPEC.md §15): the Clocks,
--- Layouts, Start at login and Clipboard pages, dashboard.lua's settings page
--- in an hs.webview. It writes tide's clocks.local.json, layouts.local.json,
--- startup.local.json and clipboard.local.json, and tilemo hands
--- the files back once they change on disk, so the page shows what the bar
--- and the next login do. Not runnable outside
--- Hammerspoon.
+-- tilemo's settings window on Hammerspoon (SPEC.md §15): a section for each
+-- of tide's pages, dashboard.lua's settings page in an hs.webview. It writes
+-- tide's clocks.local.json, layouts.local.json, startup.local.json and
+-- clipboard.local.json, and tilemo hands the files back once they change on
+-- disk, so the page shows what the bar and the next login do. What tilemo
+-- can't change itself, a section's buttons open (links.lua). Not runnable
+-- outside Hammerspoon.
 
 local brand = require("tilemo.brand")
 local dashboard = require("tilemo.dashboard")
@@ -12,6 +12,7 @@ local layout = require("tilemo.layout")
 local mute = require("tilemo.mute")
 local picker = require("tilemo.picker")
 local floating = require("tilemo.floating")
+local links = require("tilemo.links")
 
 local M = {}
 
@@ -119,6 +120,8 @@ function M.new(tilemo)
                 maxItems = tilemo.clipboard_settings.max_items,
             } or nil,
             muted = "__muted__",
+            -- Each section's buttons.
+            links = links.page_list(),
             floating = tilemo.floating and {
                 rules = "__float_rules__",
                 source = tilemo.floating.source,
@@ -145,8 +148,8 @@ function M.new(tilemo)
         end)
     end
 
-    -- Scroll to section `id` ("clocks", "layouts", "startup", "clipboard",
-    -- "muted" or "floating").
+    -- Scroll to section `id`, as settings.html names them: "clocks",
+    -- "layouts", "startup", "clipboard", "muted", "floating", and the rest.
     local function reveal(id)
         if not (view and id) then
             return
@@ -211,6 +214,12 @@ function M.new(tilemo)
                     else
                         view:evaluateJavaScript("tilemo.floatingError(" .. hs.json.encode({ tostring(why) }):sub(2, -2) .. ")")
                     end
+                end
+            elseif type(body.open) == "string" then
+                -- A section's button: what its name stands for, and nothing
+                -- the page can name otherwise.
+                if not links.open(body.open, tilemo.adapter) then
+                    tilemo.adapter.log("settings: no button named " .. body.open)
                 end
             elseif body.close and view then
                 view:delete()
