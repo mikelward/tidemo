@@ -431,8 +431,8 @@ follows mouse:
   pointer moves over, onto or off them.
 - The pointer never jumps.
 
-Amethyst is what `setup-macos` uses now, and its focus follows mouse had to
-be turned off. Its bugs are listed below, so tilemo doesn't repeat them. It
+Amethyst is what `setup-macos` used before tilemo, and its focus follows
+mouse had to be turned off. Its bugs are listed below, so tilemo doesn't repeat them. It
 isn't a model for anything else.
 
 #### How tilemo decides
@@ -1259,10 +1259,12 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - 64 (Spotlight on Option+Space): Spotlight moves back to Cmd+Space,
     physical Ctrl+Space;
   - 79 and 81 (Ctrl+Option+arrows, move a Space left and right).
-- **Amethyst:** retired once tilemo takes over (§19, question 4), and conf's
-  `amethyst.yml` with it. Its `mod1`-`mod4` combinations go.
-- **Rectangle:** `setup` installs it too, and its defaults sit on
-  Ctrl+Option+arrows *(unverified)*. It goes.
+- **Amethyst:** no longer `setup-macos`'s default (§19, question 4), so its
+  `mod1`-`mod4` combinations go. `setup-macos --wm amethyst` still sets it
+  up, with conf's `amethyst.yml`, for a machine that wants it.
+- **Rectangle:** `setup` no longer installs it. Its defaults sit on
+  Ctrl+Option+arrows *(unverified)*, so `setup-macos` warns about one
+  already installed.
 - **Karabiner's Win+arrow rule** sends Ctrl+Option+arrow for native Spaces
   and Win+Shift+arrow for Amethyst's throw. Both now go to tilemo.
 - **Karabiner's Alt+Tab rule** sent Cmd+Tab. It goes to tilemo's swap
@@ -2316,8 +2318,11 @@ Each one names a workaround, or says there is none.
 2. **Build route:** Hammerspoon first (§3 B), or straight to a native app?
 3. **Bar:** decided, tilemo's own bar over an auto-hidden menu bar, with its
    own status items (§8). The menu bar item stays as the fallback.
-4. **Amethyst:** keep it alongside while tilemo grows, or replace it outright?
-   Running both would fight over the same windows.
+4. **Amethyst:** decided (2026-11-01), replace it. `setup-macos` sets up
+   tilemo unless `--wm amethyst` says otherwise, so a plain `setup` does
+   too, and it pulls an existing tilemo checkout first. Running both would
+   fight over the same windows, so it warns about an Amethyst still
+   installed.
 5. **Does HazeOver's one-layer dim** carry over to a canvas or panel, and
    can a third-party app keep it just below another app's window (§2.4)?
 6. **Karabiner for Super:** decided, yes (§7.1).

@@ -59,10 +59,12 @@ It brings tide's desktop to macOS:
   installed or isn't running, since without it a mouse wheel notch
   scrolls a line or so (§10).
 
-With [mikelward/scripts](https://github.com/mikelward/scripts),
-`setup-macos --wm tilemo` does all of this: it installs Hammerspoon and tilemo,
+With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
+`setup` (or `setup-macos`) does all of this: it installs Hammerspoon and
+tilemo, pulling an existing checkout first so each run keeps it current,
 writes the `init.lua` below if there isn't one, frees the keys tilemo needs
-(SPEC.md §7.3), and hides the menu bar. Grant Hammerspoon Accessibility,
+(SPEC.md §7.3), and hides the menu bar. `--wm amethyst` sets up Amethyst
+instead. Grant Hammerspoon Accessibility,
 and add conf's `tilemo:` Karabiner rule for a Super key that leaves Option
 alone (§7.1). By hand:
 
