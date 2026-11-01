@@ -124,13 +124,13 @@ t.test("moving from a tile onto a float over it is a crossing", function()
     t.eq(focuses(a), { "focus 3" })
 end)
 
-t.test("a float from the other display's workspace over a tile is a crossing", function()
+t.test("a float from the other display over a tile is a crossing", function()
     local a, wm, ffm = setup()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     a.add(3, { subrole = "AXDialog", pid = 300, frame = { x = 2000, y = 100, w = 300, h = 200 } })
     wm:map_screens()
     wm:sync()
-    t.eq(wm.windows[3].ws ~= wm.windows[2].ws, true)
+    t.eq(wm.windows[3].screen, "B")
     -- Dragged back over the edge, it now covers part of window 2.
     a.wins[3].frame = { x = 1800, y = 100, w = 300, h = 200 }
     a.focus_ = 2

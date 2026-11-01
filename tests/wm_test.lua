@@ -37,7 +37,7 @@ t.test("a new window is found on the next sync and joins the stack", function()
     a.add(2, {})
     wm:schedule()
     a.tick()
-    t.eq(wm.workspaces["in"].order, { 1, 2 })
+    t.eq(wm:part("in", "A").order, { 1, 2 })
     t.eq(frame(a, 2).x, 1056)
 end)
 
@@ -63,7 +63,7 @@ t.test("a closed window leaves the layout, and the last used window gets focus",
     a.drop(3)
     wm:schedule()
     a.tick()
-    t.eq(wm.workspaces["in"].order, { 1, 2 })
+    t.eq(wm:part("in", "A").order, { 1, 2 })
     t.eq(a.focus_, 2)
 end)
 
@@ -82,7 +82,7 @@ t.test("a dialog floats, centered on its app's focused window, and never tiles",
     wm:sync()
     wm:retile()
     t.eq(wm.windows[3].floating, true)
-    t.eq(wm.workspaces["in"].order, { 1, 2 })
+    t.eq(wm:part("in", "A").order, { 1, 2 })
     -- Window 1's tile is x 0..1056, y 25..1080.
     t.eq(frame(a, 3), { x = 328, y = 453, w = 400, h = 200 })
 end)
@@ -153,7 +153,7 @@ t.test("Super+Shift+J moves the window and retiles", function()
     local a, wm = setup(3)
     a.focus_ = 1
     wm:act("move", 1)
-    t.eq(wm.workspaces["in"].order, { 2, 1, 3 })
+    t.eq(wm:part("in", "A").order, { 2, 1, 3 })
     t.eq(frame(a, 2).x, 0)
 end)
 
@@ -161,14 +161,14 @@ t.test("Alt+Tab swaps with the master", function()
     local a, wm = setup(3)
     a.focus_ = 3
     wm:act("swap_master")
-    t.eq(wm.workspaces["in"].order, { 3, 2, 1 })
+    t.eq(wm:part("in", "A").order, { 3, 2, 1 })
 end)
 
 t.test("Super+\\ grows the master by 0.025", function()
     local a, wm = setup(2)
     a.focus_ = 1
     wm:act("mfact", 1)
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.575)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.575)
     t.eq(frame(a, 1).w, 1104)
 end)
 
@@ -209,7 +209,7 @@ t.test("a new window focused before the next sync is added and remembered", func
     wm:focused(2)
     t.eq(wm.windows[2] ~= nil, true)
     t.eq(wm.mru["in"][1], 2)
-    t.eq(wm.workspaces["in"].order, { 1, 2 })
+    t.eq(wm:part("in", "A").order, { 1, 2 })
 end)
 
 t.test("focusing a new window ends another's maximize", function()
@@ -246,10 +246,10 @@ t.test("Super+Shift+F floats a tile and tiles it again", function()
     a.focus_ = 2
     wm:act("toggle_float")
     t.eq(wm.windows[2].floating, true)
-    t.eq(wm.workspaces["in"].order, { 1 })
+    t.eq(wm:part("in", "A").order, { 1 })
     t.eq(frame(a, 1).w, 1920)
     wm:act("toggle_float")
-    t.eq(wm.workspaces["in"].order, { 1, 2 })
+    t.eq(wm:part("in", "A").order, { 1, 2 })
 end)
 
 -- Bitwarden's extension opens its sign-in, autofill and passkey prompts in
@@ -259,12 +259,12 @@ t.test("a new window named after it opens is decided again, and floats if its na
     a.add(2, { app = "com.google.Chrome", pid = 200, title = "", frame = { x = 1500, y = 60, w = 380, h = 630 } })
     wm:sync()
     wm:retile()
-    t.eq(wm.workspaces["in"].order, { 1, 2 }, "tiled at first")
+    t.eq(wm:part("in", "A").order, { 1, 2 }, "tiled at first")
     a.clock = a.clock + 1
     a.wins[2].title = "Bitwarden"
     wm:retitled(2)
     t.eq(wm.windows[2].floating, true, "floats")
-    t.eq(wm.workspaces["in"].order, { 1 })
+    t.eq(wm:part("in", "A").order, { 1 })
     t.eq(frame(a, 1).w, 1920, "the tile left takes the room")
     t.eq(frame(a, 2).w, 380, "at its own size")
 end)
@@ -289,7 +289,7 @@ t.test("a window renamed after it settled, or one you placed, isn't decided agai
     t.eq(wm.windows[2].floating, false, "yours")
 end)
 
-t.test("each display gets its own workspace, and windows tile on theirs", function()
+t.test("one workspace spans every display, and windows tile on their own display's part", function()
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     a.add(1, {})
@@ -297,8 +297,38 @@ t.test("each display gets its own workspace, and windows tile on theirs", functi
     local wm = wm_mod.new(a, {})
     wm:sync()
     wm:retile()
-    t.eq(wm.windows[2].ws, "2")
+    t.eq(wm.windows[2].ws, "in")
+    t.eq(wm.windows[2].screen, "B")
+    t.eq(frame(a, 1), { x = 0, y = 25, w = 1920, h = 1055 })
     t.eq(frame(a, 2), { x = 1920, y = 25, w = 1920, h = 1055 })
+end)
+
+t.test("each display keeps its own layout, mfact and masters within the workspace", function()
+    local a = fake.new()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
+    a.add(1, {})
+    a.add(2, {})
+    a.add(3, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
+    a.add(4, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:retile()
+    a.focus_ = 3
+    wm:act("monocle")
+    wm:act("mfact", 1)
+    t.eq(wm:part("in", "B").mode, "monocle")
+    t.eq(wm:part("in", "A").mode, "tile", "A's layout is its own")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
+    t.eq(frame(a, 3), { x = 1920, y = 25, w = 1920, h = 1055 })
+    t.eq(frame(a, 1).w < 1920, true, "A still tiles")
+    a.focus_ = 1
+    wm:act("nmaster", 1)
+    t.eq(wm:part("in", "A").opts.tile.nmaster, 2)
+    t.eq(wm:part("in", "B").opts.tile.nmaster, 1)
+    -- Another workspace has its own parts, and this one's come back as left.
+    wm:show("re")
+    wm:show("in")
+    t.eq(wm:part("in", "B").mode, "monocle")
 end)
 
 t.test("ignored windows are never moved", function()
@@ -323,7 +353,7 @@ t.test("layout keys work while an ignored window has focus", function()
     wm:sync()
     a.focus_ = 3
     wm:act("monocle")
-    t.eq(wm.workspaces["in"].mode, "monocle")
+    t.eq(wm:part("in", "A").mode, "monocle")
 end)
 
 t.test("maximizing a tile puts its floats back over it", function()
@@ -376,7 +406,7 @@ t.test("a new window that took focus first still goes after the one you were in"
     a.add(4, {})
     a.focus_ = 4
     wm:focused(4)
-    local order = wm.workspaces[wm.windows[4].ws].order
+    local order = wm:part_of(wm.windows[4]).order
     t.eq(order[1], 1)
     t.eq(order[2], 4)
 end)
@@ -415,7 +445,7 @@ t.test("resizing the master by its edge sets the split", function()
     local a, wm = setup(2)
     a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 1055 }
     wm:moved(1)
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.6)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
     t.eq(frame(a, 2), { x = 1152, y = 25, w = 768, h = 1055 })
 end)
 
@@ -424,10 +454,10 @@ t.test("a drag waits for the button to come up", function()
     a.buttons = true
     a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 1055 }
     wm:moved(1)
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.55)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
     a.buttons = false
     a.tick()
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.6)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
 end)
 
 t.test("dropping a tile on another swaps them", function()
@@ -435,11 +465,11 @@ t.test("dropping a tile on another swaps them", function()
     -- Window 1 moved, same size, its center now in window 3's tile.
     a.wins[1].frame = { x = 1000, y = 500, w = 1056, h = 1055 }
     wm:moved(1)
-    t.eq(wm.workspaces["in"].order, { 3, 2, 1 })
+    t.eq(wm:part("in", "A").order, { 3, 2, 1 })
     t.eq(frame(a, 3).x, 0)
 end)
 
-t.test("dropping a tile on another display moves it to that display's workspace", function()
+t.test("dropping a tile on another display moves it there, in the same workspace", function()
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     a.add(1, {})
@@ -449,7 +479,9 @@ t.test("dropping a tile on another display moves it to that display's workspace"
     wm:retile()
     a.wins[2].frame = { x = 2400, y = 200, w = 864, h = 1055 }
     wm:moved(2)
-    t.eq(wm.windows[2].ws, "2")
+    t.eq(wm.windows[2].ws, "in")
+    t.eq(wm.windows[2].screen, "B")
+    t.eq(wm:part("in", "B").order, { 2 })
     t.eq(frame(a, 2), { x = 1920, y = 25, w = 1920, h = 1055 })
     t.eq(frame(a, 1).w, 1920)
 end)
@@ -471,7 +503,7 @@ t.test("Super+right-drag on the master sets the split", function()
     local d = wm:grab("resize", 1000, 500)
     t.eq(d.id, 1)
     wm:drop(d, 1096, 500)
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.6)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
 end)
 
 t.test("Super+middle-click maximizes the window under the pointer, and again restores it", function()
@@ -516,8 +548,8 @@ t.test("a tile dropped on another display moves there even if macOS resized it",
     wm:retile()
     a.wins[2].frame = { x = 2000, y = 25, w = 864, h = 775 } -- shorter
     wm:moved(2)
-    t.eq(wm.windows[2].ws, "2")
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.55)
+    t.eq(wm.windows[2].screen, "B")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
     t.eq(a.wins[2].frame, { x = 1920, y = 25, w = 1280, h = 775 })
 end)
 
@@ -537,7 +569,7 @@ t.test("a lone window keeps the width you drag it to, until a second window open
     t.eq(a.wins[1].frame.w, 1152)
 end)
 
-t.test("a float Super+dragged to the other display joins its workspace", function()
+t.test("a float Super+dragged to the other display is on that display, in the same workspace", function()
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     a.add(1, {})
@@ -546,14 +578,14 @@ t.test("a float Super+dragged to the other display joins its workspace", functio
     local wm = wm_mod.new(a, {})
     wm:sync()
     wm:retile()
-    local before = wm.windows[3].ws
+    t.eq(wm.windows[3].screen, "A")
     local f = a.wins[3].frame
     local x, y = f.x + 10, f.y + 10
     local d = wm:grab("move", x, y)
     t.eq(d.id, 3)
     wm:drop(d, x + 1920, y)
-    t.eq(wm.windows[3].ws ~= before, true)
-    t.eq(wm.windows[3].ws, wm.windows[2].ws)
+    t.eq(wm.windows[3].screen, "B")
+    t.eq(wm.windows[3].ws, "in")
 end)
 
 t.test("an app key brings the app's last window forward instead of launching", function()
@@ -658,7 +690,7 @@ t.test("a layout command switches the workspace's layout", function()
     local a, wm = setup(2)
     a.focus_ = 1
     wm:act("layout", "twocol")
-    t.eq(wm.workspaces["in"].mode, "twocol")
+    t.eq(wm:part("in", "A").mode, "twocol")
 end)
 
 
@@ -691,11 +723,11 @@ t.test("new layout settings retile every display at once, and the same ones chan
     local c = layout.copy(layout.defaults)
     c.modes.tile.mfact = 0.5
     wm:set_layout(c)
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.5, "what the keys set gives way")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.5, "what the keys set gives way")
     t.eq(frame(a, 1).w, 960)
     wm:act("mfact", 1)
     wm:set_layout(layout.copy(c))
-    t.eq(wm.workspaces["in"].opts.tile.mfact, 0.525, "a reload with the same settings keeps the keys'")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.525, "a reload with the same settings keeps the keys'")
 end)
 
 t.done("wm")

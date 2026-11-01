@@ -352,14 +352,9 @@ function M.new()
         end
     end
 
-    -- Where every window is, for the next start (SPEC.md §6.3). The
-    -- settings store wants string keys.
+    -- Where every window is, for the next start (SPEC.md §6.5).
     function a.save(snap)
-        local windows = {}
-        for id, v in pairs(snap.windows) do
-            windows[tostring(id)] = v
-        end
-        hs.settings.set(M.SETTINGS_KEY, { windows = windows, screens = snap.screens, gone = snap.gone })
+        hs.settings.set(M.SETTINGS_KEY, saved.form(snap))
     end
 
     -- Run `path` with `args`, calling `done(code, err, out)` when it exits,

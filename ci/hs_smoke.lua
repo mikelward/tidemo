@@ -111,11 +111,11 @@ local function tiling_misses(wm)
         return nil, string.format("%d of %d TextEdit windows tiled", #app_windows(wm), WANT)
     end
     local misses, checked = {}, 0
-    for uuid, n in pairs(wm.screen_ws) do
-        local s = wm:screen_by_uuid(uuid)
-        local ws = wm.workspaces[n]
-        local ids = wm:tiled(n)
-        local boxes = s and ws and layout.arrange(ws, s.area, ids, wm.layout) or {}
+    for _, s in ipairs(wm:screens()) do
+        local n = wm:current_ws()
+        local ws = wm:part(n, s.uuid)
+        local ids = wm:tiled(n, s.uuid)
+        local boxes = ws and layout.arrange(ws, s.area, ids, wm.layout) or {}
         for _, id in ipairs(ids) do
             local want = boxes[id]
             local st = wm.a.state(id)

@@ -213,7 +213,7 @@ local function workspaces(tilemo)
         out[#out + 1] = {
             name = s.name,
             apps = table.concat(apps, ", "),
-            where = s.here and "here" or s.elsewhere and "on another display" or (#apps == 0 and "empty" or nil),
+            where = s.here and "here" or (#apps == 0 and "empty" or nil),
         }
     end
     return out

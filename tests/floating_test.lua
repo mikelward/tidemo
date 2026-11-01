@@ -198,12 +198,12 @@ end
 
 t.test("a new rule floats the tiled windows open now that it covers", function()
     local a, wm = setup({ "com.a", "com.b", "com.a" })
-    t.eq(wm.workspaces["in"].order, { 1, 2, 3 })
+    t.eq(wm:part("in", "A").order, { 1, 2, 3 })
     local ids = wm:set_float_rules({ rule("com.a") })
     t.eq(ids, { 1, 3 })
     t.eq(wm.windows[1].floating, true)
     t.eq(wm.windows[3].floating, true)
-    t.eq(wm.workspaces["in"].order, { 2 })
+    t.eq(wm:part("in", "A").order, { 2 })
     -- Placed as a new float is: centered, as it asked.
     t.eq(a.wins[1].frame.w, 800)
     t.eq(wm:set_float_rules({ rule("com.a") }), {}, "the same rules again float nothing")
@@ -254,7 +254,7 @@ t.test("a window on a workspace that isn't showing floats there, unmoved until i
     wm:act("move_to")
     t.eq(wm.windows[2].ws, "re")
     wm:act("home")
-    t.eq(wm:shown("re"), nil)
+    t.eq(wm:shown("re"), false)
     a.calls = {}
     t.eq(wm:set_float_rules({ rule("com.b") }), { 2 })
     t.eq(wm.windows[2].floating, true)

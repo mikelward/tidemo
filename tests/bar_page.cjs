@@ -122,7 +122,7 @@ vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), sandbox);
 const ws = [
   { n: "in" },
   { n: "web", current: true },
-  { n: "docs", elsewhere: true },
+  { n: "docs" },
   {
     n: "ABC-123 fix the login page",
     occupied: true,
@@ -172,7 +172,7 @@ assert.strictEqual(parts[3].src, parts[1].src, "one icon per window, so an app's
 assert.strictEqual(parts[6].textContent, "+2");
 assert.strictEqual(chips[0].children.length, 1, "an empty chip is its name alone");
 assert.ok(chips[1].classList.contains("current"));
-assert.ok(chips[2].classList.contains("elsewhere"));
+assert.ok(!chips[2].classList.contains("current"), "one workspace shows, on every display");
 assert.ok(chips[3].classList.contains("urgent"));
 assert.strictEqual(ids["title-text"].textContent, "Chat (1)");
 assert.ok(ids.clocks.children.length >= 1, "the clocks row");
@@ -510,11 +510,11 @@ sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: { wifi: { o
 assert.strictEqual(state(ids.icons.children[0]), "off");
 assert.strictEqual(ids.icons.children[0].attrs["data-tip"], "Wi-Fi off");
 // Lua's JSON leaves out a field that's nil: a chip that's only occupied
-// mustn't come out urgent or elsewhere.
+// mustn't come out current or urgent.
 sandbox.tilemo.update({ uuid: "B", workspaces: [{ n: 4, occupied: true }], title: "", icons: {} });
 const only = ids.workspaces.children[0];
 assert.ok(only.classList.contains("occupied"));
-for (const k of ["current", "elsewhere", "urgent"]) assert.ok(!only.classList.contains(k), `not ${k}`);
+for (const k of ["current", "urgent"]) assert.ok(!only.classList.contains(k), `not ${k}`);
 // Nor a microphone that's only said not to be muted come out muted.
 sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: { mic: { muted: false } } });
 const mic = ids.icons.children[0];

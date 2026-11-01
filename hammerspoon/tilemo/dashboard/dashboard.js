@@ -32,7 +32,7 @@ function renderWorkspaces(nav, workspaces) {
     b.title = String(w.n);
     b.textContent = shortName(w.n);
     // A field tilemo left out is false: toggle(name, undefined) would flip it.
-    for (const k of ["current", "elsewhere", "occupied", "urgent"]) b.classList.toggle(k, !!w[k]);
+    for (const k of ["current", "occupied", "urgent"]) b.classList.toggle(k, !!w[k]);
     b.addEventListener("click", () => send({ show: w.n }));
     nav.append(b);
   }

@@ -216,11 +216,11 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Tile, three-column, two columns + stack, monocle (tide §6.1) | tide's Lua layout over Accessibility moves (§5) | **yes**, with apps' own size limits |
 | Lone window 80% on ultrawide, 60% from 32:9 | same layout, per display (§5) | **yes** |
 | New windows join the end of the stack, with a setting for elsewhere (tide §6.1) | tilemo state (§5) | **yes** |
-| Layout, `mfact`, master count per workspace | tilemo state | **yes** |
+| Layout, `mfact`, master count per workspace, and per display within it | tilemo state | **yes** |
 | Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide §6.5) | minimized windows, as tileco does, named in tilemo's state (§6) | **partial**: each switch animates |
 | A new window on "in" asks for a workspace name (tide §6.5) | tilemo's name prompt, an `hs.chooser` (§6.2) | **yes** |
 | `TIDE_WORKSPACE` in launched apps (tide §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
-| One workspace per monitor from a shared pool (tide §6.5) | tilemo tracks which display shows each workspace, as tileco does (§6) | **yes** |
+| One workspace per monitor from a shared pool (tide §6.5) | decided against: one workspace spans every display, each display with its own layout in it (§6.1) | **differs** |
 | Dim inactive, 0.07, not a lone window or video (tide §6.2) | one dark layer behind the focused window (§5.6) | **not built**; when built, **partial**: dims the desktop too, as HazeOver does *(unverified)* |
 | No borders, no gaps | gaps 0; title bars stay | **partial** |
 | Maximize, fullscreen, restore (tide §6.3) | tilemo's own, on the same workspace (§5.4) | **yes**; native full screen is its own Space (§13) |
@@ -626,7 +626,7 @@ handling (tileco §5.3):
     With several windows and no stack, a drag changes nothing.
   - **Dropping a moved tile** puts it in the tile nearest its center,
     swapping with that tile's window. If the center is on another display,
-    the window first joins the workspace showing there.
+    the window first moves to that display, in the same workspace.
   - **A moved or resized float** keeps its new frame.
 - **Super+drag moves any window, and Super+right-drag resizes it,** from
   anywhere inside it, as on tide.
@@ -768,15 +768,19 @@ numbered ones:
   - A default name from a title drops them, as tide's short names do.
   - A tab or newline typed in a name is a space, as before, not a refusal.
 - **A workspace spans every display,** and each display has its own
-  layout within it. **Decided** (2026-11-01, §19 question 12); not built
-  yet. Until it is, each display shows one workspace at a time, as tide's
-  monitors do today (tide §6.5), and the rest of this section says how
-  that works.
-- **Each workspace keeps** its windows in tile order, its layout, `mfact`
-  and master count, and its focused window.
-- **Each window belongs to one workspace,** and has one flag: whether
-  you minimized it yourself.
-- **A new window joins the workspace showing** on the display it opens on.
+  layout within it. **Decided** (2026-11-01, §19 question 12), and
+  **built**. One workspace shows at a time, on every display at once.
+  tide's monitors each show one of their own (tide §6.5), so here the two
+  desktops differ.
+- **Each workspace keeps** a part per display: that display's windows in
+  tile order, its layout, `mfact` and master count. The workspace as a
+  whole keeps its focused window.
+  - A part is made the first time it's needed, in the default layout for
+    that display's shape (§5).
+  - A display with no windows in the workspace showing shows empty.
+- **Each window belongs to one workspace, and to one display within it,**
+  and has one flag: whether you minimized it yourself.
+- **A new window joins the workspace showing,** on the display it opens on.
   Two exceptions:
   - A window of one of "in"'s apps always opens on "in" (§6.2).
   - A window from a launch you made, which opens after you've moved to
@@ -786,20 +790,20 @@ numbered ones:
   workspace name first (§6.2).
 
 **One rule decides what's on screen:** a window shows if its workspace is
-showing on some display and you haven't minimized it. Every operation
+showing and you haven't minimized it. Every operation
 changes only that state. Then one reconcile step makes the screen match:
 it restores the windows that should show first, in tile order, and only
 then minimizes the rest, so the screen is never empty in between.
 
 | Operation | What changes | Focus |
 |---|---|---|
-| **Show** a workspace (the switcher's Workspaces tab, `Super+Return`'s prompt, `Super+Home` for "in", a bar click) on a display | That display shows it. If it was on another display, the two swap, as on tide. | its last focused window |
-| **Move** a window to a workspace (`Super+Shift+Return`'s prompt, §7.2) | It moves to the end of that workspace's stack. A new name makes the workspace first, at the end of the list. Then that workspace shows on the display the window was on. | that window, as on tide |
+| **Show** a workspace (the switcher's Workspaces tab, `Super+Return`'s prompt, `Super+Home` for "in", a bar click) | Every display shows it, each its own part. | its last focused window; with none, the keys stay on the display they were on |
+| **Move** a window to a workspace (`Super+Shift+Return`'s prompt, §7.2) | It moves to the end of that workspace's stack on the same display. A new name makes the workspace first, at the end of the list. Then that workspace shows. | that window, as on tide |
 | **Next or previous** (`Super+PgUp`, `PgDn`) | Show the one after or before, in bar order, stopping at the first and last. | as Show |
 | **Move a window to the next or previous** (`Super+Shift+PgUp`, `PgDn`) | Move, to the one after or before. | that window |
 | **Move a window left or right** (`Super+Shift+Left`, `Right`, §7.2) | On its display, it swaps with the window that way. At the display's edge, it goes to the next display that way, as Moved to another display. | that window |
-| **Activate**: an app key, the switcher, Cmd+Tab, a Dock click, a notification click | If the window's workspace isn't showing, show it on the focused display. | that window |
-| **Moved to another display** by you | It joins the stack of the workspace showing there. | that window |
+| **Activate**: an app key, the switcher, Cmd+Tab, a Dock click, a notification click | If the window's workspace isn't showing, show it. | that window |
+| **Moved to another display** by you (a drag, `Super+Shift+Left` / `Right`, or macOS) | It joins that display's stack, in the same workspace. | that window |
 | **Minimize** by you (`Super+Z`, Cmd+M, the yellow button) | Set the flag. The window joins its display's tray (§6.7). | `Super+Z`: the workspace's last used window still showing; otherwise macOS decides |
 | **Restore** by you, from the tray (§6.7), the switcher's Windows tab (§9), the Dock or Cmd+Tab | Clear the flag. If its workspace is hidden, this is Activate. | that window |
 | **Hide** an app (Cmd+H) | Nothing: hidden apps are macOS's, and come back where they were. | macOS decides |
@@ -987,13 +991,19 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 ### 6.4 Displays
 
 - **A display that goes away,** from a lid closing or a cable coming out,
-  hands its workspaces to the remaining display, as on tide (tide §6.5).
-  Its windows move with them. They stay put when it comes back; Show puts
-  any workspace on it.
+  hands its windows to the first display left, in the same workspace, at
+  the end of that display's stack, in their order *(a guess, to confirm)*.
+  - Each tile remembers the display it was on and its place there. When
+    that display comes back, it goes back, in its old order, and that
+    display's layout is as it was *(a guess, to confirm)*.
+  - One you move in the meantime, to another display or workspace, stays
+    where you put it.
+  - A float stays where macOS puts it.
+  - The display it goes back to is saved, so it holds across a restart.
 - Each display is keyed by its UUID, so its settings follow it from port to
   port, as tide keys displays by description (tide §16).
-- **A new workspace** from the name prompt shows on the display the window
-  opened on.
+- **A new workspace** from the name prompt shows, with the window on the
+  display it opened on.
 
 ### 6.5 Restarts and saved state
 
@@ -1006,16 +1016,17 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 - **If it crashes,** the next start restores what it can't place and
   reconciles the rest. `tilemo restore` does it by hand (§16).
 - **What's saved:** `hs.settings`' `tilemo.state` names each window's
-  workspace, and each display's, by name, and keeps the list of names in
-  order.
+  workspace by name, its display by UUID, and the display it goes back
+  to, if any (§6.4); the workspace showing; and the list of names in
+  order. A state from when each display showed its own shows the first
+  display's.
 - **Moving on from numbered workspaces:** a saved state whose workspaces
   are numbers is read once, then saved by name *(a guess, to confirm)*:
   - each numbered workspace with windows becomes one named by its number,
     "1" to "9", in that order after "in" and the standing workspaces;
   - a window of one of "in"'s apps goes to "in" instead;
   - an empty number is dropped;
-  - a display showing a number shows that workspace, or "in" if it was
-    dropped.
+  - the number a display showed shows, or "in" if it was dropped.
   - The same holds for timo's state, which tilemo still reads (README).
 
 ### 6.6 Mission Control settings
@@ -1053,8 +1064,8 @@ mock of five (tide's `docs/mocks/minimized.html`), as tide does.
   read that flag, not macOS's minimized state.
 - **The tray** sits in the bottom-right corner of each display, 12 px in
   from the edges of its work area, over the Dock's side of the screen:
-  - one app icon per window you minimized from the workspace showing on
-    that display, 28 px, in a row on the bar's background, 5 px of padding
+  - one app icon per window you minimized from that display's part of the
+    workspace showing, 28 px, in a row on the bar's background, 5 px of padding
     and 6 px between icons;
   - in the order you minimized them, the newest at the right, nearest the
     corner;
@@ -1227,14 +1238,16 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     the one level with yours, not the top one.
   - Past the last display that way, nothing. They don't wrap round to the
     far side *(a guess, to confirm)*.
-  - A display that way with no tiles takes the keys, as one showing an
-    empty workspace does after a switch (§6.1) *(a guess, to confirm)*.
+  - A display that way with no tiles takes the keys, as one with nothing
+    of the workspace showing does after a switch (§6.1) *(a guess, to
+    confirm)*.
   - Floats aren't picked. A focused float starts from where it is.
   - In monocle, every tile has one center, so the keys go straight to the
     next display.
 - **`Super+Shift+Left` and `Right` move the focused tile the same way.**
   On its display it swaps with the tile the rule picks. At the edge it
-  goes to the next display, as a window you drag there does (§6.1), into
+  goes to the next display, in the same workspace, as a window you drag
+  there does (§6.1), into
   the place in that display's layout that puts it nearest the edge it came
   in by: its left edge moving right, its right edge moving left. Tile
   order isn't left to right (threecol's third tile is on the left), so
@@ -1246,7 +1259,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   move the window there and follow it. These took the jobs tide gives
   `Super+Left` / `Right` and `Super+Shift+Left` / `Right` (tide §6.6).
 - **`Super+Tab` and `Super+End` remember the workspaces you've shown,**
-  most recent first, across displays. A workspace that's gone since is
+  most recent first. Like every workspace key, they switch every display
+  together. A workspace that's gone since is
   passed over, and either key does nothing with nowhere to go.
 - **`Super+Return` goes to a workspace,** with tide's prompt (tide §6.5):
   an `hs.chooser` listing the existing names. It moves no window, so it
@@ -1260,8 +1274,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - A second press while it's open asks nothing more.
 - **`Super+Shift+Return` moves the focused window to a workspace,** with
   the same prompt. Enter moves the window, making the workspace if the
-  name is new, and follows it: that workspace shows on the display the
-  window was on, with the window focused, as on tide. Esc leaves it where
+  name is new, and follows it: that workspace shows, with the window
+  focused on the display it was on, as on tide. Esc leaves it where
   it is. This is Move (§6.1).
   - With no window focused there's nothing to move, so it does nothing,
     and Hammerspoon's console says why.
@@ -1369,7 +1383,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     always the clicked bar's: `hs.chooser` centers itself there *(a
     guess, to confirm on two displays)*;
   - workspace chips in list order, each with its name, that show current,
-    occupied, showing on another display, and wanting attention. A long
+    occupied and wanting attention. Every display shows the same
+    workspace, so every bar marks the same one current. A long
     name is cut with an ellipsis at 16 characters *(a guess, to confirm)*. The only empty chips are "in" and
     the standing workspaces, dimmed: any other empty workspace goes once
     you leave it (§6.1);
@@ -1397,8 +1412,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     per bundle id and sent once per app, not per window. An app with no
     icon shows as a blank square, so the count still reads.
   - A click on an icon names its bar's display and the window. tilemo shows
-    the window's workspace on that display if it isn't showing anywhere,
-    then activates the window (§6.1).
+    the window's workspace if it isn't showing, then activates the window
+    (§6.1).
   - Double-clicking the title, or the free bar around it, maximizes the
     focused window, or puts it back (§5.4), as a Mac's title bar does. The
     message names its bar's display, and tilemo acts only if the focused
@@ -1454,8 +1469,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     Space, and stays put.
   - Focus follows mouse pauses over it, as over the menu bar (§5.2).
   - The bar hides on a display while a window there is full screen, and
-    comes back after: tilemo's full screen (§5.4) on that display's
-    workspace, or the focused window in macOS's own full screen on that
+    comes back after: tilemo's full screen (§5.4) in that display's part
+    of the workspace, or the focused window in macOS's own full screen on that
     display. macOS's is only known for the focused window *(unverified
     how a swipe away from its Space shows to tilemo)*.
 - **tilemo's status items** are 16 px line drawings in the text color,
@@ -1634,7 +1649,7 @@ tab, the search field naming the tab you're in.
     from one list in `launcher.lua`, `SETTINGS_SECTIONS`, and a test checks
     each against `settings.html`.
   - **Workspaces:** every workspace by name, in bar order, with its app
-    icons and where it's showing, the standing ones included before they
+    icons and whether it's showing, the standing ones included before they
     exist. Return shows it, making a standing one the first time (§6.1).
   - **Windows:** every window on every workspace, by title, with its app
     and workspace, and every Chrome and Safari tab, with its window's
@@ -2715,9 +2730,9 @@ Each one names a workaround, or says there is none.
     one you're on (§7.2).
 11. **Physical Alt+Tab:** decided, swap with the master, with the
     Windows tab in place of the app switcher (§7.2).
-12. **Several displays:** decided (2026-11-01). A workspace spans every
-    display, each display with its own layout within it (§6.1), not built
-    yet. `Super+Left` / `Right` select the window that way, going on to
+12. **Several displays:** decided (2026-11-01), and built. A workspace
+    spans every display, each display with its own layout within it
+    (§6.1). `Super+Left` / `Right` select the window that way, going on to
     the next display at the edge, by a rule for displays of any size and
     offset (§7.2); `Super+Shift+Left` / `Right` move the window the same
     way. Previous / next workspace stay on `Super+PgUp` / `PgDn`, and

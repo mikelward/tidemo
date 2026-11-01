@@ -15,8 +15,8 @@ It brings tide's desktop to macOS:
 - tide's layouts and window keys (SPEC.md §5, §7.2);
 - the mouse: edge drags, Super+drag and resize mode;
 - focus follows mouse;
-- named workspaces shared across displays, in the order you made them,
-  with "in" first for the apps you keep open all day (§6). An empty one
+- named workspaces, each spanning every display with a layout of its own
+  on each, in the order you made them, with "in" first for the apps you keep open all day (§6). An empty one
   goes once you leave it. A state saved with timo's or tilemo's old numbered
   workspaces is read once into ones named "1" to "9";
 - the switcher, with Tab moving between apps and commands, the workspaces,

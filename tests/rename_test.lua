@@ -32,6 +32,21 @@ local function store(values)
     return s
 end
 
+t.test("what's saved keeps every field of the snapshot, with window ids as strings", function()
+    local form = saved.form({
+        windows = { [7] = { ws = "web", screen = "B" } },
+        gone = { { app = "a" } },
+        names = { "in", "web" },
+        current = "web",
+    })
+    t.eq(form, {
+        windows = { ["7"] = { ws = "web", screen = "B" } },
+        gone = { { app = "a" } },
+        names = { "in", "web" },
+        current = "web",
+    })
+end)
+
 t.test("a saved value under the new key is read as it is", function()
     local s = store({ ["tilemo.state"] = { a = 1 }, ["timo.state"] = { a = 2 } })
     t.eq(saved.get(s, "tilemo.state", "timo.state"), { a = 1 })

@@ -46,7 +46,7 @@ const STATES = [
       workspaces: ws([
         ["in", { current: true, occupied: true, urgent: true, apps: ["chat"] }],
         ["tilemo", { occupied: true }],
-        ["ABC-123", { elsewhere: true, occupied: true }],
+        ["ABC-123", { occupied: true }],
         ["review", { occupied: true, urgent: true, apps: ["web"] }],
       ]),
       title: "Inbox (3) — Mail",

@@ -92,13 +92,22 @@ launch's window going to the workspace it was launched for, and the keys:
   `Super+Shift+Left` / `Right` move it the same way, by one rule for
   displays of any size and offset (`direction.lua`); `Super+PgUp` / `PgDn`
   step through workspaces, and `Super+Shift+PgUp` / `PgDn` move the window
-  there. The rest:
-  - **One workspace across every display.** Today each display still shows
-    one workspace of its own, and a second display gets one named by its
-    number (below). Spanning needs a layout per display in each workspace,
-    each window's display kept with its workspace and saved for a restart,
-    Show and the bar without "elsewhere", each display's tray, and what an
-    unplugged display's windows join.
+  there. **Built:** one workspace across every display (SPEC.md §6.1,
+  §6.4): each display's own part of each workspace, with its own stack,
+  layout, `mfact` and masters; each window's display kept and saved; every
+  workspace key, the switcher and the bar switching every display
+  together, with no "elsewhere" marks; each display's tray from its own
+  part; and an unplugged display's windows handed to the first display
+  left, going back when it returns. The rest:
+  - **Check on a Mac:** with two displays, a switch restores and minimizes
+    on both at once without a flash of the wrong workspace; a window
+    dragged to the other display, or moved there by `Super+Shift+Right`,
+    stays in its workspace; closing the lid or pulling the cable moves the
+    other display's windows over, and plugging it back in returns them,
+    each in its old place, with the display's own layout; how macOS itself
+    moves windows off a display that goes away, and back, and whether
+    tilemo's handoff fights it; that `hs.screen`'s UUIDs stay the same
+    across a replug and a restart.
   - **Check on a Mac:** `Super+Shift+PgUp` / `PgDn` reach tilemo through
     Karabiner as Ctrl+Option+Command+Shift+PgUp / PgDn (conf's rule sends
     PgUp and PgDn with Shift already), and nothing else holds those
@@ -213,14 +222,32 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
-- **The keys for several displays come before the model they're for**
-  (2026-11-01): this change builds `Super+Left` / `Right` and their Shift
-  moves on today's model, where each display shows a workspace of its own,
-  so at a display's edge they reach the workspace showing on the next one,
-  and a window moved there joins it. The alternative was building one
-  workspace across every display in the same change. Reversible: the keys
-  and `direction.lua` don't depend on the model; only `A.move_side`'s
-  choice of workspace does.
+- **A display that goes away hands its windows to the first display
+  left** (`hs.screen.allScreens()`'s first, the main one), each at the end
+  of that display's stack in its old order, rather than to the nearest
+  display or spread across several (2026-11-01). Reversible:
+  `wm.map_screens`.
+- **When that display comes back, its tiles go back,** in their old order,
+  at their old indexes, rather than staying put; one you moved to another
+  display or workspace meanwhile stays, and floats stay where macOS put
+  them. The display each would go back to is saved, so it holds across a
+  restart. Reversible: `w.from` in `wm.map_screens` and `wm.add`.
+- **A switch focuses the workspace's last used window on whichever display
+  it's on,** not the last used on the display the keys are on; with
+  nothing to focus, the keys stay on their display (2026-11-01).
+  Reversible: `wm.refocus_ws`.
+- **A Send keeps focus on this display's part of the workspace;** with
+  nothing left there, the keys stay on this display, rather than focus
+  jumping to the workspace's window on another display (2026-11-01).
+  Reversible: `wm.send_keeping_focus`.
+- **Maximize lasts until another window on the same display is focused,**
+  not any window of the workspace, since each display lays out its own
+  part (2026-11-01). Reversible: `wm.focused_window`.
+- **A state saved when each display showed its own** shows the one it
+  saved as showing, else the first display's that's there, rather than
+  home (2026-11-01). Reversible: `wm.map_screens`.
+- **The switch sign shows on the display the keys act on,** not on every
+  display (2026-11-01). Reversible: `on_show` in `init.lua`.
 - **At the last display that way, `Super+Left` / `Right` stop** rather than
   wrap round to the far side (2026-11-01). Reversible: `direction.find`.
 - **A display that way with no tiles takes the keys,** as a switch to an
@@ -229,9 +256,6 @@ tests and the bar page's test cover it. **Check on a Mac:**
 - **A window moved onto the next display takes the place in its layout
   nearest the edge it came in by,** rather than the end of that display's
   stack, as a Send does (2026-11-01). Reversible: `M:entry_slot`.
-- **Moving a window onto a display showing home isn't refused,** as a
-  window dragged there isn't, though a Send of another app's window to home
-  is (2026-11-01). Reversible: `A.move_side`.
 - **Ties go to the first tile in tile order,** after shared height and
   the nearest center (2026-11-01). The alternative was the one used last.
   Reversible: `direction.nearest`.
@@ -583,11 +607,6 @@ tests and the bar page's test cover it. **Check on a Mac:**
   console or the switcher. Reversible: `keys.rule_gaps` and `init.lua`'s
   `check_rule`.
 
-- **A second display shows a workspace of its own, named by the lowest
-  free number from 2** ("2", then "3"), the number it had before names.
-  SPEC.md doesn't say what a display shows before anything is named for
-  it; tide leaves it open too (tide §21). Its workspace goes once left
-  empty, like any other. Reversible: `wm.map_screens`.
 - **A name pattern with no capture group is an error at load,** as tide's
   spec says for the same shared file, since it can't give a name. The
   patterns are tide's `workspaces.json` `namePatterns`, with
@@ -620,8 +639,6 @@ tests and the bar page's test cover it. **Check on a Mac:**
 - **The lone Super tap is `Super+F20`** as Karabiner sends it, told apart
   from `Super+Space`. Reversible: one line in `keys.map` and conf's
   `tilemo.json`.
-- **`Super+Tab` and `Super+End` remember shown workspaces across
-  displays,** one list, not one per display. Reversible: `wm.used_ws`.
 - **The switcher's tabs are scopes of one `hs.chooser`,** as the launcher's
   were: Launch, Workspaces, Windows and Attention. The Workspaces tab
   lists each workspace's apps by name, without icons. Reversible:
@@ -671,9 +688,6 @@ tests and the bar page's test cover it. **Check on a Mac:**
   only attention; an app with no icon is a blank square rather than left
   out, so the count matches the windows. Reversible: `apps_of` in `bar.lua`
   and `renderWorkspaces` in `bar.js`.
-- **A click on an attention icon shows the window's workspace on that
-  bar's display** if no display shows it, then focuses the window. One
-  showing on another display stays there. Reversible: `bar.handle`.
 - **A click on the bar may make Hammerspoon the front app** *(unverified)*,
   emptying the title until focus moves. Reversible: hand focus back after
   a click, as the dashboard does on closing.
@@ -749,8 +763,6 @@ tests and the bar page's test cover it. **Check on a Mac:**
   rest may land out of order around the ones already back. That's the
   price of a stack you've rearranged since staying put. Reversible:
   `wm.match`, `wm.KEEP` and `wm.snapshot`.
-- **A display that goes away hides its workspace;** the bar, Next and
-  Previous bring it back on the display that's left. Reversible: `wm.map_screens`.
 - **App keys run tide's helpers** (`browser1`, `google-calendar`, …)
   through `runenv`, as tide does. Each has a macOS branch in scripts:
   `chrome` opens Google Chrome with `open -na`, so the browsers and web apps
@@ -804,8 +816,7 @@ tests and the bar page's test cover it. **Check on a Mac:**
   (a helper script, an app found by path) grants any app's window, and
   `open .` from a terminal is covered only by the Return grant, so a Finder
   that already has windows is refused. Reversible: `wm.grant`.
-- **The menu bar chips are text:** `[3]` here, `(5)` on another display,
-  `2` occupied, `4!` wanting attention. Reversible: draw them with
+- **The menu bar chips are text:** `[3]` showing, `2` occupied, `4!` wanting attention. Reversible: draw them with
   `hs.canvas` into the status item's icon.
 - **Hammerspoon's console and preferences float, and its other windows are
   left alone** by built-in rules, matched by title, so tilemo doesn't place

@@ -88,7 +88,7 @@ function M.view(wm, uuid)
     uuid = uuid or wm:current_screen()
     local bar, counts, made_list, urgent = {}, {}, {}, {}
     local _, made = wm:listed()
-    for _, s in ipairs(wm:bar_state(uuid)) do
+    for _, s in ipairs(wm:bar_state()) do
         bar[#bar + 1] = s.name
         if made[s.name] then
             made_list[#made_list + 1] = s.name
@@ -103,9 +103,10 @@ function M.view(wm, uuid)
         end
     end
     local displays = {}
-    for id, n in pairs(wm.screen_ws) do
-        local ws = wm.workspaces[n]
-        displays[id] = { workspace = n, mode = ws and ws.mode }
+    -- Every display shows the same workspace, each in its own layout.
+    for _, s in ipairs(wm:screens()) do
+        local ws = wm:part(wm.current, s.uuid)
+        displays[s.uuid] = { workspace = wm.current, mode = ws and ws.mode }
     end
     return { bar = bar, counts = counts, made = made_list, urgent = urgent, displays = displays, focusedDisplay = uuid }
 end

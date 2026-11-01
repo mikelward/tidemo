@@ -66,7 +66,7 @@ function M.new(tilemo)
         tilemo.adapter.after(0, function()
             -- A standing workspace not made yet is made by showing it.
             local n = body.show ~= nil and tilemo.wm:canonical(tostring(body.show))
-            if n and tilemo.wm.screen_ws[uuid] ~= n then
+            if n and not tilemo.wm:shown(n) then
                 -- Showing a workspace focuses its own window, not the one before.
                 -- On the display it opened on, whatever focus does as it
                 -- closes.
