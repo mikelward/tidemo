@@ -8,6 +8,7 @@ local kitty = require("tilemo.kitty")
 local saved = require("tilemo.saved")
 local runner = require("tilemo.runner")
 local shots = require("tilemo.shots")
+local standing = require("tilemo.standing")
 
 local M = {}
 
@@ -504,6 +505,18 @@ function M.new()
             end
         end) then
             a.notify("Couldn't open " .. path)
+        end
+    end
+
+    -- The Mac app an `inApps` entry from tide's files names, as
+    -- { path, bundle }, or nil when there's none (SPEC.md §6.2). A Mac's
+    -- disk ignores case, as a rule, so `gmail` finds Gmail.app.
+    function a.find_app(entry)
+        for _, path in ipairs(standing.app_paths(entry, os.getenv("HOME") or "")) do
+            if hs.fs.attributes(path, "mode") == "directory" then
+                local info = hs.application.infoForBundlePath(path)
+                return { path = path, bundle = info and info.CFBundleIdentifier }
+            end
         end
     end
 

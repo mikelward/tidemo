@@ -274,4 +274,23 @@ t.test("one of home's apps that fails to start is logged, and the rest still sta
     t.eq(logged[1]:match("^couldn't start Broken: ") ~= nil, true, logged[1])
 end)
 
+t.test("from tide's files, each of home's apps is the Mac app it names, and tide's own are skipped", function()
+    local opened, logged = {}, {}
+    local apps = { gmail = { path = "/Applications/Gmail.app", bundle = "b.gmail" }, Mail = { path = "/System/Applications/Mail.app", bundle = "b.mail" } }
+    startup.start_home({ "gmail", "https://chat.google.com", "Mail" }, function(app)
+        return app.bundle == "b.mail"
+    end, function(app)
+        opened[#opened + 1] = app.path
+    end, function(text)
+        logged[#logged + 1] = text
+    end, function(name)
+        return apps[name]
+    end)
+    t.eq(opened, { "/Applications/Gmail.app" })
+    t.eq(logged, {
+        "https://chat.google.com is no app on this Mac, so not starting it",
+        "Mail is running already, so not starting it again",
+    })
+end)
+
 t.done("startup_test")

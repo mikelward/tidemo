@@ -26,24 +26,21 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 ## Settings pages, for parity with tide
 
 tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
-a section for each but Workspaces, in tide's order. Clocks, Layouts, Start
+a section for each, in tide's order. Clocks, Layouts, Workspaces, Start
 at login, Clipboard, the muted list and Floating are tilemo's own; the rest
 are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
 §15). **Check on a Mac:** a Layouts change retiles at once, and so does a
 hand edit of `layouts.local.json`; each section's buttons open their pane,
-on macOS 26 too. The rest, in order:
+on macOS 26 too; a Workspaces change moves home and the bar's order at
+once, and at login the files' `inApps` opens only the entries that are Mac
+apps, Chrome's installed web apps included. The rest, in order:
 
-1. **Workspaces.** Read `standing` and `inApps` from tide's
-   `workspaces.json` in place of `start()`'s `workspaces` and `home_apps`
-   (`inApps` naming Mac apps as well as tide's), then one Workspaces
-   section for the standing workspaces, home's apps, the name patterns
-   and the muted list.
-2. **Keys.** List tilemo's bindings from `keys.lua`, as tide's page lists
+1. **Keys.** List tilemo's bindings from `keys.lua`, as tide's page lists
    Hyprland's, and any key that failed to register.
-3. **Setup checklist and permissions** (SPEC.md §10, §11): each
+2. **Setup checklist and permissions** (SPEC.md §10, §11): each
    permission's state, and deep links to the System Settings panes the
    checklist names.
-4. **Appearance**, if anything's left for it: the dim's strength, once the
+3. **Appearance**, if anything's left for it: the dim's strength, once the
    dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
 
 ## Keep the Mac as you set it
@@ -183,6 +180,33 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `displayIdle` is held.
 
 ## Decisions needing review
+
+- **Home's apps match a Mac app's name ignoring case, with spaces, hyphens
+  and underscores alike** (2026-11-01), so conf's shared `inApps`
+  (`google-chat`, `youtube-music`) names the Mac's Google Chat and YouTube
+  Music too. The alternative is exact names, as `home_apps` matched before.
+  Reversible: `standing.app_key`.
+- **At login, the files' `inApps` opens only the entries that are a Mac
+  app** in the usual Applications folders (2026-11-01); the rest are taken
+  to be tide's and skipped, logged but not notified, so tide's programs
+  don't nag on every login. A typo goes unannounced too. The alternative is
+  opening every entry and notifying each that fails, as `home_apps` does.
+  Reversible: `standing.app_paths` and `find_app` in `hs_adapter.lua`.
+- **A Workspaces change applies at once** (2026-11-01), as tide's does: a new
+  first standing workspace is home from then on, and the old home becomes an
+  ordinary workspace, its windows left where they are. The alternative is
+  taking effect at the next reload. Reversible: `wm:set_workspaces`.
+- **The muted list stays in the Notifications section** (2026-11-01), as on
+  tide, where `muted` is the Notifications page's; the Workspaces section's
+  writes keep it. The TODO item had it in the Workspaces section.
+  Reversible: the sections in `settings.html`.
+- **With no file setting a list, the Workspaces section shows `start()`'s or
+  tilemo's defaults,** and its first change copies them into
+  `workspaces.local.json` (2026-11-01), as the Clocks section copies its
+  defaults. Copying tilemo's default home apps makes them a list you set, so
+  the installed ones (Mail, Messages, Calendar, Music) start at the next
+  login. The alternative is starting from tide's empty default. Reversible:
+  `workspaceShared` in `settings-page.js`.
 
 - **Focus follows mouse skips a tile with another app's float in front of
   it** (2026-11-01), since macOS buries the float once the tile is focused

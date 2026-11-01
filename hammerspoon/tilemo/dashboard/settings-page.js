@@ -1,13 +1,15 @@
-// tilemo's settings page (SPEC.md §15): the clocks, the layouts and Start
-// at login's commands, as tide's Clocks, Layouts and Start at login pages
-// (tide SPEC.md §16). It changes ~/.config/tide/clocks.local.json,
-// layouts.local.json and startup.local.json only, with tide's own
+// tilemo's settings page (SPEC.md §15): the clocks, the layouts, the
+// workspaces and Start at login's commands, as tide's Clocks, Layouts,
+// Workspaces and Start at login pages (tide SPEC.md §16). It changes
+// ~/.config/tide/clocks.local.json, layouts.local.json,
+// workspaces.local.json and startup.local.json only, with tide's own
 // functions, so a change made here shows on tide too. And the muted apps
 // and sites (SPEC.md §14.2), each with an Unmute button. tilemo fills it
-// with tilemo.update({ clockFiles, layoutFiles, layoutBase, startupFiles,
-// muted }) and hears back through the "tilemo" message handler:
-// { write: text } for clocks.local.json, { writeLayouts: text } for
-// layouts.local.json, { writeStartup: text } for startup.local.json,
+// with tilemo.update({ clockFiles, layoutFiles, layoutBase, workspaceFiles,
+// workspaceBase, startupFiles, muted }) and hears back through the
+// "tilemo" message handler: { write: text } for clocks.local.json,
+// { writeLayouts: text } for layouts.local.json, { writeWorkspaces: text }
+// for workspaces.local.json, { writeStartup: text } for startup.local.json,
 // { unmute: entry }, the Floating section's { floatAdd }, { floatMove } and
 // { floatRemove }, { writeInput: text } for input.local.json's Mouse
 // settings, { open: name } for a section's button to a System
@@ -25,6 +27,8 @@ import {
 import {
   formatValue, loadInput, shown as shownInput, stepped as steppedInput, withSetting as withInputSetting,
 } from "./tide-input.js";
+import { LISTS, editedList, itemNote, movedItem, withItem, withoutItem } from "./tide-workspacepage.js";
+import { loadWorkspaceSettings } from "./tide-workspacenames.js";
 import { isZone, localText, sharedText } from "./settings.js";
 
 const send = (msg) => window.webkit?.messageHandlers?.tilemo?.postMessage(msg);
@@ -41,6 +45,10 @@ let mouseProblem = "";
 // be tide's defaults. Empty for tide's defaults alone.
 let layoutBase = {};
 let clipboardCount = 0;
+let workspaceFiles = null;
+// What the workspaces files lay over: start()'s lists, or tilemo's
+// defaults, as { standing, inApps }.
+let workspaceBase = {};
 // The settings tilemo has in effect, the fallback when a file is wrong.
 let clipboardInEffect;
 
@@ -367,6 +375,91 @@ function renderMouse() {
   }
 }
 
+// The Workspaces section, as tide's Workspaces page (tide SPEC.md §16): the
+// standing workspaces, home's apps and the name patterns, with tide's own
+// functions, writing only workspaces.local.json and keeping its other
+// settings, `muted` included. The muted list is the Notifications
+// section's, as on tide.
+const workspaceText = (which) => (typeof workspaceFiles?.[which] === "string" ? workspaceFiles[which] : null);
+
+// workspaces.json as the page reads it: over start()'s lists or tilemo's
+// defaults, which stand in for a key it doesn't set, so the page shows what's
+// in effect and a first change copies that. A file that isn't an object goes
+// as it is, for tide's functions to name what's wrong with it.
+function workspaceShared() {
+  const base = {};
+  for (const key of ["standing", "inApps"]) {
+    if (Array.isArray(workspaceBase[key])) base[key] = workspaceBase[key];
+  }
+  const shared = workspaceText("shared");
+  if (shared === null) return Object.keys(base).length > 0 ? JSON.stringify(base) : null;
+  let value;
+  try {
+    value = JSON.parse(shared);
+  } catch {
+    return shared;
+  }
+  return isObject(value) ? JSON.stringify({ ...base, ...value }) : shared;
+}
+
+function showWorkspacesError(text) {
+  document.getElementById("workspaces-error").textContent = text;
+}
+
+function changeWorkspaces(key, fn) {
+  const r = editedList(workspaceShared(), workspaceText("local"), key, fn);
+  if (r.error) {
+    showWorkspacesError(r.error);
+    return false;
+  }
+  showWorkspacesError("");
+  send({ writeWorkspaces: r.text });
+  workspaceFiles = { ...workspaceFiles, local: r.text };
+  renderWorkspaces();
+  return true;
+}
+
+function renderWorkspaces() {
+  const loaded = loadWorkspaceSettings(workspaceShared(), workspaceText("local"));
+  const broken = loaded.errors.length > 0;
+  document.getElementById("workspaces-source").textContent = workspaceText("local") !== null
+    ? "From workspaces.local.json, this Mac's own lists, over workspaces.json."
+    : workspaceText("shared") !== null
+      ? "From workspaces.json, shared with tide. A change saves this Mac's own list to workspaces.local.json."
+      : "The defaults, or your init.lua's. A change saves this Mac's own list to workspaces.local.json.";
+  if (broken) showWorkspacesError(`${loaded.errors.join("; ")}. Fix the file to change these here.`);
+  for (const l of LISTS) {
+    const list = document.getElementById(`ws-list-${l.key}`);
+    list.replaceChildren();
+    document.getElementById(`ws-add-${l.key}`).disabled = broken;
+    if (broken) continue;
+    const items = loaded.settings[l.key];
+    if (items.length === 0) list.append(el("li", "None yet."));
+    items.forEach((item, i) => {
+      const li = el("li");
+      li.append(el("span", item));
+      if (l.ordered) {
+        li.append(
+          el("span", itemNote(l.key, i)),
+          button("↑", `Move ${item} up`, i === 0, () => changeWorkspaces(l.key, (xs) => movedItem(xs, i, item, -1))),
+          button("↓", `Move ${item} down`, i === items.length - 1, () => changeWorkspaces(l.key, (xs) => movedItem(xs, i, item, 1))),
+        );
+      }
+      li.append(button("✕", `Remove ${item}`, false, () => changeWorkspaces(l.key, (xs) => withoutItem(xs, i, item))));
+      list.append(li);
+    });
+  }
+}
+
+for (const l of LISTS) {
+  const input = document.getElementById(`ws-add-${l.key}`);
+  input.placeholder = l.hint;
+  input.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    if (changeWorkspaces(l.key, (xs) => withItem(xs, input.value))) input.value = "";
+  });
+}
+
 // Each muted entry: an app's bundle id, or site:<host>, shown as the host.
 function renderMuted() {
   const list = document.getElementById("muted-list");
@@ -569,6 +662,8 @@ window.tilemo = {
     layoutFiles = state.layoutFiles ?? null;
     inputFiles = state.inputFiles ?? null;
     layoutBase = isObject(state.layoutBase) ? state.layoutBase : {};
+    workspaceFiles = state.workspaceFiles ?? null;
+    workspaceBase = isObject(state.workspaceBase) ? state.workspaceBase : {};
     clipboardCount = Number.isInteger(state.clipboardCount) ? state.clipboardCount : 0;
     const e = state.clipboardSettings;
     clipboardInEffect = e && typeof e.history === "boolean" && Number.isInteger(e.maxItems) ? e : undefined;
@@ -578,8 +673,10 @@ window.tilemo = {
     showStartupError("");
     document.getElementById("muted-error").textContent = "";
     document.getElementById("layouts-error").textContent = "";
+    showWorkspacesError("");
     render();
     renderLayouts();
+    renderWorkspaces();
     renderStartup();
     renderClipboard();
     renderMuted();

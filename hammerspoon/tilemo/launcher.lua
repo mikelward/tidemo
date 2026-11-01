@@ -549,6 +549,7 @@ M.SETTINGS_SECTIONS = {
     { id = "power", name = "Power", covers = "battery energy sleep lid" },
     { id = "layouts", name = "Layouts", covers = "tile columns master ultrawide new windows",
       key = "Settings: layouts" },
+    { id = "workspaces", name = "Workspaces", covers = "standing workspaces home apps name patterns" },
     { id = "floating", name = "Floating", covers = "floating windows rules", key = "Settings: floating windows" },
     { id = "appearance", name = "Appearance", covers = "dark style light theme accent" },
     { id = "muted", name = "Notifications", covers = "muted apps and sites mute unmute",

@@ -15,7 +15,9 @@
 -- removed, the first being home (SPEC.md §6.1); it defaults to
 -- wm.STANDING, home being "in". `home_apps` names the apps, by app name,
 -- whose windows always open on home (SPEC.md §6.2); it defaults to
--- wm.HOME_APPS. A list you set also starts at login.
+-- wm.HOME_APPS. A list you set also starts at login. tide's `standing` and
+-- `inApps`, in workspaces.json and workspaces.local.json, take the place of
+-- either where a file sets them (SPEC.md §15).
 -- tilemo.toggle_focus_follows_mouse() turns focus follows mouse off and on.
 -- tilemo.workspace() gives the current workspace's TIDE_WORKSPACE. Scripts
 -- read it from ~/Library/Caches/tilemo/workspace instead (SPEC.md §6.3):
@@ -40,6 +42,7 @@ local bar_hs = require("tilemo.bar_hs")
 local tray_hs = require("tilemo.tray_hs")
 local names = require("tilemo.names")
 local mute = require("tilemo.mute")
+local standing = require("tilemo.standing")
 local startup = require("tilemo.startup")
 local current = require("tilemo.current")
 local prompt_hs = require("tilemo.prompt_hs")
@@ -218,6 +221,9 @@ function M.doctor()
     if M.presenter and #M.presenter.missing > 0 then
         lines[#lines + 1] = presenter.setup_notice(M.presenter.missing)
     end
+    if #(M.workspace_errors or {}) > 0 then
+        lines[#lines + 1] = "Workspaces: " .. table.concat(M.workspace_errors, "; ")
+    end
     if #(M.mute_errors or {}) > 0 then
         lines[#lines + 1] = "Muted apps and sites: " .. table.concat(M.mute_errors, "; ")
     end
@@ -241,6 +247,19 @@ function M.start(config)
     -- read before the first workspace is made and again when they change.
     local layout_base = config.layout or layout.defaults
     self.layout_base = layout_base
+    -- The standing workspaces and home's apps are tide's `standing` and
+    -- `inApps`, from workspaces.json and workspaces.local.json (SPEC.md
+    -- §15), each falling back to start()'s `workspaces` and `home_apps`,
+    -- or tilemo's defaults, when no file sets it.
+    local start_home_apps = config.home_apps
+    self.workspace_base = {
+        standing = wm_mod.check_standing(config.workspaces or wm_mod.STANDING),
+        inApps = config.home_apps or wm_mod.HOME_APPS,
+    }
+    wm_mod.check_home_apps(self.workspace_base.inApps)
+    local ws_settings, ws_errors = standing.load(dashboard.clock_dir(os.getenv), self.adapter.read, self.adapter.decode)
+    config.workspaces = ws_settings and ws_settings.standing or self.workspace_base.standing
+    config.home_apps = ws_settings and ws_settings.inApps or self.workspace_base.inApps
     local layout_errors
     config.layout, layout_errors = layout.load_settings(
         dashboard.clock_dir(os.getenv), self.adapter.read, self.adapter.decode, layout_base)
@@ -375,6 +394,33 @@ function M.start(config)
     end
     self.load_muted = load_muted
     load_muted()
+    -- The standing workspaces and home's apps, read again as the folder
+    -- changes. A file that's wrong is said once, naming it and the setting,
+    -- and the last good lists stay.
+    local reported_workspaces
+    local function report_workspaces(errors)
+        self.workspace_errors = errors
+        local text = table.concat(errors, "; ")
+        if text ~= "" and text ~= reported_workspaces then
+            self.adapter.notify("The workspaces stay as they were: " .. text)
+        end
+        reported_workspaces = text
+    end
+    local function load_workspaces()
+        local s, errors = standing.load(self.clock_dir, self.adapter.read, self.adapter.decode)
+        report_workspaces(errors)
+        self.workspace_files = dashboard.workspace_files(self.clock_dir, self.adapter.read)
+        if not s then
+            return
+        end
+        local ok, err = pcall(self.wm.set_workspaces, self.wm, s.standing or self.workspace_base.standing,
+            s.inApps or self.workspace_base.inApps)
+        if not ok then
+            report_workspaces({ tostring(err) })
+        end
+    end
+    report_workspaces(ws_errors)
+    self.workspace_files = dashboard.workspace_files(self.clock_dir, self.adapter.read)
     -- Start at login: tide's `commands`, from the same folder (SPEC.md
     -- §15), run once a login through runenv, as a helper key runs one,
     -- unless running already. A bad entry is said once, naming it, and the
@@ -406,12 +452,21 @@ function M.start(config)
             self.adapter.launch({ run = command })
         end, self.adapter.log)
     end
-    -- Home's apps (SPEC.md §6.2): the `home_apps` you set start once a
-    -- login, in the background, before the list, which doesn't wait for
-    -- them. Nothing here may stop tilemo loading.
+    -- Home's apps (SPEC.md §6.2): the list you set starts once a login, in
+    -- the background, before the list, which doesn't wait for them. From
+    -- tide's files, an entry that's no Mac app is tide's, and is skipped.
+    -- Nothing here may stop tilemo loading.
     local ok_home, err_home = pcall(function()
-        startup.home_at_login(config.home_apps, hs.settings, self.adapter.login(), self.adapter.app_running,
-            self.adapter.open_in_background, self.adapter.log)
+        if ws_settings and ws_settings.inApps then
+            startup.home_at_login(ws_settings.inApps, hs.settings, self.adapter.login(), function(app)
+                return app.bundle ~= nil and self.adapter.bundle_running(app.bundle)
+            end, function(app)
+                self.adapter.open_in_background(app.path)
+            end, self.adapter.log, self.adapter.find_app)
+        else
+            startup.home_at_login(start_home_apps, hs.settings, self.adapter.login(), self.adapter.app_running,
+                self.adapter.open_in_background, self.adapter.log)
+        end
     end)
     if not ok_home then
         self.adapter.log("Starting home's apps failed: " .. tostring(err_home))
@@ -474,6 +529,7 @@ function M.start(config)
         self.floating.load()
         load_patterns()
         load_muted()
+        load_workspaces()
         run_startup()
         self.clock_files = dashboard.clock_files(self.clock_dir, self.adapter.read)
         self.startup_files = dashboard.startup_files(self.clock_dir, self.adapter.read)
