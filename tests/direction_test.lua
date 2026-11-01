@@ -39,66 +39,127 @@ end)
 
 t.test("at the edge, the window on the next display sharing the most height, then the nearest", function()
     local displays = {
-        { uuid = "A", full = A, tiles = tiles({ box(1280, 540, 640, 540) }) },
+        { name = "A", box = A, tiles = tiles({ box(1280, 540, 640, 540) }) },
         {
-            uuid = "B",
-            full = B,
+            name = "B",
+            box = B,
             tiles = tiles({ box(1920, -360, 1280, 1440), box(3200, -360, 1280, 720), box(3200, 360, 1280, 720) }),
         },
     }
     -- The master and the lower stack window each share 540 px with it; the
     -- master's center is nearer.
     local hit, s = direction.find(box(1280, 540, 640, 540), "A", displays, 1)
-    t.eq(s.uuid, "B")
+    t.eq(s.name, "B")
     t.eq(id_of(hit), 1)
 end)
 
-t.test("sharing height beats being nearer, across an offset display", function()
+t.test("sharing height beats being nearer, among the windows at the edge", function()
     local focused = box(1280, 700, 640, 300)
     local displays = {
-        { uuid = "A", full = A, tiles = tiles({ focused }) },
-        { uuid = "B", full = B, tiles = tiles({ box(1920, -360, 1280, 720), box(3200, 360, 1280, 720) }) },
+        { name = "A", box = A, tiles = tiles({ focused }) },
+        { name = "B", box = B, tiles = tiles({ box(1920, -360, 1280, 720), box(1920, 360, 1280, 720) }) },
     }
     local hit = direction.find(focused, "A", displays, 1)
-    t.eq(id_of(hit), 2, "the far window shares 300 px, the near one none")
+    t.eq(id_of(hit), 2, "the lower window shares 300 px, the upper one none")
+end)
+
+t.test("on the next display, only the windows at the edge you come in by", function()
+    -- B, bigger and standing higher, with its stack on the left, by A, and
+    -- a taller master on the far side, sharing all of A's window's height.
+    local focused = box(960, 0, 960, 1080)
+    local displays = {
+        { name = "A", box = A, tiles = tiles({ box(0, 0, 960, 1080), focused }) },
+        {
+            name = "B",
+            box = B,
+            tiles = tiles({ box(3200, -360, 1280, 1440), box(1920, -360, 1280, 720), box(1920, 360, 1280, 720) }),
+        },
+    }
+    local hit, s = direction.find(focused, "A", displays, 1)
+    t.eq(s.name, "B")
+    t.eq(id_of(hit), 3, "the lower stack window, sharing 720 px, not the master sharing 1080")
+    -- And back the other way, from B's lower stack window: A's lower stack
+    -- window, sharing 540 px, not A's master, sharing 720.
+    displays[1].tiles = tiles({ box(0, 0, 1056, 1080), box(1056, 0, 864, 540), box(1056, 540, 864, 540) })
+    hit, s = direction.find(displays[2].tiles[3].box, "B", displays, -1)
+    t.eq(s.name, "A")
+    t.eq(id_of(hit), 3, "the window at A's right edge level with it")
+end)
+
+t.test("going left onto a smaller display lower down, its right column, not its master", function()
+    -- C's master is on its left, sharing 380 px with the focused window;
+    -- of its three stack windows at its right edge, the top one shares 241.
+    local focused = box(0, 700, 960, 380)
+    local displays = {
+        { name = "A", box = A, tiles = tiles({ focused }) },
+        {
+            name = "C",
+            box = C,
+            tiles = tiles({
+                box(-1280, 600, 768, 1024),
+                box(-512, 600, 512, 341),
+                box(-512, 941, 512, 341),
+                box(-512, 1282, 512, 342),
+            }),
+        },
+    }
+    local hit, s = direction.find(focused, "A", displays, -1)
+    t.eq(s.name, "C")
+    t.eq(id_of(hit), 2)
+end)
+
+t.test("a pixel's difference in rounding still counts as the edge", function()
+    local focused = box(0, 0, 1920, 1080)
+    local displays = {
+        { name = "A", box = A, tiles = tiles({ focused }) },
+        -- The stack's lower window is a pixel in from the edge, and shares
+        -- more height; the master, two pixels in, would share the most.
+        {
+            name = "D",
+            box = box(1920, 0, 1920, 1080),
+            tiles = tiles({ box(1922, 0, 958, 1080), box(1920, 0, 960, 300), box(1921, 300, 959, 780) }),
+        },
+    }
+    local hit = direction.find(focused, "A", displays, 1)
+    t.eq(id_of(hit), 3)
 end)
 
 t.test("with no height shared, the nearest center, on a smaller display lower down", function()
     local focused = box(0, 0, 640, 500)
     local displays = {
-        { uuid = "A", full = A, tiles = tiles({ focused }) },
-        { uuid = "B", full = B, tiles = tiles({ box(1920, -360, 2560, 1440) }) },
-        { uuid = "C", full = C, tiles = tiles({ box(-1280, 600, 640, 1024), box(-640, 600, 640, 1024) }) },
+        { name = "A", box = A, tiles = tiles({ focused }) },
+        { name = "B", box = B, tiles = tiles({ box(1920, -360, 2560, 1440) }) },
+        { name = "C", box = C, tiles = tiles({ box(-1280, 600, 640, 1024), box(-640, 600, 640, 1024) }) },
     }
     local hit, s = direction.find(focused, "A", displays, -1)
-    t.eq(s.uuid, "C")
+    t.eq(s.name, "C")
     t.eq(id_of(hit), 2, "its right column, nearer A")
 end)
 
 t.test("the next display is the one sharing the most height with this one", function()
     local displays = {
-        { uuid = "A", full = A, tiles = {} },
-        { uuid = "E", full = box(1920, 1080, 1920, 1080), tiles = tiles({ box(1920, 1080, 1920, 1080) }) },
-        { uuid = "D", full = box(1920, 0, 1920, 1080), tiles = tiles({ box(1920, 0, 1920, 1080) }) },
+        { name = "A", box = A, tiles = {} },
+        { name = "E", box = box(1920, 1080, 1920, 1080), tiles = tiles({ box(1920, 1080, 1920, 1080) }) },
+        { name = "D", box = box(1920, 0, 1920, 1080), tiles = tiles({ box(1920, 0, 1920, 1080) }) },
     }
     local _, s = direction.find(A, "A", displays, 1)
-    t.eq(s.uuid, "D")
+    t.eq(s.name, "D")
 end)
 
 t.test("a display that way with no windows is still where it goes", function()
     local displays = {
-        { uuid = "A", full = A, tiles = tiles({ box(0, 0, 1920, 1080) }) },
-        { uuid = "B", full = B, tiles = {} },
+        { name = "A", box = A, tiles = tiles({ box(0, 0, 1920, 1080) }) },
+        { name = "B", box = B, tiles = {} },
     }
     local hit, s = direction.find(box(0, 0, 1920, 1080), "A", displays, 1)
     t.eq(hit, nil)
-    t.eq(s.uuid, "B")
+    t.eq(s.name, "B")
 end)
 
 t.test("past the last display that way, nothing", function()
     local displays = {
-        { uuid = "A", full = A, tiles = tiles({ box(0, 0, 1920, 1080) }) },
-        { uuid = "B", full = B, tiles = tiles({ box(1920, -360, 2560, 1440) }) },
+        { name = "A", box = A, tiles = tiles({ box(0, 0, 1920, 1080) }) },
+        { name = "B", box = B, tiles = tiles({ box(1920, -360, 2560, 1440) }) },
     }
     local hit, s = direction.find(box(1920, -360, 2560, 1440), "B", displays, 1)
     t.eq(hit, nil)

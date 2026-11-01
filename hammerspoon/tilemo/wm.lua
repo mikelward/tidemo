@@ -2984,7 +2984,8 @@ end
 -- Left and right (SPEC.md §7.2) ------------------------------------------
 
 -- What's on side `d` of where the keys are, by direction.lua's rule: the
--- tile picked, if any, and its display, if there's one that way. "Where
+-- tile picked, if any, and its display, if there's one that way. On the
+-- next display only the tiles at the edge you come in by are picked from. "Where
 -- the keys are" is the focused window's box on the display keys act on,
 -- or that whole display with no window of its own focused.
 function M:beside(d)
@@ -3005,7 +3006,10 @@ function M:beside(d)
                 box = boxes[id]
             end
         end
-        displays[#displays + 1] = { uuid = s.uuid, full = s.full, tiles = tiles }
+        -- direction.lua is tide's, so a display is a monitor to it: its
+        -- `name` and `box`. It reads only a tile's box, so `id` can stand
+        -- where tide keeps `address`.
+        displays[#displays + 1] = { name = s.uuid, uuid = s.uuid, box = s.full, tiles = tiles }
     end
     -- A float is where it is, if that's on this display.
     local w = self.windows[focused or false]
