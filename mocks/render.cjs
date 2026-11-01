@@ -56,7 +56,7 @@ const STATES = [
         awake: { on: true },
         camera: { in_use: true },
         mic: { muted: false },
-        volume: { level: "mid", muted: false },
+        volume: { level: "mid", muted: false, text: "45%", tip: "Sound 45%" },
         wifi: { on: true, bars: 3, name: "home" },
         network: { kind: "wifi" },
         battery: { percent: 84, charging: true, text: "84%", tip: "Battery 84%, charging, full in 0:35" },
@@ -79,7 +79,7 @@ const STATES = [
       title: "A very long document title that won't fit in the middle of the bar — Notes",
       icons: {
         mic: { muted: false },
-        volume: { level: "high", muted: false },
+        volume: { level: "high", muted: false, text: "80%", tip: "Sound 80%" },
         wifi: { on: true, bars: 2 },
         network: { kind: "wifi" },
         battery: { percent: 52, charging: false, text: "52%", tip: "Battery 52%, 3:12 left" },
@@ -100,7 +100,7 @@ const STATES = [
       title: "~/src — Terminal",
       app_icons: APP_ICONS,
       icons: {
-        volume: { level: "mid", muted: false },
+        volume: { level: "fixed", muted: false, fixed: true, can_mute: false, tip: "Sound: LG HDR 4K has no volume control" },
         network: { kind: "wired" },
       },
     },
@@ -115,7 +115,7 @@ const STATES = [
       icons: {
         awake: { on: false },
         mic: { muted: true },
-        volume: { level: "mute", muted: true },
+        volume: { level: "mute", muted: true, text: "30%", tip: "Sound muted" },
         network: { kind: "wired" },
         battery: { percent: 15, charging: false, text: "15%", tip: "Battery 15%, 0:40 left" },
       },
@@ -136,7 +136,7 @@ const HOVER = {
   app_icons: APP_ICONS,
   icons: {
     mic: { muted: false },
-    volume: { level: "mid", muted: false },
+    volume: { level: "mid", muted: false, text: "40%", tip: "Sound 40%" },
     network: { kind: "wired" },
     battery: { percent: 84, charging: false, text: "84%" },
   },

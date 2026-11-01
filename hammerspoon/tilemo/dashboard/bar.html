@@ -201,8 +201,14 @@ nav button .app.none.win:hover {
 #icons .battery[data-state="low"] {
   color: var(--urgent);
 }
-#icons .battery .text {
+#icons .battery .text,
+#icons .volume .text {
   font-variant-numeric: tabular-nums;
+}
+/* Held as wide as two digits and a %, as tide's, so the icons beside it
+   don't move as the level changes, except at 100%. */
+#icons .volume .text {
+  min-width: 2.2em;
 }
 </style>
 </head>

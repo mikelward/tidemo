@@ -261,6 +261,34 @@ assert.strictEqual(
 );
 sent.length = 0;
 
+// The speaker's level as a %, and an output with no volume control (a
+// monitor's speakers): the full speaker with no %, no scrolling, and a
+// click opens Sound settings when it can't mute either.
+sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: { volume: { level: "mid", muted: false, text: "40%", tip: "Sound 40%" } } });
+{
+  const v = ids.icons.children[0];
+  assert.strictEqual(v.children[0].textContent, "40%");
+  assert.strictEqual(v.attrs["data-tip"], "Sound 40%");
+}
+for (const can_mute of [true, false]) {
+  sandbox.tilemo.update({
+    uuid: "B",
+    workspaces: ws,
+    title: "",
+    icons: { volume: { level: "fixed", muted: false, fixed: true, can_mute, tip: "Sound: LG has no volume control" } },
+  });
+  const v = ids.icons.children[0];
+  assert.strictEqual(v.className, "icon volume");
+  assert.strictEqual(v.attrs["data-state"], "fixed");
+  assert.strictEqual(v.children.length, 0, "no %");
+  assert.strictEqual(v.innerHTML.split("<path ").length - 1, 4, "the speaker and all three waves");
+  assert.strictEqual(v.attrs["data-tip"], "Sound: LG has no volume control");
+  assert.strictEqual(v.listeners.wheel, undefined, "nothing to scroll");
+  v.listeners.click();
+  assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify(can_mute ? { uuid: "B", toggle: "volume" } : { uuid: "B", open: "volume" }));
+}
+sent.length = 0;
+
 // Each connected Bluetooth audio device, beside the speaker, named on
 // hover, and a click opens Bluetooth settings.
 sandbox.tilemo.update({

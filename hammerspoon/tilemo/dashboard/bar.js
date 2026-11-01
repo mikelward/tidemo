@@ -244,19 +244,26 @@ function renderIcons(box, icons) {
     box.append(icon("headphones", d.name, { open: "bluetooth" }, svg(PATHS.headphones), "connected"));
   }
   if (icons.volume) {
+    // Four levels with mute, then the level as a %. An output with no
+    // volume control (fixed) draws the full speaker with no %, and can't
+    // be scrolled; a click opens Sound settings unless it can mute.
     const v = icons.volume;
-    const waves = VOLUME[v.level] ?? 0;
+    const waves = v.level === "fixed" ? 3 : (VOLUME[v.level] ?? 0);
     const art = svg(PATHS.speaker + (waves === 0 ? PATHS.speakerOff : PATHS.waves.slice(0, waves).join("")));
-    const b = icon("volume", v.muted ? "Sound muted" : "Sound", { toggle: "volume" }, art, v.level);
-    let wheeled = 0;
-    b.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      wheeled += e.deltaY;
-      if (Math.abs(wheeled) < STEP) return;
-      // Scrolling up, away from you, turns it up.
-      send({ volume: wheeled < 0 ? 1 : -1 });
-      wheeled = 0;
-    });
+    const msg = v.fixed && !v.can_mute ? { open: "volume" } : { toggle: "volume" };
+    const b = icon("volume", v.tip || (v.muted ? "Sound muted" : "Sound"), msg, art, v.level);
+    if (v.text) b.append(el("span", "text", v.text));
+    if (!v.fixed) {
+      let wheeled = 0;
+      b.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        wheeled += e.deltaY;
+        if (Math.abs(wheeled) < STEP) return;
+        // Scrolling up, away from you, turns it up.
+        send({ volume: wheeled < 0 ? 1 : -1 });
+        wheeled = 0;
+      });
+    }
     box.append(b);
   }
   box.append(network(icons));

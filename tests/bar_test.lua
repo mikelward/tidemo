@@ -513,8 +513,24 @@ t.test("the volume shows its level, or mute", function()
     t.eq(bar.icons({ audio = { volume = 20 } }).volume.level, "low")
     t.eq(bar.icons({ audio = { volume = 50 } }).volume.level, "mid")
     t.eq(bar.icons({ audio = { volume = 90 } }).volume.level, "high")
-    t.eq(bar.icons({ audio = { volume = 90, muted = true } }).volume, { level = "mute", muted = true })
+    t.eq(bar.icons({ audio = { volume = 90, muted = true } }).volume, { level = "mute", muted = true, text = "90%", tip = "Sound muted" })
     t.eq(bar.icons({ audio = { volume = 0 } }).volume.level, "mute")
+end)
+
+t.test("the volume says its level as a %, as tide's", function()
+    t.eq(bar.icons({ audio = { volume = 39.6, muted = false } }).volume, { level = "mid", muted = false, text = "40%", tip = "Sound 40%" })
+end)
+
+t.test("an output with no volume control, as a monitor's speakers, still shows", function()
+    t.eq(bar.icons({ audio = { name = "LG HDR 4K", muted = false } }).volume,
+        { level = "fixed", muted = false, fixed = true, can_mute = true, tip = "Sound: LG HDR 4K has no volume control" })
+    t.eq(bar.icons({ audio = { name = "LG HDR 4K", muted = true } }).volume,
+        { level = "mute", muted = true, fixed = true, can_mute = true, tip = "Sound muted" })
+    t.eq(bar.icons({ audio = { name = "LG HDR 4K" } }).volume,
+        { level = "fixed", muted = false, fixed = true, can_mute = false, tip = "Sound: LG HDR 4K has no volume control" },
+        "nor any mute: a click opens Sound settings")
+    t.eq(bar.icons({ audio = {} }).volume.tip, "Sound: this output has no volume control")
+    t.eq(bar.icons({}).volume, nil, "no output device: no icon")
 end)
 
 t.test("Wi-Fi shows signal bars, and the name only when macOS gives it", function()

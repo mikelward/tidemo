@@ -1462,9 +1462,17 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     connected; a headset is both, and gets one icon. Hovering one names it.
     A click opens Bluetooth settings. No battery: `hs.audiodevice` doesn't
     read one.
-  - speaker: the default output device, in four levels with mute. A click
+  - speaker: the default output device, in four levels with mute, then
+    its level as a %, dimmed while muted and held as wide as two digits, as
+    tide's (tide §7.4). Its tip is "Sound 40%" or "Sound muted". A click
     mutes or unmutes; scrolling on it changes the volume 5% a step, and up
     unmutes, as the volume keys do.
+    - **An output with no volume control still shows:** a monitor's own
+      speakers over HDMI or DisplayPort, and many USB interfaces, have none
+      macOS can read, so `outputVolume()` is nil. The speaker shows full,
+      with no % and no scrolling, and its tip names the device and says it
+      has no volume control. A click mutes it if it can mute, else opens
+      Sound settings.
   - network: Wi-Fi through `hs.wifi`, on or off with signal in three bars
     from the RSSI, or a wire, or no network, by which interface
     `hs.network.primaryInterfaces` says carries traffic. The Wi-Fi
