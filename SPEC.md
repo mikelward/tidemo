@@ -327,9 +327,13 @@ can open before its page names it, and a title rule needs that name.
 
 Placing and keeping floats:
 
-- **A new float centers on its parent,** the app's focused window, or on its
-  display if the app has none (tide §6.4). One that opens already placed,
-  like a palette remembering its spot, keeps its place.
+- **A new float centers on its parent,** the app's focused window (tide
+  §6.4). One with no parent, like System Settings, centers on the pointer
+  when that's on its display, or else on the display. tide centers it on
+  the display; here it opens under the pointer, so the pointer's next move
+  doesn't focus the tile beside it, whose raise could bury it (below). One
+  that opens already placed, like a palette remembering its spot, keeps its
+  place.
 - **Floats stay above the tiles.** macOS has no public way to set another
   app's window level. Tiles never overlap, though, so the only thing that
   can cover a float is a tile being raised. When tilemo raises a tile, it
@@ -394,6 +398,8 @@ its parent, and stay in front:
 - Chrome's Save As;
 - an About window;
 - System Settings opened from an app;
+- System Settings opened on its own, under the pointer, staying in front
+  until the pointer leaves it;
 - an Electron app's dialog;
 - a JetBrains IDE's dialog;
 - Finder's Get Info window.
