@@ -3079,12 +3079,54 @@ function A.select(self, d)
     end
 end
 
+-- A float moving `d`: onto the next display that way, by direction.lua's
+-- rule, at the same relative spot in its work area and its size, shrunk
+-- only to fit (direction.place). It stays floating and in its workspace,
+-- joining that display's part, with focus. Past the last display, nothing.
+function M:move_float_side(id, w, d)
+    local st = self.a.state(id)
+    if not st or st.minimized or not self:shown(w.ws) then
+        return
+    end
+    local here = self:screen_for(st.frame)
+    local displays, cur = {}, nil
+    for _, s in ipairs(self:screens()) do
+        -- A display is a monitor to direction.lua: its `name` and `box`.
+        displays[#displays + 1] = { name = s.uuid, box = s.full, screen = s }
+        if s.uuid == here.uuid then
+            cur = displays[#displays]
+        end
+    end
+    local next_one = cur and direction.next_monitor(cur, displays, d)
+    if not next_one then
+        return
+    end
+    local s = next_one.screen
+    self.a.set_frame(id, direction.place(st.frame, here.area, s.area))
+    w.screen = s.uuid
+    remove_value(self.mru[w.ws], id)
+    table.insert(self.mru[w.ws], 1, id)
+    self:save()
+    self:choose(id)
+    -- A float that moved changes what's under the pointer.
+    if self.ffm then
+        self.ffm:resync()
+    end
+end
+
 -- Super+Shift+Left/Right: move the focused tile the same way, swapping it
 -- with the tile there on this display, or onto the next display at the
 -- edge, staying in the same workspace, as a window you drag there does
 -- (SPEC.md §6.1), in the slot whose tile lands nearest the
--- edge it came in by (M:entry_slot).
+-- edge it came in by (M:entry_slot). A float goes straight to the next
+-- display (M:move_float_side).
 function A.move_side(self, d)
+    local fid = self.a.focused()
+    local fw = self.windows[fid or false]
+    if fw and fw.ws and fw.floating then
+        self:move_float_side(fid, fw, d)
+        return
+    end
     local id, w = self:focused_tile()
     if not id then
         return

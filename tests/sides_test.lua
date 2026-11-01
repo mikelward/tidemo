@@ -210,4 +210,58 @@ t.test("after a switch to an empty workspace, layout keys act on it, not the one
     t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
 end)
 
+-- A float on A, focused: window 1 floated with Super+Shift+F, at `frame`.
+-- `small` makes B half A's size, to A's right, instead of add_b's.
+local function float_on_a(frame, small)
+    local a, wm = setup({ 1 }, { 2 })
+    if small then
+        a.screens_[2] = {
+            uuid = "B",
+            area = { x = 1920, y = 25, w = 960, h = 515 },
+            full = { x = 1920, y = 0, w = 960, h = 540 },
+        }
+    end
+    a.focus_ = 1
+    wm:act("toggle_float")
+    a.wins[1].frame = frame
+    return a, wm
+end
+
+t.test("Super+Shift+Right moves a float onto the next display at the same spot, with focus", function()
+    -- A twentieth across A's area and a fifth down.
+    local a, wm = float_on_a({ x = 96, y = 25 + 211, w = 400, h = 300 })
+    wm:act("move_side", 1)
+    t.eq(a.wins[1].frame, { x = 1920 + 128, y = -175 + 283, w = 400, h = 300 }, "the same share of B's area")
+    t.eq(wm.windows[1].floating, true, "still floating")
+    t.eq(wm.windows[1].ws, "in", "in its workspace")
+    t.eq(wm.windows[1].screen, "B", "on B's part of it")
+    t.eq(wm:part("in", "B").order, { 2 }, "not tiled there")
+    t.eq(a.focus_, 1, "focus follows it")
+    wm:act("move_side", 1)
+    t.eq(a.wins[1].frame.x, 2048, "past the last display, nothing")
+    t.eq(wm.windows[1].screen, "B")
+    wm:act("move_side", -1)
+    t.eq(a.wins[1].frame, { x = 96, y = 25 + 211, w = 400, h = 300 }, "and back")
+    t.eq(wm.windows[1].screen, "A")
+end)
+
+t.test("a float in the top left of a display lands in the top left of a smaller one", function()
+    local a, wm = float_on_a({ x = 96, y = 25 + 211, w = 400, h = 300 }, true)
+    wm:act("move_side", 1)
+    t.eq(a.wins[1].frame, { x = 1920 + 48, y = 25 + 103, w = 400, h = 300 })
+end)
+
+t.test("a float in the bottom right of a display lands in the bottom right of a smaller one", function()
+    local a, wm = float_on_a({ x = 1420, y = 680, w = 500, h = 400 }, true)
+    wm:act("move_side", 1)
+    t.eq(a.wins[1].frame, { x = 1920 + 960 - 500, y = 540 - 400, w = 500, h = 400 }, "held at B's corner")
+end)
+
+t.test("a float too big for the next display shrinks to fit inside it", function()
+    local a, wm = float_on_a({ x = 100, y = 100, w = 1200, h = 800 }, true)
+    wm:act("move_side", 1)
+    t.eq(a.wins[1].frame, { x = 1920, y = 25, w = 960, h = 515 }, "B's whole area")
+    t.eq(wm.windows[1].floating, true, "still floating")
+end)
+
 t.done("sides")
