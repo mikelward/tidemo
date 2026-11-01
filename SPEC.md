@@ -1234,8 +1234,14 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - The next display is picked against this display, so with one to the
     upper right and one to the lower right, it's the one sharing more of
     this display's height. The window there is then picked against yours,
-    from all of that display's tiles: on a taller display standing higher,
-    the one level with yours, not the top one.
+    from its tiles at the edge you come in by: those whose left edge is
+    nearest that display's left going right, or whose right edge is nearest
+    its right going left, a pixel's slack keeping a column together. So
+    the stack beside you wins over a taller master on the far side, and on
+    a taller display standing higher, it's the window in that column level
+    with yours, not the top one.
+  - The rule is tide's, in tide's own `direction.lua` (tide §6.6), copied
+    unchanged; `make check-tide` fails if the two drift.
   - Past the last display that way, nothing. They don't wrap round to the
     far side *(a guess, to confirm)*.
   - A display that way with no tiles takes the keys, as one with nothing

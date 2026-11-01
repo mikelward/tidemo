@@ -1,11 +1,12 @@
--- Left and right between windows and displays (SPEC.md §7.2): which window
--- Super+Left and Right select, and where Super+Shift+Left and Right move
--- the window. Pure geometry on { x, y, w, h } boxes, so it tests with
--- made-up displays.
+-- Left and right between windows and monitors (SPEC.md §6.6): which window
+-- Super+Left and Right select, where Super+Shift+Left and Right move the
+-- window, and where a moved window lands on the next monitor. Pure geometry
+-- on { x, y, w, h } boxes, with no Hyprland API, so it tests in plain Lua
+-- with made-up monitors. tilemo's direction.lua is the same rule.
 --
--- One rule picks both a window and a display: of the boxes on that side,
--- the one with the most vertical overlap with where you are, then the one
--- whose center is nearest, then the first listed. "On that side" means its
+-- One rule picks both a window and a monitor: of the boxes on that side,
+-- the one sharing the most height with where you are, then the one whose
+-- center is nearest, then the first listed. "On that side" means its
 -- center is left (d < 0) or right (d > 0) of yours.
 
 local M = {}
@@ -53,17 +54,36 @@ function M.pick(from, items, d)
     return M.nearest(from, side)
 end
 
--- Where Super+Left or Right goes from `box` on display `here`. `displays`
--- is every display, each { uuid, full, tiles }, its tiles each { id, box },
--- in tile order. Returns the tile picked and its display: on this display
--- if one is that way; at its edge, on the next display that way, picked
--- against `box` as well; nil for the tile if that display has none; nil
--- for both with no display that way.
-function M.find(box, here, displays, d)
+-- Of `items`, the ones nearest the edge you come in by going `d`: the
+-- left edge going right, the right edge going left. A pixel's slack keeps
+-- a column whose windows were rounded differently together.
+function M.at_edge(items, d)
+    local best
+    for _, it in ipairs(items) do
+        local e = d > 0 and it.box.x or -(it.box.x + it.box.w)
+        best = best and math.min(best, e) or e
+    end
+    local out = {}
+    for _, it in ipairs(items) do
+        local e = d > 0 and it.box.x or -(it.box.x + it.box.w)
+        if e <= best + 1 then
+            out[#out + 1] = it
+        end
+    end
+    return out
+end
+
+-- Where Super+Left or Right goes from `box` on monitor `here`. `monitors`
+-- is every monitor, each { name, box, tiles }, its tiles each { address,
+-- box }, in layout order. Returns the tile picked and its monitor: on this
+-- monitor if one is that way; at its edge, on the next monitor that way,
+-- at the edge you come in by and picked against `box` as well; nil for the
+-- tile if that monitor has none; nil for both with no monitor that way.
+function M.find(box, here, monitors, d)
     local cur
-    for _, s in ipairs(displays) do
-        if s.uuid == here then
-            cur = s
+    for _, m in ipairs(monitors) do
+        if m.name == here then
+            cur = m
         end
     end
     if not cur then
@@ -74,19 +94,38 @@ function M.find(box, here, displays, d)
         return hit, cur
     end
     local others = {}
-    for _, s in ipairs(displays) do
-        if s.uuid ~= here then
-            others[#others + 1] = { box = s.full, display = s }
+    for _, m in ipairs(monitors) do
+        if m.name ~= here then
+            others[#others + 1] = { box = m.box, monitor = m }
         end
     end
-    local next_one = M.pick(cur.full, others, d)
+    local next_one = M.pick(cur.box, others, d)
     if not next_one then
         return nil
     end
-    local s = next_one.display
-    -- That display is the side test: a tile there that's offset back past
-    -- `box`'s center still counts.
-    return M.nearest(box, s.tiles), s
+    local m = next_one.monitor
+    -- The nearest window there is one at the edge you come in by. That
+    -- monitor is the side test, so a tile there whose center is back past
+    -- `box`'s still counts.
+    return M.nearest(box, M.at_edge(m.tiles, d)), m
+end
+
+-- Where a window moved onto a monitor going `d` lands: of `slots`, the
+-- boxes the layout would give each place in its order once the window is
+-- there, the place nearest the edge it came in by (the left edge going
+-- right, the right edge going left), then the one sharing the most height
+-- with `from`, where the window was, then the first. Returns the place.
+function M.landing(slots, d, from)
+    local best, best_edge, best_overlap
+    for i, b in ipairs(slots) do
+        -- Smaller is nearer the edge it came in by.
+        local edge = d > 0 and b.x or -(b.x + b.w)
+        local o = M.overlap(from, b)
+        if not best or edge < best_edge or (edge == best_edge and o > best_overlap) then
+            best, best_edge, best_overlap = i, edge, o
+        end
+    end
+    return best
 end
 
 return M

@@ -692,9 +692,10 @@ tests and the bar page's test cover it. **Check on a Mac:**
   emptying the title until focus moves. Reversible: hand focus back after
   a click, as the dashboard does on closing.
 
-- **tide's geometry and clocks module are copied, not shared.**
-  `hammerspoon/tilemo/geometry.lua` and `dashboard/tide-clocks.js` are
-  tide's files unchanged, and CI fails if they drift (`make check-tide`).
+- **tide's geometry, direction and clocks modules are copied, not shared.**
+  `hammerspoon/tilemo/geometry.lua`, `direction.lua` and
+  `dashboard/tide-clocks.js` are tide's files unchanged, and CI fails if
+  they drift (`make check-tide`).
   The alternative is a git submodule of tide. Reversible: swap the copies
   for the submodule paths.
 - **No frame-offset store.** tileco stores, per app, how far a window's frame

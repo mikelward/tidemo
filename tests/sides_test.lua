@@ -67,6 +67,20 @@ t.test("at a display's edge they go on to the next display that way", function()
     t.eq(a.focus_, 1)
 end)
 
+t.test("at the edge they go to a window at the near side of the next display, not a taller one beyond", function()
+    -- Tile on A: the master on the left, full height, and two stacked at
+    -- A's right edge. From B's one window, as tall as A, the master would
+    -- share the most height.
+    local a, wm = setup({ 1, 2, 3 }, { 4 })
+    local master = wm:part("in", "A").order[1]
+    a.focus_ = 4
+    wm:act("select", -1)
+    t.eq(wm:current_screen(), "A")
+    t.eq(a.focus_ ~= master, true, "a stack window, not the master")
+    local f = a.wins[a.focus_].frame
+    t.eq(f.x + f.w, 1920, "at A's right edge")
+end)
+
 t.test("a display that way with nothing on it takes the keys", function()
     local a, wm = setup({ 1 }, {})
     a.focus_ = 1

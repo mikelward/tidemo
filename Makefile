@@ -3,7 +3,7 @@
 #   make test     run the tests (plain Lua 5.4, no Mac needed)
 #   make lint     check every Lua file parses
 #   make install  copy the Hammerspoon modules to ~/.hammerspoon/tilemo
-#   make check-tide   compare tilemo's copies of tide's geometry, clocks,
+#   make check-tide   compare tilemo's copies of tide's geometry, direction, clocks,
 #                 startup, clipboard, steps, layouts, input, fuzzy and workspaces modules and character list with a tide checkout (TIDE=../tide
 #                 by default)
 #   make check-tileco   compare the dashboard's copies of tileco's clock
@@ -57,6 +57,7 @@ install:
 # the logo, which `make icons` renders.
 check-tide:
 	cmp $(TIDE)/hypr/tide/geometry.lua hammerspoon/tilemo/geometry.lua
+	cmp $(TIDE)/hypr/tide/direction.lua hammerspoon/tilemo/direction.lua
 	cmp $(TIDE)/shell/lib/clocks.mjs hammerspoon/tilemo/dashboard/tide-clocks.js
 	cmp $(TIDE)/shell/lib/startup.mjs hammerspoon/tilemo/dashboard/tide-startup.js
 	cmp $(TIDE)/shell/lib/clipboard.mjs hammerspoon/tilemo/dashboard/tide-clipboard.js
