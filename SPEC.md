@@ -43,6 +43,14 @@ checked against a source or a Mac is marked *(unverified)*.
 
   A key that does nothing, or a feature quietly turned off, is the
   failure this rules out.
+- **One way in to every feature.** Each feature in this spec has its
+  place in tide's settings window, the switcher or a key, whoever does the
+  work: tilemo, macOS, or a helper such as LinearMouse or Karabiner (§15).
+  - What tilemo can change itself, it changes there.
+  - What it can't gets a button that opens the app or System Settings pane
+    that can, on that feature's page.
+  - No row only shows a value: a setting has a control, or a button to
+    where it's changed.
 
 ## 2. What macOS allows
 
@@ -245,7 +253,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
 | Caps Lock as Compose | no Compose; Karabiner can map key sequences | **partial** |
 | Setup checklist (tileco §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
-| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide §16) | tilemo reads the same files (§15) | **partial**: Clocks, Layouts, Start at login, Clipboard and the muted list are built; Workspaces, Keys and the checklist aren't, and the standing workspaces and home's apps are still `start()` options |
+| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide §16) | tilemo reads the same files (§15); every page of tide's is a section, with buttons to macOS's panes and the helpers for what tilemo can't change | **partial**: Clocks, Layouts, Start at login, Clipboard, the muted list and Floating are tilemo's own; Workspaces, Keys and the checklist aren't built, and the standing workspaces and home's apps are still `start()` options |
 | `tide doctor` (tide §5.4) | `tilemo doctor` (§15) | **yes** |
 | Workspace swipe, three fingers (conf `hyprland.lua`) | no public gesture API (§13) | **no** |
 | kitty, Ubuntu Mono, shell config | native, through `setup` and `conf` | **yes** |
@@ -1716,8 +1724,18 @@ two tabs. C is for clipboard and characters.
     curve felt wrong. `com.apple.mouse.scaling` goes beyond the slider
     (§2.6).
   - Left-handed: the primary button on the right, in Mouse settings.
-  - Wheel scaling beyond the slider is *(unverified)*. It's the gap that
-    tileco §19.2 fills on chromeOS.
+  - macOS can't say how far a wheel notch scrolls: its slider changes
+    only the acceleration, so a slow notch moves a line or so. It's the
+    gap that tileco §19.2 fills on chromeOS. `setup-macos` installs
+    LinearMouse (free, open source, Accessibility) and gives every mouse
+    ten lines a notch, with no acceleration (scripts `docs/MACOS.md`).
+  - tilemo checks LinearMouse is installed and running, as it starts and
+    every 30 s after, as it does for Karabiner (§7.1), and says so when
+    it isn't (§1, §15). LinearMouse's bundle ID is `com.lujjjh.LinearMouse`
+    (Homebrew's cask). LinearMouse asks for Accessibility itself, with its
+    own window, as it starts; tilemo can't see another app's permissions.
+  - The Mouse section's buttons open Mouse settings and LinearMouse's
+    window (§15).
 - **Trackpad:** natural scroll and tap to click, in Trackpad settings.
   macOS may tie natural scrolling for the mouse and trackpad together
   *(unverified)*; if so, LinearMouse can reverse the mouse alone (§13).
@@ -1826,7 +1844,7 @@ Each one names a workaround, or says there is none.
 | Own lock screen and login, with the hostname | The lock and login screens are the system's. | Lock Screen's "Show message when locked" can carry the hostname *(unverified on macOS 26)*. **None** for a custom lock screen. |
 | tide's idle timeline (dim, lock, off, suspend) | macOS sets its own timings (§10). | Energy and Lock Screen settings come close. `pmset` sets more, with admin rights (§11). |
 | Sharing a 16:9 slice of an ultrawide in Meet (tide §12) | Meet shares a screen, a window or a tab. | Share a window, or a virtual display from a tool such as BetterDisplay *(unverified)*. |
-| Mouse wheel speed beyond the slider | Mouse settings scale the wheel only so far *(unverified)*. | LinearMouse or Mos, free tools that use Accessibility *(unverified)*. |
+| Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which `setup-macos` installs and tilemo checks is running (§10). |
 | A Compose key | macOS has none. | Option dead keys, a custom layout made with Ukelele, or Karabiner sequences. |
 | Keys and the Super tap during Secure Input | While a password field or a terminal's secure keyboard entry is active, event taps stop seeing typed keys *(unverified for hotkeys)*. | **None**, by design. Registered hotkeys keep working, if they do. |
 | Three-finger swipe between workspaces (conf `hyprland.lua`) | No public API for trackpad gestures; the native swipe switches Spaces, which tilemo doesn't use. | BetterTouchTool, a paid app, can bind gestures to keys *(unverified price)*. Otherwise **none**. |
@@ -2029,6 +2047,42 @@ Each one names a workaround, or says there is none.
 - **Pages, as tide's** (tide §16): Layouts, Keys (live, §7.2),
   Appearance, Mouse and Keyboard, the checklist (§10), and the permissions
   (§11).
+  - **Built: every page of tide's is a section, in tide's order,** so the
+    window is laid out as tide's panel is. Where a page's settings are
+    macOS's or a helper's, it has a button for each place they're changed,
+    and nothing else (§1):
+
+    | Section | Buttons |
+    |---|---|
+    | Displays | Displays settings |
+    | Sound | Sound settings |
+    | Network and Bluetooth | Network settings, Bluetooth settings |
+    | Mouse | Mouse settings, LinearMouse settings |
+    | Trackpad | Trackpad settings |
+    | Keyboard | Keyboard settings, Karabiner settings |
+    | Power | Battery settings |
+    | Layouts, Floating | none: tilemo's own (below) |
+    | Appearance | Appearance settings |
+    | Notifications | Notifications settings, above the muted list (below) |
+    | Clipboard | none: tilemo's own (below) |
+    | Clocks | Date & Time settings, for the Mac's own zone |
+    | Idle | Lock Screen settings |
+    | Start at login | Login Items settings, for macOS's own list |
+
+    - tide's Workspaces page waits for its settings to leave `start()`
+      (TODO.md).
+    - A pane opens by its `x-apple.systempreferences:` ID, as the bar's
+      status items do. CI's smoke test checks each is one of macOS 15's
+      panes; macOS 26's are *(unverified)*.
+    - LinearMouse settings runs `open -b com.lujjjh.LinearMouse --args
+      --show`. That starts LinearMouse with its window showing, or brings
+      a running one's window forward, as a reopen does (LinearMouse
+      `AppDelegate.swift`).
+    - Karabiner settings opens Karabiner-Elements, its settings app.
+    - The page sends a button's name, and tilemo opens what that name
+      stands for, so the page can't open just any URL.
+    - The Mouse section says what's wrong with LinearMouse, only when
+      something is: it isn't installed, or isn't running (§10).
   - **Built: Layouts,** a section of the settings window, as tide's
     Layouts page (tide §16), with tide's own `layouts.mjs` and `steps.mjs`,
     copied unchanged as `dashboard/tide-layouts.js` and `tide-steps.js`:
@@ -2168,8 +2222,13 @@ Each one names a workaround, or says there is none.
     leaves those two dead. tilemo reads the copy in `karabiner.json`, and a
     notification names what's missing and says to remove and re-add the
     rule, once each time that changes, rechecked every 30 s (§7.1, §7.2).
-    **Built so far:** this check and Karabiner's, as `tilemo.doctor()` in
-    Hammerspoon's console and the switcher's "Check tide (doctor)";
+    **Built so far:** this check, Karabiner's and LinearMouse's, as
+    `tilemo.doctor()` in Hammerspoon's console and the switcher's "Check
+    tide (doctor)";
+  - LinearMouse installed and running, for the mouse wheel (§10). A
+    notification says so as tilemo starts, and once each time it changes,
+    rechecked every 30 s. A click on the one for LinearMouse not running
+    starts it with its window showing;
   - the workspace file written and private, for scripts that read the
     workspace's name, and kitty's remote control on, for `TIDE_WORKSPACE`
     in new kitty windows (§6.3);
