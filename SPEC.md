@@ -46,7 +46,8 @@ checked against a source or a Mac is marked *(unverified)*.
 - **One way in to every feature.** Each feature in this spec has its
   place in tide's settings window, the switcher or a key, whoever does the
   work: tilemo, macOS, or a helper such as LinearMouse or Karabiner (§15).
-  - What tilemo can change itself, it changes there.
+  - What tilemo can change itself, it changes there, even in another
+    app's settings file when that app reloads it, as Karabiner does.
   - What it can't gets a button that opens the app or System Settings pane
     that can, on that feature's page.
   - No row only shows a value: a setting has a control, or a button to
@@ -2076,7 +2077,7 @@ Each one names a workaround, or says there is none.
     | Network and Bluetooth | Network settings, Bluetooth settings |
     | Mouse | Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
-    | Keyboard | Keyboard settings, Karabiner settings |
+    | Keyboard | conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
     | Layouts, Floating | none: tilemo's own (below) |
     | Appearance | Appearance settings |
@@ -2100,6 +2101,39 @@ Each one names a workaround, or says there is none.
       stands for, so the page can't open just any URL.
     - The Mouse section says what's wrong with LinearMouse, only when
       something is: it isn't installed, or isn't running (§10).
+  - **Built: the Keyboard section switches Karabiner's rules,** each rule
+    in the files conf links into Karabiner's assets folder
+    (`~/.config/karabiner/assets/complex_modifications/`) with On or Off, so
+    Ctrl+Tab's next tab and the rest never wait on Karabiner's own window.
+    Its launcher row is "Tide Settings: Keyboard", which "karabiner" finds
+    too.
+    - On copies the rule from its file into the selected profile's
+      `complex_modifications.rules` in `~/.config/karabiner/karabiner.json`,
+      as Karabiner's Enable button does; Off takes every copy out. Karabiner
+      watches that file and reloads it (its `configuration_monitor`), its
+      settings window included.
+    - Each goes in its place: Karabiner uses the first rule that matches a
+      key, so tilemo's and the terminal rule go above the arrow rule, and a
+      rule tilemo doesn't know goes at the top, as Karabiner puts it.
+    - The edit is JavaScript (`dashboard/karabiner.js`), run in
+      JavaScriptCore, as the name patterns are (§6.2), since only
+      `JSON.parse` and `JSON.stringify` keep the rest of the file as it was;
+      `hs.json` can't tell `[]` from `{}`. It's written whole, to a file
+      renamed over it, through a symlink if it's one.
+    - **Kept as conf has it,** as tilemo starts and every 30 s, when a file
+      or `karabiner.json` changed: a copy that differs from its file is
+      brought up to date in its place, keeping what Karabiner added (a rule
+      turned off in Karabiner's window stays off). A rule tilemo hasn't seen
+      before is turned on, once: tilemo keeps the ones it has seen in
+      `hs.settings`, so one you turn off stays off. Each is a notification.
+    - What's wrong shows only when something is: Karabiner hasn't written
+      its settings yet, `karabiner.json` isn't JSON (left alone), there are
+      no rule files (run `confinst`), a rule file is wrong, or Karabiner
+      isn't running.
+    - **Cost and reliability:** nothing to pay, and nothing new to run; the
+      JavaScript runs only when a file changed. If Karabiner's window saves
+      at the same moment, one of the two edits can be lost; the next check
+      puts a rule tilemo turned on back.
   - **Built: Layouts,** a section of the settings window, as tide's
     Layouts page (tide §16), with tide's own `layouts.mjs` and `steps.mjs`,
     copied unchanged as `dashboard/tide-layouts.js` and `tide-steps.js`:
@@ -2242,6 +2276,8 @@ Each one names a workaround, or says there is none.
     **Built so far:** this check, Karabiner's and LinearMouse's, as
     `tilemo.doctor()` in Hammerspoon's console and the switcher's "Check
     tide (doctor)";
+  - conf's Karabiner rules that are off, and what stops tilemo switching
+    them (the Keyboard section, above);
   - LinearMouse installed and running, for the mouse wheel (§10). A
     notification says so as tilemo starts, and once each time it changes,
     rechecked every 30 s. A click on the one for LinearMouse not running

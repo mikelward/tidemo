@@ -10,7 +10,8 @@
 // layouts.local.json, { writeStartup: text } for startup.local.json,
 // { unmute: entry }, the Floating section's { floatAdd }, { floatMove } and
 // { floatRemove }, { open: name } for a section's button to a System
-// Settings pane or a helper (links.lua), or { close: true }.
+// Settings pane or a helper (links.lua), { karabinerRule } for a Keyboard
+// switch, or { close: true }.
 // tilemo.reveal(id) scrolls to a section, for the launcher's rows.
 
 import { editableClocks, editedClocks, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
@@ -465,6 +466,25 @@ for (const input of [floatApp(), floatTitle()]) {
 }
 document.getElementById("floating-add-button").addEventListener("click", addFloating);
 
+// The Keyboard section: conf's Karabiner rules, each with On or Off, which
+// tilemo switches in karabiner.json (SPEC.md §15), and what's wrong, only
+// when something is. A click sends { karabinerRule: { description, on } },
+// and tilemo answers with tilemo.update(), or tilemo.keyboardError(why).
+function renderKeyboard(keyboard) {
+  const list = document.getElementById("karabiner-rules");
+  list.replaceChildren();
+  const rules = Array.isArray(keyboard?.rules) ? keyboard.rules : [];
+  for (const r of rules) {
+    const li = el("li");
+    const toggle = button(r.on ? "On" : "Off", `${r.label}: ${r.on ? "on" : "off"}`, false,
+      () => send({ karabinerRule: { description: r.description, on: !r.on } }));
+    toggle.setAttribute("aria-pressed", String(r.on === true));
+    li.append(el("span", r.label), toggle);
+    list.append(li);
+  }
+  document.getElementById("keyboard-error").textContent = typeof keyboard?.problem === "string" ? keyboard.problem : "";
+}
+
 // Each section's buttons to where its settings are changed, when tilemo
 // can't change them itself (SPEC.md §1, §15): tilemo lists them as
 // { section, name, label }, and opens what a name stands for.
@@ -507,6 +527,7 @@ window.tilemo = {
     renderClipboard();
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
+    if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
     // What's wrong with LinearMouse, only when something is.
     document.getElementById("mouse-error").textContent = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
     if (state.floating && typeof state.floating === "object") {
@@ -531,6 +552,10 @@ window.tilemo = {
   count(n) {
     clipboardCount = Number.isInteger(n) ? n : 0;
     renderClipboard();
+  },
+  // A Keyboard switch that couldn't be made.
+  keyboardError(why) {
+    document.getElementById("keyboard-error").textContent = String(why ?? "");
   },
   mutedError(why, entry) {
     document.getElementById("muted-error").textContent = why;

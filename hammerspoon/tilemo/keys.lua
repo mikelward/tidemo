@@ -314,11 +314,14 @@ function M.rule_gaps(read, home, decode)
 end
 
 -- What a stale rule costs, said once per change, in a notification and by
--- tilemo.doctor().
+-- tilemo.doctor(). tilemo brings Karabiner's copy up to date with conf's
+-- file itself (karabiner.lua), so a copy still missing something means the
+-- file is out of date too.
 function M.gaps_notice(gaps)
     return "tide's Karabiner rule is out of date, so " .. table.concat(gaps, " and ")
-        .. (#gaps == 1 and " doesn't" or " don't") .. " work. In Karabiner-Elements, remove the"
-        .. " \"" .. M.RULE_PREFIXES[1] .. "\" rule under Complex Modifications and add it again."
+        .. (#gaps == 1 and " doesn't" or " don't") .. " work. Update conf: git pull in your conf"
+        .. " checkout and run confinst, and tide brings Karabiner's copy of the \"" .. M.RULE_PREFIXES[1]
+        .. "\" rule up to date."
 end
 
 -- Whether exactly Super's modifiers are held, Shift aside, in Hammerspoon's

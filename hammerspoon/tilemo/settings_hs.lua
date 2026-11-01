@@ -125,6 +125,12 @@ function M.new(tilemo)
             -- anything, for the Mouse section.
             links = links.page_list(),
             mouse = { problem = linearmouse.say(tilemo.linearmouse, "section") or "" },
+            -- conf's Karabiner rules, each on or off, and what's wrong, if
+            -- anything (karabiner.lua).
+            keyboard = {
+                rules = "__karabiner_rules__",
+                problem = tilemo.karabiner_rules and tilemo.karabiner_rules.state.problem or "",
+            },
             floating = tilemo.floating and {
                 rules = "__float_rules__",
                 source = tilemo.floating.source,
@@ -139,6 +145,11 @@ function M.new(tilemo)
         json = json:gsub('"__float_rules__"', function()
             return M.list(tilemo.floating.rules, function(r)
                 return hs.json.encode({ app = r.app, title = r.title or "" })
+            end)
+        end)
+        json = json:gsub('"__karabiner_rules__"', function()
+            return M.list(tilemo.karabiner_rules and tilemo.karabiner_rules.state.rules or {}, function(r)
+                return hs.json.encode({ description = r.description, label = r.label, on = r.on == true })
             end)
         end)
         json = json:gsub('"__float_now__"', function()
@@ -217,6 +228,20 @@ function M.new(tilemo)
                     else
                         view:evaluateJavaScript("tilemo.floatingError(" .. hs.json.encode({ tostring(why) }):sub(2, -2) .. ")")
                     end
+                end
+            elseif type(body.karabinerRule) == "table" and type(body.karabinerRule.description) == "string" then
+                -- A Keyboard switch: tilemo edits karabiner.json, and the
+                -- page shows the rules as they are after.
+                local why
+                if not tilemo.karabiner_rules then
+                    why = "tide can't switch Karabiner's rules on this Mac"
+                else
+                    local ok, err = tilemo.karabiner_rules.set(body.karabinerRule.description, body.karabinerRule.on == true)
+                    why = not ok and tostring(err) or nil
+                end
+                push()
+                if why and view then
+                    view:evaluateJavaScript("tilemo.keyboardError(" .. hs.json.encode({ why }):sub(2, -2) .. ")")
                 end
             elseif type(body.open) == "string" then
                 -- A section's button: what its name stands for, and nothing

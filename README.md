@@ -54,7 +54,10 @@ It brings tide's desktop to macOS:
   window with Super+Shift+F asks once whether to always float its app.
   The window has a section for each of tide's settings pages, in tide's
   order: where the settings are macOS's or a helper's, its buttons open
-  the System Settings pane, LinearMouse or Karabiner (§1, §15);
+  the System Settings pane, LinearMouse or Karabiner (§1, §15). Its
+  Keyboard section turns conf's Karabiner rules, such as Ctrl+Tab's next
+  tab, on and off itself, keeps them up to date with conf, and turns a new
+  one on once;
 - a notification, and a line in the doctor, when LinearMouse isn't
   installed or isn't running, since without it a mouse wheel notch
   scrolls a line or so (§10).

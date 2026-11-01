@@ -84,6 +84,8 @@ first piece is the mouse, as researched:
   it isn't running. The 30 s check puts back a change made in
   LinearMouse's own window, and says when LinearMouse quit rather than
   restarting it, so quitting it on purpose lasts until the next event.
+- **Karabiner's rules are kept already** (SPEC.md §15), as tilemo starts
+  and every 30 s; a device plugged in or a wake should check them too.
 - **Then the rest of tide's Mouse, Touchpad and Keyboard pages,** where
   macOS lets tilemo apply them at once: a keyboard's layout as its input
   source (`hs.keycodes`), and LinearMouse's pointer speed. What macOS
@@ -209,6 +211,14 @@ tests and the bar page's test cover it. **Check on a Mac:**
 - **The settings sections' rows are for a query alone** (2026-11-01), as
   tide's per-page rows are, so Launch's empty list shows only Tide
   Settings. Reversible: `query_only` in `launcher.lua`.
+- **tilemo turns on each Karabiner rule it hasn't seen, once,** and keeps
+  every enabled copy up to date with its file, editing `karabiner.json`
+  itself (SPEC.md §15). So Ctrl+Tab's next tab works without a visit to
+  Karabiner's window, and a rule you turn off stays off. The alternative is
+  leaving every rule off until switched on. Reversible: `synced` in
+  `dashboard/karabiner.js`.
+- **The doctor names only conf's rules that are off** (`karabiner.CONF_FILES`),
+  so a rule file from elsewhere you've left off isn't nagged about.
 
 - **The settings window's sections are in tide's order** (SPEC.md §15),
   Displays first, where Clocks used to be. The muted list's section is
