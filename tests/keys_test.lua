@@ -155,7 +155,92 @@ t.test("with Super on Option, Alt+Print stays the window screenshot", function()
         end
     end
     t.eq(count, 1, "one binding on Alt+Print")
-    t.eq(table.concat(skipped, " "), "alt+f13")
+    t.eq(#skipped, 1)
+    t.eq(skipped[1].chord, "alt+f13")
+    t.eq(skipped[1].keys, "Super+Print")
+    t.eq(skipped[1].does, "Screenshot of a region")
+    t.eq(skipped[1].why, "the same keys as Alt+Print (Screenshot of the window)")
+end)
+
+-- The binding registered for `keys`, as the Shortcuts list names them.
+local function labeled(list, label)
+    for _, b in ipairs(list) do
+        if b.keys == label then
+            return b
+        end
+    end
+end
+
+t.test("each binding says its keys as they're printed on the keyboard, and what it does", function()
+    local list = keys.bindings(keys.KARABINER)
+    local want = {
+        ["Super+J"] = "Focus down the stack",
+        ["Super+Shift+K"] = "Move up the stack",
+        ["Super+\\"] = "Grow the master",
+        ["Super+/"] = "Shrink the master",
+        ["Super+Backspace"] = "Close the window",
+        ["Super+Insert"] = "Float or tile",
+        ["Super+PgUp"] = "Previous workspace",
+        ["Super+Shift+Right"] = "Move the window to the next workspace",
+        ["Super+T"] = "Terminal",
+        ["Super+Shift+G"] = "Browser, third profile",
+        ["Super+Space"] = "The switcher, on Launch",
+        ["Tap Super"] = "The switcher, on Workspaces",
+        ["Super+3"] = "Workspace 3 on the bar",
+        ["Super+Shift+3"] = "Send the window to workspace 3 on the bar",
+        ["Print"] = "Screenshot",
+        ["Alt+Print"] = "Screenshot of the window",
+        ["Shift+Print"] = "Screenshot of a region",
+        ["Super+Print"] = "Screenshot of a region",
+        ["Alt+Tab"] = "Swap with the master",
+    }
+    for label, does in pairs(want) do
+        local b = labeled(list, label)
+        t.eq(b and b.does, does, label)
+    end
+end)
+
+t.test("every binding has a description, and no two the same keys", function()
+    for _, super in ipairs({ keys.KARABINER, keys.OPTION }) do
+        local seen = {}
+        for _, b in ipairs((keys.bindings(super))) do
+            t.eq(b.does ~= "", true, b.keys .. " has a description")
+            t.eq(seen[b.keys], nil, b.keys .. " is listed once")
+            seen[b.keys] = true
+        end
+    end
+end)
+
+t.test("Alt+Tab is listed only with Karabiner, which makes it", function()
+    t.eq(labeled((keys.bindings(keys.KARABINER)), "Alt+Tab") ~= nil, true)
+    t.eq(labeled((keys.bindings(keys.OPTION)), "Alt+Tab"), nil)
+end)
+
+t.test("an action nothing describes says so with an empty description", function()
+    t.eq(keys.does({ action = "nothing such" }), "")
+    t.eq(keys.does({ action = "close", does = "Its own" }), "Its own")
+end)
+
+t.test("the Shortcuts list is what registered, in order, then resize mode's keys", function()
+    local list, skipped = keys.bindings(keys.OPTION)
+    local s = keys.shortcuts({ list[1], list[2] }, skipped)
+    t.eq(s.binds[1], { keys = "Print", does = "Screenshot", submap = "" })
+    t.eq(s.binds[2], { keys = "Alt+Print", does = "Screenshot of the window", submap = "" })
+    t.eq(s.binds[3], { keys = "H", does = "Narrower", submap = "Resize mode" })
+    t.eq(s.binds[#s.binds], { keys = "Return", does = "Leave resize mode", submap = "Resize mode" })
+    t.eq(#s.binds, 2 + #keys.resize + #keys.resize_exit)
+    t.eq(s.failed, { {
+        keys = "Super+Print",
+        does = "Screenshot of a region",
+        why = "the same keys as Alt+Print (Screenshot of the window)",
+    } })
+end)
+
+t.test("doctor names each key that didn't register, and says nothing with none", function()
+    t.eq(keys.failed_notice({}), nil)
+    t.eq(keys.failed_notice({ { keys = "Super+T", does = "Terminal", why = "macOS refused it" } }),
+        "These keys didn't register, so they do nothing: Super+T (Terminal): macOS refused it."
+            .. " The settings window's Keyboard shortcuts list them.")
 end)
 
 t.test("with Karabiner, every binding gets its own chord", function()

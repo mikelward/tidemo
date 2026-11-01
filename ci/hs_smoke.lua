@@ -511,6 +511,22 @@ do
         say("tilemo doctor: no LinearMouse, as expected")
     end
 end
+-- The settings window's Shortcuts: the keys registered with Super on
+-- Option, and only Super+Print left out, since Alt+Print has its chord.
+do
+    local s = tilemo.shortcuts
+    local unexpected = {}
+    for _, f in ipairs(s and s.failed or {}) do
+        if f.keys ~= "Super+Print" then
+            unexpected[#unexpected + 1] = f.keys .. ": " .. f.why
+        end
+    end
+    if not s or #s.binds < 40 or #unexpected > 0 then
+        fail("shortcuts: %d listed; didn't register: %s", s and #s.binds or 0, table.concat(unexpected, "; "))
+    else
+        say("shortcuts: %d listed, %d left out", #s.binds, #s.failed)
+    end
+end
 -- conf's Karabiner rules, switched in JavaScriptCore as on a Mac with
 -- them: the runner has no Karabiner, so tilemo says it hasn't written its
 -- settings, and a karabiner.json in memory gets conf's rules in order.

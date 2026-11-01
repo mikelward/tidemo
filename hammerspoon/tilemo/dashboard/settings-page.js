@@ -14,7 +14,8 @@
 // { floatRemove }, { writeInput: text } for input.local.json's Mouse
 // settings, { open: name } for a section's button to a System
 // Settings pane or a helper (links.lua), { karabinerRule } for a Keyboard
-// switch, or { close: true }.
+// switch, or { close: true }. Keyboard's Shortcuts, tilemo's key bindings,
+// come in update()'s `shortcuts` and are read-only.
 // tilemo.reveal(id) scrolls to a section, for the launcher's rows.
 
 import { editableClocks, editedClocks, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
@@ -634,6 +635,33 @@ function renderKeyboard(keyboard) {
   document.getElementById("keyboard-error").textContent = typeof keyboard?.problem === "string" ? keyboard.problem : "";
 }
 
+// Keyboard's Shortcuts, as tide's Keyboard page has them (tide SPEC.md §16):
+// each binding tilemo registered, its keys and what it does, in keys.lua's
+// order, with resize mode's prefixed; then each key that didn't register,
+// and why. Read-only, as tide's are.
+function renderShortcuts(shortcuts) {
+  const list = document.getElementById("shortcut-list");
+  list.replaceChildren();
+  const binds = Array.isArray(shortcuts?.binds) ? shortcuts.binds : [];
+  for (const b of binds) {
+    const li = el("li");
+    const does = typeof b.does === "string" ? b.does : "";
+    if (does === "") li.className = "undescribed";
+    li.append(el("span", b.submap ? `${b.submap}: ${b.keys}` : b.keys), el("span", does === "" ? "no description" : does));
+    list.append(li);
+  }
+  const failed = Array.isArray(shortcuts?.failed) ? shortcuts.failed : [];
+  document.getElementById("shortcuts-error").textContent = failed.length === 0 ? ""
+    : failed.length === 1 ? "This key didn't register, so it does nothing:" : "These keys didn't register, so they do nothing:";
+  const out = document.getElementById("shortcut-failed");
+  out.replaceChildren();
+  for (const f of failed) {
+    const li = el("li");
+    li.append(el("span", f.keys), el("span", f.does ? `${f.does}: ${f.why}` : f.why));
+    out.append(li);
+  }
+}
+
 // Each section's buttons to where its settings are changed, when tilemo
 // can't change them itself (SPEC.md §1, §15): tilemo lists them as
 // { section, name, label }, and opens what a name stands for.
@@ -682,6 +710,7 @@ window.tilemo = {
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
+    if (state.shortcuts && typeof state.shortcuts === "object") renderShortcuts(state.shortcuts);
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
     renderMouse();

@@ -466,6 +466,42 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.strictEqual(ids["keyboard-error"].textContent, "karabiner.json isn't JSON");
 }
 
+// Keyboard's Shortcuts: each binding's keys and what it does, in tilemo's
+// order, resize mode's prefixed, one with no description saying so; then
+// the keys that didn't register, and why. Nothing is sent: they're
+// read-only.
+{
+  sent.length = 0;
+  sandbox.tilemo.update({
+    clockFiles: [],
+    shortcuts: {
+      binds: [
+        { keys: "Super+J", does: "Focus down the stack", submap: "" },
+        { keys: "Super+Q", does: "", submap: "" },
+        { keys: "H", does: "Narrower", submap: "Resize mode" },
+      ],
+      failed: [{ keys: "Super+Print", does: "Screenshot of a region", why: "the same keys as Alt+Print (Screenshot of the window)" }],
+    },
+  });
+  const rows = ids["shortcut-list"].children;
+  assert.deepStrictEqual(rows.map((li) => li.children.map((c) => c.textContent)), [
+    ["Super+J", "Focus down the stack"],
+    ["Super+Q", "no description"],
+    ["Resize mode: H", "Narrower"],
+  ]);
+  assert.strictEqual(rows[1].className, "undescribed");
+  assert.match(ids["shortcuts-error"].textContent, /didn't register/);
+  assert.deepStrictEqual(ids["shortcut-failed"].children.map((li) => li.children.map((c) => c.textContent)), [
+    ["Super+Print", "Screenshot of a region: the same keys as Alt+Print (Screenshot of the window)"],
+  ]);
+  assert.deepStrictEqual(sent.filter((m) => !m.write), []);
+  // Every key registered: no failures, and nothing said.
+  sandbox.tilemo.update({ clockFiles: [], shortcuts: { binds: [], failed: [] } });
+  assert.strictEqual(ids["shortcut-list"].children.length, 0);
+  assert.strictEqual(ids["shortcuts-error"].textContent, "");
+  assert.strictEqual(ids["shortcut-failed"].children.length, 0);
+}
+
 // The Mouse section: tide's Scroll speed and Natural scrolling rows, each
 // change written to input.local.json, keeping what else it says.
 {
