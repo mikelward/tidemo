@@ -67,15 +67,27 @@ local TIDE_ORDER = {
     "displays", "sound", "network", "mouse", "trackpad", "keyboard", "power",
     "layouts", "workspaces", "floating",
     "appearance", "muted", "clipboard", "clocks", "idle", "startup",
+    -- Then tilemo's own Setup checklist, which tide has no page for.
+    "setup",
 }
 
-t.test("the settings window's sections are tide's pages, in tide's order", function()
+t.test("the settings window's sections are tide's pages, in tide's order, then the checklist", function()
     local html = read("hammerspoon/tilemo/dashboard/settings.html")
     local ids = {}
     for id in html:gmatch('<h1 id="([%w_-]+)"') do
         ids[#ids + 1] = id
     end
     t.eq(ids, TIDE_ORDER)
+end)
+
+t.test("Privacy & Security's lists open the pane at the list", function()
+    local opened, adapter = opener()
+    t.eq(links.open("privacy_accessibility", adapter), true)
+    t.eq(links.open("privacy_input_monitoring", adapter), true)
+    t.eq(opened, {
+        { url = "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility" },
+        { url = "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_ListenEvent" },
+    })
 end)
 
 t.test("each section with buttons has a row for them", function()

@@ -14,7 +14,8 @@
 // { floatRemove }, { writeInput: text } for input.local.json's Mouse
 // settings, { open: name } for a section's button to a System
 // Settings pane or a helper (links.lua), { karabinerRule } for a Keyboard
-// switch, or { close: true }. Keyboard's Shortcuts, tilemo's key bindings,
+// switch, the Setup checklist's { setupTick } and { setupRefresh }, or
+// { close: true }. Keyboard's Shortcuts, tilemo's key bindings,
 // come in update()'s `shortcuts` and are read-only.
 // tilemo.reveal(id) scrolls to a section, for the launcher's rows.
 
@@ -678,6 +679,48 @@ function renderLinks(links) {
   }
 }
 
+// The Setup checklist (SPEC.md §10, §11), as tileco's (tileco SPEC.md
+// §3.4): each permission's state as tilemo read it, and the settings to
+// change by hand, ticked off on this Mac. Each Open sends its pane's name,
+// as a section's buttons do; a tick sends { setupTick: { id, on } }, and
+// tilemo answers with tilemo.setup().
+function renderSetup(setup) {
+  const perms = document.getElementById("setup-permissions");
+  perms.replaceChildren();
+  for (const p of Array.isArray(setup?.permissions) ? setup.permissions : []) {
+    const li = el("li");
+    const state = el("span", p.label);
+    state.className = p.state;
+    const how = el("p", `${p.how} (${p.ref})`);
+    how.className = "note";
+    li.append(el("span", p.title), state, button("Open", `Open the settings for: ${p.title}`, false, () => send({ open: p.link })), how);
+    perms.append(li);
+  }
+  const items = Array.isArray(setup?.items) ? setup.items : [];
+  const list = document.getElementById("setup-items");
+  list.replaceChildren();
+  for (const item of items) {
+    const li = el("li");
+    const box = el("input");
+    box.type = "checkbox";
+    box.checked = item.done === true;
+    box.id = `setup-${item.id}`;
+    box.addEventListener("change", () => send({ setupTick: { id: item.id, on: box.checked } }));
+    const label = el("label", item.title);
+    label.htmlFor = box.id;
+    const how = el("p", `${item.how} (${item.ref})`);
+    how.className = "note";
+    li.append(box, label, button("Open", `Open the settings for: ${item.title}`, false, () => send({ open: item.link })), how);
+    list.append(li);
+  }
+  const left = Number.isInteger(setup?.left) ? setup.left : items.length;
+  document.getElementById("setup-summary").textContent = left === 0 ? "All done." : `${left} of ${items.length} still to do.`;
+}
+
+// Back in the window, perhaps from Privacy & Security: ask for the
+// permissions as they are now, as tileco's keys list does.
+window.addEventListener?.("focus", () => send({ setupRefresh: true }));
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !e.handled) send({ close: true });
 });
@@ -714,6 +757,7 @@ window.tilemo = {
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
     renderMouse();
+    if (state.setup && typeof state.setup === "object") renderSetup(state.setup);
     if (state.floating && typeof state.floating === "object") {
       floatingState = state.floating;
       showFloatingError("");
@@ -736,6 +780,10 @@ window.tilemo = {
   count(n) {
     clipboardCount = Number.isInteger(n) ? n : 0;
     renderClipboard();
+  },
+  // The Setup checklist alone, after a tick or on coming back.
+  setup(setup) {
+    renderSetup(setup);
   },
   // A Keyboard switch that couldn't be made.
   keyboardError(why) {

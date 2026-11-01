@@ -562,6 +562,9 @@ M.SETTINGS_SECTIONS = {
     { id = "idle", name = "Idle", covers = "screensaver lock display off", },
     { id = "startup", name = "Start at login", covers = "login items autostart apps at login",
       key = "Settings: start at login" },
+    -- tilemo's own, after tide's pages: tide has no checklist page.
+    { id = "setup", name = "Setup checklist",
+      covers = "permissions privacy accessibility input monitoring automation mission control spaces minimize" },
 }
 
 -- tilemo's commands, as the launcher lists them. `action` names a window

@@ -157,6 +157,26 @@ body.settings {
   margin: 0;
   overflow-wrap: anywhere;
 }
+/* A permission, its state, then Open; an item's tick, its title, then
+   Open. What to do there goes under both, across the row. */
+.settings #setup-permissions li {
+  grid-template-columns: 1fr auto auto;
+}
+.settings #setup-items li {
+  grid-template-columns: auto 1fr auto;
+}
+.settings #setup-permissions li .note,
+.settings #setup-items li .note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.settings #setup-permissions .off {
+  color: var(--urgent);
+}
+.settings #setup-permissions .unknown,
+.settings #setup-permissions .not_needed {
+  color: var(--muted);
+}
 .settings h2 {
   font-size: 13px;
   margin: 12px 0 4px;
@@ -274,6 +294,15 @@ body.settings {
 <p class="error" id="startup-error" role="alert"></p>
 <p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
 <p class="row links" id="startup-links"></p>
+<h1 id="setup">Setup checklist</h1>
+<p class="note">What macOS needs for tide, and the System Settings that bring it closer to tide. tide can't change them for you, so each says where to go.</p>
+<h2>Permissions</h2>
+<p class="note">As macOS says now, where it lets tide ask without prompting: it doesn't say for Input Monitoring or Automation.</p>
+<ul id="setup-permissions"></ul>
+<h2>Settings</h2>
+<p class="source" id="setup-summary"></p>
+<ul id="setup-items"></ul>
+<p class="note">Tick them off as you go. The ticks stay on this Mac.</p>
 <script>
 /*TILEMO_SCRIPT*/
 </script>

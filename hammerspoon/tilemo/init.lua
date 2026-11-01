@@ -53,6 +53,7 @@ local brand = require("tilemo.brand")
 local links = require("tilemo.links")
 local linearmouse = require("tilemo.linearmouse")
 local karabiner = require("tilemo.karabiner")
+local checklist = require("tilemo.checklist")
 
 local M = {}
 
@@ -209,12 +210,15 @@ local function check_karabiner_rules(self)
     end
 end
 
--- What `tilemo doctor` (SPEC.md §15) checks so far: Karabiner and tilemo's
--- rule, and LinearMouse. Each problem is one line, with what it costs and
+-- What `tilemo doctor` (SPEC.md §15) checks so far: Accessibility,
+-- Karabiner and tilemo's rule, and LinearMouse. Each problem is one line, with what it costs and
 -- the fix; with none, one line saying so. From Hammerspoon's console, or
 -- the switcher's "Check tilemo".
 function M.doctor()
     local lines = {}
+    for _, line in ipairs(checklist.doctor({ accessibility = M.adapter and M.adapter.accessibility() })) do
+        lines[#lines + 1] = line
+    end
     if not M.karabiner then
         lines[#lines + 1] = keys.FALLBACK_NOTICE
     elseif #(M.rule_gaps or {}) > 0 then
@@ -243,7 +247,7 @@ function M.doctor()
         lines[#lines + 1] = "Muted apps and sites: " .. table.concat(M.mute_errors, "; ")
     end
     if #lines == 0 then
-        lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, and conf's rules on;"
+        lines[1] = "Hammerspoon has Accessibility; Karabiner is running with " .. brand.NAME .. "'s rule, up to date, and conf's rules on;"
             .. " LinearMouse is running with tide's Mouse settings, every muted entry reads, every key registered, and Do Not Disturb's shortcuts are there."
     end
     return table.concat(lines, "\n")

@@ -52,6 +52,8 @@ t.test("each list's rows have a column for every part, so none wraps", function(
     t.eq(columns(html, ".settings #ws-list-standing li"), 5, "a workspace, its note, up, down and remove")
     t.eq(columns(html, ".settings #ws-list-namePatterns li"), 5, "a pattern, its note, up, down and remove")
     t.eq(columns(html, ".settings #ws-list-inApps li"), 2, "an app and remove")
+    t.eq(columns(html, ".settings #setup-permissions li"), 3, "a permission, its state and Open")
+    t.eq(columns(html, ".settings #setup-items li"), 3, "a tick, its title and Open")
     t.eq(columns(html, ".settings li"), 5, "a zone, its label, left, right and remove")
 end)
 
