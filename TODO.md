@@ -707,3 +707,18 @@ script, as "Brave Browser" (`com.brave.Browser`), and a chosen tab is
 brought forward the way Chrome's is. Only `tests/launcher_test.lua` covers
 it. **Check on a Mac** that Brave answers, that macOS asks for Automation
 for Brave once, and that a Brave window's tabs land under its window.
+
+## A monitor's speakers over DDC
+
+**Built** (SPEC.md §8): the bar reads a monitor's own volume and mute
+with `m1ddc` (Apple silicon) or `ddcctl` (Intel), and a click or scroll on
+the speaker sets them. Only `tests/ddc_test.lua` covers it, with fake tool
+output taken from each tool's source. **Check on a Mac** that `m1ddc
+display list`'s UUIDs match `hs.screen`'s, that the monitor's speakers are
+named as the display is, that the reading follows the monitor's own
+buttons within 30 s, and that the log names the reason when it can't
+read.
+
+**Next:** the volume keys do nothing for a monitor's speakers, as on
+macOS itself. tilemo could take them while the output is one it reads
+over DDC, with an on-screen level, as MonitorControl does.

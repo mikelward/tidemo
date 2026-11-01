@@ -5,6 +5,7 @@
 
 local bar = require("tilemo.bar")
 local bluetooth = require("tilemo.bluetooth")
+local ddc = require("tilemo.ddc")
 local tray_hs = require("tilemo.tray_hs")
 local dashboard = require("tilemo.dashboard")
 local brand = require("tilemo.brand")
@@ -103,9 +104,14 @@ function M.new(tilemo)
         end)
         raw.audio = try("the volume", function()
             local dev = hs.audiodevice.defaultOutputDevice()
+            if not dev then
+                return nil
+            end
             -- outputVolume() is nil on an output with no volume control, and
             -- outputMuted() on one that can't mute; bar.lua shows it anyway.
-            return dev and { volume = dev:outputVolume(), muted = dev:outputMuted(), name = dev:name() }
+            -- A monitor's speakers answer over DDC instead (ddc.lua).
+            local a = { volume = dev:outputVolume(), muted = dev:outputMuted(), name = dev:name() }
+            return ddc.merge(a, self.ddc and self.ddc.state)
         end)
         -- Bluetooth audio devices, outputs then inputs, by name; bar.lua
         -- lists each once.
@@ -193,12 +199,25 @@ function M.new(tilemo)
         end)
     end
 
+    -- The DDC reading for output `dev`, when macOS has no volume for it.
+    local function ddc_state(dev)
+        local d = self.ddc and self.ddc.state
+        if dev and ddc.applies({ volume = dev:outputVolume(), name = dev:name() }, d) then
+            return d
+        end
+    end
+
     local function toggle(what)
         if what == "mic" then
             M.toggle_mic(log)
         elseif what == "volume" then
             local dev = hs.audiodevice.defaultOutputDevice()
-            if dev and not dev:setOutputMuted(not dev:outputMuted()) then
+            local d = ddc_state(dev)
+            -- The monitor's mute only when it says whether it's muted;
+            -- else the output's own, which the bar shows then (ddc.merge).
+            if d and d.muted ~= nil then
+                self.ddc:set_mute(not d.muted)
+            elseif dev and not dev:setOutputMuted(not dev:outputMuted()) then
                 log("bar: setOutputMuted failed on " .. tostring(dev:name()))
             end
         elseif what == "awake" then
@@ -224,6 +243,23 @@ function M.new(tilemo)
 
     local function step_volume(d)
         local dev = hs.audiodevice.defaultOutputDevice()
+        local m = ddc_state(dev)
+        if m then
+            local own = m.muted == nil
+            local muted = m.muted
+            if own then
+                muted = dev:outputMuted()
+            end
+            local v, unmute = bar.volume_step(m.volume, muted, d)
+            self.ddc:set_volume(v)
+            if unmute and not own then
+                self.ddc:set_mute(false)
+            elseif unmute and not dev:setOutputMuted(false) then
+                log("bar: setOutputMuted failed on " .. tostring(dev:name()))
+            end
+            self.refresh()
+            return
+        end
         -- No volume control: nothing to step.
         if not dev or dev:outputVolume() == nil then
             return
@@ -439,6 +475,20 @@ function M.new(tilemo)
             end
         end
         drop_orphaned_tip()
+        -- A display coming or going can renumber ddcctl's, so the monitor
+        -- volume is looked for again at once (ddc.lua).
+        local uuids = {}
+        for uuid in pairs(present) do
+            uuids[#uuids + 1] = uuid
+        end
+        table.sort(uuids)
+        local key = table.concat(uuids, ",")
+        if key ~= self.displays_key then
+            self.displays_key = key
+            if self.poll_ddc then
+                self.poll_ddc()
+            end
+        end
     end
 
     function self.update()
@@ -515,6 +565,9 @@ function M.new(tilemo)
     try("the audio device watcher", function()
         hs.audiodevice.watcher.setCallback(function()
             watch_devices()
+            if self.poll_ddc then
+                self.poll_ddc()
+            end
             refresh_soon()
         end)
         hs.audiodevice.watcher.start()
@@ -534,6 +587,20 @@ function M.new(tilemo)
         end)
     end)
 
+    -- Runs a helper without waiting, calling done(code, out, err).
+    local function run_task(path, args, done)
+        local ok, task = pcall(hs.task.new, path, function(code, out, err)
+            done(code, out, err)
+        end, args)
+        if not ok then
+            return false, tostring(task)
+        end
+        if not task or not task:start() then
+            return false, "hs.task couldn't run " .. path
+        end
+        return true
+    end
+
     -- Bluetooth on or off, from blueutil, run without waiting so it never
     -- holds the bar up (bluetooth.lua). Each answer that changes it redraws.
     self.bluetooth = bluetooth.poller({
@@ -542,32 +609,55 @@ function M.new(tilemo)
                 return hs.fs.attributes(p) ~= nil
             end)
         end,
-        run = function(path, args, done)
-            local ok, task = pcall(hs.task.new, path, function(code, out, err)
-                done(code, out, err)
-            end, args)
-            if not ok then
-                return false, tostring(task)
-            end
-            if not task or not task:start() then
-                return false, "hs.task couldn't run " .. path
-            end
-            return true
-        end,
+        run = run_task,
         log = log,
         changed = function()
             refresh_soon()
         end,
     })
     self.bluetooth:poll()
+
+    -- A monitor's own speaker volume, over DDC (ddc.lua), for an output
+    -- macOS reads no volume for: as tilemo starts, when the output changes,
+    -- on wake, and every 30 s, since the monitor's own buttons change it
+    -- without telling anyone.
+    self.ddc = ddc.monitor({
+        find = function()
+            return ddc.find(function(p)
+                return hs.fs.attributes(p) ~= nil
+            end)
+        end,
+        run = run_task,
+        log = log,
+        changed = function()
+            refresh_soon()
+        end,
+    })
+    function self.poll_ddc()
+        local dev = try("the output device", hs.audiodevice.defaultOutputDevice)
+        if not dev or try("the volume", function()
+            return dev:outputVolume()
+        end) ~= nil then
+            return self.ddc:poll(nil)
+        end
+        local screens = {}
+        for _, s in ipairs(try("the displays", hs.screen.allScreens) or {}) do
+            screens[#screens + 1] = { uuid = s:getUUID(), name = s:name() }
+        end
+        self.ddc:poll(dev:name(), screens)
+    end
+    self.poll_ddc()
+
     self.bluetooth_timer = hs.timer.doEvery(M.BLUETOOTH_POLL, function()
         self.bluetooth:poll()
+        self.poll_ddc()
     end)
-    -- Waking, the radio may have changed while asleep.
+    -- Waking, the radio may have changed while asleep, and the monitor.
     try("the wake watcher", function()
         self.wake_watcher = hs.caffeinate.watcher.new(function(event)
             if event == hs.caffeinate.watcher.systemDidWake then
                 self.bluetooth:poll()
+                self.poll_ddc()
             end
         end):start()
     end)
