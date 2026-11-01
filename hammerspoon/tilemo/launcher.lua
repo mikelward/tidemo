@@ -59,17 +59,25 @@ M.SCOPES = {
     workspaces = { workspace = true },
     windows = { window = true, tab = true },
     attention = { attention = true },
+    actions = { action = true },
 }
 
 -- The order Tab moves through them, and what each lists. Each key opens
 -- the switcher on its own (SPEC.md §9).
-M.SCOPE_ORDER = { "launch", "workspaces", "windows", "attention" }
-M.SCOPE_NAMES = { launch = "Launch", workspaces = "Workspaces", windows = "Windows", attention = "Attention" }
+M.SCOPE_ORDER = { "launch", "workspaces", "windows", "attention", "actions" }
+M.SCOPE_NAMES = {
+    launch = "Launch",
+    workspaces = "Workspaces",
+    windows = "Windows",
+    attention = "Attention",
+    actions = "Actions",
+}
 M.SCOPE_LISTS = {
     launch = "apps, settings and commands",
     workspaces = "every workspace",
     windows = "every window, and Chrome and Safari tabs",
     attention = "windows wanting attention",
+    actions = "session, power, toggles and screenshots",
 }
 -- What an empty tab shows instead, in a row that can't be chosen.
 M.SCOPE_EMPTY = {
@@ -77,6 +85,7 @@ M.SCOPE_EMPTY = {
     workspaces = "No workspaces",
     windows = "No windows",
     attention = "Nothing wants attention",
+    actions = "No actions",
 }
 
 -- The scope after `scope`, or before it when `back`, round in a circle.
@@ -110,13 +119,20 @@ function M.placeholder(scope)
     return string.format("%s: %s (%s)", M.SCOPE_NAMES[scope], M.SCOPE_LISTS[scope], table.concat(keys, ", "))
 end
 
-local KIND_ORDER = { attention = 0, workspace = 1, window = 2, tab = 3, app = 4, setting = 5, command = 6 }
+local KIND_ORDER = { attention = 0, workspace = 1, window = 2, tab = 3, app = 4, setting = 5, command = 6, action = 7 }
 
 local function rank_all(query, items, limit, recency)
     local q = query:match("^%s*(.-)%s*$")
     local scored = {}
     for _, item in ipairs(items) do
-        local s = q == "" and 0 or item_score(q, item)
+        local s
+        -- A row for a query alone, as a settings section, stays out of an
+        -- empty query's list (tide §8.2).
+        if q == "" then
+            s = not item.query_only and 0 or nil
+        else
+            s = item_score(q, item)
+        end
         if s then
             -- Items that come in an order of their own keep it, as the
             -- windows wanting attention do, newest first: as if used before
@@ -189,7 +205,9 @@ end
 
 -- The line under an item's title in the switcher.
 function M.subtitle(item)
-    if item.kind == "tab" then
+    if item.sub then
+        return item.sub
+    elseif item.kind == "tab" then
         return join(item.browser, item.extra, item.ws, item.muted and "muted" or nil)
     elseif item.kind == "window" then
         return join(item.app, item.ws, item.minimized and "minimized" or nil, item.muted and "muted" or nil)
@@ -392,10 +410,22 @@ function M.items(apps, tabs, commands, settings, attention, workspaces, windows)
             key = "attention:" .. tostring(w.window),
         }
     end
+    -- A command is an action on the Actions tab when `tab` says so, or an
+    -- app on Launch when `as` does, as Tide Settings is.
+    local actions = 0
     for _, c in ipairs(commands or {}) do
+        local kind = c.as or (c.tab == "actions" and "action") or "command"
+        -- The Actions tab keeps the order they're listed in.
+        if kind == "action" then
+            actions = actions + 1
+        end
         out[#out + 1] = {
-            kind = "command",
+            kind = kind,
+            order = kind == "action" and actions or nil,
+            query_only = c.query_only,
             title = c.title,
+            extra = c.extra,
+            sub = c.sub,
             action = c.action,
             arg = c.arg,
             quick = c.quick,
@@ -505,42 +535,81 @@ function M.scan_settings(list, read)
     return panes
 end
 
+-- The settings window's sections (dashboard/settings.html), in its order:
+-- the id it scrolls to, the name its heading shows, and what it covers, so
+-- a query finds a section by either. `key` is the row's title before
+-- "Tide Settings", which the switcher remembers its use by.
+M.SETTINGS_SECTIONS = {
+    { id = "displays", name = "Displays", covers = "screens monitors resolution arrangement" },
+    { id = "sound", name = "Sound", covers = "volume speakers microphone audio output input" },
+    { id = "network", name = "Network and Bluetooth", covers = "wifi wi-fi internet vpn bluetooth" },
+    { id = "mouse", name = "Mouse", covers = "pointer speed scrolling left-handed linearmouse" },
+    { id = "trackpad", name = "Trackpad", covers = "touchpad tap to click scrolling gestures" },
+    { id = "keyboard", name = "Keyboard", covers = "keys shortcuts bindings repeat layouts" },
+    { id = "power", name = "Power", covers = "battery energy sleep lid" },
+    { id = "layouts", name = "Layouts", covers = "tile columns master ultrawide new windows",
+      key = "Settings: layouts" },
+    { id = "floating", name = "Floating", covers = "floating windows rules", key = "Settings: floating windows" },
+    { id = "appearance", name = "Appearance", covers = "dark style light theme accent" },
+    { id = "muted", name = "Notifications", covers = "muted apps and sites mute unmute",
+      key = "Settings: muted apps and sites" },
+    { id = "clipboard", name = "Clipboard", covers = "clipboard history copies paste",
+      key = "Settings: clipboard history" },
+    { id = "clocks", name = "Clocks", covers = "time zones world clocks", key = "Settings: clocks" },
+    { id = "idle", name = "Idle", covers = "screensaver lock display off", },
+    { id = "startup", name = "Start at login", covers = "login items autostart apps at login",
+      key = "Settings: start at login" },
+}
+
 -- tilemo's commands, as the launcher lists them. `action` names a window
 -- manager action; `quick` names one of the adapter's quick actions
 -- (tide SPEC.md §8). `logo` shows tide's logo on the row. `key`, when
 -- set, is the name the switcher remembers the row's use by, kept from
--- before its title changed, so it doesn't lose its place.
+-- before its title changed, so it doesn't lose its place. `tab =
+-- "actions"` puts it on the Actions tab; `as = "app"` lists it among the
+-- apps; `sub` is the line under it.
 M.COMMANDS = {
+    { title = "Tide Settings", as = "app", action = "settings", logo = true, sub = "tide's settings window" },
+}
+for _, sec in ipairs(M.SETTINGS_SECTIONS) do
+    M.COMMANDS[#M.COMMANDS + 1] = {
+        title = "Tide Settings: " .. sec.name,
+        extra = sec.covers,
+        sub = "Tide Settings",
+        action = "settings",
+        arg = sec.id,
+        key = sec.key,
+        query_only = true,
+    }
+end
+for _, c in ipairs({
     { title = "Layout: tile", action = "layout", arg = "tile" },
     { title = "Layout: three columns", action = "layout", arg = "threecol" },
     { title = "Layout: two columns", action = "layout", arg = "twocol" },
     { title = "Dashboard: workspaces, clocks and calendar", action = "dashboard" },
-    { title = "Settings: clocks", action = "settings", arg = "clocks" },
-    { title = "Settings: layouts", action = "settings", arg = "layouts" },
-    { title = "Settings: start at login", action = "settings", arg = "startup" },
-    { title = "Settings: clipboard history", action = "settings", arg = "clipboard" },
-    { title = "Settings: muted apps and sites", action = "settings", arg = "muted" },
-    { title = "Settings: floating windows", action = "settings", arg = "floating" },
     { title = "Monocle", action = "monocle" },
     { title = "Float or tile the window", action = "toggle_float" },
     { title = "Maximize the window", action = "maximize" },
     { title = "Full screen", action = "fullscreen" },
-    { title = "Screenshot: window", quick = "screenshot_window" },
-    { title = "Screenshot: screen", quick = "screenshot_screen" },
-    { title = "Screenshot: region", quick = "screenshot_region" },
-    { title = "Lock", action = "lock" },
-    { title = "Log out", action = "logout" },
-    { title = "Sleep", quick = "sleep" },
-    { title = "Restart", quick = "restart" },
-    { title = "Shut down", quick = "shutdown" },
-    { title = "Do Not Disturb", quick = "dnd" },
-    { title = "Keep awake", quick = "keep_awake" },
-    { title = "Presenter mode: Do Not Disturb and keep awake", quick = "presenter" },
-    { title = "Dark style", quick = "dark" },
-    { title = "Focus follows mouse on or off", quick = "toggle_ffm" },
-    { title = "Reload tide", key = "Reload tilemo", quick = "reload", logo = true },
-    { title = "Check tide (doctor)", key = "Check tilemo (doctor)", quick = "doctor", logo = true },
-}
+    -- The Actions tab: the session, power, toggles and screenshots.
+    { title = "Lock", action = "lock", tab = "actions" },
+    { title = "Log out", action = "logout", tab = "actions" },
+    { title = "Sleep", quick = "sleep", tab = "actions" },
+    { title = "Restart", quick = "restart", tab = "actions" },
+    { title = "Shut down", quick = "shutdown", tab = "actions" },
+    { title = "Reload tide", key = "Reload tilemo", quick = "reload", logo = true, tab = "actions" },
+    { title = "Check tide (doctor)", key = "Check tilemo (doctor)", quick = "doctor", logo = true, tab = "actions" },
+    { title = "Keep awake", quick = "keep_awake", tab = "actions" },
+    { title = "Presenter mode: Do Not Disturb and keep awake", quick = "presenter", tab = "actions" },
+    { title = "Do Not Disturb", quick = "dnd", tab = "actions" },
+    { title = "Dark style", quick = "dark", tab = "actions" },
+    { title = "Focus follows mouse on or off", quick = "toggle_ffm", tab = "actions" },
+    { title = "Screenshot: window", quick = "screenshot_window", tab = "actions" },
+    { title = "Screenshot: screen", quick = "screenshot_screen", tab = "actions" },
+    { title = "Screenshot: region", quick = "screenshot_region", tab = "actions" },
+}) do
+    M.COMMANDS[#M.COMMANDS + 1] = c
+end
 -- Workspaces are in the Workspaces tab, by name, not commands by number.
 
 return M

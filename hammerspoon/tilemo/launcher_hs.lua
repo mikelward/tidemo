@@ -306,7 +306,11 @@ function M.new(tilemo)
     local function run(item, fresh)
         self.recency[item.key] = os.time()
         hs.settings.set(M.RECENCY_KEY, self.recency)
-        if item.kind == "app" then
+        if item.kind == "app" and not item.path then
+            -- One of tilemo's own, as Tide Settings is: a window manager
+            -- action.
+            tilemo.wm:act(item.action, item.arg)
+        elseif item.kind == "app" then
             -- By bundle ID where it has one, so an app already open comes
             -- forward with its workspace, as its app key would.
             local info = hs.application.infoForBundlePath(item.path)
