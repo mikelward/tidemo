@@ -7,11 +7,13 @@
 --
 -- Workspaces (SPEC.md §6.1) are tileco's model with tide's names: the
 -- home workspace ("in" by default) first and always there, then the
--- standing ones, then the rest in the order they were made, shared by
--- every display, each display showing one. An empty workspace that isn't
--- standing goes once no display shows it. A window on a workspace that
--- isn't showing is minimized. Every operation changes only which workspace
--- each display shows and which workspace each window is on; then
+-- standing ones, then the rest in the order they were made. One workspace
+-- shows at a time, on every display, and each display has its own part of
+-- it: its own stack, layout, mfact and masters (`workspaces[n][uuid]`). A
+-- window belongs to a workspace and to a display within it (`w.screen`).
+-- An empty workspace that isn't standing goes once it isn't showing. A
+-- window on a workspace that isn't showing is minimized. Every operation
+-- changes only which workspace shows and where each window is; then
 -- reconcile() makes the screen match, restoring first so the screen never
 -- goes empty.
 
@@ -56,6 +58,14 @@ local function remove_value(list, v)
 end
 
 local set_big_on
+
+-- Take window `w` out of its part's stack, if it's in one.
+local function unplace(self, w, id)
+    local p = self:part_of(w)
+    if p then
+        layout.remove(p, id)
+    end
+end
 
 -- The standing workspaces (SPEC.md §6.1): always listed, never removed.
 -- The first is the home workspace, "in" by default, made at start and
@@ -221,8 +231,9 @@ function M.migrate(saved, home)
     for uuid, n in pairs(saved.screens or {}) do
         screens[uuid] = name_of(n)
     end
+    local current = saved.current and name_of(saved.current)
     if not numbered then
-        return { windows = windows, gone = gone, screens = screens }, false
+        return { windows = windows, gone = gone, screens = screens, current = current }, false
     end
     for _, list in ipairs({ windows, gone }) do
         for _, v in pairs(list) do
@@ -243,7 +254,10 @@ function M.migrate(saved, home)
             screens[uuid] = home
         end
     end
-    return { windows = windows, gone = gone, screens = screens, names = names }, true
+    if current and not used[current] then
+        current = home
+    end
+    return { windows = windows, gone = gone, screens = screens, current = current, names = names }, true
 end
 
 function M.new(adapter, config)
@@ -264,13 +278,16 @@ function M.new(adapter, config)
         standing = standing,
         -- The home workspace: the first standing one, "in" by default.
         home = standing[1],
-        windows = {},   -- id -> { id, app, name, ws, floating, big }
+        -- id -> { id, app, name, ws, screen, floating, big }; `screen` is
+        -- the display's uuid, and `from`, `from_pos` where a display that
+        -- went away had it, for when that display comes back.
+        windows = {},
         -- The workspaces that exist, in bar order: home, the standing
         -- ones made so far in their order, then the rest in the order they
         -- were made.
         names = {},
-        workspaces = {}, -- name -> layout state
-        screen_ws = {}, -- display uuid -> workspace name
+        workspaces = {}, -- name -> display uuid -> layout state (M:part)
+        current = nil,  -- the workspace showing, on every display
         floats = {},    -- float ids, bottom to top
         mru = {},       -- workspace name -> ids, most recent first
         placed = {},    -- id -> the frame tilemo last gave it, as it landed
@@ -323,6 +340,9 @@ function M.new(adapter, config)
     for k, v in pairs(saved.windows or {}) do
         self.saved[tonumber(k) or k] = v
     end
+    -- What showed last run: `current`, or, from a state saved when each
+    -- display showed its own, what some display showed (map_screens).
+    self.saved_current = saved.current
     self.saved_screens = saved.screens or {}
     -- Places of windows whose app quit, each { app, title, ws, mine, pos,
     -- at }, oldest first, for the app's windows to take when it relaunches.
@@ -570,65 +590,102 @@ function M:set_workspaces(list, home_apps)
             taken[M.fold(m)] = true
         end
     end
-    local screens = self:screens()
-    self:ensure_ws(self.home, screens[1] and screens[1].area)
+    self:ensure_ws(self.home)
     self:prune()
     self:changed()
     return true
 end
 
--- Give each display a workspace, keeping the ones already given. The first
--- display shows home; a display with nothing of its own gets a new empty
--- workspace, named by the lowest number from 2 that's free, the number it
--- had before names (a guess: SPEC.md doesn't say what a second display
--- shows before anything is named for it).
+-- Make sure a workspace shows, and put every window on a display that's
+-- there (SPEC.md §6.4). At start it's the one that showed last run, else
+-- home. A display that went away hands its windows to the first display
+-- left, in the same workspace, each at the end of that display's stack;
+-- each remembers where it was, and goes back there, in its old order,
+-- when that display comes back, unless you've moved it since.
 function M:map_screens()
-    local used = {}
     local screens = self:screens()
+    if not (self.current and self:find(self.current)) then
+        local n = self:find(self.saved_current)
+        for _, s in ipairs(screens) do
+            n = n or self:find(self.saved_screens[s.uuid])
+        end
+        self.current = n or self.home
+        -- Only at start: later, a workspace that's gone isn't brought back.
+        self.saved_current, self.saved_screens = nil, {}
+    end
+    self:ensure_ws(self.current)
+    -- Every workspace has its parts, made as they're needed (M:part).
+    for _, n in ipairs(self.names) do
+        self:ensure_ws(n)
+    end
+    local first = screens[1]
+    if not first then
+        return
+    end
     local present = {}
     for _, s in ipairs(screens) do
         present[s.uuid] = true
     end
-    -- A display that went away leaves its workspace hidden; Next and
-    -- Previous, the bar and the menu show it on a display that's left.
-    for uuid, n in pairs(self.screen_ws) do
-        if present[uuid] and self:find(n) then
-            used[n] = true
-        else
-            self.screen_ws[uuid] = nil
-        end
-    end
-    -- A display tilemo saw last run shows what it showed then.
-    for _, s in ipairs(screens) do
-        local n = self:find(self.saved_screens[s.uuid])
-        if not self.screen_ws[s.uuid] and n and not used[n] then
-            used[n] = true
-            self.screen_ws[s.uuid] = n
-        end
-    end
-    for _, s in ipairs(screens) do
-        if not self.screen_ws[s.uuid] then
-            local n = self.home
-            local i = 1
-            while used[n] or (n ~= self.home and self:find(n)) do
-                i = i + 1
-                n = tostring(i)
+    local back, away = {}, {}
+    for id, w in pairs(self.windows) do
+        if w.ws then
+            if w.from and present[w.from] and not w.floating then
+                back[#back + 1] = id
+            elseif not present[w.screen] then
+                away[#away + 1] = id
             end
-            used[n] = true
-            self.screen_ws[s.uuid] = n
         end
-        self:ensure_ws(self.screen_ws[s.uuid], s.area)
     end
-    -- Every workspace has its layout state, in the default for the first
-    -- display if none shows it.
-    for _, n in ipairs(self.names) do
-        self:ensure_ws(n, screens[1] and screens[1].area)
+    -- Those coming back go first, so their old places are free. Lowest old
+    -- index first, so each lands at its index.
+    table.sort(back, function(p, q)
+        local a, b = self.windows[p].from_pos or math.huge, self.windows[q].from_pos or math.huge
+        if a ~= b then
+            return a < b
+        end
+        return tostring(p) < tostring(q)
+    end)
+    for _, id in ipairs(back) do
+        local w = self.windows[id]
+        unplace(self, w, id)
+        w.screen = w.from
+        local order = self:part_of(w).order
+        table.insert(order, math.min(w.from_pos or #order + 1, #order + 1), id)
+        w.from, w.from_pos = nil, nil
+    end
+    -- Those leaving, in their old order, so they keep it on the display
+    -- they go to.
+    local pos = {}
+    for _, id in ipairs(away) do
+        local p = self:part_of(self.windows[id])
+        pos[id] = p and layout.index_of(p.order, id)
+    end
+    table.sort(away, function(p, q)
+        local a, b = pos[p] or math.huge, pos[q] or math.huge
+        if a ~= b then
+            return a < b
+        end
+        return tostring(p) < tostring(q)
+    end)
+    for _, id in ipairs(away) do
+        local w = self.windows[id]
+        unplace(self, w, id)
+        -- A float is where macOS put it, and stays: only tiles go back.
+        if not w.floating and w.screen then
+            w.from = w.from or w.screen
+            w.from_pos = w.from_pos or pos[id]
+        end
+        w.screen = first.uuid
+        if not w.floating then
+            local order = self:part_of(w).order
+            order[#order + 1] = id
+        end
     end
 end
 
--- Workspace `name`, made in its place in bar order (add_name), in the
--- default layout for `area`, if it's new. Returns its name as it was made.
-function M:ensure_ws(name, area)
+-- Workspace `name`, made in its place in bar order (add_name), if it's
+-- new. Returns its name as it was made.
+function M:ensure_ws(name)
     local n = self:find(name)
     if not n then
         n = M.clean_name(name)
@@ -638,10 +695,39 @@ function M:ensure_ws(name, area)
         n = self:add_name(n)
     end
     if not self.workspaces[n] then
-        self.workspaces[n] = layout.new(n, area, self.layout)
+        self.workspaces[n] = {}
         self.mru[n] = self.mru[n] or {}
     end
     return n
+end
+
+-- Workspace `n`'s part on display `uuid`: its own stack, layout, mfact and
+-- masters there (SPEC.md §6.1), made in the default layout for that
+-- display's shape the first time it's needed. A display that went away
+-- keeps its parts, for when it comes back.
+function M:part(n, uuid)
+    local parts = n and self.workspaces[n]
+    if not parts or not uuid then
+        return nil
+    end
+    local p = parts[uuid]
+    if not p then
+        local s = self:screen_by_uuid(uuid)
+        p = layout.new(n, s and s.area, self.layout)
+        parts[uuid] = p
+    end
+    return p
+end
+
+-- The part window `w` is in, if it's on a workspace.
+function M:part_of(w)
+    return w and self:part(w.ws, w.screen)
+end
+
+-- The display a window's frame is on, by uuid.
+function M:screen_of_frame(frame)
+    local s = self:screen_for(frame)
+    return s and s.uuid
 end
 
 -- Whether any window is on workspace `n`, minimized by you or not.
@@ -671,7 +757,7 @@ function M:last_used(skip)
     end
 end
 
--- Remove every empty workspace no display shows, other than the standing
+-- Remove every empty workspace that isn't showing, other than the standing
 -- ones, home included (SPEC.md §6.1).
 function M:prune()
     for i = #self.names, 1, -1 do
@@ -686,17 +772,16 @@ function M:prune()
 end
 
 -- After the first sync from a numbered state: a number left with no
--- windows, since its windows went home, is dropped, and a display showing
--- it shows home if no other display does (SPEC.md §6.5).
+-- windows, since its windows went home, is dropped, and if it was showing,
+-- home shows (SPEC.md §6.5).
 function M:finish_migration()
     if not self.migrated then
         return
     end
     self.migrated = false
-    for uuid, n in pairs(self.screen_ws) do
-        if not self:standing_name(n) and not self:occupied(n) and not self:shown(self.home) then
-            self.screen_ws[uuid] = self.home
-        end
+    local n = self.current
+    if n and not self:standing_name(n) and not self:occupied(n) then
+        self.current = self.home
     end
     self:prune()
 end
@@ -710,46 +795,20 @@ function M:index_of_ws(n)
     end
 end
 
--- The display showing workspace `n`, if one is.
+-- Whether workspace `n` is the one showing, on every display.
 function M:shown(n)
-    for uuid, m in pairs(self.screen_ws) do
-        if m == n then
-            return uuid
-        end
-    end
+    return n ~= nil and n == self.current
 end
 
-function M:ws_on_screen(s)
-    return s and self.screen_ws[s.uuid]
-end
-
--- The workspace keys act on: the focused window's, else the one on the
--- display under the pointer.
+-- The workspace showing, which the keys act on.
 function M:current_ws()
-    local kbd = self:kbd_screen()
-    if kbd then
-        return self.screen_ws[kbd] or self.home
-    end
-    local w = self.windows[self.a.focused() or false]
-    -- An ignored window, such as picture-in-picture, has no workspace.
-    if w and w.ws then
-        return w.ws
-    end
-    local uuid = self.a.pointer_screen()
-    return self.screen_ws[uuid] or self.home
+    return self.current or self.home
 end
 
-function M:screen_of_ws(n)
-    for uuid, m in pairs(self.screen_ws) do
-        if m == n then
-            return self:screen_by_uuid(uuid)
-        end
-    end
-end
-
--- The tiled windows of workspace `n` that are on screen, in order.
-function M:tiled(n)
-    local ws = self.workspaces[n]
+-- The tiled windows of workspace `n` on display `uuid` that are on screen,
+-- in that display's order.
+function M:tiled(n, uuid)
+    local ws = self:part(n, uuid)
     local out = {}
     if not ws then
         return out
@@ -865,7 +924,27 @@ function M:add(id)
         -- same save say which window went before which.
         w.saved_pos = saved.pos
         w.saved_at = saved.at or self.started
-        w.ws = self:ensure_ws(w.ws, self:screen_for(f.frame).area)
+        w.ws = self:ensure_ws(w.ws)
+        -- Its display, if that's here; one that went away while the
+        -- window was there, which it goes back to when it's here again.
+        if saved.from and self:screen_by_uuid(saved.from) then
+            w.screen, w.saved_pos = saved.from, saved.from_pos
+        else
+            local was = saved.from or saved.screen
+            if saved.screen and self:screen_by_uuid(saved.screen) then
+                w.screen = saved.screen
+            else
+                w.screen = self:screen_of_frame(f.frame)
+                -- Its index was in another display's stack. A state saved
+                -- before displays were kept names none.
+                if saved.screen then
+                    w.saved_pos = nil
+                end
+            end
+            if was and was ~= w.screen and kind ~= "float" then
+                w.from, w.from_pos = was, saved.from_pos or saved.pos
+            end
+        end
     elseif kind == "float" and self:parent_ws(id, f) then
         -- A dialog goes where its parent is (SPEC.md §6.2), even for one of
         -- home's apps whose window you moved elsewhere.
@@ -879,16 +958,19 @@ function M:add(id)
         -- A launch tilemo made goes to the workspace it was for, even if
         -- you've moved on since, marked if that isn't showing (SPEC.md
         -- §6.1, §14.2).
-        w.ws = self:ensure_ws(self:launched_to(w, true), self:screen_for(f.frame).area)
+        w.ws = self:ensure_ws(self:launched_to(w, true))
         w.mine = f.minimized or false
         if not self:shown(w.ws) then
             self.attention:activated(id, w.app)
         end
     else
-        w.ws = self:ws_on_screen(self:screen_for(f.frame)) or self.home
+        w.ws = self.current or self.home
         -- Minimized before tilemo knew it: you did that.
         w.mine = f.minimized or false
     end
+    -- Every window is on the display it opened on, in its workspace,
+    -- unless it's going back to one.
+    w.screen = w.screen or self:screen_of_frame(f.frame)
     -- Any other app's new window on "in" asks for a name first. Dialogs and
     -- other floats go where their parent is, and a window coming back to
     -- its place doesn't ask.
@@ -899,15 +981,22 @@ function M:add(id)
         w.floating = true
         self.floats[#self.floats + 1] = id
         self:place_float(id, f)
-    elseif saved and saved.ws and saved.pos then
+    elseif saved and saved.ws and w.saved_pos then
         self:insert_back(id, w)
     else
         -- "next" goes after the window you were in. macOS may already have
-        -- given the new window focus, so that's the workspace's last used.
-        local ws = self.workspaces[w.ws]
+        -- given the new window focus, so that's the workspace's last used
+        -- on this display.
+        local ws = self:part_of(w)
         local anchor = self.a.focused()
         if anchor == id or not (anchor and layout.index_of(ws.order, anchor)) then
-            anchor = self.mru[w.ws][1]
+            anchor = nil
+            for _, m in ipairs(self.mru[w.ws]) do
+                if layout.index_of(ws.order, m) then
+                    anchor = m
+                    break
+                end
+            end
         end
         layout.insert(ws, id, anchor, self.layout)
     end
@@ -1045,7 +1134,7 @@ end
 -- before it and before those that were after it, however they arrived.
 -- Windows not from that save stay where they are.
 function M:insert_back(id, w)
-    local order = self.workspaces[w.ws].order
+    local order = self:part_of(w).order
     local lo, hi = 1, #order + 1
     for i, other in ipairs(order) do
         local o = self.windows[other]
@@ -1076,8 +1165,11 @@ function M:forget(id, pos, at)
             app = w.app,
             title = w.title,
             ws = w.ws,
+            screen = w.screen,
+            from = w.from,
+            from_pos = w.from_pos,
             mine = w.mine or false,
-            pos = pos or (self.workspaces[w.ws] and layout.index_of(self.workspaces[w.ws].order, id)),
+            pos = pos or (self:part_of(w) and layout.index_of(self:part_of(w).order, id)),
             at = at or self.a.now(),
         })
         while #self.gone > M.KEEP_MAX do
@@ -1086,7 +1178,7 @@ function M:forget(id, pos, at)
     end
     self.windows[id] = nil
     if w.ws and self.workspaces[w.ws] then
-        layout.remove(self.workspaces[w.ws], id)
+        unplace(self, w, id)
         remove_value(self.mru[w.ws], id)
     end
     remove_value(self.floats, id)
@@ -1110,7 +1202,8 @@ function M:collect_gone(live)
     for id, w in pairs(self.windows) do
         if not live[id] then
             gone[#gone + 1] = id
-            pos[id] = w.ws and self.workspaces[w.ws] and layout.index_of(self.workspaces[w.ws].order, id)
+            local part = w.ws and self.workspaces[w.ws] and self:part_of(w)
+            pos[id] = part and layout.index_of(part.order, id)
         end
     end
     local now = self.a.now()
@@ -1181,7 +1274,7 @@ function M:reconcile()
         if w.ws then
             local st = self.a.state(id)
             if st then
-                local want = self:shown(w.ws) ~= nil and not w.mine
+                local want = self:shown(w.ws) and not w.mine
                 if want and st.minimized and self:last_asked(id) ~= "unmin" then
                     restore[#restore + 1] = id
                 elseif not want and not st.minimized and self:last_asked(id) ~= "min" then
@@ -1192,7 +1285,8 @@ function M:reconcile()
     end
     local function rank(id)
         local w = self.windows[id]
-        return layout.index_of(self.workspaces[w.ws].order, id) or 1000
+        local p = self:part_of(w)
+        return p and layout.index_of(p.order, id) or 1000
     end
     table.sort(restore, function(p, q)
         return rank(p) < rank(q)
@@ -1230,11 +1324,12 @@ function M:reconcile()
 end
 
 -- What a restart needs to put every window back: each window's workspace,
--- flag and place in its stack, with its app and title to match it by if
--- it comes back with a new id, and the places still kept for windows that
--- haven't come back.
+-- display, flag and place in that display's stack, and the display it
+-- goes back to, with its app and title to match it by if it comes back
+-- with a new id; the places still kept for windows that haven't come
+-- back; and the workspace showing.
 function M:snapshot()
-    local out = { windows = {}, screens = {}, gone = {}, names = nil }
+    local out = { windows = {}, gone = {}, names = nil, current = nil }
     local now = self.a.now()
     -- A window's index is where it is now, so a stack you rearranged stays
     -- that way. (Windows still to come back after a restart partway through
@@ -1243,10 +1338,13 @@ function M:snapshot()
         if w.ws then
             out.windows[id] = {
                 ws = w.ws,
+                screen = w.screen,
+                from = w.from,
+                from_pos = w.from_pos,
                 mine = w.mine or false,
                 app = w.app,
                 title = w.title,
-                pos = not w.floating and layout.index_of(self.workspaces[w.ws].order, id) or nil,
+                pos = not w.floating and self:part_of(w) and layout.index_of(self:part_of(w).order, id) or nil,
             }
         end
     end
@@ -1255,7 +1353,7 @@ function M:snapshot()
             if s.ws and s.app and not self.windows[sid] then
                 out.gone[#out.gone + 1] = {
                     app = s.app, title = s.title, ws = s.ws, mine = s.mine, pos = s.pos, at = s.at or self.started,
-                    numbered = s.numbered,
+                    numbered = s.numbered, screen = s.screen, from = s.from, from_pos = s.from_pos,
                 }
             end
         end
@@ -1265,9 +1363,7 @@ function M:snapshot()
             out.gone[#out.gone + 1] = g
         end
     end
-    for uuid, n in pairs(self.screen_ws) do
-        out.screens[uuid] = n
-    end
+    out.current = self.current
     out.names = {}
     for i, n in ipairs(self.names) do
         out.names[i] = n
@@ -1337,12 +1433,13 @@ function M:mark_mine(id)
     w.min_at = self.min_seq
 end
 
--- The windows you minimized on workspace `n`, in the order you minimized
--- them; ones minimized before tilemo saw them first, by id.
-function M:minimized_windows(n)
+-- The windows you minimized on workspace `n`, on display `uuid` if given,
+-- in the order you minimized them; ones minimized before tilemo saw them
+-- first, by id.
+function M:minimized_windows(n, uuid)
     local out = {}
     for id, w in pairs(self.windows) do
-        if n and w.ws == n and w.mine and self.a.state(id) then
+        if n and w.ws == n and w.mine and (uuid == nil or w.screen == uuid) and self.a.state(id) then
             out[#out + 1] = id
         end
     end
@@ -1390,8 +1487,9 @@ function M:restore_all()
 end
 
 -- The display a switch left keys on, while focus hasn't moved since: a
--- switch to an empty workspace, or a Send that empties this one, leaves
--- focus on a window on the other display.
+-- switch to a workspace with nothing on this display, or a Send that
+-- empties this display's part, leaves focus where it was, or on a window
+-- on another display.
 function M:kbd_screen()
     local k = self.kbd
     if k and k.focused == self.a.focused() and self:screen_by_uuid(k.uuid) then
@@ -1403,51 +1501,61 @@ end
 -- Keep keys on display `uuid` until focus moves.
 function M:keep_keys_on(uuid)
     self.kbd = { uuid = uuid, focused = self.a.focused() }
-    -- The current workspace changed with it, for the bar and the file
-    -- scripts read.
+    -- The bar's title goes by the display keys act on.
     self:changed()
 end
 
 -- The display keys act on: the focused window's, else the pointer's. After
--- showing an empty workspace, it's that display until focus moves.
+-- a switch leaves nothing to focus there, it's that display until focus
+-- moves.
 function M:current_screen()
     local kbd = self:kbd_screen()
     if kbd then
         return kbd
     end
-    local w = self.windows[self.a.focused() or false]
-    if w and w.ws then
-        local uuid = self:shown(w.ws)
-        if uuid then
-            return uuid
-        end
+    local id = self.a.focused()
+    local uuid = self:screen_of(id)
+    if uuid and self:shown(self.windows[id].ws) then
+        return uuid
     end
     return self.a.pointer_screen() or (self:screens()[1] or {}).uuid
 end
 
--- Show workspace `name` on display `uuid`. If another display shows it,
--- the two swap, as on tide. A name with no workspace does nothing, unless
--- `make` says to make it, as the name prompt does (SPEC.md §6.2).
+-- The display window `id` is on, if tilemo manages it: a tile's is its
+-- part's; a float's is where it is.
+function M:screen_of(id)
+    local w = self.windows[id or false]
+    if not (w and w.ws) then
+        return nil
+    end
+    if w.floating then
+        local st = self.a.state(id)
+        return st and self:screen_of_frame(st.frame) or w.screen
+    end
+    return w.screen
+end
+
+-- Show workspace `name`, on every display at once, each display its own
+-- part of it (SPEC.md §6.1). `uuid` is the display the keys stay on if
+-- there's nothing to focus, the one they act on unless given. A name with
+-- no workspace does nothing, unless `make` says to make it, as the name
+-- prompt does (SPEC.md §6.2).
 function M:show(name, uuid, make)
     uuid = uuid or self:current_screen()
     local s = self:screen_by_uuid(uuid)
     local n = self:find(name)
     -- A standing workspace is made the first time it's shown.
     if not n and (make or self:standing_name(name)) then
-        n = self:ensure_ws(self:canonical(name), s and s.area)
+        n = self:ensure_ws(self:canonical(name))
     end
     if not s or not n then
         return
     end
-    local cur = self.screen_ws[uuid]
+    local cur = self.current
     if cur == n then
         return
     end
-    local other = self:shown(n)
-    if other then
-        self.screen_ws[other] = cur
-    end
-    self.screen_ws[uuid] = n
+    self.current = n
     -- The one left, then the one shown, most recent first, for Super+Tab
     -- and Super+End.
     if cur then
@@ -1456,26 +1564,26 @@ function M:show(name, uuid, make)
     self:used_ws(n)
     self:reconcile()
     self:retile()
-    -- With nothing there to focus, focus stays put, perhaps on a window the
-    -- swap took to the other display: keys still mean this one.
+    -- With nothing to focus, focus stays put: keys still mean this display.
     if not self:refocus_ws(n) then
         self:keep_keys_on(uuid)
     end
-    -- The display it was shown on: focus may have stayed on the other one.
+    -- The display keys act on, where the sign goes.
     if self.on_show then
         self.on_show(n, uuid)
     end
 end
 
--- Focus workspace n's last used window, if it has one, and say whether it
--- did. If that window is still being restored, it's focused when the
--- restore lands; a later switch replaces the wait.
-function M:refocus_ws(n)
+-- Focus workspace n's last used window, on display `uuid` if given, if it
+-- has one, and say whether it did. If that window is still being restored,
+-- it's focused when the restore lands; a later switch replaces the wait.
+function M:refocus_ws(n, uuid)
     self.focus_after = nil
     self.kbd = nil
     for _, id in ipairs(self.mru[n] or {}) do
         local w = self.windows[id]
-        local st = w and w.ws == n and not w.mine and self.a.state(id)
+        local st = w and w.ws == n and not w.mine and (uuid == nil or self:screen_of(id) == uuid)
+            and self.a.state(id)
         -- An app you hid with Cmd+H stays hidden: pass over its windows.
         if st and not st.hidden then
             if st.minimized then
@@ -1489,7 +1597,8 @@ function M:refocus_ws(n)
     return false
 end
 
--- Move window `id` to the end of workspace `name`'s stack, making the
+-- Move window `id` to the end of workspace `name`'s stack on its display,
+-- making the
 -- workspace, at the end of the list, if the name is new. Only home's apps
 -- may be sent home (SPEC.md §6.2); another app's window is refused, with
 -- a notice. Says whether the window moved. `defer` leaves the screen to
@@ -1508,16 +1617,18 @@ function M:send(id, name, defer)
         return false
     end
     local from = w.ws
-    layout.remove(self.workspaces[from], id)
+    unplace(self, w, id)
     remove_value(self.mru[from], id)
-    local s = self:screen_by_uuid(self:current_screen())
-    n = self:ensure_ws(n, s and s.area)
+    n = self:ensure_ws(n)
+    w.screen = self:screen_of(id) or w.screen
     w.ws = n
     w.big = nil
+    -- Moved by you: it stays on this display when another comes back.
+    w.from, w.from_pos = nil, nil
     if not w.floating then
         -- A window you send joins the end of the stack there, whatever
         -- new_window says: that's for windows that open.
-        layout.insert(self.workspaces[n], id, nil, { new_window = "end" })
+        layout.insert(self:part_of(w), id, nil, { new_window = "end" })
     end
     table.insert(self.mru[n], 1, id)
     if not defer then
@@ -1548,20 +1659,17 @@ function M:activate(id, uuid)
     self:choose(id)
 end
 
--- A workspace's floats go to the display showing it, keeping their place
--- relative to the display they were on, so a dialog stays with its parent
--- when workspaces swap displays.
+-- A float waiting to be placed (M:set_float_rules) is placed as a new
+-- float is, once it shows, at the size it asked for, on its display.
+-- Every display shows the same workspace, so the others stay where they
+-- are.
 function M:follow_floats()
     for _, id in ipairs(self.floats) do
         local w = self.windows[id]
-        local uuid = w and w.ws and self:shown(w.ws)
-        local st = uuid and self.a.state(id)
-        local to = st and not st.minimized and self:screen_by_uuid(uuid)
-        local f = to and w.place_pending and self.a.facts(id)
+        local st = w and w.place_pending and self:shown(w.ws) and self.a.state(id)
+        local to = st and not st.minimized and (self:screen_by_uuid(self:screen_of(id)) or self:screens()[1])
+        local f = to and self.a.facts(id)
         if f then
-            -- A float waiting to be placed (M:set_float_rules) is placed as
-            -- a new float is, now it shows, at the size it asked for, on
-            -- the display showing its workspace.
             local size = w.place_pending
             w.place_pending = nil
             local placed = {}
@@ -1570,23 +1678,12 @@ function M:follow_floats()
             end
             placed.frame = { x = to.area.x, y = to.area.y, w = size.w, h = size.h }
             self:place_float(id, placed)
-        elseif to then
-            local from = self:screen_for(st.frame)
-            if from and from.uuid ~= to.uuid then
-                local f = st.frame
-                local a = to.area
-                local x = a.x + (f.x - from.area.x)
-                local y = a.y + (f.y - from.area.y)
-                x = math.max(a.x, math.min(x, a.x + a.w - f.w))
-                y = math.max(a.y, math.min(y, a.y + a.h - f.h))
-                self.a.set_frame(id, { x = x, y = y, w = f.w, h = f.h })
-            end
         end
     end
 end
 
 -- New layout settings, from tide's layouts files (SPEC.md §15): every
--- workspace keeps its mode and takes the new mfact and master count, as on
+-- workspace's part on every display keeps its mode and takes the new mfact and master count, as on
 -- tide, and the displays are laid out again at once. Unchanged settings
 -- change nothing, so a reload doesn't undo what the keys set.
 function M:set_layout(config)
@@ -1594,23 +1691,25 @@ function M:set_layout(config)
         return
     end
     self.layout = config
-    for _, ws in pairs(self.workspaces) do
-        layout.reconfigure(ws, config)
+    for _, parts in pairs(self.workspaces) do
+        for _, ws in pairs(parts) do
+            layout.reconfigure(ws, config)
+        end
     end
     self:retile()
 end
 
 -- Lay out every display, moving only windows that aren't already where
 -- they belong.
--- Where display `s` lays out the tiles of the workspace it shows: its
--- tiles in order, and each one's box, a big window's being the display's.
+-- Where display `s` lays out its part of the workspace showing: its tiles
+-- in order, and each one's box, a big window's being the display's.
 function M:arranged(s)
-    local n = self.screen_ws[s.uuid]
-    local ws = n and self.workspaces[n]
+    local n = self.current
+    local ws = self:part(n, s.uuid)
     if not ws then
         return {}, {}
     end
-    local ids = self:tiled(n)
+    local ids = self:tiled(n, s.uuid)
     local boxes = layout.arrange(ws, s.area, ids, self.layout)
     for _, id in ipairs(ids) do
         local big = self.windows[id].big
@@ -1626,21 +1725,19 @@ end
 function M:retile()
     self:follow_floats()
     for _, s in ipairs(self:screens()) do
-        if self.screen_ws[s.uuid] then
-            local ids, boxes = self:arranged(s)
-            for _, id in ipairs(ids) do
-                local box = boxes[id]
-                local f = self.a.state(id)
-                local cur = f and f.frame
-                if not cur or cur.x ~= box.x or cur.y ~= box.y or cur.w ~= box.w or cur.h ~= box.h then
-                    self.a.set_frame(id, box)
-                    -- Read it back: an app may round the size, and the move
-                    -- this causes mustn't look like a drag.
-                    local after = self.a.state(id)
-                    cur = after and after.frame or box
-                end
-                self.placed[id] = cur
+        local ids, boxes = self:arranged(s)
+        for _, id in ipairs(ids) do
+            local box = boxes[id]
+            local f = self.a.state(id)
+            local cur = f and f.frame
+            if not cur or cur.x ~= box.x or cur.y ~= box.y or cur.w ~= box.w or cur.h ~= box.h then
+                self.a.set_frame(id, box)
+                -- Read it back: an app may round the size, and the move
+                -- this causes mustn't look like a drag.
+                local after = self.a.state(id)
+                cur = after and after.frame or box
             end
+            self.placed[id] = cur
         end
     end
     -- Windows may have moved under a still pointer; that isn't a crossing.
@@ -1657,15 +1754,13 @@ function M:changed()
     end
 end
 
--- What the bar shows (bar.lua): for each workspace, whether it's on
--- display `uuid` or another, has windows, or wants attention. With no
--- display named, "here" is where the keys act, as for the menu bar item
--- and Super+Shift+Space; a bar or a dashboard on a given display names it.
-function M:bar_state(uuid)
-    local here = self.screen_ws[uuid or self:current_screen()]
+-- What the bar shows (bar.lua): for each workspace, whether it's the one
+-- showing, has windows, or wants attention. Every display shows the same
+-- one, so every bar, the menu bar item and the dashboard say the same.
+function M:bar_state()
     local out, by = {}, {}
     for i, n in ipairs((self:listed())) do
-        out[i] = { name = n, here = n == here, elsewhere = n ~= here and self:shown(n) ~= nil }
+        out[i] = { name = n, here = self:shown(n) }
         by[n] = out[i]
     end
     for _, w in pairs(self.windows) do
@@ -1808,7 +1903,7 @@ function M:answer(id, name)
                 end
                 table.insert(self.asking, 1, q)
             else
-                local uuid = self:shown(self.home)
+                local uuid = self:screen_of(id)
                 if self:send(id, n, true) then
                     self:show(self.windows[id].ws, uuid)
                     -- Already showing there, show() had nothing to do.
@@ -1871,7 +1966,7 @@ function M:move_answer(q, name)
     local w = self.windows[id]
     if name and w then
         -- The display it moves from, noted before it moves.
-        local uuid = (w.ws and self:shown(w.ws)) or self:current_screen()
+        local uuid = self:screen_of(id) or self:current_screen()
         -- Reconciled once, after the show, so the window never hides on
         -- the way, as for a new window's answer.
         if self:send(id, name, true) then
@@ -1941,7 +2036,7 @@ end
 -- A tile the user moved or resized to `box`, by its own edges or with
 -- Super+drag. A resize sets the split; a move puts the window in the tile
 -- nearest where its center landed, swapping with that tile's window, or on
--- the workspace of the display it landed on.
+-- the display it landed on, in the same workspace (SPEC.md §6.1).
 function M:request(id, box)
     local w = self.windows[id]
     if not w or not w.ws or w.floating then
@@ -1950,20 +2045,19 @@ function M:request(id, box)
     local old = self.placed[id]
     local cx, cy = center(box)
     local s = self:screen_for(box)
-    local n = self:ws_on_screen(s)
     -- Another display first: macOS may resize a window it moves onto a
     -- smaller display, and that's still a move.
-    if n and n ~= w.ws then
-        layout.remove(self.workspaces[w.ws], id)
+    if s and s.uuid ~= w.screen then
+        self:to_screen(id, s.uuid)
+        layout.insert(self:part_of(w), id, nil, self.layout)
+        -- Focused already, so no focus event will put it first in its
+        -- workspace's history.
         remove_value(self.mru[w.ws], id)
-        w.ws = n
-        layout.insert(self.workspaces[n], id, nil, self.layout)
-        -- Focused already, so no focus event will put it in n's history.
-        table.insert(self.mru[n], 1, id)
+        table.insert(self.mru[w.ws], 1, id)
         self:save()
     elseif old and (old.w ~= box.w or old.h ~= box.h) then
-        local ws = self.workspaces[w.ws]
-        local ids = self:tiled(w.ws)
+        local ws = self:part_of(w)
+        local ids = self:tiled(w.ws, w.screen)
         local i = layout.index_of(ids, id)
         if s and i and #ids == 1 then
             -- A lone window: the drag sets its width on this workspace.
@@ -1974,9 +2068,9 @@ function M:request(id, box)
                 ws.opts[ws.mode].mfact = layout.geometry.clamp(f, 0.1, 0.9)
             end
         end
-    elseif n then
-        local ws = self.workspaces[n]
-        local ids = self:tiled(n)
+    elseif s then
+        local ws = self:part_of(w)
+        local ids = self:tiled(w.ws, w.screen)
         local boxes = layout.arrange(ws, s.area, ids, self.layout)
         for _, other in ipairs(ids) do
             if other ~= id and inside(boxes[other], cx, cy) then
@@ -1991,21 +2085,34 @@ end
 
 -- macOS says a window moved or changed size. Ignore the moves tilemo made;
 -- treat the rest as a request, once the button is up.
--- A float you moved to another display joins the workspace showing there,
--- so following workspaces between displays doesn't pull it back.
+-- A float you moved to another display is on that display now, in the
+-- workspace showing.
 function M:float_landed(id)
     local w = self.windows[id]
     local st = w and w.floating and self.a.state(id)
     if not st then
         return
     end
-    local n = self:ws_on_screen(self:screen_for(st.frame))
-    if n and n ~= w.ws then
+    local uuid = self:screen_of_frame(st.frame)
+    local n = self.current
+    if n and (n ~= w.ws or uuid ~= w.screen) then
         remove_value(self.mru[w.ws], id)
         w.ws = n
+        w.screen = uuid
         table.insert(self.mru[n], 1, id)
         self:save()
     end
+end
+
+-- Take window `id` out of its part and put it on display `uuid`, in the
+-- same workspace, with nothing to go back to: you moved it. The caller
+-- puts it in that display's order.
+function M:to_screen(id, uuid)
+    local w = self.windows[id]
+    unplace(self, w, id)
+    w.screen = uuid
+    w.big = nil
+    w.from, w.from_pos = nil, nil
 end
 
 function M:moved(id)
@@ -2340,10 +2447,12 @@ function M:focused_window(id)
     remove_value(list, id)
     table.insert(list, 1, id)
     -- Maximize lasts until another window on the workspace is focused
-    -- (tide SPEC.md §6.3).
+    -- (tide SPEC.md §6.3), on the same display: each display lays out its
+    -- own part.
     local changed = false
+    local on = self:screen_of(id)
     for oid, o in pairs(self.windows) do
-        if oid ~= id and o.ws == w.ws and o.big == "max" then
+        if oid ~= id and o.ws == w.ws and o.big == "max" and o.screen == on then
             o.big = nil
             changed = true
         end
@@ -2359,7 +2468,7 @@ function M:float_tile(id, f)
     local w = self.windows[id]
     w.floating = true
     w.big = nil
-    layout.remove(self.workspaces[w.ws], id)
+    unplace(self, w, id)
     self.floats[#self.floats + 1] = id
     if f then
         self:place_float(id, f)
@@ -2525,9 +2634,14 @@ function M:refocus(n)
             return
         end
     end
-    local id = self:tiled(n)[1]
-    if id then
-        self:focus_window(id)
+    local screens = self:screens()
+    table.insert(screens, 1, { uuid = self:current_screen() })
+    for _, s in ipairs(screens) do
+        local id = self:tiled(n, s.uuid)[1]
+        if id then
+            self:focus_window(id)
+            return
+        end
     end
 end
 
@@ -2544,9 +2658,19 @@ end
 M.actions = {}
 local A = M.actions
 
-function A.focus(self, delta)
+-- The part the keys act on: the workspace showing, on the display keys
+-- act on (current_screen), which is the focused window's unless a switch
+-- or Super+Left/Right left the keys on another display, and never a
+-- hidden workspace's, though focus may have stayed on one of its windows.
+function M:current_part()
+    local uuid = self:current_screen()
     local n = self:current_ws()
-    local ids = self:tiled(n)
+    return self:part(n, uuid), n, uuid
+end
+
+function A.focus(self, delta)
+    local _, n, uuid = self:current_part()
+    local ids = self:tiled(n, uuid)
     local id = self:focused_tile()
     local target = layout.neighbor(ids, id, delta)
     -- Focusing raises the target, monocle's full-size tile included, and
@@ -2559,7 +2683,7 @@ end
 function A.move(self, delta)
     local id, w = self:focused_tile()
     if id then
-        layout.move(self.workspaces[w.ws], self:tiled(w.ws), id, delta)
+        layout.move(self:part_of(w), self:tiled(w.ws, w.screen), id, delta)
         self:retile()
     end
 end
@@ -2567,28 +2691,28 @@ end
 function A.swap_master(self)
     local id, w = self:focused_tile()
     if id then
-        layout.swap_master(self.workspaces[w.ws], self:tiled(w.ws), id)
+        layout.swap_master(self:part_of(w), self:tiled(w.ws, w.screen), id)
         self:retile()
     end
 end
 
 function A.mfact(self, sign)
-    layout.mfact(self.workspaces[self:current_ws()], sign * self.layout.mfact_step)
+    layout.mfact((self:current_part()), sign * self.layout.mfact_step)
     self:retile()
 end
 
 function A.nmaster(self, delta)
-    layout.nmaster(self.workspaces[self:current_ws()], delta)
+    layout.nmaster((self:current_part()), delta)
     self:retile()
 end
 
 function A.cycle(self, delta)
-    layout.cycle(self.workspaces[self:current_ws()], delta, self.layout)
+    layout.cycle((self:current_part()), delta, self.layout)
     self:retile()
 end
 
 function A.monocle(self)
-    layout.toggle_monocle(self.workspaces[self:current_ws()])
+    layout.toggle_monocle((self:current_part()))
     self:retile()
 end
 
@@ -2642,7 +2766,9 @@ function A.toggle_float(self)
         w.floating = false
         w.place_pending = nil
         remove_value(self.floats, id)
-        layout.insert(self.workspaces[w.ws], id, nil, self.layout)
+        w.screen = self:screen_of_frame((self.a.state(id) or {}).frame) or w.screen
+        w.from, w.from_pos = nil, nil
+        layout.insert(self:part_of(w), id, nil, self.layout)
     else
         self:float_tile(id, self.a.facts(id))
         -- Floated by the key, with no rule covering it: tide asks whether
@@ -2726,12 +2852,12 @@ end
 function M:send_keeping_focus(id, n)
     local w = self.windows[id or false]
     local from = w and w.ws
-    local uuid = from and self:shown(from)
+    local uuid = from and self:screen_of(id)
     self:send(id, n)
-    -- Focus stays on the workspace you're on, as on tide; with nothing left
-    -- there, so do the keys.
+    -- Focus stays on the workspace you're on, on this display, as on tide;
+    -- with nothing left there, so do the keys.
     if from and self.windows[id] and self.windows[id].ws ~= from then
-        if not self:refocus_ws(from) and uuid then
+        if not self:refocus_ws(from, uuid) and uuid then
             self:keep_keys_on(uuid)
         end
     end
@@ -2748,7 +2874,7 @@ end
 -- Super+PgUp/PgDn: the previous or next workspace in bar
 -- order, stopping at the first and last.
 function A.step(self, d)
-    self:show(self:step_from(self.screen_ws[self:current_screen()] or self.home, d))
+    self:show(self:step_from(self:current_ws(), d))
 end
 
 -- Super+1…9 (SPEC.md §7.2): the Nth workspace in bar order, home first, so
@@ -2778,7 +2904,7 @@ end
 -- Super+Tab (SPEC.md §7.2): from any other workspace, home; from home, the
 -- workspace you used last. Pressed again, it flips back.
 function A.flip(self)
-    local cur = self.screen_ws[self:current_screen()] or self.home
+    local cur = self:current_ws()
     if cur ~= self.home then
         self:show(self.home)
         return
@@ -2795,7 +2921,7 @@ end
 -- and the one you're on. From home that's where Super+Tab goes; from
 -- another, the one before it.
 function A.last(self)
-    local cur = self.screen_ws[self:current_screen()] or self.home
+    local cur = self:current_ws()
     local n = self:last_used(function(m)
         return m == self.home or m == cur
     end)
@@ -2847,7 +2973,7 @@ function A.move_ws(self, d)
     local id = self.a.focused()
     -- The display it moves from, noted before the window moves.
     local uuid = self:current_screen()
-    local cur = self.screen_ws[uuid] or self.home
+    local cur = self:current_ws()
     local n = self:step_from(cur, d)
     if id and n ~= cur and self:send(id, n) then
         self:show(n, uuid)
@@ -2911,9 +3037,9 @@ end
 -- sharing the most height with `from`, where it was; then the nearest
 -- center; then the earliest slot.
 function M:entry_slot(n, s, id, d, from)
-    local ws = self.workspaces[n]
+    local ws = self:part(n, s.uuid)
     local ids = {}
-    for _, other in ipairs(self:tiled(n)) do
+    for _, other in ipairs(self:tiled(n, s.uuid)) do
         if other ~= id then
             ids[#ids + 1] = other
         end
@@ -2951,8 +3077,8 @@ end
 
 -- Super+Shift+Left/Right: move the focused tile the same way, swapping it
 -- with the tile there on this display, or onto the next display at the
--- edge, where it joins the workspace showing there, as a window you drag
--- there does (SPEC.md §6.1), in the slot whose tile lands nearest the
+-- edge, staying in the same workspace, as a window you drag there does
+-- (SPEC.md §6.1), in the slot whose tile lands nearest the
 -- edge it came in by (M:entry_slot).
 function A.move_side(self, d)
     local id, w = self:focused_tile()
@@ -2964,27 +3090,23 @@ function A.move_side(self, d)
         return
     end
     local from_box = self.placed[id] or (self.a.state(id) or {}).frame
-    local n = self.screen_ws[s.uuid]
-    if n == w.ws then
-        local order = self.workspaces[n].order
-        local i, j = layout.index_of(order, id), layout.index_of(order, hit.id)
+    local n = w.ws
+    if s.uuid == w.screen then
+        local order = self:part_of(w).order
+        local i, j = layout.index_of(order, id), hit and layout.index_of(order, hit.id)
         if i and j then
             order[i], order[j] = order[j], order[i]
         end
         self:retile()
         return
     end
-    if not n then
-        return
-    end
-    layout.remove(self.workspaces[w.ws], id)
-    remove_value(self.mru[w.ws], id)
-    w.ws = n
-    w.big = nil
-    local ws = self.workspaces[n]
+    -- Onto the next display, in the same workspace.
     local before = self:entry_slot(n, self:screen_by_uuid(s.uuid), id, d, from_box)
+    self:to_screen(id, s.uuid)
+    local ws = self:part_of(w)
     local i = before and layout.index_of(ws.order, before)
     table.insert(ws.order, i or #ws.order + 1, id)
+    remove_value(self.mru[n], id)
     table.insert(self.mru[n], 1, id)
     self:reconcile()
     self:retile()
@@ -3154,7 +3276,7 @@ function A.dashboard(self)
 end
 
 function A.layout(self, mode)
-    local ws = self.workspaces[self:current_ws()]
+    local ws = self:current_part()
     if ws then
         ws.prev_mode = nil
         ws.mode = mode

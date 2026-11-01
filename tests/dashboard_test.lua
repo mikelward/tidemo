@@ -103,14 +103,14 @@ t.test("the state is the menu bar's, with the focused window's title", function(
     a.wins[2].title = "Chat (1)"
     local st = dashboard.state(wm, a)
     t.eq(#st.workspaces, 5)
-    t.eq(st.workspaces[1], { n = "in", current = true, elsewhere = false, occupied = true, urgent = false })
-    t.eq(st.workspaces[2], { n = "re", current = false, elsewhere = false, occupied = false, urgent = false })
+    t.eq(st.workspaces[1], { n = "in", current = true, occupied = true, urgent = false })
+    t.eq(st.workspaces[2], { n = "re", current = false, occupied = false, urgent = false })
     t.eq(st.workspaces[5].n, "4")
     t.eq(st.workspaces[5].occupied, true)
     t.eq(st.title, "Chat (1)")
 end)
 
-t.test("a dashboard opened on one display marks that display's workspace current", function()
+t.test("a dashboard opened on any display marks the one workspace showing", function()
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     a.add(1, {})
@@ -119,13 +119,12 @@ t.test("a dashboard opened on one display marks that display's workspace current
     wm:reconcile()
     wm:retile()
     a.focus_ = 1
-    -- The keys are on A, showing "in"; the dashboard opened from B's clocks.
+    -- The keys are on A; the dashboard opened from B's clocks.
     t.eq(wm:current_screen(), "A")
     local st = dashboard.state(wm, a, "B")
-    t.eq(st.workspaces[5].n, "2")
-    t.eq(st.workspaces[5].current, true)
-    t.eq(st.workspaces[1].current, false)
-    t.eq(st.workspaces[1].elsewhere, true)
+    t.eq(#st.workspaces, 4, "B has no workspace of its own")
+    t.eq(st.workspaces[1].current, true)
+    t.eq(st.workspaces[1].elsewhere, nil)
 end)
 
 t.test("the dashboard's state carries the clocks kept while a file is wrong", function()

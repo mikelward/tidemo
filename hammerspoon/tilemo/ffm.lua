@@ -131,7 +131,7 @@ function M:remember(id)
             break
         end
         local f = self.wm.windows[fid]
-        local fs = f and f.floating and self.wm:screen_of_ws(f.ws) and self.a.state(fid)
+        local fs = f and f.floating and self.wm:shown(f.ws) and self.a.state(fid)
         if fs and not fs.minimized then
             self.holes[#self.holes + 1] = fs.frame
         end
@@ -196,7 +196,7 @@ function M:under_float(id)
             return false
         end
         local f = self.wm.windows[fid]
-        local ok = f and f.floating and f.pid ~= w.pid and not elevated(f) and self.wm:screen_of_ws(f.ws)
+        local ok = f and f.floating and f.pid ~= w.pid and not elevated(f) and self.wm:shown(f.ws)
         local fs = ok and self.a.state(fid)
         if fs and not fs.minimized and not fs.hidden and overlap(fs.frame, frame) then
             return true

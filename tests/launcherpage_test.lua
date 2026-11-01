@@ -137,7 +137,7 @@ t.test("the view is the bar's workspaces as seen from the display it's on", func
     t.eq(v.made, { "in", "web" })
     t.eq(v.focusedDisplay, "A")
     t.eq(v.displays.A.workspace, "in")
-    t.eq(v.displays.A.mode, wm.workspaces["in"].mode)
+    t.eq(v.displays.A.mode, wm:part("in", "A").mode)
 end)
 
 t.test("each message from the page says what to do", function()

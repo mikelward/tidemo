@@ -17,4 +17,19 @@ function M.get(store, key, old_key)
     return v
 end
 
+-- wm:snapshot() as the settings store takes it: window ids as strings,
+-- and every other field as it is, so the workspace showing and the names'
+-- order are kept along with the windows.
+function M.form(snap)
+    local out = {}
+    for k, v in pairs(snap) do
+        out[k] = v
+    end
+    out.windows = {}
+    for id, v in pairs(snap.windows or {}) do
+        out.windows[tostring(id)] = v
+    end
+    return out
+end
+
 return M

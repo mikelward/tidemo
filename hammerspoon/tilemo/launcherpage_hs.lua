@@ -108,7 +108,7 @@ function M.new(tilemo)
                 return
             end
             local n = tilemo.wm:canonical(name)
-            if n and tilemo.wm.screen_ws[uuid] ~= n then
+            if n and not tilemo.wm:shown(n) then
                 local on = uuid
                 close(false)
                 -- Made if it's new, as the name prompt makes one.

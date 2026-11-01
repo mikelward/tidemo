@@ -56,7 +56,9 @@ end)
 
 t.test("at a display's edge they go on to the next display that way", function()
     local a, wm = setup({ 1 }, { 2 })
-    t.eq(wm.screen_ws, { A = "in", B = "2" })
+    t.eq(wm.current, "in")
+    t.eq(wm.windows[2].ws, "in", "one workspace across both displays")
+    t.eq(wm.windows[2].screen, "B")
     a.focus_ = 1
     wm:act("select", 1)
     t.eq(a.focus_, 2)
@@ -106,14 +108,17 @@ t.test("at the edge, the window moves to the next display, onto its near side, w
     local a, wm = setup({ 1 }, { 2 })
     a.focus_ = 1
     wm:act("move_side", 1)
-    t.eq(wm.windows[1].ws, "2", "it joins the workspace showing there")
+    t.eq(wm.windows[1].ws, "in", "it stays in its workspace")
+    t.eq(wm.windows[1].screen, "B")
+    t.eq(wm:part("in", "B").order, { 1, 2 })
+    t.eq(wm:part("in", "A").order, {})
     t.eq(a.wins[1].minimized or false, false)
     t.eq(a.focus_, 1)
     t.eq(a.wins[1].frame.x >= 1920, true)
     t.eq(left_to_right(a, { 1, 2 }), { 1, 2 }, "moving right, it lands on the left")
     -- And back: moving left, it lands on A's right, here A's only tile.
     wm:act("move_side", -1)
-    t.eq(wm.windows[1].ws, "in")
+    t.eq(wm.windows[1].screen, "A")
     t.eq(a.wins[1].frame.x < 1920, true)
 end)
 
@@ -121,7 +126,7 @@ t.test("moving left onto a display lands the window on its right", function()
     local a, wm = setup({ 1 }, { 2 })
     a.focus_ = 2
     wm:act("move_side", -1)
-    t.eq(wm.windows[2].ws, "in")
+    t.eq(wm.windows[2].screen, "A")
     t.eq(left_to_right(a, { 1, 2 }), { 1, 2 })
     t.eq(a.focus_, 2)
 end)
@@ -130,7 +135,7 @@ t.test("past the last display, Super+Shift+Right does nothing", function()
     local a, wm = setup({ 1 }, { 2 })
     a.focus_ = 2
     wm:act("move_side", 1)
-    t.eq(wm.windows[2].ws, "2")
+    t.eq(wm.windows[2].screen, "B")
 end)
 
 -- Whatever the layout, a window moved onto a display lands at the edge it
@@ -139,26 +144,56 @@ end)
 for _, mode in ipairs({ "tile", "threecol", "twocol" }) do
     t.test("moving right onto a display in " .. mode .. " lands on its left edge", function()
         local a, wm = setup({ 1 }, { 2, 3, 4 })
-        wm.workspaces["2"].mode = mode
+        wm:part("in", "B").mode = mode
         wm:retile()
         a.focus_ = 1
         wm:act("move_side", 1)
-        t.eq(wm.windows[1].ws, "2")
+        t.eq(wm.windows[1].screen, "B")
         t.eq(a.wins[1].frame.x, 1920)
         t.eq(a.focus_, 1)
     end)
 
     t.test("moving left onto a display in " .. mode .. " lands on its right edge", function()
         local a, wm = setup({ 1, 2, 3 }, { 4 })
-        wm.workspaces["in"].mode = mode
+        wm:part("in", "A").mode = mode
         wm:retile()
         a.focus_ = 4
         wm:act("move_side", -1)
-        t.eq(wm.windows[4].ws, "in")
+        t.eq(wm.windows[4].screen, "A")
         local f = a.wins[4].frame
         t.eq(f.x + f.w, 1920)
         t.eq(a.focus_, 4)
     end)
 end
+
+t.test("layout keys act on the display Super+Right left the keys on, not the focused tile's", function()
+    local a, wm = setup({ 1 }, {})
+    a.focus_ = 1
+    wm:act("select", 1)
+    t.eq(wm:current_screen(), "B")
+    wm:act("monocle")
+    wm:act("mfact", 1)
+    wm:act("nmaster", 1)
+    t.eq(wm:part("in", "B").mode, "monocle")
+    t.eq(wm:part("in", "A").mode, "tile", "A's part is left alone")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
+    t.eq(wm:part("in", "A").opts.tile.nmaster, 1)
+    wm:act("layout", "twocol")
+    t.eq(wm:part("in", "B").mode, "twocol")
+    t.eq(wm:part("in", "A").mode, "tile")
+end)
+
+t.test("after a switch to an empty workspace, layout keys act on it, not the one focus stayed on", function()
+    local a, wm = setup({ 1 }, nil)
+    a.focus_ = 1
+    -- Focus stays on window 1, now hidden on "in".
+    wm:show("web", nil, true)
+    t.eq(a.focus_, 1)
+    wm:act("monocle")
+    wm:act("mfact", 1)
+    t.eq(wm:part("web", "A").mode, "monocle")
+    t.eq(wm:part("in", "A").mode, "tile", "the hidden workspace's part is left alone")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
+end)
 
 t.done("sides")

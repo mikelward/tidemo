@@ -5,13 +5,13 @@ local ffm_mod = require("tilemo.ffm")
 local dashboard = require("tilemo.dashboard")
 local bar = require("tilemo.bar")
 
-t.test("the menu bar names each workspace: this display's, others showing, and the rest", function()
+t.test("the menu bar names each workspace, the one showing marked", function()
     t.eq(bar.title({
         { name = "in", here = true },
         { name = "docs", occupied = true },
-        { name = "web", elsewhere = true },
+        { name = "web" },
         { name = "chat", occupied = true, urgent = true },
-    }), "[in] docs (web) chat!")
+    }), "[in] docs web chat!")
 end)
 
 t.test("a long name is cut at 16 characters with an ellipsis", function()
@@ -25,7 +25,6 @@ local function two_displays(top)
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     a.add(1, { title = "Notes" })
-    -- No standing workspaces past "in", so B's comes second.
     local wm = wm_mod.new(a, { top = top or bar.HEIGHT, workspaces = { "in" } })
     wm:sync()
     wm:reconcile()
@@ -64,25 +63,25 @@ t.test("focus follows mouse pauses over the bar, as over the menu bar", function
     t.eq(ffm:paused(100, 80, false), false)
 end)
 
-t.test("each display's bar marks its own workspace, and the title shows on the focused one", function()
+t.test("every display's bar marks the one workspace showing, and the title shows on the focused one", function()
     local a, wm = two_displays()
     a.focus_ = 1
+    wm:ensure_ws("2")
     local sa = bar.state(wm, "A", "Notes", {})
     local sb = bar.state(wm, "B", "Notes", {})
     t.eq(sa.workspaces[1], {
         n = "in",
         current = true,
-        elsewhere = false,
         occupied = true,
         urgent = false,
         apps = {},
         wins = {},
         more = 0,
     })
+    t.eq(sb.workspaces[1].current, true, "B shows it too")
     t.eq(sa.workspaces[2].n, "2")
-    t.eq(sa.workspaces[2].elsewhere, true)
-    t.eq(sb.workspaces[2].current, true)
-    t.eq(sb.workspaces[1].elsewhere, true)
+    t.eq(sa.workspaces[2].current, false)
+    t.eq(sb.workspaces[2].current, false)
     t.eq(sa.title, "Notes")
     t.eq(sb.title, "")
     t.eq(sb.uuid, "B")
@@ -91,13 +90,12 @@ end)
 t.test("the title follows the focused window, not where the keys act", function()
     local a, wm = two_displays()
     a.focus_ = 1
-    -- Swapping an empty workspace in takes window 1 to B, with focus,
-    -- while the keys stay on A.
-    wm:show("2", nil, true)
-    t.eq(wm.screen_ws, { A = "2", B = "in" })
-    t.eq(wm:current_screen(), "A")
-    t.eq(bar.state(wm, "A", "Notes", {}).title, "")
-    t.eq(bar.state(wm, "B", "Notes", {}).title, "Notes")
+    -- Super+Right onto B, which has nothing of this workspace: the keys
+    -- go there, focus stays on window 1 on A.
+    wm:act("select", 1)
+    t.eq(wm:current_screen(), "B")
+    t.eq(bar.state(wm, "A", "Notes", {}).title, "Notes")
+    t.eq(bar.state(wm, "B", "Notes", {}).title, "")
 end)
 
 t.test("a bar's messages act on its own display, not where the keys are", function()
@@ -125,12 +123,12 @@ t.test("a bar's messages act on its own display, not where the keys are", functi
     t.eq(dash, { "B" }, "the logo isn't the clocks")
     wm:ensure_ws("4")
     bar.handle(wm, { uuid = "B", show = "4" }, act)
-    t.eq(wm.screen_ws, { A = "in", B = "4" })
+    t.eq(wm.current, "4")
+    t.eq(wm:current_screen(), "B", "nothing to focus there, so the keys stay on B")
     bar.handle(wm, { uuid = "B", show = "nothing" }, act)
-    t.eq(wm.screen_ws, { A = "in", B = "4" }, "a name with no workspace does nothing")
-    t.eq(wm.names, { "in", "4" }, "B's empty 2 went once left")
+    t.eq(wm.current, "4", "a name with no workspace does nothing")
     bar.handle(wm, { uuid = "B", step = -1 }, act)
-    t.eq(wm.screen_ws, { A = "4", B = "in" }, "a step to the one on A swaps the two")
+    t.eq(wm.current, "in")
     bar.handle(wm, { uuid = "B", open = "wifi" }, act)
     bar.handle(wm, { uuid = "B", open = "nothing" }, act)
     t.eq(opened, { bar.PANES.wifi })
@@ -239,7 +237,7 @@ t.test("a chip names its windows wanting attention, in layout order, up to five,
         return app ~= "app4" and ("data:" .. app) or nil
     end)
     local wins, apps = {}, {}
-    for _, id in ipairs(wm.workspaces["in"].order) do
+    for _, id in ipairs(wm:part("in", "A").order) do
         if id ~= 3 and #wins < bar.CHIP_APPS then
             wins[#wins + 1] = id
             apps[#apps + 1] = wm.windows[id].app
@@ -248,7 +246,7 @@ t.test("a chip names its windows wanting attention, in layout order, up to five,
     t.eq(s.workspaces[1].wins, wins)
     t.eq(s.workspaces[1].apps, apps)
     t.eq(s.workspaces[1].more, 3, "two more tiles and the float")
-    t.eq(s.workspaces[2].apps, {})
+    t.eq(s.workspaces[2], nil, "B has no workspace of its own")
     -- Icons only for the apps shown, each asked for once.
     t.eq(#seen, 5)
     for _, app in ipairs(apps) do
@@ -277,28 +275,29 @@ t.test("floats follow a workspace's tiles in its chip", function()
     t.eq(bar.state(wm, "A", "", {}).workspaces[1].apps, { "com.example.app", "float" })
 end)
 
-t.test("clicking an attention icon focuses its window, bringing a hidden workspace to that bar's display", function()
+t.test("clicking an attention icon focuses its window, bringing its hidden workspace to every display", function()
     local a, wm = two_displays()
     a.focus_ = 1
     wm:send(1, "web")
     wm:sync()
     wm:reconcile()
-    t.eq(wm:shown("web"), nil)
+    t.eq(wm:shown("web"), false)
     wm.attention:activated(1, "com.example.app")
     -- From JSON, the id may come back as a float.
     bar.handle(wm, { uuid = "B", focus = 1.0 }, {})
-    t.eq(wm:shown("web"), "B")
+    t.eq(wm.current, "web")
+    t.eq(wm.windows[1].screen, "A", "it stays on its own display")
     t.eq(a.focus_, 1)
 end)
 
-t.test("clicking an attention icon leaves a workspace where it shows", function()
+t.test("clicking an attention icon on the workspace showing only focuses it", function()
     local a, wm = two_displays()
     a.add(2, { app = "chat" })
     wm:sync()
     wm:reconcile()
     a.focus_ = 1
     bar.handle(wm, { uuid = "B", focus = 2 }, {})
-    t.eq(wm:shown("in"), "A")
+    t.eq(wm.current, "in")
     t.eq(a.focus_, 2)
     -- A window that's gone does nothing.
     bar.handle(wm, { uuid = "B", focus = 99 }, {})
@@ -349,14 +348,15 @@ t.test("double-clicking a bar's title maximizes the focused window on that displ
     t.eq(wm.windows[1].big, nil, "again puts it back")
 end)
 
-t.test("scrolling steps from that display's workspace in bar order, stopping at the first and last", function()
+t.test("scrolling on any display's bar steps from the workspace showing, stopping at the first and last", function()
     local _, wm = two_displays()
     wm:ensure_ws("3")
     t.eq(bar.step(wm, "B", 1), "3")
+    t.eq(bar.step(wm, "A", 1), "3")
     t.eq(bar.step(wm, "B", -1), "in")
-    t.eq(bar.step(wm, "A", -1), "in")
-    wm.screen_ws.B = "3"
+    wm:show("3")
     t.eq(bar.step(wm, "B", 1), "3")
+    t.eq(bar.step(wm, "A", -1), "in")
 end)
 
 t.test("the battery shows its rounded percentage and whether it's charging", function()

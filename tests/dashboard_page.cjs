@@ -61,9 +61,9 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), sandbox);
 
 const ws = [
-  { n: "in", current: false, elsewhere: false, occupied: false, urgent: false },
-  { n: "web", current: true, elsewhere: false, occupied: true, urgent: false },
-  { n: "ABC-123 fix the login page", current: false, elsewhere: false, occupied: true, urgent: true },
+  { n: "in", current: false, occupied: false, urgent: false },
+  { n: "web", current: true, occupied: true, urgent: false },
+  { n: "ABC-123 fix the login page", current: false, occupied: true, urgent: true },
 ];
 sandbox.tilemo.update({ workspaces: ws, title: "Chat (1)" });
 

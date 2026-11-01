@@ -34,11 +34,11 @@ end
 -- the switcher's Windows tab.
 function M.state(wm, uuid)
     local s = wm:screen_by_uuid(uuid)
-    local n = wm.screen_ws[uuid]
+    local n = wm.current
     if not s or not n then
         return nil
     end
-    local ids = wm:minimized_windows(n)
+    local ids = wm:minimized_windows(n, uuid)
     local first = math.max(1, #ids - M.fits(s.area.w) + 1)
     local items = {}
     for i = first, #ids do

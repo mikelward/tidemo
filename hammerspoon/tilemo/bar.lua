@@ -34,16 +34,14 @@ function M.short(name)
     return name:sub(1, utf8.offset(name, M.NAME_MAX + 1) - 1) .. "…"
 end
 
--- `ws` lists the workspaces in bar order, each { name, here, elsewhere,
--- occupied, urgent }.
+-- `ws` lists the workspaces in bar order, each { name, here, occupied,
+-- urgent }.
 function M.title(ws)
     local parts = {}
     for _, w in ipairs(ws) do
         local s = M.short(w.name)
         if w.here then
             s = "[" .. s .. "]"
-        elseif w.elsewhere then
-            s = "(" .. s .. ")"
         end
         if w.urgent then
             s = s .. "!"
@@ -118,15 +116,17 @@ end
 -- this many, then "+n" (SPEC.md §8).
 M.CHIP_APPS = 5
 
--- Workspace `n`'s windows: its tiles in layout order, then its other
--- windows (floats) by id, so the icons don't shuffle.
+-- Workspace `n`'s windows: its tiles in layout order, display by display,
+-- then its other windows (floats) by id, so the icons don't shuffle.
 local function windows_of(wm, n)
     local ids, seen = {}, {}
-    local ws = wm.workspaces[n]
-    for _, id in ipairs(ws and ws.order or {}) do
-        if wm.windows[id] and wm.windows[id].ws == n then
-            ids[#ids + 1] = id
-            seen[id] = true
+    for _, s in ipairs(wm:screens()) do
+        local ws = wm.workspaces[n] and wm:part(n, s.uuid)
+        for _, id in ipairs(ws and ws.order or {}) do
+            if wm.windows[id] and wm.windows[id].ws == n and not seen[id] then
+                ids[#ids + 1] = id
+                seen[id] = true
+            end
         end
     end
     local rest = {}
@@ -158,7 +158,7 @@ function M.state(wm, uuid, title, icons, icon_of)
     for _, id in ipairs(wm:attention_windows()) do
         wanting[id] = true
     end
-    for i, s in ipairs(wm:bar_state(uuid)) do
+    for i, s in ipairs(wm:bar_state()) do
         local all = {}
         for _, id in ipairs(windows_of(wm, s.name)) do
             if wanting[id] then
@@ -177,7 +177,6 @@ function M.state(wm, uuid, title, icons, icon_of)
         ws[i] = {
             n = s.name,
             current = s.here or false,
-            elsewhere = s.elsewhere or false,
             occupied = s.occupied or false,
             urgent = s.urgent or false,
             apps = apps,
@@ -186,11 +185,11 @@ function M.state(wm, uuid, title, icons, icon_of)
         }
     end
     -- The keys can act on another display than the focused window's, after
-    -- an empty workspace is swapped in (wm:keep_keys_on), so the title goes
-    -- by the window itself, and by the keys only with no managed window.
+    -- a switch leaves nothing to focus there (wm:keep_keys_on), so the
+    -- title goes by the window itself, and by the keys only with no managed
+    -- window.
     local f = wm.a.focused()
-    local w = f and wm.windows[f]
-    local on = w and w.ws and wm:shown(w.ws) or wm:current_screen()
+    local on = wm:screen_of(f) or wm:current_screen()
     return {
         uuid = uuid,
         workspaces = ws,
@@ -206,14 +205,15 @@ local function holds(box, frame)
 end
 
 -- Whether display `uuid`'s bar hides, as tide's does under a full-screen
--- window (tide §7.1): its workspace has a window in tilemo's full screen, or
+-- window (tide §7.1): its part of the workspace showing has a window in
+-- tilemo's full screen, or
 -- the focused window is in macOS's own full screen there. macOS's is only
 -- known for the focused window: one left in its own Space may be swiped
 -- away from without tilemo hearing *(unverified)*.
 function M.hidden(wm, uuid)
-    local n = wm.screen_ws[uuid]
+    local n = wm.current
     for id, w in pairs(wm.windows) do
-        if n and w.ws == n and w.big == "full" then
+        if n and w.ws == n and w.screen == uuid and w.big == "full" then
             local st = wm.a.state(id)
             if st and not st.minimized and not st.hidden then
                 return true
@@ -500,7 +500,7 @@ function M.handle(wm, body, act)
         end
     elseif body.maximize then
         local _, w = wm:focused_tile()
-        if w and uuid and wm:shown(w.ws) == uuid then
+        if w and uuid and wm:shown(w.ws) and w.screen == uuid then
             wm:act("maximize")
         end
     elseif body.dashboard then
@@ -520,10 +520,10 @@ function M.handle(wm, body, act)
     end
 end
 
--- Scrolling over the workspaces steps from display `uuid`'s, in bar order,
+-- Scrolling over the workspaces steps from the one showing, in bar order,
 -- stopping at the first and last, as Super+PgUp and PgDn do.
 function M.step(wm, uuid, d)
-    return wm:step_from(wm.screen_ws[uuid] or wm.home, d)
+    return wm:step_from(wm:current_ws(), d)
 end
 
 return M

@@ -5,7 +5,7 @@ local ffm_mod = require("tilemo.ffm")
 local tray = require("tilemo.tray")
 local launcher = require("tilemo.launcher")
 
--- Windows 1..n on "in", with a second display B showing "web".
+-- Windows 1..n on "in", on display A, with a second display B.
 local function setup(n)
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
@@ -52,7 +52,7 @@ t.test("Super+Z minimizes the focused window, frees its tile, and focuses the la
     t.eq(a.wins[3].minimized, true)
     t.eq(wm.windows[3].mine, true)
     t.eq(a.focus_, 2)
-    t.eq(wm:tiled("in"), { 1, 2 })
+    t.eq(wm:tiled("in", "A"), { 1, 2 })
     settle(a, wm)
     t.eq(wm.windows[3].mine, true, "macOS's report of tilemo's own minimize leaves it yours")
 end)
@@ -93,15 +93,16 @@ t.test("the tray lists the windows you minimized there, in order, and not the on
     settle(a, wm)
     t.eq(a.wins[4].minimized, true)
     t.eq(ids(tray.state(wm, "A")), { 3, 1 })
-    t.eq(tray.state(wm, "B"), nil, "B's workspace has none")
+    t.eq(tray.state(wm, "B"), nil, "B's part has none")
 end)
 
-t.test("each display's tray shows its own workspace's windows", function()
+t.test("each display's tray shows the windows you minimized from its own part of the workspace", function()
     local a, wm = setup(2)
-    wm:send(2, "web")
-    wm:show("web", "B")
-    settle(a, wm)
     focus(wm, 2)
+    -- Window 2 is the stack, on the right: Super+Shift+Right takes it to B.
+    wm:act("move_side", 1)
+    t.eq(wm.windows[2].screen, "B")
+    t.eq(wm.windows[2].ws, "in")
     wm:act("minimize")
     settle(a, wm)
     t.eq(tray.state(wm, "A"), nil)
@@ -159,7 +160,7 @@ t.test("clicking an icon for a hidden workspace's window brings the workspace", 
     wm:show("in", "A")
     settle(a, wm)
     tray.click(wm, 2)
-    t.eq(wm:shown("web") ~= nil, true)
+    t.eq(wm:shown("web"), true)
     t.eq(a.wins[2].minimized, false)
 end)
 
