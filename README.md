@@ -95,6 +95,10 @@ alone (§7.1). By hand:
 `tilemo.start({ bar = false })` leaves the bar out and shows tide's logo and
 the workspaces in the menu bar instead.
 
+`tilemo.start({ launcher = "dashboard" })` swaps the `hs.chooser` switcher
+for tileco's dashboard page, still being tried (SPEC.md §9.2). The default
+is `launcher = "chooser"`.
+
 On screen it's tide: notifications, window titles, the switcher's own
 commands and the settings page say tide and show tide's wave logo. The code
 keeps the name tilemo, so `require("tilemo")`, `start()`'s options and what

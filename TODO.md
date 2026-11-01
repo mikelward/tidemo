@@ -152,17 +152,38 @@ anyway (its `styleMask` in `HSChooserWindow.xib` is only
 
 ## Launcher looks
 
-- **Next: tileco's dashboard as the launcher** (the user chose it,
-  2026-11-01). Replace the `hs.chooser` switcher with tileco's dashboard
-  page in an `hs.webview`, opened by the bar's logo: its tabs, sections
-  and key hints, with the Actions tab and the Tide Settings rows that
-  `launcher.lua` lists now.
-- **Try tileco's launcher page.** The launcher is `hs.chooser` with
-  tileco's scopes, which Tab moves between (SPEC.md §9). tileco's own page,
-  with its scope chips over the bar and clocks, may look nicer. Try it in the
-  dashboard's webview: tileco's `launcherview.js` with a stand-in for the
-  Chrome APIs it calls, fed by `launcher.lua`'s items. Then compare the two
-  on the Mac.
+**Built, switched off** (SPEC.md §9.2): tileco's dashboard page as the
+launcher, in an `hs.webview`, with `start({ launcher = "dashboard" })`. The
+default stays the `hs.chooser` switcher. Only the plain-Lua tests and the
+page's test, against a fake DOM, cover it.
+
+- **Next: make the dashboard launcher the default,** once it's been tried
+  on a Mac with `launcher = "dashboard"`. Check there:
+  - **open speed:** each open makes a new webview and loads the page. If
+    that's slow, keep the webview built and hidden between uses, and open
+    it with `tilemo.open()` alone, which already takes a new feed and
+    scope;
+  - **key focus:** the search field has the keyboard as it opens, with no
+    click; Esc, a click away and a second key give focus back to the
+    window you were in, and a choice to the window it chose;
+  - **Spaces and full screen:** it shows on the current Space, and over a
+    full-screen app. It asks for `moveToActiveSpace` and
+    `fullScreenAuxiliary` (`launcherpage_hs.lua`), which may need
+    `canJoinAllSpaces` once the webview is kept;
+  - **screen sharing:** the chooser isn't kept out of screen shares today
+    (Decisions needing review: no part of Hammerspoon sets
+    `NSWindow.sharingType`), so neither is the webview. Check whether
+    `hs.webview` has gained a way since, and apply it to both.
+- **The dashboard launcher's gaps against the switcher,** to close before
+  it's the default:
+  - `Cmd+Return`'s new workspace, and `Cmd+M` or a right-click to mute a row;
+  - an Attention scope: `Super+A` opens it on Tabs;
+  - a window's "minimized" and "muted", and the app's name, in its row:
+    tileco's page says "tab on <workspace>" for every row on Tabs;
+  - app icons on Launch and Tabs, which tileco's page takes as `favIconUrl`;
+  - CI's smoke test opens only the chooser.
+- **Compare the two on the Mac,** tileco's page with its scope chips over
+  the bar and clocks against the chooser, then pick the default.
 
 ## Keep awake and presenter mode
 
@@ -184,6 +205,35 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **The dashboard launcher feeds tileco's page through stand-ins for two
+  of tileco's modules, not only Chrome's APIs** (2026-11-01):
+  `launcher-lists.js` replaces `launcher.js`'s `actions()` and
+  `settingsSections()`, whose rows are chromeOS's, with the switcher's
+  Actions tab and Tide Settings' sections, and `launcher-settings.js`
+  replaces tileco's `settings.js` with tide's clocks. The alternative was
+  tileco's own Actions (keep awake, dim, reload) and settings sections,
+  which name a Chromebook's settings. Reversible: drop the two from
+  `launcherpage.MODULES`.
+- **The page tells tileco it runs on chromeOS** (`getPlatformInfo` says
+  `cros`), so it shows workspaces, as tileco does only there
+  (2026-11-01). Reversible: `launcher-chrome.js`.
+- **The page keeps tileco's chip names,** "Tabs" for the windows and tabs,
+  since its footer names the scopes too (2026-11-01). The alternative is
+  calling it "Windows", as the switcher does, which needs tileco's markup
+  and `launcher.js` to change. Reversible: in tileco.
+- **Windows are listed as tabs with a made-up address,**
+  `tide-window://<app>/`, so a query finds a window by its app as tileco
+  finds a tab by its site (2026-11-01). Reversible: `launcherpage.feed`.
+- **System Settings' panes are among the apps on Launch,** most recently
+  used first with them, since tileco's page has no other row for them
+  (2026-11-01). Reversible: `launcherpage.feed`.
+- **tilemo's commands go in as manifest commands with no key,** so tileco
+  lists them on Actions after the actions and on Launch for a query
+  (2026-11-01). The switcher lists them on Launch only. Reversible:
+  `launcherpage.feed`.
+- **`make check-tileco` compares `launcher.html`'s body with the page
+  template's**, since the template wraps it in tilemo's style and script
+  markers (2026-11-01). Reversible: the `Makefile`.
 - **The Setup checklist is tileco's, not tide's,** and the window's last
   section, after Start at login (2026-11-01): tide has no checklist page
   (tide SPEC.md §16), and tilemo's SPEC.md §10 says "as tileco's". The

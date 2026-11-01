@@ -22,6 +22,10 @@ M.ALIASES = {
     ["tide-steps.js"] = "steps.mjs",
     ["tide-fuzzy.js"] = "fuzzy.mjs",
     ["tide-workspacenames.js"] = "workspacenames.mjs",
+    -- The dashboard launcher's stand-ins for tileco's modules of these
+    -- names (launcherpage.lua), registered after them.
+    ["launcher-settings.js"] = "settings.js",
+    ["launcher-lists.js"] = "launcher.js",
 }
 
 -- tide's settings folder (tide SPEC.md §16.1), where the clocks are, from
@@ -103,7 +107,9 @@ local function wrap(name, src)
         exports[#exports + 1] = n
         return "let " .. n
     end)
-    if src:find("%f[%w]export%f[%W]") then
+    -- At the start of a line, where a statement is: "Import and export" in
+    -- a string is just words.
+    if ("\n" .. src):find("\n[ \t]*export%f[%W]") then
         error("tide: dashboard/" .. name .. " has an export bundle() can't read")
     end
     return string.format('modules["./%s"] = (() => {\n%s\nreturn { %s };\n})();\n',
