@@ -162,8 +162,8 @@ end
 -- they it, as tide runs the two independently (tide §6.5).
 M.HOME_SETTINGS_KEY = "tilemo.home_started"
 
--- The apps home starts at login (SPEC.md §6.2): the `home_apps` you set in
--- start(), in order, or none. tilemo's default list names a Mac app and a
+-- The apps home starts at login (SPEC.md §6.2): the list you set, tide's
+-- `inApps` or start()'s `home_apps`, in order, or none. tilemo's default list names a Mac app and a
 -- web app for each of mail, chat, calendar and music, which match either,
 -- so starting it would open both, Mail's and Messages' first-run setup
 -- included.
@@ -175,17 +175,27 @@ function M.home_starts(configured)
     return out
 end
 
--- Opens each of home's apps that isn't running, in order. `running(name)`
--- says whether one is; `open(name)` starts one in the background; `log`
--- says what was skipped and why. One that throws is logged, and the rest
--- still start.
-function M.start_home(names, running, open, log)
+-- Opens each of home's apps that isn't running, in order. `running(app)`
+-- says whether one is; `open(app)` starts one in the background; `log`
+-- says what was skipped and why. With `find(name)`, for a list from tide's
+-- files, each entry is the Mac app it finds, or skipped, logged, when it
+-- finds none: the list names tide's programs and web addresses too
+-- (SPEC.md §6.2). One that throws is logged, and the rest still start.
+function M.start_home(names, running, open, log, find)
     for _, name in ipairs(names) do
         local ok, err = pcall(function()
-            if running(name) then
+            local app = name
+            if find then
+                app = find(name)
+                if not app then
+                    log(name .. " is no app on this Mac, so not starting it")
+                    return
+                end
+            end
+            if running(app) then
                 log(name .. " is running already, so not starting it again")
             else
-                open(name)
+                open(app)
             end
         end)
         if not ok then
@@ -195,15 +205,17 @@ function M.start_home(names, running, open, log)
 end
 
 -- Home's apps at login: once a login (`login`, as for the list), and only
--- with a `home_apps` you set. `settings` is hs.settings' get and set,
--- keeping the login they last started in. Returns whether they started.
-function M.home_at_login(configured, settings, login, running, open, log)
+-- with a list you set, in tide's files or start()'s `home_apps`. `settings`
+-- is hs.settings' get and set, keeping the login they last started in.
+-- `find` is start_home's, for a list from the files. Returns whether they
+-- started.
+function M.home_at_login(configured, settings, login, running, open, log, find)
     local names = M.home_starts(configured)
     if #names == 0 or not M.due(settings.get(M.HOME_SETTINGS_KEY), login) then
         return false
     end
     settings.set(M.HOME_SETTINGS_KEY, login)
-    M.start_home(names, running, open, log)
+    M.start_home(names, running, open, log, find)
     return true
 end
 

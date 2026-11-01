@@ -503,4 +503,63 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.strictEqual(rows()[1].children[2].disabled, true);
 }
 
+// The Workspaces section, as tide's Workspaces page: the standing
+// workspaces, home's apps and the name patterns, each change written to
+// workspaces.local.json with the file's other settings kept.
+{
+  const items = (key) => ids[`ws-list-${key}`].children.map((li) => li.children.map((c) => c.textContent));
+  const lastWs = () => JSON.parse(sent.filter((m) => m.writeWorkspaces).at(-1).writeWorkspaces);
+  const base = { standing: ["in", "re", "oc", "me"], inApps: ["Mail", "Gmail"] };
+  // No files: what's in effect, start()'s lists or tilemo's defaults.
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: base });
+  assert.match(ids["workspaces-source"].textContent, /The defaults/);
+  assert.deepStrictEqual(items("standing")[0], ["in", "home", "↑", "↓", "✕"]);
+  assert.deepStrictEqual(items("inApps"), [["Mail", "✕"], ["Gmail", "✕"]]);
+  assert.deepStrictEqual(ids["ws-list-namePatterns"].children.map((li) => li.textContent), ["None yet."]);
+  assert.strictEqual(ids["ws-add-inApps"].placeholder, "Add a program or web address, such as gmail");
+
+  // The first change copies the list in effect, keeping `muted`.
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"muted": ["com.example.chat"]}' } });
+  sent.length = 0;
+  const add = ids["ws-add-inApps"];
+  add.value = "Google Chat";
+  press(add, "Enter");
+  assert.deepStrictEqual(lastWs(), { muted: ["com.example.chat"], inApps: ["Mail", "Gmail", "Google Chat"] });
+  assert.strictEqual(add.value, "", "the box empties once it's added");
+  // One listed already, ignoring case, is refused, and nothing is written.
+  const before = sent.length;
+  add.value = "mail";
+  press(add, "Enter");
+  assert.match(ids["workspaces-error"].textContent, /listed already/);
+  assert.strictEqual(sent.length, before);
+
+  // Moving one first makes it home; taking out the last is refused.
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { shared: '{"standing": ["in", "re"]}' } });
+  assert.match(ids["workspaces-source"].textContent, /shared with tide/);
+  ids["ws-list-standing"].children[1].children[2].listeners.click();
+  assert.deepStrictEqual(lastWs(), { standing: ["re", "in"] });
+  assert.deepStrictEqual(items("standing").map((r) => r.slice(0, 2)), [["re", "home"], ["in", ""]]);
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"standing": ["in"]}' } });
+  ids["ws-list-standing"].children[0].children[4].listeners.click();
+  assert.match(ids["workspaces-error"].textContent, /at least one workspace/);
+
+  // A pattern that doesn't compile or has no capture group is refused.
+  const pat = ids["ws-add-namePatterns"];
+  pat.value = "([A-Z]+";
+  press(pat, "Enter");
+  assert.notStrictEqual(ids["workspaces-error"].textContent, "");
+  pat.value = "[A-Z]+-[0-9]+";
+  press(pat, "Enter");
+  assert.match(ids["workspaces-error"].textContent, /capture group/);
+  pat.value = "\\b([A-Z]+-[0-9]+)\\b";
+  press(pat, "Enter");
+  assert.deepStrictEqual(lastWs().namePatterns, ["\\b([A-Z]+-[0-9]+)\\b"]);
+
+  // A file that's wrong can't be changed here, and the page says so.
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"standing": []}' } });
+  assert.match(ids["workspaces-error"].textContent, /workspaces\.local\.json: standing must name/);
+  assert.strictEqual(ids["ws-add-standing"].disabled, true);
+  assert.deepStrictEqual(items("standing"), []);
+}
+
 console.log("settings page: ok");

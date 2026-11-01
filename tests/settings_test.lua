@@ -47,6 +47,9 @@ t.test("each list's rows have a column for every part, so none wraps", function(
     t.eq(columns(html, ".settings #karabiner-rules li"), 2, "a Karabiner rule and On or Off")
     t.eq(columns(html, ".settings #floating-list li"), 5, "an app, its title, up, down and remove")
     t.eq(columns(html, ".settings #floating-now li"), 3, "an app, its title and Always float")
+    t.eq(columns(html, ".settings #ws-list-standing li"), 5, "a workspace, its note, up, down and remove")
+    t.eq(columns(html, ".settings #ws-list-namePatterns li"), 5, "a pattern, its note, up, down and remove")
+    t.eq(columns(html, ".settings #ws-list-inApps li"), 2, "an app and remove")
     t.eq(columns(html, ".settings li"), 5, "a zone, its label, left, right and remove")
 end)
 
@@ -73,6 +76,14 @@ t.test("the Layouts settings files are tide's, in its settings folder", function
     t.eq(dashboard.LAYOUTS_LOCAL_FILE, "layouts.local.json")
 end)
 
+t.test("the Workspaces settings files are tide's, in its settings folder", function()
+    local got = dashboard.workspace_files("/c/tide", function(p)
+        return p == "/c/tide/workspaces.local.json" and "{}" or nil
+    end)
+    t.eq(got, { ["local"] = "{}" })
+    t.eq(dashboard.WORKSPACES_LOCAL_FILE, "workspaces.local.json")
+end)
+
 t.test("a tide module copied unchanged finds another by tide's name for it", function()
     local js = dashboard.bundle({
         ["tide-clocks.js"] = "export const X = 1;",
@@ -92,7 +103,7 @@ t.test("the settings page builds, and changes the clocks as tide's page does", f
     t.eq(html:find('id="add-zone"', 1, true) ~= nil, true)
     t.eq(html:find('id="add-command"', 1, true) ~= nil, true)
     t.eq(html:find('id="clipboard-history"', 1, true) ~= nil, true)
-    for _, id in ipairs({ "clocks", "layouts", "startup", "clipboard", "muted", "floating" }) do
+    for _, id in ipairs({ "clocks", "layouts", "workspaces", "startup", "clipboard", "muted", "floating" }) do
         t.eq(html:find('<h1 id="' .. id .. '"', 1, true) ~= nil, true, "a section to reveal: " .. id)
     end
     local node = io.popen("command -v node"):read("l")

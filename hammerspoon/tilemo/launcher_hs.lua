@@ -317,7 +317,7 @@ function M.new(tilemo)
             local bundle = info and info.CFBundleIdentifier
             -- One of "in"'s apps launches from "in" without asking for a
             -- workspace (SPEC.md §6.2).
-            local home_app = tilemo.wm.home_apps[item.title] or false
+            local home_app = tilemo.wm:home_app_named(item.title)
             if bundle then
                 tilemo.wm.actions.app(tilemo.wm, { bundle = bundle, name = item.title, home_app = home_app }, fresh)
             else

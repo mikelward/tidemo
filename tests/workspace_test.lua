@@ -1282,4 +1282,65 @@ t.test("Super+Return refuses a name with what a name can't hold, and asks again"
     t.eq(wm.holding_keyboard, false)
 end)
 
+t.test("home's apps match by name ignoring case, with spaces and hyphens alike", function()
+    local a = fake.new()
+    a.add(1, { name = "Google Chat" })
+    local wm = wm_mod.new(a, { home_apps = { "google-chat" } })
+    wm:sync()
+    t.eq(wm.windows[1].ws, "in")
+    t.eq(wm:home_app_named("GOOGLE CHAT"), true)
+    t.eq(wm:home_app_named("Google Chrome"), false)
+end)
+
+t.test("new standing workspaces from the files apply at once, the first being home", function()
+    local a, wm = setup(1, nil, { workspaces = { "in", "re" } })
+    a.focus_ = 1
+    wm:act("send", "docs")
+    wm:act("show", "in")
+    t.eq((wm:listed()), { "in", "re", "docs" })
+    -- docs becomes home, and in an ordinary workspace, removed once empty
+    -- and hidden.
+    t.eq(wm:set_workspaces({ "docs", "re", "oc" }, { "Mail" }), true)
+    t.eq(wm.home, "docs")
+    t.eq(wm.names[1], "docs")
+    t.eq((wm:listed()), { "docs", "re", "oc", "in" }, "in still shows")
+    t.eq(wm.windows[1].ws, "docs", "windows stay where they are")
+    wm:act("show", "docs")
+    t.eq((wm:listed()), { "docs", "re", "oc" }, "in, empty and hidden, goes")
+    -- The new home's apps open there.
+    a.add(2, { name = "Mail" })
+    wm:sync()
+    t.eq(wm.windows[2].ws, "docs")
+    t.eq(wm:set_workspaces({ "docs", "re", "oc" }, { "mail" }), false, "the same lists change nothing")
+    -- A home that doesn't exist yet is made, first.
+    t.eq(wm:set_workspaces({ "new", "docs" }, {}), true)
+    t.eq(wm.names[1], "new")
+    t.eq(wm.workspaces.new ~= nil, true)
+    t.eq(pcall(wm.set_workspaces, wm, {}, {}), false, "checked as start()'s are")
+end)
+
+t.test("a workspace made with other case keeps it when it becomes home", function()
+    local a, wm = setup(1, nil, { workspaces = { "in" } })
+    a.focus_ = 1
+    wm:act("send", "Docs")
+    wm:set_workspaces({ "docs", "in" }, {})
+    t.eq(wm.home, "Docs")
+    t.eq(wm.windows[1].ws, wm.home)
+    -- The standing list takes that spelling, so the bar and Next and
+    -- Previous, which compare names exactly, still find it.
+    t.eq(wm.standing, { "Docs", "in" })
+    t.eq((wm:listed()), { "Docs", "in" })
+    wm:act("show", "Docs")
+    t.eq(wm:index_of_ws("Docs"), 1)
+end)
+
+t.test("a standing workspace other than home keeps its spelling too", function()
+    local a, wm = setup(1, nil, { workspaces = { "in" } })
+    a.focus_ = 1
+    wm:act("send", "Docs")
+    wm:set_workspaces({ "in", "docs" }, {})
+    t.eq(wm.standing, { "in", "Docs" })
+    t.eq(wm:index_of_ws("Docs"), 2)
+end)
+
 t.done("workspaces")

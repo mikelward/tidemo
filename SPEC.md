@@ -727,8 +727,9 @@ numbered ones:
 - **Workspaces have names, not numbers.** A workspace exists once it has a
   name. The bar lists them by name (§8), in bar order: the standing
   workspaces, then the rest in the order they were made.
-- **Standing workspaces** are a setting, `workspaces` in `start()` (§15),
-  "in", "re", "oc" and "me" by default.
+- **Standing workspaces** are a setting, tide's `standing` (§15), or
+  `workspaces` in `start()` where no file sets it, "in", "re", "oc" and
+  "me" by default.
 - **The first is the home workspace,** "in" by default. It's the first
   standing workspace that's special, not the name "in": whatever the list
   names first gets everything this spec says of "in". tilemo makes it at
@@ -821,8 +822,9 @@ the home workspace, the first standing one (§6.1), which is "in" unless
     *(unverified)*. Which names stand for those four is a guess, to
     confirm: Mail, Gmail; Messages, Google Chat; Calendar, Google
     Calendar; Music, YouTube Music.
-  - The list is tilemo's, not shared with tide: tide names apps by their
-    Wayland app ID, which a Mac doesn't have.
+  - The list is tide's `inApps` (§15), shared with tide, or `home_apps` in
+    `start()` where no file sets it. It names Mac apps as well as tide's
+    entries, and each desktop passes over the other's.
   - **A list you set starts at login,** as tide's home starts its apps
     (tide §6.5): once a login, told apart as Start at login's list is
     (§15), each app by name with `open -g -a`, so none takes focus, in
@@ -834,8 +836,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
       web app for each of the four, so it would open both, including
       Mail's and Messages' first-run setup on a Mac that uses Google's
       *(a guess, to confirm)*.
-    - **Entries stay app names,** not tide's programs and web addresses
-      (tide §6.5). A `chrome --app=URL` window on a Mac is Google Chrome's
+    - **Entries are app names** here, not tide's programs and web
+      addresses (tide §6.5). A `chrome --app=URL` window on a Mac is Google Chrome's
       own, which tilemo can't tell from a browser window, so a web address
       would match nothing; Chrome's installed web apps have names of their
       own, which the list already takes. A `scripts` launcher such as
@@ -2166,13 +2168,62 @@ Each one names a workaround, or says there is none.
       doesn't parse can't be changed here until it's fixed.
     - A change takes effect at the next login: the list already ran in
       this one (above).
-- **The home workspace's apps are tilemo's own setting,** `home_apps` in
-  `start()`, a list of app names (§6.2). tide's list names Wayland app IDs,
-  which a Mac doesn't have.
-- **The standing workspaces are tilemo's own setting,** `workspaces` in
-  `start()`, a list of names, `{ "in", "re", "oc", "me" }` by default
-  (§6.1). The first is the home workspace. An empty list, or one naming a
-  workspace twice, is an error at load.
+- **The standing workspaces and home's apps are tide's settings,**
+  `standing` and `inApps` in `workspaces.json` and `workspaces.local.json`
+  (tide §6.5, §16), so one list serves both desktops.
+  - Each is a list, so a `.local` file's replaces the shared one whole
+    (tide §16.1).
+  - Where no file sets one, `start()`'s stands in: `workspaces`, a list of
+    names, `{ "in", "re", "oc", "me" }` by default (§6.1), and `home_apps`,
+    a list of app names, tilemo's eight by default (§6.2).
+  - They're checked as tide checks them. An empty `standing`, a name in it
+    twice (ignoring case), one with quotes, backslashes or control
+    characters, space around it or over 32 characters, or an `inApps`
+    entry that isn't text, is an error at load. It's a notification and a
+    line in `tilemo doctor`, naming the file and the setting, and the last
+    good lists stay. Each file is checked whole, as tide checks it, even
+    where the other file's list is the one in effect.
+  - A change applies at once, as tide's does. The first standing workspace
+    is home from then on: made if it isn't yet, and first on the bar. The
+    old home is an ordinary workspace, removed once it's empty and hidden.
+    Windows stay where they are, since home's apps say where a window
+    opens, not where it must stay.
+  - **`inApps` names Mac apps as well as tide's entries.** tilemo matches a
+    window's app name against each entry ignoring case, and with spaces,
+    hyphens and underscores alike, so tide's `google-chat` is the Mac's
+    Google Chat app too *(a guess, to confirm)*. tide's web addresses match
+    nothing here (§6.2), and a Mac app's name with spaces is a window class
+    on tide, which starts nothing there.
+  - **The files' list starts at login,** as a list set in `start()` does
+    (§6.2), but only the entries that are a Mac app. tilemo looks for each,
+    as written and with hyphens as spaces, in `/Applications`,
+    `/System/Applications`, `~/Applications` and Chrome's
+    `~/Applications/Chrome Apps.localized`, and opens what it finds with
+    `open -g -a`. An entry that finds none is tide's, so it's skipped, and
+    the log says so, not a notification. One already running, by its
+    bundle ID, isn't opened again.
+  - **The settings window's Workspaces section** edits them, as tide's
+    Workspaces page does, with tide's own `workspacepage.mjs`,
+    `workspacenames.mjs` and `fuzzy.mjs`, copied unchanged as
+    `dashboard/tide-workspacepage.js`, `tide-workspacenames.js` and
+    `tide-fuzzy.js` (`make check-tide`).
+    - It lists `standing`, `inApps` and `namePatterns` (§6.2), as the
+      files in effect have them, or `start()`'s or tilemo's defaults where
+      they set none. The first standing workspace is marked home.
+    - The standing workspaces and the patterns, whose order counts, have
+      arrows that move one; each entry has a ✕ that takes it out. Moving
+      another first makes it home.
+    - An entry typed at a list's foot is added with Enter. One listed
+      already, ignoring case, or one the files wouldn't take is refused,
+      and the section says why: a name with quotes, a pattern that doesn't
+      compile or has no capture group, or taking out the last standing
+      workspace. The patterns are checked in the window's JavaScriptCore,
+      as tilemo checks them at load.
+    - The first change to a list copies it into `workspaces.local.json`,
+      keeping the file's other settings, `muted` among them. A file that's
+      wrong can't be changed here until it's fixed.
+    - `muted` stays on the Notifications section, as it's on tide's
+      Notifications page.
 - **A bad value is an error at load,** naming the setting, not a failure
   later. A pattern that doesn't compile is one (§6.2).
 - **Pages, as tide's** (tide §16): Layouts, Keys (live, §7.2),
@@ -2192,7 +2243,7 @@ Each one names a workaround, or says there is none.
     | Trackpad | Trackpad settings |
     | Keyboard | conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
-    | Layouts, Floating | none: tilemo's own (below) |
+    | Layouts, Workspaces, Floating | none: tilemo's own (below) |
     | Appearance | Appearance settings |
     | Notifications | Notifications settings, above the muted list (below) |
     | Clipboard | none: tilemo's own (below) |
@@ -2200,8 +2251,6 @@ Each one names a workaround, or says there is none.
     | Idle | Lock Screen settings |
     | Start at login | Login Items settings, for macOS's own list |
 
-    - tide's Workspaces page waits for its settings to leave `start()`
-      (TODO.md).
     - A pane opens by its `x-apple.systempreferences:` ID, as the bar's
       status items do. CI's smoke test checks each is one of macOS 15's
       panes; macOS 26's are *(unverified)*.

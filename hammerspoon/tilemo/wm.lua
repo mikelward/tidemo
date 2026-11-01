@@ -21,6 +21,7 @@ local bar = require("tilemo.bar")
 local layout = require("tilemo.layout")
 local mouse = require("tilemo.mouse")
 local names = require("tilemo.names")
+local standing_mod = require("tilemo.standing")
 local rules = require("tilemo.rules")
 local floating = require("tilemo.floating")
 
@@ -165,7 +166,7 @@ function M.check_home_apps(list)
         if type(name) ~= "string" or name == "" then
             error(string.format("home_apps[%d] must be an app's name", i), 3)
         end
-        set[name] = true
+        set[standing_mod.app_key(name)] = true
     end
     for k in pairs(list) do
         if math.type(k) ~= "integer" or k < 1 or k > #list then
@@ -501,9 +502,78 @@ function M:listed()
     return out, made
 end
 
+-- Whether the app called `name` is one of home's apps: ignoring case, and
+-- with spaces and hyphens alike, so tide's `google-chat` is Google Chat
+-- (standing.app_key).
+function M:home_app_named(name)
+    return name ~= nil and self.home_apps[standing_mod.app_key(name)] == true
+end
+
 -- Whether window `w` is one of home's apps, by its app's name.
 function M:is_home_app(w)
-    return w ~= nil and w.name ~= nil and self.home_apps[w.name] == true
+    return w ~= nil and self:home_app_named(w.name)
+end
+
+-- New standing workspaces and home's apps, from tide's files as they change
+-- (SPEC.md §15), checked as start()'s are. The first standing one is home
+-- from now on: it's made if it isn't yet, and goes first. The rest keep
+-- their windows and places; a workspace no longer standing is an ordinary
+-- one, removed once it's empty and hidden. Windows stay where they are:
+-- home's apps say where a window opens, not where it must stay.
+function M:set_workspaces(list, home_apps)
+    local new = M.check_standing(list)
+    local apps = M.check_home_apps(home_apps)
+    local same = #new == #self.standing
+    for i, n in ipairs(new) do
+        same = same and M.fold(self.standing[i]) == M.fold(n)
+    end
+    for k in pairs(apps) do
+        same = same and self.home_apps[k] == true
+    end
+    for k in pairs(self.home_apps) do
+        same = same and apps[k] == true
+    end
+    if same then
+        return false
+    end
+    local old = self.names
+    -- An existing workspace keeps the case it was made with.
+    local function existing(n)
+        local want = M.fold(n)
+        for _, m in ipairs(old) do
+            if M.fold(m) == want then
+                return m
+            end
+        end
+    end
+    -- Standing names take an existing workspace's spelling too, since the
+    -- bar and Next and Previous compare names exactly.
+    for i, n in ipairs(new) do
+        new[i] = existing(n) or n
+    end
+    self.standing = new
+    self.home_apps = apps
+    self.home = existing(new[1]) or new[1]
+    self.names = { self.home }
+    local taken = { [M.fold(self.home)] = true }
+    for i = 2, #new do
+        local m = existing(new[i])
+        if m then
+            self.names[#self.names + 1] = m
+            taken[M.fold(m)] = true
+        end
+    end
+    for _, m in ipairs(old) do
+        if not taken[M.fold(m)] then
+            self.names[#self.names + 1] = m
+            taken[M.fold(m)] = true
+        end
+    end
+    local screens = self:screens()
+    self:ensure_ws(self.home, screens[1] and screens[1].area)
+    self:prune()
+    self:changed()
+    return true
 end
 
 -- Give each display a workspace, keeping the ones already given. The first

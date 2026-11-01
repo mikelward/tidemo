@@ -62,11 +62,10 @@ t.test("the bar's icons and the mute notice open the same panes as the window", 
     t.eq(mute.NOTIFICATIONS_URL, links.PANES.notifications)
 end)
 
--- tide's pages in tide's order (tide SPEC.md §16), but Workspaces, which
--- tilemo doesn't have yet.
+-- tide's pages in tide's order (tide SPEC.md §16).
 local TIDE_ORDER = {
     "displays", "sound", "network", "mouse", "trackpad", "keyboard", "power",
-    "layouts", "floating",
+    "layouts", "workspaces", "floating",
     "appearance", "muted", "clipboard", "clocks", "idle", "startup",
 }
 

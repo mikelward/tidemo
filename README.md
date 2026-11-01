@@ -111,6 +111,13 @@ login, in the background, skipping any app that's running:
 tilemo.start({ home_apps = { "Mail", "Messages", "Calendar", "Music" } })
 ```
 
+tide's `standing` and `inApps`, in `~/.config/tide/workspaces.json` and
+`workspaces.local.json`, take the place of `workspaces` and `home_apps` where
+a file sets them, and the settings window's Workspaces section edits them.
+`inApps` can name Mac apps alongside tide's entries: names match ignoring
+case, with hyphens as spaces, and at login only the ones that are Mac apps
+start.
+
 Any other window opening on "in" asks for a workspace name, and so does a
 launch from "in": Enter makes or uses the workspace and moves there, and
 Esc closes the window or cancels the launch. The default name comes from

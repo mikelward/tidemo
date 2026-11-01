@@ -105,6 +105,20 @@ body.settings {
   color: var(--muted);
   margin: 12px 0 4px;
 }
+/* A standing workspace or pattern, its note, then up, down and remove;
+   one of home's apps, then remove. */
+.settings #ws-list-standing li {
+  grid-template-columns: 1fr 4em auto auto auto;
+}
+.settings #ws-list-namePatterns li {
+  grid-template-columns: 1fr 4em auto auto auto;
+}
+.settings #ws-list-inApps li {
+  grid-template-columns: 1fr auto;
+}
+.settings #ws-list-standing li span:nth-child(2) {
+  color: var(--muted);
+}
 /* A rule's app and title, then its up, down and remove buttons. */
 .settings #floating-list li {
   grid-template-columns: 1fr 1fr auto auto auto;
@@ -161,6 +175,22 @@ body.settings {
 <div id="layout-rows"></div>
 <p class="error" id="layouts-error" role="alert"></p>
 <p class="note">How a workspace tiles, shared with tide's layouts.json. A change reaches every workspace at once: each keeps its layout, and takes the new widths and masters in place of any set with the keys.</p>
+<h1 id="workspaces">Workspaces</h1>
+<p class="source" id="workspaces-source"></p>
+<h2>Standing workspaces</h2>
+<p class="note">Always on the bar, in this order. The first is home, whose apps open there and only theirs.</p>
+<ol id="ws-list-standing"></ol>
+<p class="add"><input id="ws-add-standing" aria-label="Add a standing workspace" spellcheck="false"></p>
+<h2>Home's apps</h2>
+<p class="note">By the app's name, such as Mail or Google Chat, ignoring case, so tide's <code>google-chat</code> is Google Chat too. Set here, they start at login, each that's an app on this Mac; tide's programs and web addresses are tide's.</p>
+<ol id="ws-list-inApps"></ol>
+<p class="add"><input id="ws-add-inApps" aria-label="Add one of home's apps" spellcheck="false"></p>
+<h2>Name patterns</h2>
+<p class="note">JavaScript regular expressions, tried in order against a new window's title: the first that matches names its workspace by its first capture.</p>
+<ol id="ws-list-namePatterns"></ol>
+<p class="add"><input id="ws-add-namePatterns" aria-label="Add a name pattern" spellcheck="false"></p>
+<p class="error" id="workspaces-error" role="alert"></p>
+<p class="note">Shared with tide's workspaces.json. A change applies at once. The muted apps and sites are under Notifications.</p>
 <h1 id="floating">Floating</h1>
 <p class="note">Rules that float an app's windows, by its bundle ID and, if you like, a Lua pattern found anywhere in the title, such as <code>^Save</code>. Escape a pattern's magic characters with <code>%</code>: <code>%.</code> is a dot. They come after start()'s rules, before tide's own, and dialogs float whatever they say. A new rule floats the windows open now that it covers, but not one you tiled by hand.</p>
 <p class="source" id="floating-source"></p>

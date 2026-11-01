@@ -1,7 +1,7 @@
 -- tilemo's settings window on Hammerspoon (SPEC.md §15): a section for each
 -- of tide's pages, dashboard.lua's settings page in an hs.webview. It writes
--- tide's clocks.local.json, layouts.local.json, startup.local.json,
--- clipboard.local.json and input.local.json, and tilemo hands the files back once they change on
+-- tide's clocks.local.json, layouts.local.json, workspaces.local.json,
+-- startup.local.json, clipboard.local.json and input.local.json, and tilemo hands the files back once they change on
 -- disk, so the page shows what the bar and the next login do. What tilemo
 -- can't change itself, a section's buttons open (links.lua). Not runnable
 -- outside Hammerspoon.
@@ -107,8 +107,8 @@ function M.float_edit(floats, body)
 end
 
 -- `tilemo` is the started tilemo module: its wm, adapter, clock_dir,
--- clock_files, layout_files, startup_files, clipboard_files, input_files
--- and picker.
+-- clock_files, layout_files, workspace_files, workspace_base,
+-- startup_files, clipboard_files, input_files and picker.
 function M.new(tilemo)
     local self = {}
     local page = build()
@@ -129,6 +129,13 @@ function M.new(tilemo)
             -- defaults, so the page shows and steps what's in effect.
             layoutBase = tilemo.layout_base and layout.file_form(tilemo.layout_base) or nil,
             clipboardFiles = tilemo.clipboard_files,
+            -- tide's workspaces files, and what they lay over: start()'s
+            -- lists, or tilemo's defaults.
+            workspaceFiles = tilemo.workspace_files,
+            workspaceBase = tilemo.workspace_base and {
+                standing = "__ws_standing__",
+                inApps = "__ws_in_apps__",
+            } or nil,
             clipboardCount = tilemo.picker and #tilemo.picker.history.items or 0,
             -- The settings in effect, which a file gone wrong since leaves
             -- as they were: the page shows these, not the defaults, then.
@@ -164,6 +171,12 @@ function M.new(tilemo)
                 return hs.json.encode({ app = r.app, title = r.title or "" })
             end)
         end)
+        json = json:gsub('"__ws_standing__"', function()
+            return mute.encode_list(tilemo.workspace_base.standing)
+        end)
+        json = json:gsub('"__ws_in_apps__"', function()
+            return mute.encode_list(tilemo.workspace_base.inApps)
+        end)
         json = json:gsub('"__karabiner_rules__"', function()
             return M.list(tilemo.karabiner_rules and tilemo.karabiner_rules.state.rules or {}, function(r)
                 return hs.json.encode({ description = r.description, label = r.label, on = r.on == true })
@@ -180,7 +193,8 @@ function M.new(tilemo)
     end
 
     -- Scroll to section `id`, as settings.html names them: "clocks",
-    -- "layouts", "startup", "clipboard", "muted", "floating", and the rest.
+    -- "layouts", "workspaces", "startup", "clipboard", "muted", "floating",
+    -- and the rest.
     local function reveal(id)
         if not (view and id) then
             return
@@ -217,6 +231,8 @@ function M.new(tilemo)
                 save(dashboard.STARTUP_LOCAL_FILE, body.writeStartup, "Start at login's commands")
             elseif type(body.writeInput) == "string" then
                 save(dashboard.INPUT_LOCAL_FILE, body.writeInput, "the Mouse settings")
+            elseif type(body.writeWorkspaces) == "string" then
+                save(dashboard.WORKSPACES_LOCAL_FILE, body.writeWorkspaces, "the workspaces")
             elseif type(body.writeClipboard) == "string" then
                 save(dashboard.CLIPBOARD_LOCAL_FILE, body.writeClipboard, "the clipboard settings")
             elseif body.clearClipboard and tilemo.picker then
