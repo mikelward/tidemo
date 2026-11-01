@@ -54,7 +54,10 @@ It brings tide's desktop to macOS:
   window with Super+Shift+F asks once whether to always float its app.
   The window has a section for each of tide's settings pages, in tide's
   order: where the settings are macOS's or a helper's, its buttons open
-  the System Settings pane, LinearMouse or Karabiner (§1, §15).
+  the System Settings pane, LinearMouse or Karabiner (§1, §15);
+- a notification, and a line in the doctor, when LinearMouse isn't
+  installed or isn't running, since without it a mouse wheel notch
+  scrolls a line or so (§10).
 
 With [mikelward/scripts](https://github.com/mikelward/scripts),
 `setup-macos --wm tilemo` does all of this: it installs Hammerspoon and tilemo,

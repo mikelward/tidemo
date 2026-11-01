@@ -603,6 +603,19 @@ function M.new()
         end
     end
 
+    -- Whether an app with this bundle ID is installed, as Launch Services
+    -- finds it, and whether one is running. On CI's Mac, with no such app,
+    -- the path came back as something other than nil, so it must be one
+    -- that's there.
+    function a.app_installed(bundle)
+        local path = hs.application.pathForBundleID(bundle)
+        return type(path) == "string" and path ~= "" and hs.fs.attributes(path) ~= nil
+    end
+
+    function a.bundle_running(bundle)
+        return #(hs.application.applicationsForBundleID(bundle) or {}) > 0
+    end
+
     function a.lock()
         hs.caffeinate.lockScreen()
     end

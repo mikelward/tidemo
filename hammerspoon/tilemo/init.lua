@@ -47,11 +47,13 @@ local presenter_hs = require("tilemo.presenter_hs")
 local presenter = require("tilemo.presenter")
 local layout = require("tilemo.layout")
 local brand = require("tilemo.brand")
+local links = require("tilemo.links")
+local linearmouse = require("tilemo.linearmouse")
 
 local M = {}
 
 -- How often to look for Karabiner starting or stopping, so the keys move
--- with it without a restart (SPEC.md §7.1).
+-- with it without a restart (SPEC.md §7.1), and for LinearMouse (§10).
 M.KARABINER_CHECK = 30
 -- How often to read Dock badges and window titles for attention.
 M.ATTENTION_POLL = 2
@@ -137,16 +139,43 @@ local function choose_super(self, announce)
     check_rule(self)
 end
 
+-- LinearMouse installed and running, for the mouse wheel (SPEC.md §10):
+-- what's wrong, said once each time that changes, and on the settings
+-- window's Mouse section. A click on the notice for it stopped starts it.
+local function check_linearmouse(self)
+    local kind = linearmouse.problem(function()
+        return self.adapter.app_installed(linearmouse.BUNDLE)
+    end, function()
+        return self.adapter.bundle_running(linearmouse.BUNDLE)
+    end)
+    if kind == self.linearmouse then
+        return
+    end
+    self.linearmouse = kind
+    if kind then
+        local start = kind == "stopped" and function()
+            links.open("linearmouse", self.adapter)
+        end or nil
+        self.adapter.notify(linearmouse.say(kind, "notice"), start)
+    end
+    if self.settings then
+        self.settings.refresh()
+    end
+end
+
 -- What `tilemo doctor` (SPEC.md §15) checks so far: Karabiner and tilemo's
--- rule. Each problem is one line, with what it costs and the fix; with
--- none, one line saying so. From Hammerspoon's console, or the switcher's
--- "Check tilemo".
+-- rule, and LinearMouse. Each problem is one line, with what it costs and
+-- the fix; with none, one line saying so. From Hammerspoon's console, or
+-- the switcher's "Check tilemo".
 function M.doctor()
     local lines = {}
     if not M.karabiner then
         lines[#lines + 1] = keys.FALLBACK_NOTICE
     elseif #(M.rule_gaps or {}) > 0 then
         lines[#lines + 1] = keys.gaps_notice(M.rule_gaps)
+    end
+    if M.linearmouse then
+        lines[#lines + 1] = linearmouse.say(M.linearmouse, "doctor")
     end
     if M.presenter and #M.presenter.missing > 0 then
         lines[#lines + 1] = presenter.setup_notice(M.presenter.missing)
@@ -155,8 +184,8 @@ function M.doctor()
         lines[#lines + 1] = "Muted apps and sites: " .. table.concat(M.mute_errors, "; ")
     end
     if #lines == 0 then
-        lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, every muted entry reads,"
-            .. " and Do Not Disturb's shortcuts are there."
+        lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, LinearMouse is running,"
+            .. " every muted entry reads, and Do Not Disturb's shortcuts are there."
     end
     return table.concat(lines, "\n")
 end
@@ -583,8 +612,10 @@ function M.start(config)
         end
     end)
     choose_super(self, true)
+    check_linearmouse(self)
     self.karabiner_timer = hs.timer.doEvery(M.KARABINER_CHECK, function()
         choose_super(self, false)
+        check_linearmouse(self)
     end)
     return self
 end
