@@ -18,6 +18,7 @@
 local attention = require("tilemo.attention")
 local mute = require("tilemo.mute")
 local bar = require("tilemo.bar")
+local direction = require("tilemo.direction")
 local layout = require("tilemo.layout")
 local mouse = require("tilemo.mouse")
 local names = require("tilemo.names")
@@ -1456,7 +1457,7 @@ function M:show(name, uuid, make)
     self:reconcile()
     self:retile()
     -- With nothing there to focus, focus stays put, perhaps on a window the
-    -- swap carried to the other display: keys still mean this one.
+    -- swap took to the other display: keys still mean this one.
     if not self:refocus_ws(n) then
         self:keep_keys_on(uuid)
     end
@@ -1544,7 +1545,7 @@ function M:activate(id, uuid)
         self:reconcile()
         self:retile()
     end
-    self:focus_window(id)
+    self:choose(id)
 end
 
 -- A workspace's floats go to the display showing it, keeping their place
@@ -1601,22 +1602,34 @@ end
 
 -- Lay out every display, moving only windows that aren't already where
 -- they belong.
+-- Where display `s` lays out the tiles of the workspace it shows: its
+-- tiles in order, and each one's box, a big window's being the display's.
+function M:arranged(s)
+    local n = self.screen_ws[s.uuid]
+    local ws = n and self.workspaces[n]
+    if not ws then
+        return {}, {}
+    end
+    local ids = self:tiled(n)
+    local boxes = layout.arrange(ws, s.area, ids, self.layout)
+    for _, id in ipairs(ids) do
+        local big = self.windows[id].big
+        if big == "max" then
+            boxes[id] = s.area
+        elseif big == "full" then
+            boxes[id] = s.full
+        end
+    end
+    return ids, boxes
+end
+
 function M:retile()
     self:follow_floats()
-    for uuid, n in pairs(self.screen_ws) do
-        local s = self:screen_by_uuid(uuid)
-        local ws = self.workspaces[n]
-        if s and ws then
-            local ids = self:tiled(n)
-            local boxes = layout.arrange(ws, s.area, ids, self.layout)
+    for _, s in ipairs(self:screens()) do
+        if self.screen_ws[s.uuid] then
+            local ids, boxes = self:arranged(s)
             for _, id in ipairs(ids) do
-                local w = self.windows[id]
                 local box = boxes[id]
-                if w.big == "max" then
-                    box = s.area
-                elseif w.big == "full" then
-                    box = s.full
-                end
                 local f = self.a.state(id)
                 local cur = f and f.frame
                 if not cur or cur.x ~= box.x or cur.y ~= box.y or cur.w ~= box.w or cur.h ~= box.h then
@@ -2139,6 +2152,15 @@ function M:focus_window(id)
     end
 end
 
+-- Focus window `id` because you picked it, with a key or an app key: the
+-- keys go where it is, even when it had focus already, so a display a
+-- switch or Super+Left/Right left them on lets go (kbd_screen keeps them
+-- only while focus hasn't moved).
+function M:choose(id)
+    self.kbd = nil
+    self:focus_window(id)
+end
+
 -- A click: whatever it picks is newer than a restore still on its way,
 -- and than a switch that kept keys on its display. (A focus report alone
 -- can't say this: macOS moves focus itself as tilemo minimizes, and a click
@@ -2530,7 +2552,7 @@ function A.focus(self, delta)
     -- Focusing raises the target, monocle's full-size tile included, and
     -- then its floats go back over it.
     if target then
-        self:focus_window(target)
+        self:choose(target)
     end
 end
 
@@ -2723,7 +2745,7 @@ function M:step_from(cur, d)
     return list[math.max(1, math.min(#list, i + d))]
 end
 
--- Super+Left/Right and PgUp/PgDn: the previous or next workspace in bar
+-- Super+PgUp/PgDn: the previous or next workspace in bar
 -- order, stopping at the first and last.
 function A.step(self, d)
     self:show(self:step_from(self.screen_ws[self:current_screen()] or self.home, d))
@@ -2803,8 +2825,8 @@ end
 
 -- Super+Shift+Return (SPEC.md §7.2): move the focused window to a
 -- workspace by name, with the prompt listing them all, and follow it there,
--- as Carry does. Esc leaves the window where it is. With no window there's
--- nothing to move, so it does nothing, and the log says why.
+-- as Super+Shift+PgDn does. Esc leaves the window where it is. With no
+-- window there's nothing to move, so it does nothing, and the log says why.
 function A.move_to(self)
     local id = self.a.focused()
     local w = self.windows[id or false]
@@ -2819,17 +2841,154 @@ function A.move_to(self)
     self:ask_next()
 end
 
--- Super+Shift+Left/Right: carry the focused window there, and follow it.
-function A.carry(self, d)
+-- Super+Shift+PgUp/PgDn: move the focused window to the previous or next
+-- workspace, and follow it.
+function A.move_ws(self, d)
     local id = self.a.focused()
-    -- The display it's carried from, noted before the window moves.
+    -- The display it moves from, noted before the window moves.
     local uuid = self:current_screen()
     local cur = self.screen_ws[uuid] or self.home
     local n = self:step_from(cur, d)
     if id and n ~= cur and self:send(id, n) then
         self:show(n, uuid)
-        self:focus_window(id)
+        self:choose(id)
     end
+end
+
+-- Left and right (SPEC.md §7.2) ------------------------------------------
+
+-- What's on side `d` of where the keys are, by direction.lua's rule: the
+-- tile picked, if any, and its display, if there's one that way. "Where
+-- the keys are" is the focused window's box on the display keys act on,
+-- or that whole display with no window of its own focused.
+function M:beside(d)
+    local uuid = self:current_screen()
+    local here = self:screen_by_uuid(uuid)
+    if not here then
+        return nil
+    end
+    local focused = self.a.focused()
+    local displays = {}
+    local box
+    for _, s in ipairs(self:screens()) do
+        local ids, boxes = self:arranged(s)
+        local tiles = {}
+        for _, id in ipairs(ids) do
+            tiles[#tiles + 1] = { id = id, box = boxes[id] }
+            if id == focused and s.uuid == uuid then
+                box = boxes[id]
+            end
+        end
+        displays[#displays + 1] = { uuid = s.uuid, full = s.full, tiles = tiles }
+    end
+    -- A float is where it is, if that's on this display.
+    local w = self.windows[focused or false]
+    if not box and w and w.ws and w.floating then
+        local st = self.a.state(focused)
+        local on = st and not st.minimized and self:screen_for(st.frame)
+        if on and on.uuid == uuid then
+            box = st.frame
+        end
+    end
+    return direction.find(box or here.area, uuid, displays, d)
+end
+
+-- Whether key list `p` sorts before `q`, first entry first.
+local function less(p, q)
+    for i = 1, #p do
+        if p[i] ~= q[i] then
+            return p[i] < q[i]
+        end
+    end
+    return false
+end
+
+-- Where window `id`, coming onto display `s` going `d`, goes in workspace
+-- `n`'s order: the tile it goes before, or nil for the end. Tile order
+-- isn't left to right (threecol's third tile is on the left), so each slot
+-- is laid out, and the one putting the window nearest the edge it came in
+-- by wins: the left edge moving right, the right moving left; then the one
+-- sharing the most height with `from`, where it was; then the nearest
+-- center; then the earliest slot.
+function M:entry_slot(n, s, id, d, from)
+    local ws = self.workspaces[n]
+    local ids = {}
+    for _, other in ipairs(self:tiled(n)) do
+        if other ~= id then
+            ids[#ids + 1] = other
+        end
+    end
+    local best, best_key
+    for k = 1, #ids + 1 do
+        local trial = { table.unpack(ids) }
+        table.insert(trial, k, id)
+        local b = layout.arrange(ws, s.area, trial, self.layout)[id]
+        local edge = d > 0 and b.x - s.area.x or s.area.x + s.area.w - (b.x + b.w)
+        local cx, cy = b.x + b.w / 2, b.y + b.h / 2
+        local fx, fy = cx, cy
+        if from then
+            fx, fy = from.x + from.w / 2, from.y + from.h / 2
+        end
+        local key = { edge, from and -direction.overlap(from, b) or 0, (cx - fx) ^ 2 + (cy - fy) ^ 2 }
+        if not best_key or less(key, best_key) then
+            best, best_key = k, key
+        end
+    end
+    return ids[best]
+end
+
+-- Super+Left/Right: select the window left or right of the focused one,
+-- at a display's edge the nearest on the next display that way. A display
+-- there with no tiles takes the keys, as an empty workspace's does.
+function A.select(self, d)
+    local hit, s = self:beside(d)
+    if hit then
+        self:choose(hit.id)
+    elseif s then
+        self:keep_keys_on(s.uuid)
+    end
+end
+
+-- Super+Shift+Left/Right: move the focused tile the same way, swapping it
+-- with the tile there on this display, or onto the next display at the
+-- edge, where it joins the workspace showing there, as a window you drag
+-- there does (SPEC.md §6.1), in the slot whose tile lands nearest the
+-- edge it came in by (M:entry_slot).
+function A.move_side(self, d)
+    local id, w = self:focused_tile()
+    if not id then
+        return
+    end
+    local hit, s = self:beside(d)
+    if not s then
+        return
+    end
+    local from_box = self.placed[id] or (self.a.state(id) or {}).frame
+    local n = self.screen_ws[s.uuid]
+    if n == w.ws then
+        local order = self.workspaces[n].order
+        local i, j = layout.index_of(order, id), layout.index_of(order, hit.id)
+        if i and j then
+            order[i], order[j] = order[j], order[i]
+        end
+        self:retile()
+        return
+    end
+    if not n then
+        return
+    end
+    layout.remove(self.workspaces[w.ws], id)
+    remove_value(self.mru[w.ws], id)
+    w.ws = n
+    w.big = nil
+    local ws = self.workspaces[n]
+    local before = self:entry_slot(n, self:screen_by_uuid(s.uuid), id, d, from_box)
+    local i = before and layout.index_of(ws.order, before)
+    table.insert(ws.order, i or #ws.order + 1, id)
+    table.insert(self.mru[n], 1, id)
+    self:reconcile()
+    self:retile()
+    self:choose(id)
 end
 
 -- Apps and the launcher ----------------------------------------------------

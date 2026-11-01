@@ -767,12 +767,14 @@ numbered ones:
     prompt comes back with them dropped.
   - A default name from a title drops them, as tide's short names do.
   - A tab or newline typed in a name is a space, as before, not a refusal.
-- **Shared across displays.** Each display shows one at a time. Decided, as
-  tide decided (tide §6.5): per display, not one desktop spanning every
-  display.
+- **A workspace spans every display,** and each display has its own
+  layout within it. **Decided** (2026-11-01, §19 question 12); not built
+  yet. Until it is, each display shows one workspace at a time, as tide's
+  monitors do today (tide §6.5), and the rest of this section says how
+  that works.
 - **Each workspace keeps** its windows in tile order, its layout, `mfact`
   and master count, and its focused window.
-- **Each window belongs to one workspace,** and carries one flag: whether
+- **Each window belongs to one workspace,** and has one flag: whether
   you minimized it yourself.
 - **A new window joins the workspace showing** on the display it opens on.
   Two exceptions:
@@ -793,8 +795,9 @@ then minimizes the rest, so the screen is never empty in between.
 |---|---|---|
 | **Show** a workspace (the switcher's Workspaces tab, `Super+Return`'s prompt, `Super+Home` for "in", a bar click) on a display | That display shows it. If it was on another display, the two swap, as on tide. | its last focused window |
 | **Move** a window to a workspace (`Super+Shift+Return`'s prompt, §7.2) | It moves to the end of that workspace's stack. A new name makes the workspace first, at the end of the list. Then that workspace shows on the display the window was on. | that window, as on tide |
-| **Next or previous** (`Super+Left`, `Right`, `PgUp`, `PgDn`) | Show the one after or before, in bar order, stopping at the first and last. | as Show |
-| **Carry** a window to the next or previous (`Super+Shift+Left`, `Right`) | Move, to the one after or before. | that window |
+| **Next or previous** (`Super+PgUp`, `PgDn`) | Show the one after or before, in bar order, stopping at the first and last. | as Show |
+| **Move a window to the next or previous** (`Super+Shift+PgUp`, `PgDn`) | Move, to the one after or before. | that window |
+| **Move a window left or right** (`Super+Shift+Left`, `Right`, §7.2) | On its display, it swaps with the window that way. At the display's edge, it goes to the next display that way, as Moved to another display. | that window |
 | **Activate**: an app key, the switcher, Cmd+Tab, a Dock click, a notification click | If the window's workspace isn't showing, show it on the focused display. | that window |
 | **Moved to another display** by you | It joins the stack of the workspace showing there. | that window |
 | **Minimize** by you (`Super+Z`, Cmd+M, the yellow button) | Set the flag. The window joins its display's tray (§6.7). | `Super+Z`: the workspace's last used window still showing; otherwise macOS decides |
@@ -803,7 +806,8 @@ then minimizes the rest, so the screen is never empty in between.
 
 - **The current Mac setup follows a thrown window**
   (`follow-space-thrown-windows: true` in conf's `amethyst.yml`), and so
-  do tilemo's Move and Carry, as tide's move does (tide §6.5).
+  do tilemo's Move and its move to the next or previous workspace, as
+  tide's move does (tide §6.5).
   **Decided.**
 - **A window that refuses** to minimize or restore is logged and skipped,
   so it can't stop a workspace switch. tilemo then stops managing it, as
@@ -1172,8 +1176,10 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+P` | presenter mode: Do Not Disturb and keep awake together (§10) | hotkey; keep awake as `Super+S`, Do Not Disturb through two shortcuts you make in Shortcuts |
 | `Super+Shift+E` | log out | hotkey; System Events, which asks first |
 | `Super+Home` | show "in" (§6.2) | hotkey |
-| `Super+Left` / `Right`, `Super+PgUp` / `PgDn` | previous / next workspace | hotkey |
-| `Super+Shift+Left` / `Right` | carry the window to the previous / next workspace | hotkey |
+| `Super+Left` / `Right` | select the window left / right of this one; at a display's edge, the nearest on the next display that way (below) | hotkey |
+| `Super+Shift+Left` / `Right` | move the window left / right the same way, onto the next display at the edge (below) | hotkey |
+| `Super+PgUp` / `PgDn` | previous / next workspace | hotkey |
+| `Super+Shift+PgUp` / `PgDn` | move the window to the previous / next workspace, and follow it | hotkey |
 | `Super+J` / `K`, with Shift | focus / move down and up the stack | hotkey |
 | `Super+Return` | go to a workspace, by name (below); it moves no window, so it works with none focused | hotkey |
 | `Super+Shift+Return` | move the window to a workspace, by name (below), and follow it there; with no window focused, nothing | hotkey |
@@ -1206,6 +1212,39 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   so `Super+1` is "in"; `Super+Shift+N` sends the focused window there,
   with focus staying where you are. A number past the last workspace does
   nothing. A number is a position, not a name.
+- **`Super+Left` and `Right` go between windows, across displays.**
+  **Decided** (2026-11-01, §19 question 12). They select the tiled window
+  that way; at a display's edge, a window on the next display that way.
+  - **One rule picks both the window and the display.** Of the ones whose
+    center is on that side of yours: the one sharing the most height with
+    yours, then the one whose center is nearest, then the first in tile
+    order. "Yours" is the focused window, or the whole display with none
+    of its own focused.
+  - The next display is picked against this display, so with one to the
+    upper right and one to the lower right, it's the one sharing more of
+    this display's height. The window there is then picked against yours,
+    from all of that display's tiles: on a taller display standing higher,
+    the one level with yours, not the top one.
+  - Past the last display that way, nothing. They don't wrap round to the
+    far side *(a guess, to confirm)*.
+  - A display that way with no tiles takes the keys, as one showing an
+    empty workspace does after a switch (§6.1) *(a guess, to confirm)*.
+  - Floats aren't picked. A focused float starts from where it is.
+  - In monocle, every tile has one center, so the keys go straight to the
+    next display.
+- **`Super+Shift+Left` and `Right` move the focused tile the same way.**
+  On its display it swaps with the tile the rule picks. At the edge it
+  goes to the next display, as a window you drag there does (§6.1), into
+  the place in that display's layout that puts it nearest the edge it came
+  in by: its left edge moving right, its right edge moving left. Tile
+  order isn't left to right (threecol's third tile is on the left), so
+  tilemo lays out each place and picks by where the window would land;
+  ties go to the place sharing the most height with where it was, then
+  the nearest *(a guess, to confirm)*. Focus stays on it. A float doesn't
+  move.
+- **`Super+PgUp` and `PgDn` step through workspaces;** with Shift they
+  move the window there and follow it. These took the jobs tide gives
+  `Super+Left` / `Right` and `Super+Shift+Left` / `Right` (tide §6.6).
 - **`Super+Tab` and `Super+End` remember the workspaces you've shown,**
   most recent first, across displays. A workspace that's gone since is
   passed over, and either key does nothing with nowhere to go.
@@ -2676,21 +2715,13 @@ Each one names a workaround, or says there is none.
     one you're on (§7.2).
 11. **Physical Alt+Tab:** decided, swap with the master, with the
     Windows tab in place of the app switcher (§7.2).
-12. **Several displays, a follow-up:** the direction is that a workspace
-    spans every display, each display with its own layout within it. Open:
-    - how to move between displays. The candidate: `Super+Left` / `Right`
-      select the window left or right of this one, and at a display's edge
-      wrap to the nearest window on the next display that way (rightmost
-      on one to leftmost on the display to its right);
-      `Super+Shift+Left` / `Right` move the window the same way.
-    - whether that edge behavior is doable: it needs every display's
-      windows laid out side by side, and a rule for "nearest" between
-      displays of different sizes and offsets.
-    - If it's doable, those keys replace today's: `Super+Left` / `Right`
-      as previous / next workspace and `Super+Shift+Left` / `Right` as
-      carry. Previous / next workspace stays on `Super+PgUp` / `PgDn`;
-      carry would need a key of its own, or go.
-    - Until then tilemo keeps one workspace per display (§6.1, §6.4).
+12. **Several displays:** decided (2026-11-01). A workspace spans every
+    display, each display with its own layout within it (§6.1), not built
+    yet. `Super+Left` / `Right` select the window that way, going on to
+    the next display at the edge, by a rule for displays of any size and
+    offset (§7.2); `Super+Shift+Left` / `Right` move the window the same
+    way. Previous / next workspace stay on `Super+PgUp` / `PgDn`, and
+    moving the window there is `Super+Shift+PgUp` / `PgDn`.
 
 ## Sources
 
