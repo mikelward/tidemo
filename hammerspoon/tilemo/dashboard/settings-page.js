@@ -9,7 +9,8 @@
 // { write: text } for clocks.local.json, { writeLayouts: text } for
 // layouts.local.json, { writeStartup: text } for startup.local.json,
 // { unmute: entry }, the Floating section's { floatAdd }, { floatMove } and
-// { floatRemove }, { open: name } for a section's button to a System
+// { floatRemove }, { writeInput: text } for input.local.json's Mouse
+// settings, { open: name } for a section's button to a System
 // Settings pane or a helper (links.lua), { karabinerRule } for a Keyboard
 // switch, or { close: true }.
 // tilemo.reveal(id) scrolls to a section, for the launcher's rows.
@@ -21,6 +22,9 @@ import {
   effectiveLayouts, formatLayout, layoutChoices, layoutRows, loadLayouts, shownLayout, steppedLayout, steppedSingle,
   withLayoutSetting,
 } from "./tide-layouts.js";
+import {
+  formatValue, loadInput, shown as shownInput, stepped as steppedInput, withSetting as withInputSetting,
+} from "./tide-input.js";
 import { isZone, localText, sharedText } from "./settings.js";
 
 const send = (msg) => window.webkit?.messageHandlers?.tilemo?.postMessage(msg);
@@ -30,6 +34,9 @@ let muted = [];
 let startupFiles = null;
 let clipboardFiles = null;
 let layoutFiles = null;
+let inputFiles = null;
+// What's wrong with LinearMouse, from tilemo, shown with the Mouse rows.
+let mouseProblem = "";
 // What the files lay over, in their names: start()'s layout, which may not
 // be tide's defaults. Empty for tide's defaults alone.
 let layoutBase = {};
@@ -311,6 +318,55 @@ function renderLayouts() {
   }
 }
 
+// The Mouse section, as tide's Mouse page's Scroll speed and Natural
+// scrolling rows (tide SPEC.md §16), with tide's own functions: a change
+// writes only input.local.json, keeping whatever else it says, and tilemo
+// applies it to LinearMouse (SPEC.md §10).
+const inputText = (which) => (typeof inputFiles?.[which] === "string" ? inputFiles[which] : null);
+const MOUSE_ROWS = [
+  { key: "scrollSpeed", label: "Scroll speed", kind: "scroll" },
+  { key: "naturalScroll", label: "Natural scrolling", kind: "toggle" },
+];
+
+function setMouse(key, value) {
+  const r = withInputSetting(inputText("local"), "mouse", key, value, inputText("shared"));
+  if (r.error) {
+    document.getElementById("mouse-error").textContent = r.error;
+    return;
+  }
+  send({ writeInput: r.text });
+  inputFiles = { ...inputFiles, local: r.text };
+  renderMouse();
+}
+
+function renderMouse() {
+  const box = document.getElementById("mouse-rows");
+  box.replaceChildren();
+  const { input, errors } = loadInput(inputText("shared"), inputText("local"));
+  const broken = errors.length > 0;
+  const problems = [mouseProblem];
+  if (broken) problems.push(`${errors.join("; ")}. Fix the file to change these here.`);
+  document.getElementById("mouse-error").textContent = problems.filter((p) => p !== "").join(" ");
+  for (const r of MOUSE_ROWS) {
+    const value = shownInput(input, "mouse", r.key);
+    if (r.kind === "toggle") {
+      const toggle = button(formatValue(r.kind, value), `${r.label}: ${value ? "on" : "off"}`, broken, () => setMouse(r.key, !value));
+      toggle.setAttribute("aria-pressed", String(value === true));
+      // In the value's column, as tide's switch sits where a value would.
+      const row = el("div");
+      row.className = "row";
+      row.append(el("span", r.label), el("span"), toggle, el("span"));
+      box.append(row);
+      continue;
+    }
+    const less = steppedInput(r.kind, value, -1);
+    const more = steppedInput(r.kind, value, 1);
+    box.append(layoutRow(r.label, formatValue(r.kind, value),
+      button("−", `Less: ${r.label}`, broken || less === value, () => setMouse(r.key, less)),
+      button("+", `More: ${r.label}`, broken || more === value, () => setMouse(r.key, more))));
+  }
+}
+
 // Each muted entry: an app's bundle id, or site:<host>, shown as the host.
 function renderMuted() {
   const list = document.getElementById("muted-list");
@@ -511,6 +567,7 @@ window.tilemo = {
     startupFiles = state.startupFiles ?? null;
     clipboardFiles = state.clipboardFiles ?? null;
     layoutFiles = state.layoutFiles ?? null;
+    inputFiles = state.inputFiles ?? null;
     layoutBase = isObject(state.layoutBase) ? state.layoutBase : {};
     clipboardCount = Number.isInteger(state.clipboardCount) ? state.clipboardCount : 0;
     const e = state.clipboardSettings;
@@ -528,8 +585,9 @@ window.tilemo = {
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
-    // What's wrong with LinearMouse, only when something is.
-    document.getElementById("mouse-error").textContent = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
+    // What's wrong with LinearMouse or the files, only when something is.
+    mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
+    renderMouse();
     if (state.floating && typeof state.floating === "object") {
       floatingState = state.floating;
       showFloatingError("");

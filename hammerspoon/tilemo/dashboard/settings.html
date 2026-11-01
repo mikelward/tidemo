@@ -92,12 +92,12 @@ body.settings {
   gap: 6px;
 }
 /* A Layouts row: its name, then ‹ or −, the value, and › or +. */
-.settings #layout-rows .row {
+.settings #layout-rows .row, .settings #mouse-rows .row {
   display: grid;
   grid-template-columns: 1fr auto 8em auto;
   padding: 2px 0;
 }
-.settings #layout-rows .value {
+.settings #layout-rows .value, .settings #mouse-rows .value {
   text-align: center;
 }
 .settings #layout-rows h2 {
@@ -144,8 +144,10 @@ body.settings {
 <h1 id="network">Network and Bluetooth</h1>
 <p class="row links" id="network-links"></p>
 <h1 id="mouse">Mouse</h1>
-<p class="row links" id="mouse-links"></p>
+<div id="mouse-rows"></div>
 <p class="error" id="mouse-error" role="alert"></p>
+<p class="note">Every mouse's wheel, shared with tide's input.json, through LinearMouse. Natural scrolling here is the mouse's alone: Trackpad settings has the trackpad's.</p>
+<p class="row links" id="mouse-links"></p>
 <h1 id="trackpad">Trackpad</h1>
 <p class="row links" id="trackpad-links"></p>
 <h1 id="keyboard">Keyboard</h1>

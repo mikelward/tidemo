@@ -46,4 +46,14 @@ t.test("no problem says nothing", function()
     t.eq(linearmouse.say(nil, "section"), nil)
 end)
 
+t.test("the Mouse section says LinearMouse's problem and what stops its scrolling being set", function()
+    local settings_hs = require("tilemo.settings_hs")
+    t.eq(settings_hs.mouse_problem({}), "")
+    t.eq(settings_hs.mouse_problem({ linearmouse = "stopped" }), linearmouse.say("stopped", "section"))
+    local applied = { state = { problem = "Can't set LinearMouse's scrolling: linearmouse.json isn't JSON." } }
+    t.eq(settings_hs.mouse_problem({ linearmouse_settings = applied }), applied.state.problem)
+    t.eq(settings_hs.mouse_problem({ linearmouse = "stopped", linearmouse_settings = applied }),
+        linearmouse.say("stopped", "section") .. " " .. applied.state.problem)
+end)
+
 t.done("linearmouse")

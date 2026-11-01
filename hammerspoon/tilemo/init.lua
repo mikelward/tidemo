@@ -56,6 +56,9 @@ local M = {}
 -- How often to look for Karabiner starting or stopping, so the keys move
 -- with it without a restart (SPEC.md §7.1), and for LinearMouse (§10).
 M.KARABINER_CHECK = 30
+-- How long after the last device plugged in, or a wake, to set the mouse
+-- and check Karabiner's rules: a KVM brings several at once (SPEC.md §10).
+M.PLUG_DELAY = 1
 -- How often to read Dock badges and window titles for attention.
 M.ATTENTION_POLL = 2
 
@@ -144,6 +147,10 @@ end
 -- what's wrong, said once each time that changes, and on the settings
 -- window's Mouse section. A click on the notice for it stopped starts it.
 local function check_linearmouse(self)
+    -- Not while tilemo is starting it: it isn't running yet.
+    if self.linearmouse_settings and self.linearmouse_settings.launching then
+        return
+    end
     local kind = linearmouse.problem(function()
         return self.adapter.app_installed(linearmouse.BUNDLE)
     end, function()
@@ -202,6 +209,9 @@ function M.doctor()
     if M.linearmouse then
         lines[#lines + 1] = linearmouse.say(M.linearmouse, "doctor")
     end
+    for _, line in ipairs(M.linearmouse_settings and M.linearmouse_settings.doctor() or {}) do
+        lines[#lines + 1] = line
+    end
     for _, line in ipairs(M.karabiner_rules and M.karabiner_rules.doctor() or {}) do
         lines[#lines + 1] = line
     end
@@ -213,7 +223,7 @@ function M.doctor()
     end
     if #lines == 0 then
         lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, and conf's rules on;"
-            .. " LinearMouse is running, every muted entry reads, and Do Not Disturb's shortcuts are there."
+            .. " LinearMouse is running with tide's Mouse settings, every muted entry reads, and Do Not Disturb's shortcuts are there."
     end
     return table.concat(lines, "\n")
 end
@@ -458,6 +468,7 @@ function M.start(config)
     end
     report_layouts(layout_errors)
     self.layout_files = dashboard.layout_files(self.clock_dir, self.adapter.read)
+    self.input_files = dashboard.input_files(self.clock_dir, self.adapter.read)
     self.clock_watch = adapter_mod.watch_folder(self.clock_dir, function()
         load_layouts()
         self.floating.load()
@@ -466,6 +477,10 @@ function M.start(config)
         run_startup()
         self.clock_files = dashboard.clock_files(self.clock_dir, self.adapter.read)
         self.startup_files = dashboard.startup_files(self.clock_dir, self.adapter.read)
+        self.input_files = dashboard.input_files(self.clock_dir, self.adapter.read)
+        if self.set_mouse then
+            self.set_mouse("folder")
+        end
         -- Made after this watcher, with the picker.
         if self.load_clipboard then
             self.load_clipboard()
@@ -676,14 +691,88 @@ function M.start(config)
         self.adapter.log(why)
         self.adapter.notify(why)
     end
+    -- tide's Mouse settings, applied to LinearMouse (SPEC.md §10).
+    local sources, missing = {}, nil
+    for _, name in ipairs(linearmouse.MODULES) do
+        sources[name] = self.adapter.read(linearmouse.DIR .. name)
+        if not sources[name] then
+            missing = missing or (linearmouse.DIR .. name)
+        end
+    end
+    if missing then
+        local why = "Couldn't read " .. missing .. ", so tide can't set LinearMouse's scrolling: install tide again"
+        self.adapter.log(why)
+        self.adapter.notify(why)
+    else
+        self.linearmouse_settings = linearmouse.new({
+            home = os.getenv("HOME") or "",
+            dir = self.clock_dir,
+            sources = sources,
+            read = self.adapter.read,
+            exists = self.adapter.exists,
+            resolve = self.adapter.resolve,
+            write = self.adapter.write_file,
+            run_js = self.adapter.javascript,
+            decode = self.adapter.decode,
+            natural = function(done)
+                self.adapter.read_natural(function(code, out)
+                    done(linearmouse.natural_from(code, out))
+                end)
+            end,
+            installed = function()
+                return self.adapter.app_installed(linearmouse.BUNDLE)
+            end,
+            running = function()
+                return self.adapter.bundle_running(linearmouse.BUNDLE)
+            end,
+            start = function(done)
+                self.adapter.open_bundle_in_background(linearmouse.BUNDLE, done)
+            end,
+            notify = self.adapter.notify,
+            log = self.adapter.log,
+        })
+        self.linearmouse_settings.on_started = function()
+            check_linearmouse(self)
+        end
+    end
+    -- Nothing here may stop tilemo loading, or its checks running.
+    self.set_mouse = function(why)
+        if not self.linearmouse_settings then
+            return
+        end
+        local ok, err = pcall(self.linearmouse_settings.apply, why, function(state)
+            -- Only when what the Mouse section says changed, so an open
+            -- window isn't redrawn every 30 s.
+            if state.problem ~= self.mouse_said then
+                self.mouse_said = state.problem
+                if self.settings then
+                    self.settings.refresh()
+                end
+            end
+        end)
+        if not ok then
+            self.adapter.log("tide's Mouse settings: " .. tostring(err))
+        end
+    end
+    self.set_mouse("event")
     check_karabiner_rules(self)
     choose_super(self, true)
     check_linearmouse(self)
     self.karabiner_timer = hs.timer.doEvery(M.KARABINER_CHECK, function()
         check_karabiner_rules(self)
         choose_super(self, false)
+        self.set_mouse("check")
         check_linearmouse(self)
     end)
+    -- A device plugged in, a KVM switched back, a wake or an unlock: the
+    -- mouse set again, LinearMouse started if it isn't running, and
+    -- Karabiner's rules checked, a second after the last of a burst.
+    self.plug_watch = adapter_mod.plugs_and_wakes(linearmouse.debounce(self.adapter.after, M.PLUG_DELAY, function()
+        self.set_mouse("event")
+        check_karabiner_rules(self)
+        choose_super(self, false)
+        check_linearmouse(self)
+    end))
     return self
 end
 

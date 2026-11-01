@@ -466,4 +466,41 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.strictEqual(ids["keyboard-error"].textContent, "karabiner.json isn't JSON");
 }
 
+// The Mouse section: tide's Scroll speed and Natural scrolling rows, each
+// change written to input.local.json, keeping what else it says.
+{
+  const rows = () => ids["mouse-rows"].children;
+  const lastInput = () => JSON.parse(sent[sent.length - 1].writeInput);
+  sandbox.tilemo.update({ clockFiles: [], mouse: { problem: "" } });
+  assert.deepStrictEqual(rows().map((r) => r.children[0].textContent), ["Scroll speed", "Natural scrolling"]);
+  // tide's defaults for a mouse: 3x, natural scrolling off.
+  assert.strictEqual(rows()[0].children[2].textContent, "3×");
+  assert.strictEqual(rows()[1].children[2].textContent, "Off");
+  assert.strictEqual(rows()[1].children[2].attrs["aria-pressed"], "false");
+  sent.length = 0;
+  rows()[0].children[3].listeners.click();
+  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 4 } });
+  // Shown at once, and the next change builds on it.
+  assert.strictEqual(rows()[0].children[2].textContent, "4×");
+  rows()[1].children[2].listeners.click();
+  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 4, naturalScroll: true } });
+  // The local file over the shared one, and the rest of the local file kept.
+  const shared = JSON.stringify({ mouse: { scrollSpeed: 1 } });
+  const local = JSON.stringify({ keyboard: { repeatDelay: 300 }, mouse: { naturalScroll: true } });
+  sandbox.tilemo.update({ clockFiles: [], inputFiles: { shared, local }, mouse: { problem: "" } });
+  assert.strictEqual(rows()[0].children[2].textContent, "1×");
+  assert.strictEqual(rows()[1].children[2].textContent, "On");
+  rows()[0].children[1].listeners.click();
+  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 0.75, naturalScroll: true }, keyboard: { repeatDelay: 300 } });
+  // At the end of the ladder, the button is off.
+  sandbox.tilemo.update({ clockFiles: [], inputFiles: { local: JSON.stringify({ mouse: { scrollSpeed: 5 } }) }, mouse: { problem: "" } });
+  assert.strictEqual(rows()[0].children[3].disabled, true);
+  // A file that's wrong: named with LinearMouse's problem, and nothing
+  // changes here until it's fixed.
+  sandbox.tilemo.update({ clockFiles: [], inputFiles: { local: '{"mouse": {"scrollSpeed": "fast"}}' }, mouse: { problem: "LinearMouse isn't running." } });
+  assert.match(ids["mouse-error"].textContent, /^LinearMouse isn't running\. input\.local\.json: mouse\.scrollSpeed must be a number\. Fix the file/);
+  assert.strictEqual(rows()[0].children[1].disabled, true);
+  assert.strictEqual(rows()[1].children[2].disabled, true);
+}
+
 console.log("settings page: ok");

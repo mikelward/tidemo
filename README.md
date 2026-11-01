@@ -58,7 +58,9 @@ It brings tide's desktop to macOS:
   the System Settings pane, LinearMouse or Karabiner (§1, §15). Its
   Keyboard section turns conf's Karabiner rules, such as Ctrl+Tab's next
   tab, on and off itself, keeps them up to date with conf, and turns a new
-  one on once;
+  one on once. Its Mouse section has tide's Scroll speed and Natural
+  scrolling, which tilemo sets in LinearMouse's config as it starts, after
+  a device is plugged in or a wake, and when tide's settings change;
 - a notification, and a line in the doctor, when LinearMouse isn't
   installed or isn't running, since without it a mouse wheel notch
   scrolls a line or so (§10).

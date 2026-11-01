@@ -51,41 +51,21 @@ on macOS 26 too. The rest, in order:
 The goal: after each login, each time a device is plugged in, each time a
 KVM switches back to this Mac, and on wake, tilemo does its best to make
 the Mac match your settings, with tide's files as the one source, so tide
-looks and works the same on Linux, chromeOS and a Mac. Not built; the
-first piece is the mouse, as researched:
+looks and works the same on Linux, chromeOS and a Mac. The first piece,
+the mouse wheel, is built:
 
-- **tide's Mouse settings through LinearMouse.** tide keeps them in
-  `input.json` and `input.local.json` in its folder (tide SPEC.md §16),
-  with `shell/lib/input.mjs`. Copy that unchanged as
-  `dashboard/tide-input.js` and give the Mouse section tide's Scroll speed
-  (− and +, tide's marks) and Natural scrolling rows, written to
-  `input.local.json` with tide's `withSetting`.
-- **Apply them to LinearMouse's config,** which LinearMouse reloads when
-  the file changes (its `FileWatcher`, on FSEvents, so a rename over it
-  is seen). LinearMouse reads
-  `~/Library/Application Support/linearmouse/linearmouse.json` first if
-  that exists, then `~/.config/linearmouse/linearmouse.json`.
-  - One scheme for every mouse (`"if": {"device": {"category":
-    "mouse"}}`), kept last, since LinearMouse merges schemes in order and
-    a later one wins. Set only its vertical `distance` (lines) and
-    `reverse`; keep the rest of the file as it is, so edit it in
-    JavaScript (JavaScriptCore, as the name patterns run), not through
-    `hs.json`, which can't tell `[]` from `{}`.
-  - Lines a notch: three at 1×, so tide's 3× is nine. setup-macos's ten
-    would move to nine to match.
-  - Reverse: macOS has one natural-scrolling switch,
-    `com.apple.swipescrolldirection` (on when unset). LinearMouse reverses
-    every mouse when tide's `naturalScroll` differs from it, so the mouse
-    and the trackpad each scroll as tide says.
-- **When:** as tilemo starts (each login); when tide's folder changes;
-  when a USB device is plugged in (`hs.usb.watcher`, a second after the
-  last, since a KVM brings several); and on wake or unlock
-  (`hs.caffeinate.watcher`). Then start LinearMouse in the background if
-  it isn't running. The 30 s check puts back a change made in
-  LinearMouse's own window, and says when LinearMouse quit rather than
-  restarting it, so quitting it on purpose lasts until the next event.
-- **Karabiner's rules are kept already** (SPEC.md §15), as tilemo starts
-  and every 30 s; a device plugged in or a wake should check them too.
+- **Done: tide's Scroll speed and Natural scrolling through LinearMouse**
+  (SPEC.md §10, §15), applied as tilemo starts, when tide's folder changes,
+  after a plug or a wake, and at the 30 s check; Karabiner's rules are
+  checked after a plug or a wake too. **Check on a Mac:** LinearMouse
+  reloads tilemo's write and scrolls nine lines at 3×; the mouse reverses
+  while the trackpad doesn't; a KVM switch back, a wake and an unlock each
+  set it again and start a quit LinearMouse without its window; a change
+  in LinearMouse's window is put back within 30 s; `hs.usb.watcher` and
+  `hs.caffeinate.watcher` fire as expected on macOS 26.
+- **scripts' setup-macos writes ten lines a notch;** tilemo makes it nine
+  as it starts. setup-macos's `LINEARMOUSE_LINES` should move to nine to
+  match, in mikelward/scripts.
 - **Then the rest of tide's Mouse, Touchpad and Keyboard pages,** where
   macOS lets tilemo apply them at once: a keyboard's layout as its input
   source (`hs.keycodes`), and LinearMouse's pointer speed. What macOS
@@ -232,8 +212,25 @@ tests and the bar page's test cover it. **Check on a Mac:**
   scrolls to it. Reversible: the sections' order in `settings.html`.
 - **LinearMouse missing or stopped is a notification** as tilemo starts,
   even on a Mac with no mouse, since `setup-macos` always installs it.
-  tilemo doesn't start it itself yet: a click on the notification does
-  (Keep the Mac as you set it, above). Reversible: `linearmouse.problem`.
+  tilemo starts it on a login, a plug or a wake, and a click on the
+  notification does too. Reversible: `linearmouse.problem`.
+- **tide's Mouse settings that aren't set apply as tide's page shows them**
+  (2026-11-01): 3× and natural scrolling off, so setup-macos's ten lines
+  become nine and the mouse wheel is reversed while macOS's switch is on.
+  The alternative is leaving LinearMouse's own values alone until a
+  setting is made. Reversible: `mouseScrolling` in
+  `dashboard/linearmouse.js`.
+- **Lines a notch round to the nearest whole line, one at least**
+  (2026-11-01): LinearMouse takes whole lines, so tide's 1.5× is five, not
+  4.5. Its pixel distance could be exact instead. Reversible: `linesFor`
+  in `dashboard/linearmouse.js`.
+- **A change to tide's folder starts LinearMouse only when the Mouse
+  settings changed** (2026-11-01), so editing a clock doesn't undo quitting
+  it on purpose. The alternative is starting it on every folder change, as
+  the other events do. Reversible: `apply` in `linearmouse.lua`.
+- **A wake or an unlock waits the same second as a plug** (2026-11-01), so
+  the devices a wake brings back count as one event. Reversible:
+  `PLUG_DELAY` and `plugs_and_wakes`.
 
 - **The Floating section's rules are in `floating-macos.json` and
   `floating-macos.local.json`** in tide's folder (SPEC.md §15), not tide's
