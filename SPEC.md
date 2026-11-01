@@ -1513,6 +1513,14 @@ tab, the search field naming the tab you're in.
 
 - **Tabs,** in this order *(the order is a guess, to confirm)*:
   - **Launch:** apps, System Settings' panes and tilemo's commands.
+    **Tide Settings** is listed among the apps, with tide's logo, and opens
+    tilemo's settings window. Each of the window's sections has a row of
+    its own, "Tide Settings: Clocks" and so on, found by its name or by
+    what it covers ("left-handed", "time zones"), which opens the window
+    there. Those rows are for a query alone, as tide's per-page rows are
+    (tide §8.2), so they don't crowd the empty list. The sections come
+    from one list in `launcher.lua`, `SETTINGS_SECTIONS`, and a test checks
+    each against `settings.html`.
   - **Workspaces:** every workspace by name, in bar order, with its app
     icons and where it's showing, the standing ones included before they
     exist. Return shows it, making a standing one the first time (§6.1).
@@ -1526,6 +1534,13 @@ tab, the search field naming the tab you're in.
   - **Attention:** the windows wanting attention on any workspace (§14.2),
     most recent first, by title, with their app and workspace. Return goes
     there with its workspace.
+  - **Actions:** every quick action, listed with nothing typed, in a fixed
+    order: lock, log out, sleep, restart, shut down, reload and check
+    tilemo, keep awake, presenter mode, Do Not Disturb, dark style, focus
+    follows mouse, then the screenshots. Typing filters them. They're off
+    Launch's empty list, and a query there that matches nothing on Launch
+    still finds one, as text that matches nothing in a tab searches them
+    all.
 
   An empty tab says so, in a row that can't be chosen.
 - **Each key opens it on its own tab:** `Super+Space` on Launch, the
@@ -1577,10 +1592,10 @@ tab, the search field naming the tab you're in.
   the most used and most recent first, and tide's empty-query sections
   (tide §8). Text matching nothing in a tab searches all of them, so a
   window or a tab still turns up from Launch.
-- **Quick actions, as tide's** (tide §8): screenshot the window, screen or
-  a region; lock, log out, sleep, restart, shut down; Do Not Disturb,
-  keep awake, presenter mode, and dark style; tilemo's settings; reload
-  tilemo.
+- **Quick actions, as tide's** (tide §8), on the Actions tab: screenshot
+  the window, screen or a region; lock, log out, sleep, restart, shut down;
+  Do Not Disturb, keep awake, presenter mode, and dark style; reload
+  tilemo. tilemo's settings are an app on Launch, Tide Settings.
 - **Launching from "in" asks for a workspace name first** (§6.2), so the
   app starts with the right `TIDE_WORKSPACE` (§6.3). Esc cancels the launch.
 - **Cmd+Return** (physical Ctrl+Enter) runs the app on a new workspace, as
@@ -2093,12 +2108,12 @@ Each one names a workaround, or says there is none.
     count, and a lone window's width. − and + step to tide's marks, ‹ and ›
     through the choices. It writes only `layouts.local.json`, keeping what
     else it says; a file that's wrong is named, and nothing changes here
-    until it's fixed. Its launcher row is "Settings: layouts".
-  - **Built: Clocks,** a window from the launcher ("Settings: clocks") or
+    until it's fixed. Its launcher row is "Tide Settings: Layouts".
+  - **Built: Clocks,** a window from the launcher ("Tide Settings: Clocks") or
     the dashboard ("Change the clocks…"). The window also has the Start at
     login, Clipboard and Muted sections. Each section has its own launcher
-    row ("Settings: clocks", "Settings: start at login", "Settings:
-    clipboard history", "Settings: muted apps and sites"), found by its name, which opens the window there, or
+    row ("Tide Settings: Clocks", "Tide Settings: Start at login" and so
+    on, §9), found by its name, which opens the window there, or
     scrolls an open one, as tide's per-page rows do (tide §16). As tide's Clocks page, it adds a
     zone by its ID, relabels, moves and removes clocks, and writes only
     `clocks.local.json`, with tide's own functions, so the first change
@@ -2130,7 +2145,7 @@ Each one names a workaround, or says there is none.
 - **Built: Floating,** a section of the settings window, as tide's
   Floating page (tide §16): the rules that float a window by its app and
   title, and the floating windows no rule covers yet. Its launcher row is
-  "Settings: floating windows".
+  "Tide Settings: Floating".
   - The rules are in `floating-macos.json` and `floating-macos.local.json`
     in tide's folder, `rules`, a list of `{"app": "com.apple.Preview"}`,
     each with an optional `"title"`. They're tilemo's own, not tide's

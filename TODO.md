@@ -170,6 +170,11 @@ anyway (its `styleMask` in `HSChooserWindow.xib` is only
 
 ## Launcher looks
 
+- **Next: tileco's dashboard as the launcher** (the user chose it,
+  2026-11-01). Replace the `hs.chooser` switcher with tileco's dashboard
+  page in an `hs.webview`, opened by the bar's logo: its tabs, sections
+  and key hints, with the Actions tab and the Tide Settings rows that
+  `launcher.lua` lists now.
 - **Try tileco's launcher page.** The launcher is `hs.chooser` with
   tileco's scopes, which Tab moves between (SPEC.md §9). tileco's own page,
   with its scope chips over the bar and clocks, may look nicer. Try it in the
@@ -196,6 +201,14 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `displayIdle` is held.
 
 ## Decisions needing review
+
+- **The Actions tab comes last,** after Attention, and has no key of its
+  own (2026-11-01). Its order puts the session and power first, then
+  tilemo, the toggles and the screenshots. Reversible: `SCOPE_ORDER` and
+  `COMMANDS` in `launcher.lua`.
+- **The settings sections' rows are for a query alone** (2026-11-01), as
+  tide's per-page rows are, so Launch's empty list shows only Tide
+  Settings. Reversible: `query_only` in `launcher.lua`.
 
 - **The settings window's sections are in tide's order** (SPEC.md §15),
   Displays first, where Clocks used to be. The muted list's section is

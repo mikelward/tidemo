@@ -65,13 +65,14 @@ t.test("a scope with no match falls back to every scope", function()
     t.eq(#launcher.rank("lock", sample(), { scope = "windows" }), 1)
 end)
 
-t.test("Tab moves through Launch, Workspaces, Windows and Attention, and round again; Shift+Tab goes back", function()
-    t.eq(launcher.SCOPE_ORDER, { "launch", "workspaces", "windows", "attention" })
+t.test("Tab moves through Launch, Workspaces, Windows, Attention and Actions, and round again; Shift+Tab goes back", function()
+    t.eq(launcher.SCOPE_ORDER, { "launch", "workspaces", "windows", "attention", "actions" })
     t.eq(launcher.next_scope("launch"), "workspaces")
     t.eq(launcher.next_scope("workspaces"), "windows")
     t.eq(launcher.next_scope("windows"), "attention")
-    t.eq(launcher.next_scope("attention"), "launch")
-    t.eq(launcher.next_scope("launch", true), "attention")
+    t.eq(launcher.next_scope("attention"), "actions")
+    t.eq(launcher.next_scope("actions"), "launch")
+    t.eq(launcher.next_scope("launch", true), "actions")
     t.eq(launcher.next_scope("workspaces", true), "launch")
 end)
 
@@ -81,7 +82,8 @@ t.test("the search field names the scope, what it lists, where Tab goes, and the
     t.eq(launcher.placeholder("workspaces"), "Workspaces: every workspace (Tab: Windows)")
     t.eq(launcher.placeholder("windows"),
         "Windows: every window, and Chrome and Safari tabs (Tab: Attention, Cmd+M: mute)")
-    t.eq(launcher.placeholder("attention"), "Attention: windows wanting attention (Tab: Launch, Cmd+M: mute)")
+    t.eq(launcher.placeholder("attention"), "Attention: windows wanting attention (Tab: Actions, Cmd+M: mute)")
+    t.eq(launcher.placeholder("actions"), "Actions: session, power, toggles and screenshots (Tab: Launch)")
 end)
 
 t.test("the hint offers Cmd+Return only on Launch and Cmd+M only where a row can be muted", function()
@@ -526,25 +528,97 @@ t.test("\"mouse\" and \"mouse settings\" find the Mouse pane, among apps and com
     t.eq(launcher.rank("mouse settings", items, { scope = "launch" })[1].title, "Mouse settings")
 end)
 
-t.test("each settings section has its own row, found by its name, opening the window there", function()
+t.test("each settings section has its own row, found by its name or what it covers, opening the window there", function()
     local items = launcher.items({}, {}, launcher.COMMANDS, {})
     local function first(q)
         return launcher.rank(q, items, { scope = "launch" })[1]
     end
-    t.eq(first("start at login").title, "Settings: start at login")
+    t.eq(first("start at login").title, "Tide Settings: Start at login")
     t.eq(first("start at login").arg, "startup")
     t.eq(first("clocks").arg, "clocks")
     t.eq(first("muted").arg, "muted")
-    local sections = {}
-    for _, c in ipairs(launcher.COMMANDS) do
-        if c.action == "settings" then
-            sections[#sections + 1] = c.arg
-        end
-    end
-    t.eq(sections, { "clocks", "layouts", "startup", "clipboard", "muted", "floating" })
     t.eq(first("floating").arg, "floating")
     t.eq(first("layouts").arg, "layouts")
     t.eq(first("clipboard history").arg, "clipboard")
+    t.eq(first("left-handed").arg, "mouse", "by what it covers")
+    t.eq(first("time zones").arg, "clocks", "by what it covers")
+    t.eq(launcher.subtitle(first("clocks")), "Tide Settings")
+    -- One row per section of the settings window, in its order.
+    local sections = {}
+    for _, c in ipairs(launcher.COMMANDS) do
+        if c.action == "settings" and c.arg then
+            sections[#sections + 1] = c.arg
+        end
+    end
+    local want = {}
+    for _, sec in ipairs(launcher.SETTINGS_SECTIONS) do
+        want[#want + 1] = sec.id
+    end
+    t.eq(sections, want)
+end)
+
+t.test("each settings section is one the settings window has", function()
+    local f = assert(io.open("hammerspoon/tilemo/dashboard/settings.html"))
+    local html = f:read("a")
+    f:close()
+    for _, sec in ipairs(launcher.SETTINGS_SECTIONS) do
+        t.eq(html:find('id="' .. sec.id .. '"', 1, true) ~= nil, true, sec.id)
+    end
+end)
+
+t.test("a settings section keeps the use remembered under its old title", function()
+    local items = launcher.items({}, {}, launcher.COMMANDS, {})
+    local keys = {}
+    for _, item in ipairs(items) do
+        keys[item.key] = item.arg
+    end
+    t.eq(keys["command:Settings: clocks"], "clocks")
+    t.eq(keys["command:Settings: start at login"], "startup")
+end)
+
+t.test("Tide Settings is an app on Launch, with nothing typed, opening tide's settings window", function()
+    local items = launcher.items({ { name = "Safari", path = "/Applications/Safari.app" } }, {}, launcher.COMMANDS, {})
+    local found = launcher.rank("", items, { scope = "launch" })
+    local row
+    for _, item in ipairs(found) do
+        if item.title == "Tide Settings" then
+            row = item
+        end
+        t.eq(item.sub ~= "Tide Settings", true, "no section row without a query: " .. item.title)
+    end
+    t.eq(row.kind, "app")
+    t.eq(row.action, "settings")
+    t.eq(row.arg, nil)
+    t.eq(row.path, nil, "launcher_hs runs it as a window manager action")
+    t.eq(launcher.rank("tide settings", items, { scope = "launch" })[1].title, "Tide Settings")
+end)
+
+t.test("the Actions tab lists every session, power and toggle action, with nothing typed, in order", function()
+    local items = launcher.items({ { name = "Safari", path = "/Applications/Safari.app" } }, {}, launcher.COMMANDS, {})
+    local titles = {}
+    for _, item in ipairs(launcher.rank("", items, { scope = "actions" })) do
+        t.eq(item.kind, "action", item.title)
+        titles[#titles + 1] = item.title
+    end
+    t.eq(titles[1], "Lock")
+    t.eq(titles[2], "Log out")
+    local has = {}
+    for _, title in ipairs(titles) do
+        has[title] = true
+    end
+    for _, want in ipairs({ "Sleep", "Restart", "Shut down", "Reload tide", "Keep awake", "Do Not Disturb", "Dark style",
+        "Presenter mode: Do Not Disturb and keep awake", "Screenshot: region" }) do
+        t.eq(has[want], true, want)
+    end
+end)
+
+t.test("Launch with nothing typed lists no actions, but a query there still finds one", function()
+    local items = launcher.items({ { name = "Safari", path = "/Applications/Safari.app" } }, {}, launcher.COMMANDS, {})
+    for _, item in ipairs(launcher.rank("", items, { scope = "launch" })) do
+        t.eq(item.kind ~= "action", true, item.title)
+    end
+    t.eq(launcher.rank("shut down", items, { scope = "launch" })[1].title, "Shut down")
+    t.eq(launcher.rank("restart", items, { scope = "actions" })[1].title, "Restart")
 end)
 
 t.test("the switcher's mute key is Cmd+M, physical Ctrl+M as tide's", function()
