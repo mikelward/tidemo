@@ -143,10 +143,16 @@ nav button .app.none.win:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The clocks pad their sides as a status icon does, and sit the icons' gap
+   from them, so each target shows on hover with the same room around its
+   content: the clocks' inner end reaches no further than their box. */
 #right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 2px;
+}
+#right #clocks {
+  padding: 0 6px;
 }
 #clocks.compact li:not(:last-child) {
   display: none;
