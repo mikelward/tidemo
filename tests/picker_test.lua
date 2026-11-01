@@ -141,7 +141,7 @@ t.test("a single code point is shown as U+XXXX", function()
 end)
 
 t.test("an empty tab says why", function()
-    t.eq(picker.empty_text("clipboard", ""), "Nothing copied since tilemo started")
+    t.eq(picker.empty_text("clipboard", ""), "Nothing copied since tide started")
     t.eq(picker.empty_text("characters", "zzz"), "Nothing matches")
     t.eq(picker.empty_text("characters", "", "can't read chars.tsv"), "can't read chars.tsv")
 end)

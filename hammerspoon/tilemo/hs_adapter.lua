@@ -3,12 +3,15 @@
 -- Not runnable outside Hammerspoon.
 
 local atomic = require("tilemo.atomic")
+local brand = require("tilemo.brand")
 local kitty = require("tilemo.kitty")
 local saved = require("tilemo.saved")
 local runner = require("tilemo.runner")
 local shots = require("tilemo.shots")
 
 local M = {}
+
+local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$")
 
 local function box(r)
     return { x = math.floor(r.x + 0.5), y = math.floor(r.y + 0.5), w = math.floor(r.w + 0.5), h = math.floor(r.h + 0.5) }
@@ -668,8 +671,29 @@ function M.new()
         return ok == true
     end
 
-    function a.notify(text)
-        hs.notify.new({ title = "tilemo", informativeText = text }):send()
+    -- tide's logo as an hs.image, `name` one of brand.lua's, read once and
+    -- sized in points; nil, having logged why, if it can't be read, so a
+    -- notice or the menu bar goes without it rather than failing.
+    local logos = {}
+    function a.logo(name)
+        if logos[name] == nil then
+            local path = brand.icon_path(DIR, name)
+            local img = hs.image.imageFromPath(path)
+            if img then
+                img:size(name == brand.TEMPLATE and brand.TEMPLATE_SIZE or brand.LOGO_SIZE)
+                img:template(name == brand.TEMPLATE)
+            else
+                a.log("couldn't read the logo at " .. path)
+            end
+            logos[name] = img or false
+        end
+        return logos[name] or nil
+    end
+
+    -- A notification saying `text`, titled tide, with the logo; `fn` and
+    -- `extra` are hs.notify.new's callback and more attributes.
+    function a.notify(text, fn, extra)
+        hs.notify.new(fn, brand.notice(text, a.logo(brand.LOGO), extra)):send()
     end
 
     -- This login, as when this user's loginwindow started, which a new
@@ -699,7 +723,7 @@ function M.new()
         return pid ~= nil and hs.application.applicationForPID(pid) ~= nil
     end
 
-    local log = hs.logger.new("tilemo", "info")
+    local log = hs.logger.new(brand.NAME, "info")
     function a.log(text)
         log.i(text)
     end

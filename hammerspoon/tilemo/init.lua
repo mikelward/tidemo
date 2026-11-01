@@ -46,6 +46,7 @@ local prompt_hs = require("tilemo.prompt_hs")
 local presenter_hs = require("tilemo.presenter_hs")
 local presenter = require("tilemo.presenter")
 local layout = require("tilemo.layout")
+local brand = require("tilemo.brand")
 
 local M = {}
 
@@ -154,7 +155,7 @@ function M.doctor()
         lines[#lines + 1] = "Muted apps and sites: " .. table.concat(M.mute_errors, "; ")
     end
     if #lines == 0 then
-        lines[1] = "Karabiner is running with tilemo's rule, up to date, every muted entry reads,"
+        lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, every muted entry reads,"
             .. " and Do Not Disturb's shortcuts are there."
     end
     return table.concat(lines, "\n")
@@ -370,7 +371,7 @@ function M.start(config)
         local open_settings = now and function()
             self.adapter.open_url(mute.NOTIFICATIONS_URL)
         end or nil
-        hs.notify.new(open_settings, { title = "tilemo", informativeText = mute.notice(name or entry, now), withdrawAfter = 10 }):send()
+        self.adapter.notify(mute.notice(name or entry, now), open_settings, { withdrawAfter = 10 })
         if self.settings then
             self.settings.refresh()
         end
@@ -534,6 +535,13 @@ function M.start(config)
         end
     else
         self.menubar = hs.menubar.new()
+        -- tide's logo before the workspaces, tinted by macOS to suit the
+        -- menu bar, and tide as its tooltip.
+        local logo = self.adapter.logo(brand.TEMPLATE)
+        if logo then
+            self.menubar:setIcon(logo, true)
+        end
+        self.menubar:setTooltip(brand.NAME)
         self.wm.on_change = function()
             if self.menubar then
                 self.menubar:setTitle(bar.title(self.wm:bar_state()))

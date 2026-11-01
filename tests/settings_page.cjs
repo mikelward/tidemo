@@ -60,10 +60,10 @@ const zones = () => rows().map((li) => li.children[0].textContent);
 const press = (input, key) => input.listeners.keydown({ key, target: input });
 const lastWrite = () => JSON.parse(sent[sent.length - 1].write);
 
-// No files: tilemo's defaults, and local last.
+// No files: tide's defaults, and local last.
 sandbox.tilemo.update({ clockFiles: [] });
 assert.deepStrictEqual(zones(), ["Australia/Sydney", "America/Los_Angeles", "America/New_York", "Europe/London"]);
-assert.match(ids.source.textContent, /tilemo's defaults/);
+assert.match(ids.source.textContent, /tide's defaults/);
 assert.match(ids["clock-list"].children.at(-1).textContent, /\(local\)$/);
 
 // Adding a zone copies the defaults into clocks.local.json, with the new

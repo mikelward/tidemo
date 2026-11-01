@@ -2930,7 +2930,7 @@ end
 function M:act(name, arg)
     local f = A[name]
     if not f then
-        error("tilemo: no action " .. tostring(name))
+        error("tide: no action " .. tostring(name))
     end
     f(self, arg)
 end

@@ -39,7 +39,7 @@ const SOURCES = {
   "clocks.local.json": "From clocks.local.json, this Mac's own list.",
   "clocks.json": "From clocks.json, shared with tide. A change saves this Mac's own list to clocks.local.json.",
 };
-const DEFAULTS = "tilemo's defaults. A change saves them to clocks.local.json.";
+const DEFAULTS = "tide's defaults. A change saves them to clocks.local.json.";
 
 function showError(text) {
   document.getElementById("error").textContent = text;

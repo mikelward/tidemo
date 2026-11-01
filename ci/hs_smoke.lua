@@ -504,6 +504,22 @@ do
         say("tilemo doctor: no Karabiner, as expected")
     end
 end
+-- tide's logo, as the menu bar, notifications and the switcher show it:
+-- both renders installed and readable, the menu bar's a template.
+do
+    local brand = require("tilemo.brand")
+    local template = tilemo.adapter.logo(brand.TEMPLATE)
+    local logo = tilemo.adapter.logo(brand.LOGO)
+    if not template or not template:template() then
+        fail("logo: the menu bar's template image didn't load as a template")
+    end
+    if not logo then
+        fail("logo: the notifications' image didn't load")
+    end
+    if template and logo then
+        say("logo: loaded, template %s, %dx%d pt", tostring(template:template()), logo:size().w, logo:size().h)
+    end
+end
 -- What a script reads for the workspace's name (SPEC.md §6.3), in a
 -- folder only you can read, and that tilemo leaves Hammerspoon's IPC port
 -- shut.

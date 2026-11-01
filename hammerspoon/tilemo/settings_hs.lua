@@ -6,6 +6,7 @@
 -- and the next login do. Not runnable outside
 -- Hammerspoon.
 
+local brand = require("tilemo.brand")
 local dashboard = require("tilemo.dashboard")
 local layout = require("tilemo.layout")
 local mute = require("tilemo.mute")
@@ -41,7 +42,7 @@ local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
 local function read(name)
     local f, err = io.open(DIR .. name)
     if not f then
-        error("tilemo: can't read the settings page's " .. name .. ": " .. tostring(err))
+        error("tide: can't read the settings page's " .. name .. ": " .. tostring(err))
     end
     local text = f:read("a")
     f:close()
@@ -273,7 +274,7 @@ function M.new(tilemo)
         view = hs.webview.new(frame, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "titled", "closable" })
         -- tilemo leaves its own windows alone, by this title.
-        view:windowTitle("tilemo settings")
+        view:windowTitle(brand.title("settings"))
         view:allowTextEntry(true)
         view:navigationCallback(function(action)
             if action == "didFinishNavigation" then

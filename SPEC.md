@@ -1278,8 +1278,10 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     the pointer reaches the top edge, over the bar, which sits below the
     menu bar's level.
   - **Option 2 stays as the fallback,** with `bar = false` in `start()`: a
-    tilemo menu bar item draws the workspaces' names as text, current,
-    occupied, and wanting attention, with no app icons. A click switches. It sits on the right, since
+    menu bar item draws tide's logo, as a template image macOS tints for a
+    light or dark menu bar, then the workspaces' names as text, current,
+    occupied, and wanting attention, with no app icons. Its tooltip says
+    tide. A click switches. It sits on the right, since
     the menu bar's left side is the Apple menu and the app's menus.
   - Either way, the workspace's name shows briefly, large, in the middle
     of the screen on each switch.
@@ -2161,7 +2163,7 @@ Each one names a workaround, or says there is none.
     notification names what's missing and says to remove and re-add the
     rule, once each time that changes, rechecked every 30 s (§7.1, §7.2).
     **Built so far:** this check and Karabiner's, as `tilemo.doctor()` in
-    Hammerspoon's console and the switcher's "Check tilemo (doctor)";
+    Hammerspoon's console and the switcher's "Check tide (doctor)";
   - the workspace file written and private, for scripts that read the
     workspace's name, and kitty's remote control on, for `TIDE_WORKSPACE`
     in new kitty windows (§6.3);
@@ -2180,6 +2182,22 @@ Each one names a workaround, or says there is none.
 | tilemo quits or crashes with workspaces hidden | Restores everything on quit, and reconciles at start (§6.5). |
 
 ## 17. Where things live
+
+- **On screen it's tide.** Notification titles, window titles, the
+  switcher's own commands ("Reload tide", "Check tide (doctor)"), the
+  settings page and every message say tide, and the menu bar item,
+  notifications, those commands and the settings page show tide's wave
+  logo, as the bar does. The logo's PNGs are rendered from a copy of
+  tide's `shell/icons/tide-symbolic.svg` (`make check-tide` compares it)
+  by `make icons`, with Playwright's Chromium: black on clear for the menu
+  bar's template, tide's accent blue for the rest, at 4x their size in
+  points. `brand.lua` holds the name and the logo's files.
+- **The code stays tilemo:** the repo, the Lua modules (`require("tilemo")`),
+  `start()`'s options, the `hs.settings` keys (`tilemo.*`), the workspace
+  file's folder, the pages' message handler and conf's `tilemo:`
+  Karabiner rule, so an `init.lua` and its saved state keep working.
+  Nothing shown is built from those names; a renamed command keeps its old
+  name as the key the switcher remembers its use by.
 
 - **tilemo** (this repo): the spec, then the code.
 - **conf:**

@@ -88,7 +88,7 @@ function M.setup_notice(missing)
     for i, name in ipairs(missing) do
         each[i] = "\"" .. name .. "\" (" .. (M.SETTING[name] or "set it") .. ")"
     end
-    return "Do Not Disturb has no public switch, so tilemo runs shortcuts for it. In the Shortcuts app,"
+    return "Do Not Disturb has no public switch, so tide runs shortcuts for it. In the Shortcuts app,"
         .. " make " .. table.concat(each, " and ") .. ", each one Set Focus action on Do Not Disturb."
         .. " Keep awake works without them."
 end
@@ -140,7 +140,7 @@ function M.driver(run, report)
     end
 
     local function unstartable()
-        report("tilemo couldn't start " .. M.SHORTCUTS .. ", so Do Not Disturb didn't change."
+        report("tide couldn't start " .. M.SHORTCUTS .. ", so Do Not Disturb didn't change."
             .. " It needs macOS 12 or later.")
         finish()
     end
@@ -170,7 +170,7 @@ function M.driver(run, report)
         end
         local started = run(M.SHORTCUTS, { "list" }, function(code, err, out)
             if code ~= 0 then
-                report("tilemo couldn't list your shortcuts (exit " .. tostring(code) .. ")"
+                report("tide couldn't list your shortcuts (exit " .. tostring(code) .. ")"
                     .. ((err or "") ~= "" and (": " .. err:gsub("%s+$", "")) or "")
                     .. ", so Do Not Disturb didn't change.")
                 finish()

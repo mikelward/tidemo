@@ -7,6 +7,7 @@ local bar = require("tilemo.bar")
 local bluetooth = require("tilemo.bluetooth")
 local tray_hs = require("tilemo.tray_hs")
 local dashboard = require("tilemo.dashboard")
+local brand = require("tilemo.brand")
 
 local M = {}
 
@@ -21,7 +22,7 @@ local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
 local function read(name)
     local f, err = io.open(DIR .. name)
     if not f then
-        error("tilemo: can't read the bar's " .. name .. ": " .. tostring(err))
+        error("tide: can't read the bar's " .. name .. ": " .. tostring(err))
     end
     local text = f:read("a")
     f:close()
@@ -374,7 +375,7 @@ function M.new(tilemo)
         v.view = hs.webview.new(frame, { developerExtrasEnabled = false }, v.content)
         v.view:windowStyle({ "borderless" })
         -- A title for the rules to see: tilemo leaves its own windows alone.
-        v.view:windowTitle("tilemo bar")
+        v.view:windowTitle(brand.title("bar"))
         -- Above every app's windows, below the menu bar, so the menu bar
         -- still shows over it when the pointer reaches the top.
         v.view:level(hs.drawing.windowLevels.floating)
