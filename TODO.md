@@ -113,9 +113,10 @@ launch's window going to the workspace it was launched for, and the keys:
     PgUp and PgDn with Shift already), and nothing else holds those
     chords; `Super+Left` / `Right` across two real displays of different
     sizes, one offset, pick the windows SPEC.md §7.2 says.
-  - **tide** still has `Super+Left` / `Right` and `Super+Shift+Left` /
-    `Right` as previous / next workspace and moving the window there (tide
-    SPEC.md §6.6), with the same follow-up open in its §21.
+  - **tide** has the same keys (tide SPEC.md §6.6) and has decided on
+    the same model, a workspace spanning every monitor with an empty
+    part showing the wallpaper and the bar (tide SPEC.md §6.5); it's not
+    built there yet.
 - **conf:** Karabiner sends physical Alt+Tab as tilemo's
   `Ctrl+Option+Shift+Tab` instead of Cmd+Tab, and the lone Super tap as
   `Super+F20` (conf's PR for this goes with tilemo's keys PR); `kitty.conf` allows remote control on a socket; the shell reads
