@@ -580,6 +580,29 @@ function M.new()
         end
     end
 
+    -- Open a helper's own window (links.APPS): `spec.bundle` by bundle ID,
+    -- or `spec.app` by name, with `spec.args` for it as it starts.
+    function a.open_helper(spec)
+        local args = spec.bundle and { "-b", spec.bundle } or { "-a", spec.app }
+        if spec.args and #spec.args > 0 then
+            args[#args + 1] = "--args"
+            for _, v in ipairs(spec.args) do
+                args[#args + 1] = v
+            end
+        end
+        local what = spec.bundle or spec.app
+        local started = run("/usr/bin/open", args, function(code, err)
+            if code ~= 0 then
+                a.log("couldn't open " .. what .. ": " .. tostring(err))
+                a.notify("Couldn't open " .. what .. ": " .. ((err or ""):match("[^\n]+") or ("exit " .. code)))
+            end
+        end)
+        if not started then
+            a.log("couldn't run open for " .. what)
+            a.notify("Couldn't open " .. what)
+        end
+    end
+
     function a.lock()
         hs.caffeinate.lockScreen()
     end

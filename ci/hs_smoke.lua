@@ -603,6 +603,29 @@ ok, err = xpcall(function()
         end
     end
     say("launcher: %d apps; %d settings panes: %s", #apps, #panes, table.concat(names, ", "))
+    -- Every pane the settings window and the bar open is one of this
+    -- Mac's. Battery, Wi-Fi and Bluetooth come with their hardware, which
+    -- the runner may not have, so they're only reported.
+    local ids = {}
+    for _, p in ipairs(panes) do
+        ids[p.id] = true
+    end
+    local hardware = { battery = true, wifi = true, bluetooth = true }
+    local opened = require("tilemo.links").PANE_IDS
+    local keys = {}
+    for key in pairs(opened) do
+        keys[#keys + 1] = key
+    end
+    table.sort(keys)
+    for _, key in ipairs(keys) do
+        if ids[opened[key]] then
+            say("pane %s: %s", key, opened[key])
+        elseif hardware[key] then
+            say("pane %s: no %s on this Mac, which may lack the hardware", key, opened[key])
+        else
+            fail("pane %s: no %s on this Mac", key, opened[key])
+        end
+    end
 end, debug.traceback)
 if not ok then
     fail("launcher: %s", err)

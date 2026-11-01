@@ -133,47 +133,25 @@ body.settings {
 </head>
 <body class="settings">
 <p class="brand"><svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg><span>tide</span></p>
-<h1 id="clocks">Clocks</h1>
-<p class="source" id="source"></p>
-<ol id="clock-list"></ol>
-<p class="add">
-<input id="add-zone" placeholder="Add a zone, such as Asia/Tokyo" aria-label="Add a zone" spellcheck="false">
-</p>
-<p class="error" id="error" role="alert"></p>
-<p class="note">A label shows on the bar: any text, nothing for just the time, or <code>abbr</code> for the zone's abbreviation. Enter sets it. The bar shows local last, after these.</p>
+<h1 id="displays">Displays</h1>
+<p class="row links" id="displays-links"></p>
+<h1 id="sound">Sound</h1>
+<p class="row links" id="sound-links"></p>
+<h1 id="network">Network and Bluetooth</h1>
+<p class="row links" id="network-links"></p>
+<h1 id="mouse">Mouse</h1>
+<p class="row links" id="mouse-links"></p>
+<h1 id="trackpad">Trackpad</h1>
+<p class="row links" id="trackpad-links"></p>
+<h1 id="keyboard">Keyboard</h1>
+<p class="row links" id="keyboard-links"></p>
+<h1 id="power">Power</h1>
+<p class="row links" id="power-links"></p>
 <h1 id="layouts">Layouts</h1>
 <p class="source" id="layouts-source"></p>
 <div id="layout-rows"></div>
 <p class="error" id="layouts-error" role="alert"></p>
 <p class="note">How a workspace tiles, shared with tide's layouts.json. A change reaches every workspace at once: each keeps its layout, and takes the new widths and masters in place of any set with the keys.</p>
-<h1 id="startup">Start at login</h1>
-<p class="source" id="startup-source"></p>
-<ol id="startup-list"></ol>
-<p class="add">
-<input id="add-command" placeholder="Add a command, such as google-calendar" aria-label="Add a command" spellcheck="false">
-</p>
-<p class="error" id="startup-error" role="alert"></p>
-<p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
-<h1 id="clipboard">Clipboard</h1>
-<p class="source" id="clipboard-summary"></p>
-<p class="row">
-<button type="button" id="clipboard-history"></button>
-<span>Keeps</span>
-<button type="button" id="clipboard-fewer" aria-label="Keep fewer copies">−</button>
-<span id="clipboard-max"></span>
-<button type="button" id="clipboard-more" aria-label="Keep more copies">+</button>
-<span>copies</span>
-<button type="button" id="clipboard-clear">Clear history</button>
-</p>
-<p class="error" id="clipboard-error" role="alert"></p>
-<p class="note">The picker's history, on Super+C, shared with tide's clipboard.json. It's kept in memory, so it starts empty at each login. Turning it off keeps what's there until it's cleared.</p>
-<h1 id="muted">Muted</h1>
-<p class="note">Apps and sites that are never marked for attention. Mute one with Cmd+M, or a right-click, on its row in the switcher's Windows or Attention tab, or type its bundle id, or site: and a host, below. macOS still shows their banners: turn those off in Notifications settings.</p>
-<ul id="muted-list"></ul>
-<p class="add">
-<input id="add-muted" placeholder="Mute an app's bundle id, or site:host" aria-label="Mute an app or site" spellcheck="false">
-</p>
-<p class="error" id="muted-error" role="alert"></p>
 <h1 id="floating">Floating</h1>
 <p class="note">Rules that float an app's windows, by its bundle ID and, if you like, a Lua pattern found anywhere in the title, such as <code>^Save</code>. Escape a pattern's magic characters with <code>%</code>: <code>%.</code> is a dot. They come after start()'s rules, before tide's own, and dialogs float whatever they say. A new rule floats the windows open now that it covers, but not one you tiled by hand.</p>
 <p class="source" id="floating-source"></p>
@@ -192,6 +170,49 @@ body.settings {
 <h2>Floating now</h2>
 <p class="note">Floating windows no rule covers, one per app. Always float fills in a rule for it to trim and add.</p>
 <ul id="floating-now"></ul>
+<h1 id="appearance">Appearance</h1>
+<p class="row links" id="appearance-links"></p>
+<h1 id="muted">Notifications</h1>
+<p class="row links" id="muted-links"></p>
+<p class="note">Apps and sites that are never marked for attention. Mute one with Cmd+M, or a right-click, on its row in the switcher's Windows or Attention tab, or type its bundle id, or site: and a host, below. macOS still shows their banners: turn those off in Notifications settings.</p>
+<ul id="muted-list"></ul>
+<p class="add">
+<input id="add-muted" placeholder="Mute an app's bundle id, or site:host" aria-label="Mute an app or site" spellcheck="false">
+</p>
+<p class="error" id="muted-error" role="alert"></p>
+<h1 id="clipboard">Clipboard</h1>
+<p class="source" id="clipboard-summary"></p>
+<p class="row">
+<button type="button" id="clipboard-history"></button>
+<span>Keeps</span>
+<button type="button" id="clipboard-fewer" aria-label="Keep fewer copies">−</button>
+<span id="clipboard-max"></span>
+<button type="button" id="clipboard-more" aria-label="Keep more copies">+</button>
+<span>copies</span>
+<button type="button" id="clipboard-clear">Clear history</button>
+</p>
+<p class="error" id="clipboard-error" role="alert"></p>
+<p class="note">The picker's history, on Super+C, shared with tide's clipboard.json. It's kept in memory, so it starts empty at each login. Turning it off keeps what's there until it's cleared.</p>
+<h1 id="clocks">Clocks</h1>
+<p class="source" id="source"></p>
+<ol id="clock-list"></ol>
+<p class="add">
+<input id="add-zone" placeholder="Add a zone, such as Asia/Tokyo" aria-label="Add a zone" spellcheck="false">
+</p>
+<p class="error" id="error" role="alert"></p>
+<p class="note">A label shows on the bar: any text, nothing for just the time, or <code>abbr</code> for the zone's abbreviation. Enter sets it. The bar shows local last, after these.</p>
+<p class="row links" id="clocks-links"></p>
+<h1 id="idle">Idle</h1>
+<p class="row links" id="idle-links"></p>
+<h1 id="startup">Start at login</h1>
+<p class="source" id="startup-source"></p>
+<ol id="startup-list"></ol>
+<p class="add">
+<input id="add-command" placeholder="Add a command, such as google-calendar" aria-label="Add a command" spellcheck="false">
+</p>
+<p class="error" id="startup-error" role="alert"></p>
+<p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
+<p class="row links" id="startup-links"></p>
 <script>
 /*TILEMO_SCRIPT*/
 </script>

@@ -411,4 +411,24 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.strictEqual(rules()[0].children[4].disabled, true);
 }
 
+// Each section's buttons, as tilemo lists them: shown in its row, by
+// label, and a click sends back only the button's name.
+{
+  const links = [
+    { section: "mouse", name: "mouse", label: "Mouse settings" },
+    { section: "mouse", name: "linearmouse", label: "LinearMouse settings" },
+    { section: "idle", name: "lock_screen", label: "Lock Screen settings" },
+  ];
+  sandbox.tilemo.update({ clockFiles: [], links });
+  const mouse = ids["mouse-links"].children;
+  assert.deepStrictEqual(mouse.map((b) => b.textContent), ["Mouse settings", "LinearMouse settings"]);
+  assert.deepStrictEqual(ids["idle-links"].children.map((b) => b.textContent), ["Lock Screen settings"]);
+  sent.length = 0;
+  mouse[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ open: "linearmouse" }]);
+  // Drawn again, not added to.
+  sandbox.tilemo.update({ clockFiles: [], links });
+  assert.strictEqual(ids["mouse-links"].children.length, 2);
+}
+
 console.log("settings page: ok");

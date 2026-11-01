@@ -3,6 +3,8 @@
 -- a bundle id or "site:<host>". Pure Lua: reading, writing and JSON come
 -- from the caller.
 
+local links = require("tilemo.links")
+
 local M = {}
 
 M.KEY = "muted"
@@ -160,7 +162,7 @@ end
 
 -- System Settings' Notifications pane, which the notice after a mute offers,
 -- since tilemo can't hold back macOS's banners *(unverified on macOS 26)*.
-M.NOTIFICATIONS_URL = "x-apple.systempreferences:com.apple.Notifications-Settings.extension"
+M.NOTIFICATIONS_URL = links.PANES.notifications
 
 -- What the notice after Cmd+M says: `name` is the app's name or the site.
 function M.notice(name, now)

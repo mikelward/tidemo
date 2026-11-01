@@ -9,8 +9,9 @@
 // { write: text } for clocks.local.json, { writeLayouts: text } for
 // layouts.local.json, { writeStartup: text } for startup.local.json,
 // { unmute: entry }, the Floating section's { floatAdd }, { floatMove } and
-// { floatRemove }, or { close: true }. tilemo.reveal(id) scrolls to a
-// section, for the launcher's rows.
+// { floatRemove }, { open: name } for a section's button to a System
+// Settings pane or a helper (links.lua), or { close: true }.
+// tilemo.reveal(id) scrolls to a section, for the launcher's rows.
 
 import { editableClocks, editedClocks, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
 import { editableStartup, editedStartup, movedCommand, withCommand, withoutCommand } from "./tide-startup.js";
@@ -464,6 +465,22 @@ for (const input of [floatApp(), floatTitle()]) {
 }
 document.getElementById("floating-add-button").addEventListener("click", addFloating);
 
+// Each section's buttons to where its settings are changed, when tilemo
+// can't change them itself (SPEC.md §1, §15): tilemo lists them as
+// { section, name, label }, and opens what a name stands for.
+function renderLinks(links) {
+  const drawn = new Set();
+  for (const l of links) {
+    const row = document.getElementById(`${l.section}-links`);
+    if (!row) continue;
+    if (!drawn.has(row)) {
+      row.replaceChildren();
+      drawn.add(row);
+    }
+    row.append(button(l.label, l.label, false, () => send({ open: l.name })));
+  }
+}
+
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !e.handled) send({ close: true });
 });
@@ -489,6 +506,7 @@ window.tilemo = {
     renderStartup();
     renderClipboard();
     renderMuted();
+    if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.floating && typeof state.floating === "object") {
       floatingState = state.floating;
       showFloatingError("");
