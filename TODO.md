@@ -26,11 +26,12 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 ## Settings pages, for parity with tide
 
 tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
-Clocks, Layouts, Start at login, Clipboard, the muted list and Floating
-(SPEC.md §15). **Check on a Mac:** a Layouts change retiles at once, and so does a
-hand edit of `layouts.local.json`. The pages macOS covers (Idle, Sound,
-Network, Bluetooth, Displays, Power, Mouse, Touchpad, Keyboard) are the
-launcher's System Settings rows. The rest, in order:
+a section for each but Workspaces, in tide's order. Clocks, Layouts, Start
+at login, Clipboard, the muted list and Floating are tilemo's own; the rest
+are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
+§15). **Check on a Mac:** a Layouts change retiles at once, and so does a
+hand edit of `layouts.local.json`; each section's buttons open their pane,
+on macOS 26 too. The rest, in order:
 
 1. **Workspaces.** Read `standing` and `inApps` from tide's
    `workspaces.json` in place of `start()`'s `workspaces` and `home_apps`
@@ -44,6 +45,51 @@ launcher's System Settings rows. The rest, in order:
    checklist names.
 4. **Appearance**, if anything's left for it: the dim's strength, once the
    dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
+
+## Keep the Mac as you set it
+
+The goal: after each login, each time a device is plugged in, each time a
+KVM switches back to this Mac, and on wake, tilemo does its best to make
+the Mac match your settings, with tide's files as the one source, so tide
+looks and works the same on Linux, chromeOS and a Mac. Not built; the
+first piece is the mouse, as researched:
+
+- **tide's Mouse settings through LinearMouse.** tide keeps them in
+  `input.json` and `input.local.json` in its folder (tide SPEC.md §16),
+  with `shell/lib/input.mjs`. Copy that unchanged as
+  `dashboard/tide-input.js` and give the Mouse section tide's Scroll speed
+  (− and +, tide's marks) and Natural scrolling rows, written to
+  `input.local.json` with tide's `withSetting`.
+- **Apply them to LinearMouse's config,** which LinearMouse reloads when
+  the file changes (its `FileWatcher`, on FSEvents, so a rename over it
+  is seen). LinearMouse reads
+  `~/Library/Application Support/linearmouse/linearmouse.json` first if
+  that exists, then `~/.config/linearmouse/linearmouse.json`.
+  - One scheme for every mouse (`"if": {"device": {"category":
+    "mouse"}}`), kept last, since LinearMouse merges schemes in order and
+    a later one wins. Set only its vertical `distance` (lines) and
+    `reverse`; keep the rest of the file as it is, so edit it in
+    JavaScript (JavaScriptCore, as the name patterns run), not through
+    `hs.json`, which can't tell `[]` from `{}`.
+  - Lines a notch: three at 1×, so tide's 3× is nine. setup-macos's ten
+    would move to nine to match.
+  - Reverse: macOS has one natural-scrolling switch,
+    `com.apple.swipescrolldirection` (on when unset). LinearMouse reverses
+    every mouse when tide's `naturalScroll` differs from it, so the mouse
+    and the trackpad each scroll as tide says.
+- **When:** as tilemo starts (each login); when tide's folder changes;
+  when a USB device is plugged in (`hs.usb.watcher`, a second after the
+  last, since a KVM brings several); and on wake or unlock
+  (`hs.caffeinate.watcher`). Then start LinearMouse in the background if
+  it isn't running. The 30 s check puts back a change made in
+  LinearMouse's own window, and says when LinearMouse quit rather than
+  restarting it, so quitting it on purpose lasts until the next event.
+- **Then the rest of tide's Mouse, Touchpad and Keyboard pages,** where
+  macOS lets tilemo apply them at once: a keyboard's layout as its input
+  source (`hs.keycodes`), and LinearMouse's pointer speed. What macOS
+  takes only at the next login stays behind its pane's button.
+- tide's per-device settings need one name for a device on both desktops:
+  `hyprctl devices` names differ from LinearMouse's product names.
 
 ## Named workspaces
 
@@ -150,6 +196,15 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `displayIdle` is held.
 
 ## Decisions needing review
+
+- **The settings window's sections are in tide's order** (SPEC.md §15),
+  Displays first, where Clocks used to be. The muted list's section is
+  titled Notifications, as tide's page is, and its launcher row still
+  scrolls to it. Reversible: the sections' order in `settings.html`.
+- **LinearMouse missing or stopped is a notification** as tilemo starts,
+  even on a Mac with no mouse, since `setup-macos` always installs it.
+  tilemo doesn't start it itself yet: a click on the notification does
+  (Keep the Mac as you set it, above). Reversible: `linearmouse.problem`.
 
 - **The Floating section's rules are in `floating-macos.json` and
   `floating-macos.local.json`** in tide's folder (SPEC.md §15), not tide's
