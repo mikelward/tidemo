@@ -521,7 +521,7 @@ function M.handle(wm, body, act)
 end
 
 -- Scrolling over the workspaces steps from display `uuid`'s, in bar order,
--- stopping at the first and last, as Super+Left and Right do.
+-- stopping at the first and last, as Super+PgUp and PgDn do.
 function M.step(wm, uuid, d)
     return wm:step_from(wm.screen_ws[uuid] or wm.home, d)
 end

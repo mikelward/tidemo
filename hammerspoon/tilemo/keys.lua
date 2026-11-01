@@ -45,12 +45,16 @@ M.map = {
     -- (SPEC.md §6.7).
     { key = "z", action = "minimize" },
     { key = "r", shift = true, action = "resize_mode" },
-    { key = "left", action = "step", arg = -1 },
-    { key = "right", action = "step", arg = 1 },
+    -- Left and Right go between windows, across displays at the edge;
+    -- PgUp and PgDn between workspaces (SPEC.md §7.2).
+    { key = "left", action = "select", arg = -1 },
+    { key = "right", action = "select", arg = 1 },
+    { key = "left", shift = true, action = "move_side", arg = -1 },
+    { key = "right", shift = true, action = "move_side", arg = 1 },
     { key = "pageup", action = "step", arg = -1 },
     { key = "pagedown", action = "step", arg = 1 },
-    { key = "left", shift = true, action = "carry", arg = -1 },
-    { key = "right", shift = true, action = "carry", arg = 1 },
+    { key = "pageup", shift = true, action = "move_ws", arg = -1 },
+    { key = "pagedown", shift = true, action = "move_ws", arg = 1 },
 }
 
 -- App keys (tide's, conf hyprland.lua). Each brings the app's window, and
@@ -203,7 +207,9 @@ M.DOES = {
     minimize = "Minimize the window",
     resize_mode = "Resize mode",
     step = by_sign("Previous workspace", "Next workspace"),
-    carry = by_sign("Move the window to the previous workspace", "Move the window to the next workspace"),
+    select = by_sign("Select the window to the left", "Select the window to the right"),
+    move_side = by_sign("Move the window left", "Move the window right"),
+    move_ws = by_sign("Move the window to the previous workspace", "Move the window to the next workspace"),
     lock = "Lock",
     logout = "Log out",
     launcher = function(arg)

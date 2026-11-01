@@ -85,20 +85,28 @@ launch's window going to the workspace it was launched for, and the keys:
 `Super+Return`, `Super+Shift+Return`, `Super+Tab`, `Super+End`, Alt+Tab,
 `Super+A` and the Super tap, and the switcher's tabs. The rest:
 
-- **Follow-up: several displays** (SPEC.md §19, question 12). The
-  direction: a workspace spans every display, each display with its own
-  layout within it. Open:
-  - moving between displays. The candidate: `Super+Left` / `Right` select
-    the window left or right of this one, wrapping at a display's edge to
-    the nearest window on the next display that way, and
-    `Super+Shift+Left` / `Right` move the window the same way;
-  - whether the edge wrap is doable, across displays of different sizes
-    and offsets;
-  - if it is, those keys replace previous / next workspace and carry,
-    which they are now. Previous / next stays on `Super+PgUp` / `PgDn`,
-    and carry needs another key or goes.
-  Until then each display shows one workspace, and a second display gets
-  one named by its number (below).
+- **Several displays** (SPEC.md §6.1, §7.2, §19 question 12). **Decided**
+  (2026-11-01): a workspace spans every display, each display with its own
+  layout within it. **Built:** the keys. `Super+Left` / `Right` select the
+  window that way, going on to the next display at its edge, and
+  `Super+Shift+Left` / `Right` move it the same way, by one rule for
+  displays of any size and offset (`direction.lua`); `Super+PgUp` / `PgDn`
+  step through workspaces, and `Super+Shift+PgUp` / `PgDn` move the window
+  there. The rest:
+  - **One workspace across every display.** Today each display still shows
+    one workspace of its own, and a second display gets one named by its
+    number (below). Spanning needs a layout per display in each workspace,
+    each window's display kept with its workspace and saved for a restart,
+    Show and the bar without "elsewhere", each display's tray, and what an
+    unplugged display's windows join.
+  - **Check on a Mac:** `Super+Shift+PgUp` / `PgDn` reach tilemo through
+    Karabiner as Ctrl+Option+Command+Shift+PgUp / PgDn (conf's rule sends
+    PgUp and PgDn with Shift already), and nothing else holds those
+    chords; `Super+Left` / `Right` across two real displays of different
+    sizes, one offset, pick the windows SPEC.md §7.2 says.
+  - **tide** still has `Super+Left` / `Right` and `Super+Shift+Left` /
+    `Right` as previous / next workspace and moving the window there (tide
+    SPEC.md §6.6), with the same follow-up open in its §21.
 - **conf:** Karabiner sends physical Alt+Tab as tilemo's
   `Ctrl+Option+Shift+Tab` instead of Cmd+Tab, and the lone Super tap as
   `Super+F20` (conf's PR for this goes with tilemo's keys PR); `kitty.conf` allows remote control on a socket; the shell reads
@@ -205,6 +213,29 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **The keys for several displays come before the model they're for**
+  (2026-11-01): this change builds `Super+Left` / `Right` and their Shift
+  moves on today's model, where each display shows a workspace of its own,
+  so at a display's edge they reach the workspace showing on the next one,
+  and a window moved there joins it. The alternative was building one
+  workspace across every display in the same change. Reversible: the keys
+  and `direction.lua` don't depend on the model; only `A.move_side`'s
+  choice of workspace does.
+- **At the last display that way, `Super+Left` / `Right` stop** rather than
+  wrap round to the far side (2026-11-01). Reversible: `direction.find`.
+- **A display that way with no tiles takes the keys,** as a switch to an
+  empty workspace leaves them, rather than being passed over for the one
+  beyond (2026-11-01). Reversible: `A.select`.
+- **A window moved onto the next display takes the place in its layout
+  nearest the edge it came in by,** rather than the end of that display's
+  stack, as a Send does (2026-11-01). Reversible: `M:entry_slot`.
+- **Moving a window onto a display showing home isn't refused,** as a
+  window dragged there isn't, though a Send of another app's window to home
+  is (2026-11-01). Reversible: `A.move_side`.
+- **Ties go to the first tile in tile order,** after shared height and
+  the nearest center (2026-11-01). The alternative was the one used last.
+  Reversible: `direction.nearest`.
+
 - **The dashboard launcher feeds tileco's page through stand-ins for two
   of tileco's modules, not only Chrome's APIs** (2026-11-01):
   `launcher-lists.js` replaces `launcher.js`'s `actions()` and
@@ -262,7 +293,7 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `launcher.lua`.
 - **What each key does is written in `keys.lua`** (`DOES`, and `does` on
   the app keys), in conf's words for tide's same key (2026-11-01), since
-  Hammerspoon's hotkeys carry no description. The alternative is reading
+  Hammerspoon's hotkeys have no description. The alternative is reading
   conf's `hyprland.lua`, which a Mac may not have and whose keys differ.
   Reversible: `keys.DOES`.
 - **A chord left out for another binding counts as a key that didn't

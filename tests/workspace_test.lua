@@ -75,7 +75,7 @@ t.test("showing a workspace focuses its last used window", function()
     t.eq(a.focus_, 2)
 end)
 
-t.test("Super+Left and Right step through workspaces in bar order, stopping at the first and last", function()
+t.test("Super+PgUp and PgDn step through workspaces in bar order, stopping at the first and last", function()
     local a, wm = setup(2, nil, { workspaces = { "in" } })
     a.focus_ = 2
     wm:act("send", "web")
@@ -121,13 +121,13 @@ t.test("Super+Shift+1…9 send the window to the Nth workspace, and focus stays 
     t.eq(wm.windows[1].ws, "in", "nothing past the last")
 end)
 
-t.test("Super+Shift+Right carries the window to the next workspace and follows it", function()
+t.test("Super+Shift+PgDn moves the window to the next workspace and follows it", function()
     local a, wm = setup(2, nil, { workspaces = { "in" } })
     a.focus_ = 2
-    wm:act("carry", 1)
+    wm:act("move_ws", 1)
     t.eq(wm.screen_ws.A, "in", "no workspace after the last")
     wm:ensure_ws("2")
-    wm:act("carry", 1)
+    wm:act("move_ws", 1)
     t.eq(wm.screen_ws.A, "2")
     t.eq(wm.windows[2].ws, "2")
     t.eq(a.wins[2].minimized, false)
@@ -167,7 +167,7 @@ t.test("after swapping in an empty workspace, keys still act on this display", f
     t.eq(a.wins[1].frame.x >= 1920, true)
     wm:show("3", nil, true)
     t.eq(wm.screen_ws, { A = "3", B = "in" }, "3 goes on A, not over window 1 on B")
-    -- Clicking the window the swap carried to B means B, though its focus
+    -- Clicking the window the swap took to B means B, though its focus
     -- didn't change.
     wm:clicked()
     t.eq(wm:current_screen(), "B")
@@ -323,7 +323,7 @@ t.test("a window minimized before tilemo started counts as yours", function()
     t.eq(a.wins[1].minimized, true)
 end)
 
-t.test("carrying a window to the workspace on the other display shows it here", function()
+t.test("moving a window to the next workspace, on the other display, shows it here", function()
     local a = fake.new()
     two_displays(a)
     a.add(1, {})
@@ -332,7 +332,7 @@ t.test("carrying a window to the workspace on the other display shows it here", 
     wm:sync()
     wm:reconcile()
     a.focus_ = 1
-    wm:act("carry", 1)
+    wm:act("move_ws", 1)
     t.eq(wm.screen_ws, { A = "2", B = "in" })
     t.eq(wm.windows[1].ws, "2")
     t.eq(a.wins[1].frame.x < 1920, true, "it stays on display A")

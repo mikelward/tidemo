@@ -91,7 +91,7 @@ end)
 t.test("the title follows the focused window, not where the keys act", function()
     local a, wm = two_displays()
     a.focus_ = 1
-    -- Swapping an empty workspace in carries window 1 to B, with focus,
+    -- Swapping an empty workspace in takes window 1 to B, with focus,
     -- while the keys stay on A.
     wm:show("2", nil, true)
     t.eq(wm.screen_ws, { A = "2", B = "in" })
