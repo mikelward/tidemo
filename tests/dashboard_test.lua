@@ -50,6 +50,14 @@ t.test("a missing module or an import it can't read is an error at load", functi
     t.eq(tostring(err):find("dashboard.js", 1, true) ~= nil, true)
 end)
 
+t.test("export in a string or a comment is only words, and one starting a line still has to be read", function()
+    local s = sources()
+    s["calendar.js"] = 'const x = { name: "Import and export" }; // export them\nexport const Y = 1;\n'
+    t.eq(dashboard.bundle(s):find("return { Y };", 1, true) ~= nil, true)
+    s["calendar.js"] = 'export { x };\n'
+    t.eq(pcall(dashboard.bundle, s), false)
+end)
+
 t.test("the page carries tileco's stylesheet and the script", function()
     local html = dashboard.page(read("dashboard.html"), read("launcher.css"), sources())
     t.eq(html:find("TILEMO_", 1, true), nil)

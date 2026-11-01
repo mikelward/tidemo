@@ -1559,7 +1559,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     script, each module in its own scope.
   - A click on a workspace's chip shows it. Esc, the key again,
     or clicking away closes it.
-  - The switcher stays `hs.chooser` (§9), so the dashboard has no search.
+  - The switcher stays `hs.chooser` (§9) by default, so the dashboard has no
+    search. tileco's own dashboard page, with its search, is built as the
+    dashboard launcher (§9.2), switched off.
   - Focus follows mouse pauses while it's open (§5.2).
 
 ## 9. The switcher
@@ -1568,6 +1570,12 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 workspaces, every window, and the windows wanting attention. It's the
 launcher's `hs.chooser` with tileco's scopes (tileco §9.4), one scope per
 tab, the search field naming the tab you're in.
+
+- **The default is the `hs.chooser` switcher** this section describes.
+  `start()`'s `launcher = "dashboard"` swaps it for tileco's dashboard page
+  (§9.2), which is built but switched off until it's been tried on a Mac.
+  Any other value is an error at load. The name prompt and the picker
+  (§9.1) stay `hs.chooser` either way.
 
 - **The search field's hint names only the keys that work on that tab,**
   as tide's footer does (tide §8.1): `Tab` and the tab it goes to on all
@@ -1706,6 +1714,49 @@ two tabs. C is for clipboard and characters.
   polls the pasteboard's change count, Hammerspoon's
   `hs.pasteboard.watcher.interval`, half a second by default. The list is
   about 130 KB, read the first time the Characters tab shows.
+
+### 9.2 The dashboard launcher (switched off)
+
+**tileco's dashboard page as the launcher,** in a borderless `hs.webview`
+over the display you're on, in place of the switcher. It runs only with
+`start({ launcher = "dashboard" })`; the default stays `"chooser"` (§9).
+
+- **Opened by the same keys,** each on its own scope, and by the bar's
+  logo, which also closes it. tileco's scopes are Launch, Tabs, Workspaces
+  and Actions:
+  - Launch: the Mac's apps and System Settings' panes, as tileco's app
+    rows, most recently used first; Tide Settings; tileco's Browser window
+    (`Super+G`'s browser). Tide Settings' sections and tilemo's commands
+    turn up for a query.
+  - Tabs: every window, most recent first, and the browser tabs as they
+    arrive. A window is found by its title or its app.
+  - Workspaces: tileco's rows, from tilemo's bar. Typing a name no
+    workspace has makes it, as the name prompt does.
+  - Actions: the switcher's Actions tab (§9), in its order, then tilemo's
+    commands.
+  - The `Super+A` key opens it on Tabs, since tileco has no Attention
+    scope.
+- **A switcher key pressed while it's open** closes it on that key's
+  scope, and otherwise moves there, as the switcher does. Esc, a choice,
+  or clicking away closes it, and Esc gives focus back to the window you
+  were in.
+- **tileco's files are copied unchanged:** `launcherview.js`, `launcher.js`
+  and what they import (`apps.js`, `workspaces.js`, `platform.js`,
+  `extras.js`, `unread.js`, `watchers.js`, `keepawake.js`), and
+  `launcher.html`'s markup in `dashboard/launcherpage.html`. `make
+  check-tileco` compares them with tileco's.
+- **Stand-ins answer the page's Chrome calls** (`dashboard/launcher-chrome.js`),
+  fed by the switcher's own rows (`launcher.lua`'s items), and send what
+  you chose back to tilemo, which runs it as the switcher would.
+  Two of tileco's lists are chromeOS's, so tilemo's take their place
+  (`launcher-lists.js`): Actions' rows and the settings sections, which are
+  Tide Settings' (`SETTINGS_SECTIONS`). Its settings are tide's clocks
+  (`launcher-settings.js`).
+- **Not yet, against the switcher:** `Cmd+Return`'s new workspace, `Cmd+M`'s
+  mute, the Attention scope, a window's "minimized" and "muted", and app
+  icons (TODO.md).
+- **Cost:** no money and no network. The page is built once at start;
+  each open makes a new webview *(unverified how fast on a Mac)*.
 
 ## 10. The rest of the desktop
 
@@ -2089,6 +2140,9 @@ Each one names a workaround, or says there is none.
 
 ## 15. Settings and `tilemo doctor`
 
+- **`start()`'s `launcher`** picks the launcher: `"chooser"`, the
+  `hs.chooser` switcher, by default, or `"dashboard"`, tileco's dashboard
+  page (§9.2). Anything else is an error at load, naming the setting.
 - **One set of files with tide.** tilemo reads tide's settings from
   `~/.config/tide/` (tide §16.1): the clocks list, the layouts, and the dim
   strength. One file serves every desktop. A `.local` file beside each

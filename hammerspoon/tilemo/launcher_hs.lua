@@ -219,6 +219,21 @@ local function workspaces(tilemo)
     return out
 end
 
+-- What the switcher lists as it opens, read once: a function giving its
+-- rows (launcher.items) with the browser tabs `tabs` found so far, muted
+-- ones marked. Shared with the dashboard launcher (launcherpage_hs.lua).
+function M.collector(tilemo)
+    local apps, settings = M.scan()
+    local wins = windows(tilemo)
+    return function(tabs)
+        local items = launcher.items(apps, tabs, launcher.COMMANDS, settings, attention(tilemo), workspaces(tilemo), wins)
+        mute.mark_rows(items, tilemo.wm.muted)
+        return items
+    end
+end
+
+M.fetch_tabs = fetch_tabs
+
 local QUICK = {}
 
 -- macOS's own screenshot keys, as the Print keys use (SPEC.md §10).
@@ -265,6 +280,59 @@ function QUICK.reload()
     hs.reload()
 end
 
+-- Run the switcher's row `item`, remembering its use in `recency` (a
+-- table kept in hs.settings): `fresh` is Cmd+Return's new workspace. Shared
+-- by the chooser and the dashboard launcher (launcherpage_hs.lua).
+function M.run(tilemo, recency, item, fresh)
+    recency[item.key] = os.time()
+    hs.settings.set(M.RECENCY_KEY, recency)
+    if item.kind == "app" and not item.path then
+        -- One of tilemo's own, as Tide Settings is: a window manager
+        -- action.
+        tilemo.wm:act(item.action, item.arg)
+    elseif item.kind == "app" then
+        -- By bundle ID where it has one, so an app already open comes
+        -- forward with its workspace, as its app key would.
+        local info = hs.application.infoForBundlePath(item.path)
+        local bundle = info and info.CFBundleIdentifier
+        -- One of "in"'s apps launches from "in" without asking for a
+        -- workspace (SPEC.md §6.2).
+        local home_app = tilemo.wm:home_app_named(item.title)
+        if bundle then
+            tilemo.wm.actions.app(tilemo.wm, { bundle = bundle, name = item.title, home_app = home_app }, fresh)
+        else
+            tilemo.wm:before_launch({ fresh = fresh, home_app = home_app, default = item.title }, function(env)
+                -- No bundle ID to say which app's window is the launch's.
+                tilemo.wm:grant(nil)
+                tilemo.adapter.open_app(item.path, env)
+            end)
+        end
+    elseif item.kind == "setting" then
+        -- System Settings, at the pane; its window may take focus.
+        tilemo.wm:grant(SETTINGS_BUNDLE)
+        tilemo.adapter.open_url(item.url)
+    elseif item.kind == "tab" then
+        open_tab(tilemo, item)
+    elseif item.kind == "window" then
+        -- With its workspace, as an app key brings it.
+        tilemo.wm:activate(item.window)
+    elseif item.kind == "workspace" then
+        -- Made, if it's a standing workspace not made yet.
+        tilemo.wm:show(item.title)
+    elseif item.kind == "attention" then
+        -- As Super+Tab goes there: with its workspace.
+        tilemo.wm:activate(item.window)
+    elseif item.quick then
+        if item.quick == "toggle_ffm" then
+            tilemo.toggle_focus_follows_mouse()
+        elseif QUICK[item.quick] then
+            QUICK[item.quick](tilemo)
+        end
+    elseif item.action then
+        tilemo.wm:act(item.action, item.arg)
+    end
+end
+
 -- Mute or unmute the selected row, while the switcher's open: physical
 -- Ctrl+M under setup-macos's rotation, as tide's Ctrl+M (SPEC.md §14.2).
 -- It's bound only while the chooser is open (open_keys), never globally:
@@ -303,56 +371,6 @@ function M.new(tilemo)
     -- Set once the switcher is open: rebuild its rows, and mute a row.
     local refill, toggle_mute
 
-    local function run(item, fresh)
-        self.recency[item.key] = os.time()
-        hs.settings.set(M.RECENCY_KEY, self.recency)
-        if item.kind == "app" and not item.path then
-            -- One of tilemo's own, as Tide Settings is: a window manager
-            -- action.
-            tilemo.wm:act(item.action, item.arg)
-        elseif item.kind == "app" then
-            -- By bundle ID where it has one, so an app already open comes
-            -- forward with its workspace, as its app key would.
-            local info = hs.application.infoForBundlePath(item.path)
-            local bundle = info and info.CFBundleIdentifier
-            -- One of "in"'s apps launches from "in" without asking for a
-            -- workspace (SPEC.md §6.2).
-            local home_app = tilemo.wm:home_app_named(item.title)
-            if bundle then
-                tilemo.wm.actions.app(tilemo.wm, { bundle = bundle, name = item.title, home_app = home_app }, fresh)
-            else
-                tilemo.wm:before_launch({ fresh = fresh, home_app = home_app, default = item.title }, function(env)
-                    -- No bundle ID to say which app's window is the launch's.
-                    tilemo.wm:grant(nil)
-                    tilemo.adapter.open_app(item.path, env)
-                end)
-            end
-        elseif item.kind == "setting" then
-            -- System Settings, at the pane; its window may take focus.
-            tilemo.wm:grant(SETTINGS_BUNDLE)
-            tilemo.adapter.open_url(item.url)
-        elseif item.kind == "tab" then
-            open_tab(tilemo, item)
-        elseif item.kind == "window" then
-            -- With its workspace, as an app key brings it.
-            tilemo.wm:activate(item.window)
-        elseif item.kind == "workspace" then
-            -- Made, if it's a standing workspace not made yet.
-            tilemo.wm:show(item.title)
-        elseif item.kind == "attention" then
-            -- As Super+Tab goes there: with its workspace.
-            tilemo.wm:activate(item.window)
-        elseif item.quick then
-            if item.quick == "toggle_ffm" then
-                tilemo.toggle_focus_follows_mouse()
-            elseif QUICK[item.quick] then
-                QUICK[item.quick](tilemo)
-            end
-        elseif item.action then
-            tilemo.wm:act(item.action, item.arg)
-        end
-    end
-
     -- Cmd+Return, and only that: the chooser's own Cmd+1…9 picks a row with
     -- Command held too, so the modifiers alone can't tell them apart.
     local fresh = false
@@ -384,7 +402,7 @@ function M.new(tilemo)
         local item = by_id[choice.id]
         if item then
             -- Cmd+Return asks for a workspace and runs it there.
-            run(item, fresh)
+            M.run(tilemo, self.recency, item, fresh)
         end
     end)
     chooser:queryChangedCallback(function(query)
@@ -422,12 +440,10 @@ function M.new(tilemo)
             return
         end
         before = tilemo.adapter.focused()
-        local apps, settings = M.scan()
-        local wins = windows(tilemo)
+        local collect = M.collector(tilemo)
         local found_tabs = {}
         local function fill()
-            items = launcher.items(apps, found_tabs, launcher.COMMANDS, settings, attention(tilemo), workspaces(tilemo), wins)
-            mute.mark_rows(items, tilemo.wm.muted)
+            items = collect(found_tabs)
             by_id = {}
             for _, item in ipairs(items) do
                 by_id[item.id] = item
@@ -442,7 +458,7 @@ function M.new(tilemo)
         -- answers, while the switcher's still open.
         local opened = {}
         self.opened = opened
-        fetch_tabs(tilemo, function(list)
+        M.fetch_tabs(tilemo, function(list)
             if self.opened ~= opened or not chooser:isVisible() then
                 return
             end

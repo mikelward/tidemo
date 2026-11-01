@@ -29,7 +29,7 @@ local wm_mod = require("tilemo.wm")
 local adapter_mod = require("tilemo.hs_adapter")
 local ffm_mod = require("tilemo.ffm")
 local dashboard_hs = require("tilemo.dashboard_hs")
-local launcher_hs = require("tilemo.launcher_hs")
+local launcherpage = require("tilemo.launcherpage")
 local picker_hs = require("tilemo.picker_hs")
 local picker = require("tilemo.picker")
 local settings_hs = require("tilemo.settings_hs")
@@ -258,6 +258,9 @@ function M.start(config)
     hs.window.animationDuration = 0
     self.adapter = adapter_mod.new()
     config = config or {}
+    -- The switcher, or the dashboard launcher, switched off by default
+    -- (SPEC.md §9.2): a bad value is an error now, not on the first key.
+    local launcher_module = launcherpage.module_for(config.launcher)
     config.saved = adapter_mod.load()
     -- The tiling area starts below the bar.
     config.top = config.bar ~= false and bar.HEIGHT or 0
@@ -608,7 +611,7 @@ function M.start(config)
     self.presenter.check()
     self.wm.toggle_keep_awake = self.presenter.toggle_keep_awake
     self.wm.toggle_presenter = self.presenter.toggle_presenter
-    self.launcher = launcher_hs.new(self)
+    self.launcher = require(launcher_module).new(self)
     self.wm.open_launcher = function(tab)
         self.launcher.show(tab)
     end

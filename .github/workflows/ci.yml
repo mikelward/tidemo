@@ -16,7 +16,8 @@ jobs:
         with:
           repository: mikelward/tide
           path: tide
-      # So are the dashboard's clock modules from tileco.
+      # So are the dashboard's clock modules and the dashboard launcher's page
+      # from tileco.
       - uses: actions/checkout@v4
         with:
           repository: mikelward/tileco
