@@ -209,6 +209,11 @@ t.test("showing an open settings window again redraws Floating now", function()
     for _, m in ipairs({ "windowStyle", "windowTitle", "allowTextEntry", "html", "show", "delete" }) do
         view[m] = function() end
     end
+    -- It floats over the tiles at a window level of its own.
+    function view.level(_, l)
+        view.level_ = l
+    end
+    _G.hs.drawing = { windowLevels = { floating = 3 } }
     function view.navigationCallback(_, fn)
         view.nav = fn
     end
@@ -243,6 +248,7 @@ t.test("showing an open settings window again redraws Floating now", function()
     settings.show("floating")
     view.nav("didFinishNavigation")
     t.eq(pushed, 1)
+    t.eq(view.level_, 3, "at the floating level")
     settings.show("floating")
     t.eq(pushed, 2, "no fill, but Floating now is redrawn")
 end)

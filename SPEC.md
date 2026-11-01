@@ -345,9 +345,21 @@ Placing and keeping floats:
   place.
 - **Floats stay above the tiles.** macOS has no public way to set another
   app's window level. Tiles never overlap, though, so the only thing that
-  can cover a float is a tile being raised. When tilemo raises a tile, it
-  raises that workspace's visible floats after it *(raising without focus
-  unverified)*.
+  can cover a float is a tile being raised.
+  - **Hammerspoon's own floats** (its console, tilemo's settings) get a
+    floating window level, which macOS honors for the app that owns the
+    window. Nothing raised buries them. Its Preferences window floats
+    too but keeps the normal level, so it counts as another app's float
+    below.
+  - **Another app's float** can't be raised back over the app just
+    focused: on a Mac, Karabiner-Elements' settings and System Settings
+    went behind Chrome a second after it took focus, though tilemo raised
+    them again (§13). So focus follows mouse leaves a tile alone while
+    another app's float is in front of it (§5.2), and the float stays on
+    top. A click or a key still focuses the tile, and the float goes
+    behind it.
+  - **The tile's own app's floats** come back with it: tilemo raises them
+    after it focuses the tile, as before.
 - **A float's size** is what it asks for, capped at 80% of its display
   (tide §6.4). tilemo remembers each app's float size and position until you
   log out.
@@ -515,6 +527,9 @@ Focus follows mouse pauses, and focus stays where it is:
   (Amethyst#1221).
 - **While tilemo's switcher, name prompt or dashboard is open.** It keeps
   the keyboard until it closes (tide §14.2).
+- **While the window under the pointer is a tile with another app's float
+  in front of it.** Focusing the tile would bury the float for good (§5.1).
+  Moving onto the float focuses the float; a click focuses the tile.
 - **While an app that must keep focus is in front:** the screenshot picker
   (`com.apple.screencaptureui`) and password prompts
   (`com.apple.SecurityAgent`), from AutoRaise's own list. More can be added
@@ -1849,7 +1864,7 @@ Each one names a workaround, or says there is none.
 |---|---|---|
 | No title bars or borders | No public API removes another app's frame (§2.1). | **None** for the title bars. Gaps of 0 keep the tiles tight. |
 | Focus without raising (KDE's focus follows mouse) | Focusing a window brings it to the front (§5.2). | yabai's `autofocus` does it through a private call, with SIP on *(unverified)*. Otherwise, raise, and keep floats above tiles (§5.1). |
-| Floats always on top | No public way to set another app's window level (§5.1). | tilemo raises the floats again after any tile it raises. A true window level needs yabai's scripting addition, which needs SIP lowered: **none** within §1. |
+| Floats always on top | No public way to set another app's window level (§5.1), and raising another app's window doesn't put it back over the app just focused (seen on a Mac, 2026-11-01). | Hammerspoon's own floats get a floating window level. Focus follows mouse leaves a tile with another app's float in front of it alone. A true window level for other apps needs yabai's scripting addition, which needs SIP lowered: **none** within §1. |
 | Nothing ever steals focus (tide §14) | An app can activate itself, and macOS decides whether it may. | tilemo never focuses anything unasked, and hands focus back when an app takes it without a grant (§14.1) *(unverified that it can act in time)*. |
 | Dimming exactly the inactive windows | tilemo can't draw inside or between other apps' windows (§2.4). | One dark layer behind the focused window, which dims the desktop too, or JankyBorders' outline as the focus cue instead. |
 | Instant workspace switches with an honest Cmd+Tab | Hiding windows off screen leaves them in Cmd+Tab; minimizing and Spaces animate (§2.3, §6). | Minimize with the Scale effect, and Reduce Motion for Spaces. **No** way to get both at once. |
