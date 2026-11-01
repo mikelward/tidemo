@@ -27,11 +27,25 @@ M.PANE_IDS = {
     date_time = "com.apple.Date-Time-Settings.extension",
     lock_screen = "com.apple.Lock-Screen-Settings.extension",
     login_items = "com.apple.LoginItems-Settings.extension",
+    desktop_dock = "com.apple.Desktop-Settings.extension",
+    privacy = "com.apple.settings.PrivacySecurity.extension",
+}
+
+-- Privacy & Security's lists, for the setup checklist (checklist.lua): the
+-- pane, at the list named after "?".
+M.PRIVACY_ANCHORS = {
+    accessibility = "Privacy_Accessibility",
+    input_monitoring = "Privacy_ListenEvent",
+    screen_recording = "Privacy_ScreenCapture",
+    automation = "Privacy_Automation",
 }
 
 M.PANES = {}
 for name, id in pairs(M.PANE_IDS) do
     M.PANES[name] = pane(id)
+end
+for name, anchor in pairs(M.PRIVACY_ANCHORS) do
+    M.PANES["privacy_" .. name] = pane(M.PANE_IDS.privacy) .. "?" .. anchor
 end
 
 -- Helpers' own windows, for open(1): by bundle ID (-b) or app name (-a),

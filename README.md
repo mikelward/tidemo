@@ -60,7 +60,11 @@ It brings tide's desktop to macOS:
   tab, on and off itself, keeps them up to date with conf, and turns a new
   one on once. Its Mouse section has tide's Scroll speed and Natural
   scrolling, which tilemo sets in LinearMouse's config as it starts, after
-  a device is plugged in or a wake, and when tide's settings change;
+  a device is plugged in or a wake, and when tide's settings change. Its
+  last section, the Setup checklist, shows each permission's state and
+  links each to its list in Privacy & Security, and lists the Desktop &
+  Dock, Lock Screen and Notifications settings to change, to tick off
+  (§10, §15);
 - a notification, and a line in the doctor, when LinearMouse isn't
   installed or isn't running, since without it a mouse wheel notch
   scrolls a line or so (§10).

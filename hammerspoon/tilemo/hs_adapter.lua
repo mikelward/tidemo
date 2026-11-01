@@ -606,6 +606,12 @@ function M.new()
         }
     end
 
+    -- Whether Hammerspoon has Accessibility, without asking for it: false
+    -- shows no prompt (the setup checklist, tilemo doctor).
+    function a.accessibility()
+        return hs.accessibilityState(false)
+    end
+
     -- hs.urlevent.openURL refuses a URL without "://", which a System
     -- Settings pane's lacks, so open(1) opens it.
     function a.open_url(url)

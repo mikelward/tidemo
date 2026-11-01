@@ -14,6 +14,7 @@ local picker = require("tilemo.picker")
 local floating = require("tilemo.floating")
 local links = require("tilemo.links")
 local linearmouse = require("tilemo.linearmouse")
+local checklist = require("tilemo.checklist")
 
 local M = {}
 
@@ -73,6 +74,20 @@ function M.mouse_problem(tilemo)
         out[#out + 1] = applied
     end
     return table.concat(out, " ")
+end
+
+-- The Setup checklist (checklist.page) as JSON, for update()'s `setup` and
+-- tilemo.setup(): the permissions as macOS says now, and this Mac's ticks.
+function M.encode_setup(tilemo)
+    local facts = { karabiner = tilemo.karabiner and true or false }
+    -- An adapter without the call (a test's) can't tell.
+    if tilemo.adapter.accessibility then
+        facts.accessibility = tilemo.adapter.accessibility()
+    end
+    local page = checklist.page(facts, hs.settings.get(checklist.SETTINGS_KEY))
+    return '{"permissions":' .. M.list(page.permissions, hs.json.encode)
+        .. ',"items":' .. M.list(page.items, hs.json.encode)
+        .. ',"left":' .. math.tointeger(page.left) .. "}"
 end
 
 -- One of the Floating section's messages, { floatAdd = { app, title } },
@@ -161,6 +176,8 @@ function M.new(tilemo)
                 binds = "__shortcut_binds__",
                 failed = "__shortcut_failed__",
             },
+            -- The Setup checklist: each permission's state, and the ticks.
+            setup = "__setup__",
             floating = tilemo.floating and {
                 rules = "__float_rules__",
                 source = tilemo.floating.source,
@@ -194,6 +211,9 @@ function M.new(tilemo)
         end)
         json = json:gsub('"__shortcut_failed__"', function()
             return M.list(shortcuts.failed, hs.json.encode)
+        end)
+        json = json:gsub('"__setup__"', function()
+            return M.encode_setup(tilemo)
         end)
         json = json:gsub('"__float_now__"', function()
             return M.list(tilemo.wm:floating_now(), M.encode_fill)
@@ -230,6 +250,19 @@ function M.new(tilemo)
             push()
         end
         -- The folder's watcher reloads the files, and then this page.
+    end
+
+    -- The checklist alone, so coming back to the window doesn't redraw the
+    -- rest of it.
+    local function setup_changed()
+        if not view then
+            return
+        end
+        view:evaluateJavaScript("tilemo.setup(" .. M.encode_setup(tilemo) .. ")", function(_, err)
+            if err and next(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
     end
 
     local content = hs.webview.usercontent.new("tilemo")
@@ -291,6 +324,21 @@ function M.new(tilemo)
                 if why and view then
                     view:evaluateJavaScript("tilemo.keyboardError(" .. hs.json.encode({ why }):sub(2, -2) .. ")")
                 end
+            elseif type(body.setupTick) == "table" then
+                -- A checklist item ticked or not: this Mac's own, kept in
+                -- hs.settings, as tileco keeps its ticks in storage.local.
+                local list, why = checklist.ticked(hs.settings.get(checklist.SETTINGS_KEY),
+                    body.setupTick.id, body.setupTick.on == true)
+                if list then
+                    hs.settings.set(checklist.SETTINGS_KEY, list)
+                else
+                    tilemo.adapter.log("settings: " .. why)
+                end
+                setup_changed()
+            elseif body.setupRefresh then
+                -- Back in the window, perhaps from Privacy & Security: the
+                -- permissions as they are now.
+                setup_changed()
             elseif type(body.open) == "string" then
                 -- A section's button: what its name stands for, and nothing
                 -- the page can name otherwise.

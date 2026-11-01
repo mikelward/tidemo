@@ -51,6 +51,11 @@ const sandbox = {
   Set,
 };
 sandbox.window = sandbox;
+// The window's own listeners, such as focus for the Setup checklist.
+const windowListeners = {};
+sandbox.addEventListener = (type, fn) => {
+  windowListeners[type] = fn;
+};
 sandbox.webkit = { messageHandlers: { tilemo: { postMessage: (m) => sent.push(JSON.parse(JSON.stringify(m))) } } };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), sandbox);
@@ -596,6 +601,51 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.match(ids["workspaces-error"].textContent, /workspaces\.local\.json: standing must name/);
   assert.strictEqual(ids["ws-add-standing"].disabled, true);
   assert.deepStrictEqual(items("standing"), []);
+}
+
+// The Setup checklist: each permission's state and an Open for its pane;
+// each setting with its tick, and a click on either sends only a name.
+{
+  const setup = {
+    permissions: [
+      { id: "accessibility", title: "Accessibility for Hammerspoon", how: "Turn it on.", ref: "§11.1", link: "privacy_accessibility", state: "off", label: "Off" },
+      { id: "screen_recording", title: "Screen Recording", how: "Leave it off.", ref: "§11.1", link: "privacy_screen_recording", state: "not_needed", label: "Not needed" },
+    ],
+    items: [
+      { id: "lock", title: "Ask for the password at once", how: "Immediately.", ref: "§10", link: "lock_screen", done: true },
+      { id: "minimize", title: "Minimize into the app's icon", how: "Scale effect.", ref: "§6", link: "desktop_dock", done: false },
+    ],
+    left: 1,
+  };
+  sandbox.tilemo.update({ clockFiles: [], setup });
+  const perms = ids["setup-permissions"].children;
+  assert.deepStrictEqual(perms.map((li) => li.children.map((c) => c.textContent)), [
+    ["Accessibility for Hammerspoon", "Off", "Open", "Turn it on. (§11.1)"],
+    ["Screen Recording", "Not needed", "Open", "Leave it off. (§11.1)"],
+  ]);
+  assert.strictEqual(perms[0].children[1].className, "off");
+  const items = ids["setup-items"].children;
+  assert.deepStrictEqual(items.map((li) => [li.children[0].checked, li.children[1].textContent]), [
+    [true, "Ask for the password at once"],
+    [false, "Minimize into the app's icon"],
+  ]);
+  assert.strictEqual(ids["setup-summary"].textContent, "1 of 2 still to do.");
+  sent.length = 0;
+  perms[0].children[2].listeners.click();
+  items[1].children[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ open: "privacy_accessibility" }, { open: "desktop_dock" }]);
+  sent.length = 0;
+  items[1].children[0].checked = true;
+  items[1].children[0].listeners.change();
+  assert.deepStrictEqual(sent, [{ setupTick: { id: "minimize", on: true } }]);
+  // tilemo answers with the checklist alone, drawn again, not added to.
+  sandbox.tilemo.setup({ ...setup, items: setup.items.map((i) => ({ ...i, done: true })), left: 0 });
+  assert.strictEqual(ids["setup-items"].children.length, 2);
+  assert.strictEqual(ids["setup-summary"].textContent, "All done.");
+  // Coming back to the window asks for the permissions as they are now.
+  sent.length = 0;
+  windowListeners.focus();
+  assert.deepStrictEqual(sent, [{ setupRefresh: true }]);
 }
 
 console.log("settings page: ok");

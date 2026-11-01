@@ -254,7 +254,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
 | Caps Lock as Compose | no Compose; Karabiner can map key sequences | **partial** |
 | Setup checklist (tileco §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
-| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide §16) | tilemo reads the same files (§15); every page of tide's is a section, with buttons to macOS's panes and the helpers for what tilemo can't change | **partial**: Clocks, Layouts, Start at login, Clipboard, the muted list and Floating are tilemo's own; Workspaces, Keys and the checklist aren't built, and the standing workspaces and home's apps are still `start()` options |
+| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide §16) | tilemo reads the same files (§15); every page of tide's is a section, with buttons to macOS's panes and the helpers for what tilemo can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts and the Setup checklist are tilemo's own; Appearance is only a button |
 | `tide doctor` (tide §5.4) | `tilemo doctor` (§15) | **yes** |
 | Workspace swipe, three fingers (conf `hyprland.lua`) | no public gesture API (§13) | **no** |
 | kitty, Ubuntu Mono, shell config | native, through `setup` and `conf` | **yes** |
@@ -1879,8 +1879,9 @@ two tabs. C is for clipboard and characters.
 - **Setup checklist:** as tileco's (tileco §3.4). Each item links to its System
   Settings pane with an `x-apple.systempreferences:` URL *(unverified per
   pane on macOS 26)*. It covers the Mission Control settings (§6.6), the
-  minimize settings (§6), Chrome's notifications (§5.1), and each
-  permission (§11).
+  minimize settings (§6), the password at once (Idle, above), Chrome's
+  notifications (§5.1), and each permission (§11). **Built,** as the
+  settings window's last section (§15).
 - **The rest of the setup:** tileco's Appendix A lists the helper scripts
   `setup` installs (Bluetooth, the audio profile switcher, notes, IRC,
   remote desktop, the file manager on `Super+E`). Which of them run on a
@@ -2230,6 +2231,38 @@ Each one names a workaround, or says there is none.
 - **Pages, as tide's** (tide §16): Layouts, Keyboard's shortcuts (§7.2),
   Appearance, Mouse and Keyboard, the checklist (§10), and the permissions
   (§11).
+  - **Built: the Setup checklist,** the settings window's last section,
+    after tide's pages, since tide has no checklist page; it's tileco's
+    options page's (tileco §3.4). Its launcher row is "Tide Settings: Setup
+    checklist", which "permissions" and "accessibility" find too.
+    - **Permissions** first, each with its state and an Open button to
+      its list in Privacy & Security
+      (`com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility`
+      and the rest) *(unverified that the anchors still select the list on
+      macOS 26)*:
+      - Accessibility: On or Off, as `hs.accessibilityState(false)` says,
+        which shows no prompt. Off is in red, and `tilemo doctor` names it.
+      - Input Monitoring: Not needed while Super comes from Karabiner (§7.1).
+        Without it, Can't tell: Hammerspoon has no call that reads it
+        without asking.
+      - Screen Recording: Not needed (§11.1), whatever it's set to.
+      - Automation: Can't tell. macOS asks per browser the first time the
+        switcher lists its tabs (§9), and there's no way to read it unasked.
+    - **Settings** next, each with what to set and an Open button to its
+      pane: one Space per display and the rest of Mission Control's, and
+      macOS's own tiling off (Desktop & Dock, §6.6); minimize into the app's
+      icon with the Scale effect (Desktop & Dock, §6); the password at once
+      (Lock Screen, §10); and Chrome's notifications allowed (Notifications,
+      §5.1).
+    - They're ticked off by hand, as tileco's are: macOS's settings are
+      read nowhere. The ticks are this Mac's own, the items' IDs in
+      `hs.settings` (`tilemo.setup_done`); a tick for an item that's gone
+      is dropped. The section says how many are still to do.
+    - The permissions are read each time the window draws, and again each
+      time it comes forward, so one granted in System Settings shows on
+      coming back, as tileco's keys list does.
+    - **Cost and reliability:** nothing to pay, and nothing new to run; one
+      Accessibility query each time the window draws or comes forward.
   - **Built: every page of tide's is a section, in tide's order,** so the
     window is laid out as tide's panel is. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,
@@ -2472,7 +2505,8 @@ Each one names a workaround, or says there is none.
     leaves those two dead. tilemo reads the copy in `karabiner.json`, and a
     notification names what's missing and says to remove and re-add the
     rule, once each time that changes, rechecked every 30 s (§7.1, §7.2).
-    **Built so far:** this check, Karabiner's and LinearMouse's, as
+    **Built so far:** this check, Accessibility (the Setup checklist,
+    above), Karabiner's and LinearMouse's, as
     `tilemo.doctor()` in Hammerspoon's console and the switcher's "Check
     tide (doctor)";
   - conf's Karabiner rules that are off, and what stops tilemo switching

@@ -26,23 +26,25 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 ## Settings pages, for parity with tide
 
 tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
-a section for each, in tide's order. Clocks, Layouts, Workspaces, Start
-at login, Clipboard, the muted list, Floating and Keyboard's Shortcuts are
-tilemo's own; the rest
-are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
+a section for each, in tide's order, then a Setup checklist of its own.
+Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list,
+Floating, Keyboard's Shortcuts and the Setup checklist are tilemo's own;
+the rest are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
 §15). **Check on a Mac:** a Layouts change retiles at once, and so does a
 hand edit of `layouts.local.json`; each section's buttons open their pane,
 on macOS 26 too; a Workspaces change moves home and the bar's order at
 once, and at login the files' `inApps` opens only the entries that are Mac
 apps, Chrome's installed web apps included; Keyboard's Shortcuts list
 every key, and a key macOS won't register shows there in red and in
-`tilemo doctor`. The rest, in order:
+`tilemo doctor`; the Setup checklist shows Accessibility On, and Off (in
+red, and in `tilemo doctor`) once it's turned off in Privacy & Security,
+updating on coming back to the window; each Open lands on its list in
+Privacy & Security or its pane in Desktop & Dock, Lock Screen and
+Notifications, on macOS 26 too; the settings each item names are worded
+so on macOS 26; ticks survive a reload. What's left:
 
-1. **Setup checklist and permissions** (SPEC.md §10, §11): each
-   permission's state, and deep links to the System Settings panes the
-   checklist names.
-2. **Appearance**, if anything's left for it: the dim's strength, once the
-   dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
+- **Appearance**, if anything's left for it: the dim's strength, once the
+  dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
 
 ## Keep the Mac as you set it
 
@@ -181,6 +183,27 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `displayIdle` is held.
 
 ## Decisions needing review
+
+- **The Setup checklist is tileco's, not tide's,** and the window's last
+  section, after Start at login (2026-11-01): tide has no checklist page
+  (tide SPEC.md §16), and tilemo's SPEC.md §10 says "as tileco's". The
+  alternative is putting it first, as a new Mac's first stop. Reversible:
+  `settings.html`, `SETTINGS_SECTIONS` in `launcher.lua` and `TIDE_ORDER`
+  in `links_test.lua`.
+- **The checklist's settings are ticked off by hand,** as tileco's are,
+  kept per Mac in `hs.settings` (2026-11-01). The alternative is reading
+  each with `defaults` (`com.apple.dock` `minimize-to-application`,
+  `mineffect`, `mru-spaces`, `com.apple.WindowManager`'s keys), which would
+  need each key checked on macOS 26. Reversible: `checklist.ITEMS` and
+  `checklist.page`.
+- **Input Monitoring and Automation show "Can't tell",** and Screen
+  Recording "Not needed" without reading it (2026-11-01): Hammerspoon reads
+  neither of the first two without prompting, and tilemo never needs the
+  third. The alternative is an Input Monitoring probe through the Super
+  tap's event tap. Reversible: `checklist.permission_state`.
+- **The permissions have no ticks;** only the settings do (2026-11-01).
+  The alternative is a tick on the two that can't be read. Reversible:
+  `checklist.PERMISSIONS` and `renderSetup`.
 
 - **Keyboard's Shortcuts are under the Keyboard section,** as tide moved its
   Keys page into Keyboard (2026-11-01), with their own launcher row, "Tide
