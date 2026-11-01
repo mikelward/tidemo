@@ -36,6 +36,10 @@ M.map = {
     { key = "f", shift = true, action = "toggle_float" },
     -- A PC keyboard's Insert arrives as the Mac's Help key.
     { key = "help", action = "toggle_float" },
+    -- tide's Super+Alt+F, which Super can't have here: Super's chord holds
+    -- Option already (SPEC.md §7.2). The Floating settings, filled in for
+    -- the focused window.
+    { key = "i", shift = true, action = "float_rule" },
     { key = "delete", action = "close" },
     -- Super+Z, not Super+Delete, which a PC keyboard may send as Backspace
     -- (SPEC.md §6.7).

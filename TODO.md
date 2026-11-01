@@ -26,8 +26,8 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 ## Settings pages, for parity with tide
 
 tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
-Clocks, Layouts, Start at login, Clipboard and the muted list (SPEC.md
-§15). **Check on a Mac:** a Layouts change retiles at once, and so does a
+Clocks, Layouts, Start at login, Clipboard, the muted list and Floating
+(SPEC.md §15). **Check on a Mac:** a Layouts change retiles at once, and so does a
 hand edit of `layouts.local.json`. The pages macOS covers (Idle, Sound,
 Network, Bluetooth, Displays, Power, Mouse, Touchpad, Keyboard) are the
 launcher's System Settings rows. The rest, in order:
@@ -150,6 +150,34 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `displayIdle` is held.
 
 ## Decisions needing review
+
+- **The Floating section's rules are in `floating-macos.json` and
+  `floating-macos.local.json`** in tide's folder (SPEC.md §15), not tide's
+  `floating.json`, since a bundle ID isn't a Wayland class. The shared file
+  is for every Mac of yours, the local one this Mac's, as tide's other
+  files. The alternatives are one per-Mac file alone, or a `macos` key in
+  tide's `floating.json`. Reversible: `floating.FILE` and `LOCAL_FILE`,
+  and a rename of the file.
+- **`start()`'s `rules` come before the section's,** so one there that
+  tiles or ignores an app wins over a section rule floating it (SPEC.md
+  §5.1). The alternative is the section's first, since they're newer and
+  the page shows them. Reversible: the order in `floating.combined`.
+- **Titles are Lua patterns,** as `start()`'s have always been, not a
+  regex library: no new dependency, and one syntax for both kinds of
+  rule. They have no `|` and match bytes, which SPEC.md §15 says. The
+  alternative is a regex through `hs.javascript`, as the workspace-name
+  patterns use. Reversible: `floating.pattern_problem`, `exact` and
+  `rules.lua`'s `matches`.
+- **The key is Super+Shift+I** (SPEC.md §7.2), since tide's Super+Alt+F
+  can't be had with Super holding Option. Chosen as free, not for its
+  letter. Reversible: one line in `keys.lua`.
+- **A click on the "Always float APP?" notification is Edit rule…,** and
+  it expires after 30 s, which is Not now (SPEC.md §5.1). tide's has no
+  body click. Reversible: `floating_hs.lua`.
+- **A swept window that isn't showing is placed when it next shows**
+  (SPEC.md §15), not while minimized, which Accessibility may refuse
+  *(unverified)*. The alternative is placing it at once, minimized.
+  Reversible: `wm:set_float_rules` and `follow_floats`.
 
 - **The switcher's tab keys go in the search field's hint,** after where
   Tab goes: "Cmd+Return: new workspace" on Launch, "Cmd+M: mute" on
@@ -539,6 +567,19 @@ tests and the bar page's test cover it. **Check on a Mac:**
   tileco's scopes (Launch, Tabs, Attention) moved between with Tab. The
   alternative is tileco's whole launcher page in the webview, which needs a
   stand-in for the Chrome APIs it calls. Reversible: add the page later.
+
+## Check the Floating section on a real Mac
+
+Only the tests have run these (SPEC.md §5.1, §15):
+
+- A rule added on the section floats an open tiled window of that app at
+  once, and one on a hidden workspace once it shows.
+- *Floating now* lists a window floated with Super+Shift+F, and Always
+  float fills the fields with its title selected.
+- Super+Shift+I opens the section filled in, with *More about this
+  window* closed until clicked.
+- The "Always float APP?" notification shows both actions, as an alert
+  and as a banner, and each does what it says.
 
 ## Check the picker on a real Mac
 

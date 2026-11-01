@@ -6,8 +6,9 @@
 -- start() takes { layout = ..., rules = {...}, focus_follows_mouse = true,
 -- keep_focus = {...}, bar = true }: `layout` overrides tilemo/layout.lua's
 -- defaults whole, and tide's layouts.json and layouts.local.json lay over
--- it (SPEC.md §15), `rules` are float rules that come before the built-in
--- ones (tilemo/rules.lua), and `keep_focus` names more apps, by bundle ID,
+-- it (SPEC.md §15), `rules` are float rules that come before the ones you
+-- make on the settings window's Floating page and the built-in ones
+-- (tilemo/rules.lua, floating.lua), and `keep_focus` names more apps, by bundle ID,
 -- that keep focus while they're in front. `bar = false` leaves out the bar
 -- along the top and shows the workspaces in the menu bar instead.
 -- `workspaces` names the standing workspaces, always listed and never
@@ -30,6 +31,7 @@ local launcher_hs = require("tilemo.launcher_hs")
 local picker_hs = require("tilemo.picker_hs")
 local picker = require("tilemo.picker")
 local settings_hs = require("tilemo.settings_hs")
+local floating_hs = require("tilemo.floating_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
 local tap_mod = require("tilemo.tap")
@@ -182,6 +184,17 @@ function M.start(config)
             return keys.super_held(self.super, hs.eventtap.checkKeyboardModifiers())
         end,
     })
+    -- The float rules you made on the Floating page, from tide's settings
+    -- folder (SPEC.md §15), before the first windows are decided.
+    self.clock_dir = dashboard.clock_dir(os.getenv)
+    self.floating = floating_hs.new(self, self.adapter.login)
+    self.floating.load()
+    self.wm.floated_by_hand = function(id)
+        self.floating.ask(id)
+    end
+    self.wm.open_float_rule = function(id)
+        self.floating.open(id)
+    end
     self.wm:sync()
     self.wm:reconcile()
     self.wm:retile()
@@ -383,6 +396,7 @@ function M.start(config)
     self.layout_files = dashboard.layout_files(self.clock_dir, self.adapter.read)
     self.clock_watch = adapter_mod.watch_folder(self.clock_dir, function()
         load_layouts()
+        self.floating.load()
         load_patterns()
         load_muted()
         run_startup()

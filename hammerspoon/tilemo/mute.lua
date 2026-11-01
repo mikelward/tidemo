@@ -216,6 +216,8 @@ local function quote(s)
     end) .. '"'
 end
 
+M.quote = quote
+
 -- A list of strings as JSON, so an empty one is [] rather than whatever an
 -- encoder makes of an empty table.
 function M.encode_list(list)

@@ -47,7 +47,11 @@ It brings tide's desktop to macOS:
 - a settings window, from the launcher or the dashboard, with tide's
   Clocks, Start at login and Clipboard settings, sharing tide's
   `~/.config/tide/clocks*.json`, `startup*.json` and `clipboard*.json`, and
-  the muted apps and sites; each section has its own launcher row (§15).
+  the muted apps and sites, and a Floating section for the rules that
+  float an app's windows by bundle ID and title pattern, with the floating
+  windows no rule covers yet; each section has its own launcher row (§15).
+  Super+Shift+I opens Floating for the focused window, and floating a
+  window with Super+Shift+F asks once whether to always float its app.
 
 With [mikelward/scripts](https://github.com/mikelward/scripts),
 `setup-macos --wm tilemo` does all of this: it installs Hammerspoon and tilemo,
@@ -103,6 +107,10 @@ tilemo rewrites whenever the workspace changes. tilemo doesn't load
 ```lua
 tilemo.start({ rules = { { app = "com.apple.finder", title = "^Info$", action = "float" } } })
 ```
+
+Each title is a Lua pattern, found anywhere in the title. They come before
+the rules the settings window's Floating section keeps in
+`~/.config/tide/floating-macos.local.json`, which only float (SPEC.md §15).
 
 tilemo was called timo. An install from then keeps working after
 `make install`: `require("timo")` still loads tilemo, with a note in the
