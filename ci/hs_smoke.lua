@@ -511,6 +511,74 @@ do
         say("tilemo doctor: no LinearMouse, as expected")
     end
 end
+-- conf's Karabiner rules, switched in JavaScriptCore as on a Mac with
+-- them: the runner has no Karabiner, so tilemo says it hasn't written its
+-- settings, and a karabiner.json in memory gets conf's rules in order.
+do
+    local karabiner = require("tilemo.karabiner")
+    local state = tilemo.karabiner_rules and tilemo.karabiner_rules.state
+    if not state then
+        fail("Karabiner's rules: not set up")
+    elseif state.problem ~= karabiner.NO_CONFIG and state.problem ~= karabiner.NO_RULES then
+        fail("Karabiner's rules: %s", state.problem)
+    else
+        say("Karabiner's rules: %s", state.problem)
+    end
+    local home = "/smoke"
+    local assets = home .. karabiner.ASSETS
+    local files = {
+        [home .. karabiner.CONFIG] = '{"profiles": [{"selected": true, "simple_modifications": [], "complex_modifications": {"rules": []}}]}',
+        [assets .. "/pc-arrows.json"] = '{"title": "PC keyboard arrows", "rules": [{"description": "Ctrl+Left/Right moves by word", "manipulators": []}]}',
+        [assets .. "/pc-alt-tab.json"] = '{"title": "PC keyboard Ctrl+Tab", "rules": [{"description": "Ctrl+Tab goes to the next tab", "manipulators": []}]}',
+        [assets .. "/tilemo.json"] = '{"title": "tilemo", "rules": [{"description": "tilemo: Win is Super", "manipulators": []}]}',
+    }
+    local saved = {}
+    local k = karabiner.new({
+        home = home,
+        source = tilemo.adapter.read(karabiner.SOURCE_PATH),
+        read = function(path)
+            return files[path]
+        end,
+        list = function()
+            return { "pc-arrows.json", "pc-alt-tab.json", "tilemo.json" }
+        end,
+        run_js = tilemo.adapter.javascript,
+        decode = tilemo.adapter.decode,
+        write = function(path, text)
+            files[path] = text
+            saved[#saved + 1] = path
+            return true
+        end,
+        resolve = function(path)
+            return path
+        end,
+        running = function()
+            return true
+        end,
+        get = function()
+            return nil
+        end,
+        set = function() end,
+        notify = function() end,
+        log = function(text)
+            say("Karabiner's rules: %s", text)
+        end,
+    })
+    local s = k.check()
+    local config = tilemo.adapter.decode(files[home .. karabiner.CONFIG] or "")
+    local got = {}
+    for _, r in ipairs(config and config.profiles[1].complex_modifications.rules or {}) do
+        got[#got + 1] = r.description
+    end
+    local want = "tilemo: Win is Super, Ctrl+Tab goes to the next tab, Ctrl+Left/Right moves by word"
+    if s.problem ~= "" or table.concat(got, ", ") ~= want then
+        fail("Karabiner's rules in JavaScriptCore: %s; got %s", s.problem, table.concat(got, ", "))
+    elseif not files[home .. karabiner.CONFIG]:find('"simple_modifications": []', 1, true) then
+        fail("Karabiner's rules in JavaScriptCore: an empty list didn't stay one")
+    else
+        say("Karabiner's rules switched in JavaScriptCore: %s", want)
+    end
+end
 -- tide's logo, as the menu bar, notifications and the switcher show it:
 -- both renders installed and readable, the menu bar's a template.
 do

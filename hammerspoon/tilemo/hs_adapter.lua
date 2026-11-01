@@ -616,6 +616,27 @@ function M.new()
         return #(hs.application.applicationsForBundleID(bundle) or {}) > 0
     end
 
+    -- The file names in `dir`, or nil if it can't be read.
+    function a.list_dir(dir)
+        local ok, iter, obj = pcall(hs.fs.dir, dir)
+        if not ok or not iter then
+            return nil
+        end
+        local out = {}
+        for name in iter, obj do
+            if name ~= "." and name ~= ".." then
+                out[#out + 1] = name
+            end
+        end
+        return out
+    end
+
+    -- The file `path` names, through any symlinks, so a write replaces it
+    -- rather than the link; `path` itself when it isn't there.
+    function a.resolve(path)
+        return hs.fs.pathToAbsolute(path) or path
+    end
+
     function a.lock()
         hs.caffeinate.lockScreen()
     end

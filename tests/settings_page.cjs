@@ -437,4 +437,33 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.strictEqual(ids["mouse-error"].textContent, "");
 }
 
+// The Keyboard section: each of conf's Karabiner rules with On or Off, and a
+// click asks tilemo to switch it; what's wrong shows only when something is.
+{
+  const rules = [
+    { description: "Ctrl+Tab goes to the next tab, not the application switcher (PC)", label: "Ctrl+Tab goes to the next tab, not the application switcher", on: false },
+    { description: "tilemo: Win is Super", label: "tilemo: Win is Super", on: true },
+  ];
+  sandbox.tilemo.update({ clockFiles: [], keyboard: { rules, problem: "" } });
+  const rows = ids["karabiner-rules"].children;
+  assert.deepStrictEqual(rows.map((li) => li.children.map((c) => c.textContent)), [
+    ["Ctrl+Tab goes to the next tab, not the application switcher", "Off"],
+    ["tilemo: Win is Super", "On"],
+  ]);
+  assert.strictEqual(rows[0].children[1].attrs["aria-pressed"], "false");
+  assert.strictEqual(rows[1].children[1].attrs["aria-pressed"], "true");
+  sent.length = 0;
+  rows[0].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ karabinerRule: { description: rules[0].description, on: true } }]);
+  sent.length = 0;
+  rows[1].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ karabinerRule: { description: rules[1].description, on: false } }]);
+  assert.strictEqual(ids["keyboard-error"].textContent, "");
+  sandbox.tilemo.update({ clockFiles: [], keyboard: { rules: [], problem: "Karabiner-Elements isn't running." } });
+  assert.strictEqual(ids["karabiner-rules"].children.length, 0);
+  assert.strictEqual(ids["keyboard-error"].textContent, "Karabiner-Elements isn't running.");
+  sandbox.tilemo.keyboardError("karabiner.json isn't JSON");
+  assert.strictEqual(ids["keyboard-error"].textContent, "karabiner.json isn't JSON");
+}
+
 console.log("settings page: ok");

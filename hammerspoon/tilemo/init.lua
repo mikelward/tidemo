@@ -49,6 +49,7 @@ local layout = require("tilemo.layout")
 local brand = require("tilemo.brand")
 local links = require("tilemo.links")
 local linearmouse = require("tilemo.linearmouse")
+local karabiner = require("tilemo.karabiner")
 
 local M = {}
 
@@ -163,6 +164,30 @@ local function check_linearmouse(self)
     end
 end
 
+-- conf's Karabiner rules (SPEC.md §15): brought up to date with their
+-- files, a new one turned on once, and the settings window's Keyboard
+-- section told when what it shows changed.
+local function check_karabiner_rules(self)
+    if not self.karabiner_rules then
+        return
+    end
+    local ok, s = pcall(self.karabiner_rules.check)
+    if not ok then
+        self.adapter.log("Karabiner's rules: " .. tostring(s))
+        return
+    end
+    local sig = s.problem
+    for _, r in ipairs(s.rules) do
+        sig = sig .. "\0" .. r.description .. (r.on and "1" or "0")
+    end
+    if sig ~= self.karabiner_sig then
+        self.karabiner_sig = sig
+        if self.settings then
+            self.settings.refresh()
+        end
+    end
+end
+
 -- What `tilemo doctor` (SPEC.md §15) checks so far: Karabiner and tilemo's
 -- rule, and LinearMouse. Each problem is one line, with what it costs and
 -- the fix; with none, one line saying so. From Hammerspoon's console, or
@@ -177,6 +202,9 @@ function M.doctor()
     if M.linearmouse then
         lines[#lines + 1] = linearmouse.say(M.linearmouse, "doctor")
     end
+    for _, line in ipairs(M.karabiner_rules and M.karabiner_rules.doctor() or {}) do
+        lines[#lines + 1] = line
+    end
     if M.presenter and #M.presenter.missing > 0 then
         lines[#lines + 1] = presenter.setup_notice(M.presenter.missing)
     end
@@ -184,8 +212,8 @@ function M.doctor()
         lines[#lines + 1] = "Muted apps and sites: " .. table.concat(M.mute_errors, "; ")
     end
     if #lines == 0 then
-        lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, LinearMouse is running,"
-            .. " every muted entry reads, and Do Not Disturb's shortcuts are there."
+        lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, and conf's rules on;"
+            .. " LinearMouse is running, every muted entry reads, and Do Not Disturb's shortcuts are there."
     end
     return table.concat(lines, "\n")
 end
@@ -611,9 +639,42 @@ function M.start(config)
             self.bar.update()
         end
     end)
+    -- conf's Karabiner rules, switched by the settings window's Keyboard
+    -- section; checked before Karabiner is, so tilemo's own rule is up to
+    -- date when it's looked at.
+    local karabiner_source = self.adapter.read(karabiner.SOURCE_PATH)
+    if karabiner_source then
+        self.karabiner_rules = karabiner.new({
+            home = os.getenv("HOME") or "",
+            source = karabiner_source,
+            read = self.adapter.read,
+            list = self.adapter.list_dir,
+            run_js = self.adapter.javascript,
+            decode = self.adapter.decode,
+            write = self.adapter.write_file,
+            resolve = self.adapter.resolve,
+            running = function()
+                return self.adapter.running("Karabiner-Core-Service") or self.adapter.running("karabiner_grabber")
+            end,
+            get = function(k)
+                return hs.settings.get(k)
+            end,
+            set = function(k, v)
+                hs.settings.set(k, v)
+            end,
+            notify = self.adapter.notify,
+            log = self.adapter.log,
+        })
+    else
+        local why = "Couldn't read " .. karabiner.SOURCE_PATH .. ", so tide can't switch Karabiner's rules: install tide again"
+        self.adapter.log(why)
+        self.adapter.notify(why)
+    end
+    check_karabiner_rules(self)
     choose_super(self, true)
     check_linearmouse(self)
     self.karabiner_timer = hs.timer.doEvery(M.KARABINER_CHECK, function()
+        check_karabiner_rules(self)
         choose_super(self, false)
         check_linearmouse(self)
     end)

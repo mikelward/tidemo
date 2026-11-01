@@ -545,7 +545,7 @@ M.SETTINGS_SECTIONS = {
     { id = "network", name = "Network and Bluetooth", covers = "wifi wi-fi internet vpn bluetooth" },
     { id = "mouse", name = "Mouse", covers = "pointer speed scrolling left-handed linearmouse" },
     { id = "trackpad", name = "Trackpad", covers = "touchpad tap to click scrolling gestures" },
-    { id = "keyboard", name = "Keyboard", covers = "keys shortcuts bindings repeat layouts" },
+    { id = "keyboard", name = "Keyboard", covers = "keys shortcuts bindings repeat layouts karabiner rules ctrl+tab" },
     { id = "power", name = "Power", covers = "battery energy sleep lid" },
     { id = "layouts", name = "Layouts", covers = "tile columns master ultrawide new windows",
       key = "Settings: layouts" },

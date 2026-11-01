@@ -44,6 +44,7 @@ t.test("each list's rows have a column for every part, so none wraps", function(
     -- settings_page.cjs checks each row has this many parts.
     t.eq(columns(html, ".settings #startup-list li"), 4, "a command, up, down and remove")
     t.eq(columns(html, ".settings #muted-list li"), 2, "an entry and Unmute")
+    t.eq(columns(html, ".settings #karabiner-rules li"), 2, "a Karabiner rule and On or Off")
     t.eq(columns(html, ".settings #floating-list li"), 5, "an app, its title, up, down and remove")
     t.eq(columns(html, ".settings #floating-now li"), 3, "an app, its title and Always float")
     t.eq(columns(html, ".settings li"), 5, "a zone, its label, left, right and remove")
