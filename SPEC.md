@@ -1264,8 +1264,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - Helpers run through the login shell's environment. Apps started from a
     key inherit launchd's short `PATH`, which tide met as "PATH missing in
     keybinds" (tide §17).
-- **The Keys page** in tilemo's settings lists every binding live, as tide's
-  does (tide §16).
+- **Keyboard's Shortcuts,** in tilemo's settings window, list every binding
+  that registered, and every key that didn't, as tide's Keyboard page does
+  (§15, tide §16).
 
 ### 7.3 Taking keys from the system and the old setup
 
@@ -2226,7 +2227,7 @@ Each one names a workaround, or says there is none.
       Notifications page.
 - **A bad value is an error at load,** naming the setting, not a failure
   later. A pattern that doesn't compile is one (§6.2).
-- **Pages, as tide's** (tide §16): Layouts, Keys (live, §7.2),
+- **Pages, as tide's** (tide §16): Layouts, Keyboard's shortcuts (§7.2),
   Appearance, Mouse and Keyboard, the checklist (§10), and the permissions
   (§11).
   - **Built: every page of tide's is a section, in tide's order,** so the
@@ -2306,6 +2307,30 @@ Each one names a workaround, or says there is none.
       JavaScript runs only when a file changed. If Karabiner's window saves
       at the same moment, one of the two edits can be lost; the next check
       puts a rule tilemo turned on back.
+  - **Built: Keyboard's Shortcuts,** below the Karabiner rules, as tide's
+    Keyboard page has its shortcuts below its settings (tide §16).
+    Read-only, as tide's are.
+    - They come from `keys.lua`, as tilemo registered them as it started,
+      or as Super last moved between Karabiner's and Option (§7.1): each
+      binding's keys and what it does, in `keys.bindings`' order, then
+      resize mode's keys, as "Resize mode: H", as tide shows a submap.
+    - Keys show as they're printed on a PC keyboard, as tide's do: Super
+      for whichever modifiers stand for it, `Super+Backspace`,
+      `Super+Insert` for the Mac's Help, `Print` for F13, `Alt+Tab` for
+      the Karabiner chord it arrives as, and "Tap Super" for Super+F20.
+    - What one does is its `does` in `keys.lua`, in conf's words for
+      tide's same key where it has one. One without says "no
+      description", as on tide.
+    - **A key that didn't register** is listed under them, in red, with
+      what it does and why: macOS refused it, or another binding has the
+      same chord. With Super on Option that's Super+Print, which is
+      Alt+Print, the window screenshot. `tilemo doctor` names them too.
+    - Its launcher row is "Tide Settings: Keyboard shortcuts", which
+      scrolls to them, as tide's Keyboard shortcuts row does.
+    - The mouse's Super+drag and the rest (§5.3) aren't listed: they're
+      the event tap's, not `keys.lua`'s.
+    - **Cost and reliability:** nothing to pay, and nothing new to run; the
+      list is made as the keys bind.
   - **Built: Layouts,** a section of the settings window, as tide's
     Layouts page (tide §16), with tide's own `layouts.mjs` and `steps.mjs`,
     copied unchanged as `dashboard/tide-layouts.js` and `tide-steps.js`:
@@ -2438,7 +2463,8 @@ Each one names a workaround, or says there is none.
   - each permission (§11.1), and whether the event tap is still on (§16);
   - another tiler running: Amethyst, Rectangle, yabai, AeroSpace;
   - a symbolichotkey holding one of tilemo's keys (§7.3), and any key that
-    failed to register;
+    failed to register (built: the keys, as Keyboard's Shortcuts list
+    them);
   - Karabiner's rules loaded, and tilemo's rule up to date, checked again
     after a plug or a wake: Karabiner
     runs the copy it made when the rule was enabled, so a copy from before

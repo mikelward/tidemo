@@ -106,8 +106,8 @@ function M.float_edit(floats, body)
     end)
 end
 
--- `tilemo` is the started tilemo module: its wm, adapter, clock_dir,
--- clock_files, layout_files, workspace_files, workspace_base,
+-- `tilemo` is the started tilemo module: its wm, adapter, shortcuts,
+-- clock_dir, clock_files, layout_files, workspace_files, workspace_base,
 -- startup_files, clipboard_files, input_files and picker.
 function M.new(tilemo)
     local self = {}
@@ -155,6 +155,12 @@ function M.new(tilemo)
                 rules = "__karabiner_rules__",
                 problem = tilemo.karabiner_rules and tilemo.karabiner_rules.state.problem or "",
             },
+            -- tilemo's key bindings as they registered, and the keys that
+            -- didn't (keys.shortcuts), for the Keyboard section's Shortcuts.
+            shortcuts = {
+                binds = "__shortcut_binds__",
+                failed = "__shortcut_failed__",
+            },
             floating = tilemo.floating and {
                 rules = "__float_rules__",
                 source = tilemo.floating.source,
@@ -181,6 +187,13 @@ function M.new(tilemo)
             return M.list(tilemo.karabiner_rules and tilemo.karabiner_rules.state.rules or {}, function(r)
                 return hs.json.encode({ description = r.description, label = r.label, on = r.on == true })
             end)
+        end)
+        local shortcuts = tilemo.shortcuts or { binds = {}, failed = {} }
+        json = json:gsub('"__shortcut_binds__"', function()
+            return M.list(shortcuts.binds, hs.json.encode)
+        end)
+        json = json:gsub('"__shortcut_failed__"', function()
+            return M.list(shortcuts.failed, hs.json.encode)
         end)
         json = json:gsub('"__float_now__"', function()
             return M.list(tilemo.wm:floating_now(), M.encode_fill)

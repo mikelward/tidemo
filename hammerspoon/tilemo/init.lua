@@ -70,6 +70,10 @@ local function bind_all(self)
         h:delete()
     end
     self.hotkeys = {}
+    local list, skipped = keys.bindings(self.super)
+    -- What registered and what didn't, for the settings window's Shortcuts
+    -- and tilemo doctor (SPEC.md §15).
+    local bound, failed = {}, {}
     local function bind(mods, b)
         local fn = function()
             self.wm:act(b.action, b.arg)
@@ -78,16 +82,23 @@ local function bind_all(self)
         local ok, h = pcall(hs.hotkey.bind, mods, b.key, fn, nil, b.repeating and fn or nil)
         if ok and h then
             self.hotkeys[#self.hotkeys + 1] = h
+            bound[#bound + 1] = b
         else
-            self.adapter.log("couldn't bind " .. table.concat(mods, "+") .. "+" .. b.key)
+            local why = ok and "macOS wouldn't register it" or ("macOS wouldn't register it: " .. tostring(h))
+            self.adapter.log("couldn't bind " .. table.concat(mods, "+") .. "+" .. b.key .. ": " .. why)
+            failed[#failed + 1] = { keys = b.keys, does = b.does, why = why }
         end
     end
-    local list, skipped = keys.bindings(self.super)
     for _, b in ipairs(list) do
         bind(b.mods, b)
     end
-    for _, chord in ipairs(skipped) do
-        self.adapter.log("left out " .. chord .. ": another key has it")
+    for _, s in ipairs(skipped) do
+        self.adapter.log("left out " .. s.chord .. ": another key has it")
+        failed[#failed + 1] = s
+    end
+    self.shortcuts = keys.shortcuts(bound, failed)
+    if self.settings then
+        self.settings.refresh()
     end
 end
 
@@ -209,6 +220,10 @@ function M.doctor()
     elseif #(M.rule_gaps or {}) > 0 then
         lines[#lines + 1] = keys.gaps_notice(M.rule_gaps)
     end
+    local failed_keys = keys.failed_notice(M.shortcuts and M.shortcuts.failed)
+    if failed_keys then
+        lines[#lines + 1] = failed_keys
+    end
     if M.linearmouse then
         lines[#lines + 1] = linearmouse.say(M.linearmouse, "doctor")
     end
@@ -229,7 +244,7 @@ function M.doctor()
     end
     if #lines == 0 then
         lines[1] = "Karabiner is running with " .. brand.NAME .. "'s rule, up to date, and conf's rules on;"
-            .. " LinearMouse is running with tide's Mouse settings, every muted entry reads, and Do Not Disturb's shortcuts are there."
+            .. " LinearMouse is running with tide's Mouse settings, every muted entry reads, every key registered, and Do Not Disturb's shortcuts are there."
     end
     return table.concat(lines, "\n")
 end

@@ -546,6 +546,8 @@ M.SETTINGS_SECTIONS = {
     { id = "mouse", name = "Mouse", covers = "pointer speed scrolling left-handed linearmouse" },
     { id = "trackpad", name = "Trackpad", covers = "touchpad tap to click scrolling gestures" },
     { id = "keyboard", name = "Keyboard", covers = "keys shortcuts bindings repeat layouts karabiner rules ctrl+tab" },
+    -- Keyboard's Shortcuts, as tide's launcher has its own row for them.
+    { id = "shortcuts", name = "Keyboard shortcuts", covers = "keys bindings hotkeys" },
     { id = "power", name = "Power", covers = "battery energy sleep lid" },
     { id = "layouts", name = "Layouts", covers = "tile columns master ultrawide new windows",
       key = "Settings: layouts" },

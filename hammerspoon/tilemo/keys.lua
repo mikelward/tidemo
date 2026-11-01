@@ -60,24 +60,26 @@ M.map = {
 -- `new` opens a new window every time instead, as tide's terminal key does.
 -- `home_app` marks one of the home workspace's apps, which launches from home without
 -- asking for a workspace (SPEC.md §7.2).
+-- `does` is what the settings window's Shortcuts list says it does, in
+-- conf's words for the same key.
 M.APPS = {
-    { key = "t", spec = { bundle = "net.kovidgoyal.kitty", new = true } },
-    { key = "w", spec = { run = "terminal_on_workstation" } },
-    { key = "v", spec = { run = "terminal_on_vm" } },
-    { key = "g", spec = { run = "browser1" } },
-    { key = "g", shift = true, spec = { run = "browser3" } },
-    { key = "f", spec = { run = "browser2" } },
-    { key = "c", shift = true, spec = { run = "google-chat", home_app = true } },
-    { key = "h", spec = { run = "home" } },
-    { key = "i", spec = { run = "irc" } },
-    { key = "m", spec = { run = "google-meet" } },
-    { key = "n", spec = { run = "notepad" } },
-    { key = "r", spec = { run = "remote-desktop" } },
-    { key = "y", spec = { run = "youtube-music", home_app = true } },
-    { key = "e", spec = { run = "kitty -e yazi" } },
+    { key = "t", does = "Terminal", spec = { bundle = "net.kovidgoyal.kitty", new = true } },
+    { key = "w", does = "Terminal on the workstation", spec = { run = "terminal_on_workstation" } },
+    { key = "v", does = "Terminal on the VM", spec = { run = "terminal_on_vm" } },
+    { key = "g", does = "Browser", spec = { run = "browser1" } },
+    { key = "g", shift = true, does = "Browser, third profile", spec = { run = "browser3" } },
+    { key = "f", does = "Browser, second profile", spec = { run = "browser2" } },
+    { key = "c", shift = true, does = "Google Chat", spec = { run = "google-chat", home_app = true } },
+    { key = "h", does = "Home folder", spec = { run = "home" } },
+    { key = "i", does = "IRC", spec = { run = "irc" } },
+    { key = "m", does = "Google Meet", spec = { run = "google-meet" } },
+    { key = "n", does = "Notepad", spec = { run = "notepad" } },
+    { key = "r", does = "Remote desktop", spec = { run = "remote-desktop" } },
+    { key = "y", does = "YouTube Music", spec = { run = "youtube-music", home_app = true } },
+    { key = "e", does = "Files", spec = { run = "kitty -e yazi" } },
 }
 for _, a in ipairs(M.APPS) do
-    M.map[#M.map + 1] = { key = a.key, shift = a.shift, action = "app", arg = a.spec }
+    M.map[#M.map + 1] = { key = a.key, shift = a.shift, action = "app", arg = a.spec, does = a.does }
 end
 
 -- tide's session keys: lock, and log out.
@@ -140,7 +142,7 @@ end
 -- else uses. Without the rule, physical Alt+Tab is Ctrl+Tab, every app's
 -- next tab, so swap with the master has no key (SPEC.md §7.2).
 M.karabiner_only = {
-    { mods = { "ctrl", "alt", "shift" }, key = "tab", action = "swap_master" },
+    { mods = { "ctrl", "alt", "shift" }, key = "tab", action = "swap_master", label = "Alt+Tab" },
 }
 
 -- Resize mode (tide's): each key grows or shrinks the focused float by
@@ -169,39 +171,220 @@ function M.mods(super, binding)
     return out
 end
 
--- Every binding to register for this Super, each with its modifiers. The
--- plain Print keys come first, and a later binding on a chord already taken
--- is left out: with Super on Option, Super+Print is Alt+Print, which stays
--- tide's window screenshot (Shift+Print still takes a region). With
--- Karabiner's Super, its own combinations come too.
+-- What each action does, for the settings window's Shortcuts list (SPEC.md
+-- §15), in conf's words for tide's same key: a string, or a function of
+-- the binding's `arg`. An app key says its own (M.APPS' `does`).
+local function by_sign(less, more)
+    return function(arg)
+        return (arg or 0) < 0 and less or more
+    end
+end
+local SCREENSHOTS = { screen = "Screenshot", window = "Screenshot of the window", region = "Screenshot of a region" }
+local TABS = {
+    launch = "The switcher, on Launch",
+    workspaces = "The switcher, on Workspaces",
+    attention = "The switcher, on Attention",
+}
+M.DOES = {
+    focus = by_sign("Focus up the stack", "Focus down the stack"),
+    move = by_sign("Move up the stack", "Move down the stack"),
+    go_to = "Go to a workspace, by name",
+    move_to = "Move the window to a workspace, by name",
+    mfact = by_sign("Shrink the master", "Grow the master"),
+    nmaster = by_sign("Remove a master", "Add a master"),
+    cycle = by_sign("Previous layout", "Next layout"),
+    monocle = "Monocle",
+    maximize = "Maximize",
+    fullscreen = "Full screen",
+    restore = "Restore",
+    toggle_float = "Float or tile",
+    float_rule = "Float rules for the window",
+    close = "Close the window",
+    minimize = "Minimize the window",
+    resize_mode = "Resize mode",
+    step = by_sign("Previous workspace", "Next workspace"),
+    carry = by_sign("Move the window to the previous workspace", "Move the window to the next workspace"),
+    lock = "Lock",
+    logout = "Log out",
+    launcher = function(arg)
+        return TABS[arg]
+    end,
+    dashboard = "Dashboard",
+    picker = "Clipboard and characters",
+    flip = "Home, or the workspace used last",
+    last = "The workspace used last, other than home",
+    mic_mute = "Mute the microphone",
+    keep_awake = "Keep awake on or off",
+    presenter = "Presenter mode",
+    home = "Home",
+    screenshot = function(arg)
+        return SCREENSHOTS[arg]
+    end,
+    nth = function(arg)
+        return "Workspace " .. tostring(arg) .. " on the bar"
+    end,
+    send_nth = function(arg)
+        return "Send the window to workspace " .. tostring(arg) .. " on the bar"
+    end,
+    swap_master = "Swap with the master",
+}
+
+-- What a binding does, or "" when nothing says, which the list shows as
+-- "no description", as tide's does.
+function M.does(b)
+    if type(b.does) == "string" then
+        return b.does
+    end
+    local d = M.DOES[b.action]
+    if type(d) == "function" then
+        d = d(b.arg)
+    end
+    return type(d) == "string" and d or ""
+end
+
+-- Keys whose Hammerspoon names aren't what's on the key. A Mac's delete
+-- is Backspace, a PC keyboard's Insert arrives as Help and its Print as
+-- F13 (SPEC.md §7.2).
+local KEY_NAMES = {
+    ["return"] = "Return", space = "Space", tab = "Tab", escape = "Escape", delete = "Backspace",
+    forwarddelete = "Delete", help = "Insert", pageup = "PgUp", pagedown = "PgDn", home = "Home",
+    ["end"] = "End", up = "Up", down = "Down", left = "Left", right = "Right", f13 = "Print",
+}
+local MOD_NAMES = { { "cmd", "Cmd" }, { "ctrl", "Ctrl" }, { "alt", "Alt" }, { "shift", "Shift" } }
+
+-- A key as it's printed on the keyboard: "J" for j, "PgUp" for pageup.
+function M.key_label(key)
+    if KEY_NAMES[key] then
+        return KEY_NAMES[key]
+    end
+    if #key == 1 then
+        return key:upper()
+    end
+    return key:sub(1, 1):upper() .. key:sub(2)
+end
+
+-- A binding's keys as tide shows them, "Super+Shift+J": Super for a key
+-- from M.map, whichever modifiers stand for it, and a plain key's own
+-- modifiers. The Super tap is Super+F20 only on the way in (SPEC.md §7.2).
+function M.keys_label(b, mods, super)
+    if b.label then
+        return b.label
+    end
+    local parts = {}
+    if super then
+        if b.key == "f20" and not b.shift then
+            return "Tap Super"
+        end
+        parts[1] = "Super"
+        if b.shift then
+            parts[2] = "Shift"
+        end
+    else
+        local held = {}
+        for _, m in ipairs(mods) do
+            held[m] = true
+        end
+        for _, m in ipairs(MOD_NAMES) do
+            if held[m[1]] then
+                parts[#parts + 1] = m[2]
+            end
+        end
+    end
+    parts[#parts + 1] = M.key_label(b.key)
+    return table.concat(parts, "+")
+end
+
+-- Every binding to register for this Super, each with its modifiers, and
+-- its `keys` and `does` for the Shortcuts list. The plain Print keys come
+-- first, and a later binding on a chord already taken is left out, in
+-- `skipped` as { chord, keys, does, why }: with Super on Option, Super+Print
+-- is Alt+Print, which stays tide's window screenshot (Shift+Print still
+-- takes a region). With Karabiner's Super, its own combinations come too.
 function M.bindings(super)
     local out, seen, skipped = {}, {}, {}
-    local function add(mods, b)
+    local function add(mods, b, is_super)
         local sorted = {}
         for i, m in ipairs(mods) do
             sorted[i] = m
         end
         table.sort(sorted)
         local chord = table.concat(sorted, "+") .. "+" .. b.key
+        local label, does = M.keys_label(b, mods, is_super), M.does(b)
         if seen[chord] then
-            skipped[#skipped + 1] = chord
+            skipped[#skipped + 1] = {
+                chord = chord,
+                keys = label,
+                does = does,
+                why = "the same keys as " .. seen[chord].keys .. " (" .. seen[chord].does .. ")",
+            }
             return
         end
-        seen[chord] = true
-        out[#out + 1] = { mods = mods, key = b.key, action = b.action, arg = b.arg, repeating = b.repeating }
+        seen[chord] = { keys = label, does = does ~= "" and does or "no description" }
+        out[#out + 1] = {
+            mods = mods, key = b.key, action = b.action, arg = b.arg, repeating = b.repeating,
+            keys = label, does = does,
+        }
     end
     for _, b in ipairs(M.plain) do
-        add(b.mods, b)
+        add(b.mods, b, false)
     end
     for _, b in ipairs(M.map) do
-        add(M.mods(super, b), b)
+        add(M.mods(super, b), b, true)
     end
     if super == M.KARABINER then
         for _, b in ipairs(M.karabiner_only) do
-            add(b.mods, b)
+            add(b.mods, b, false)
         end
     end
     return out, skipped
+end
+
+-- What resize mode's keys do, for the Shortcuts list.
+local function resize_does(d)
+    if d[1] < 0 then
+        return "Narrower"
+    elseif d[1] > 0 then
+        return "Wider"
+    elseif d[2] < 0 then
+        return "Shorter"
+    end
+    return "Taller"
+end
+
+-- The settings window's Shortcuts list (SPEC.md §15), as tide's Keyboard
+-- page has its own (tide SPEC.md §16): `bound`, the bindings that
+-- registered, in M.bindings' order, then resize mode's, each as { keys,
+-- does, submap }; and `failed`, each a key that didn't, as { keys, does,
+-- why }.
+function M.shortcuts(bound, failed)
+    local binds = {}
+    for _, b in ipairs(bound) do
+        binds[#binds + 1] = { keys = b.keys, does = b.does, submap = "" }
+    end
+    for _, b in ipairs(M.resize) do
+        binds[#binds + 1] = { keys = M.key_label(b.key), does = resize_does(b.d), submap = "Resize mode" }
+    end
+    for _, k in ipairs(M.resize_exit) do
+        binds[#binds + 1] = { keys = M.key_label(k), does = "Leave resize mode", submap = "Resize mode" }
+    end
+    local out = {}
+    for i, f in ipairs(failed or {}) do
+        out[i] = { keys = f.keys, does = f.does, why = f.why }
+    end
+    return { binds = binds, failed = out }
+end
+
+-- tilemo doctor's line for the keys that didn't register, or nil.
+function M.failed_notice(failed)
+    if #(failed or {}) == 0 then
+        return nil
+    end
+    local parts = {}
+    for i, f in ipairs(failed) do
+        parts[i] = f.keys .. (f.does ~= "" and " (" .. f.does .. ")" or "") .. ": " .. f.why
+    end
+    return "These keys didn't register, so they do nothing: " .. table.concat(parts, "; ")
+        .. ". The settings window's Keyboard shortcuts list them."
 end
 
 -- The description prefixes that mark tilemo's Karabiner rule: its own, and

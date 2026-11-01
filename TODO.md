@@ -27,20 +27,21 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 
 tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
 a section for each, in tide's order. Clocks, Layouts, Workspaces, Start
-at login, Clipboard, the muted list and Floating are tilemo's own; the rest
+at login, Clipboard, the muted list, Floating and Keyboard's Shortcuts are
+tilemo's own; the rest
 are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
 §15). **Check on a Mac:** a Layouts change retiles at once, and so does a
 hand edit of `layouts.local.json`; each section's buttons open their pane,
 on macOS 26 too; a Workspaces change moves home and the bar's order at
 once, and at login the files' `inApps` opens only the entries that are Mac
-apps, Chrome's installed web apps included. The rest, in order:
+apps, Chrome's installed web apps included; Keyboard's Shortcuts list
+every key, and a key macOS won't register shows there in red and in
+`tilemo doctor`. The rest, in order:
 
-1. **Keys.** List tilemo's bindings from `keys.lua`, as tide's page lists
-   Hyprland's, and any key that failed to register.
-2. **Setup checklist and permissions** (SPEC.md §10, §11): each
+1. **Setup checklist and permissions** (SPEC.md §10, §11): each
    permission's state, and deep links to the System Settings panes the
    checklist names.
-3. **Appearance**, if anything's left for it: the dim's strength, once the
+2. **Appearance**, if anything's left for it: the dim's strength, once the
    dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
 
 ## Keep the Mac as you set it
@@ -180,6 +181,27 @@ tests and the bar page's test cover it. **Check on a Mac:**
   `displayIdle` is held.
 
 ## Decisions needing review
+
+- **Keyboard's Shortcuts are under the Keyboard section,** as tide moved its
+  Keys page into Keyboard (2026-11-01), with their own launcher row, "Tide
+  Settings: Keyboard shortcuts". The alternative is a Keys section of its
+  own. Reversible: `settings.html` and `SETTINGS_SECTIONS` in
+  `launcher.lua`.
+- **What each key does is written in `keys.lua`** (`DOES`, and `does` on
+  the app keys), in conf's words for tide's same key (2026-11-01), since
+  Hammerspoon's hotkeys carry no description. The alternative is reading
+  conf's `hyprland.lua`, which a Mac may not have and whose keys differ.
+  Reversible: `keys.DOES`.
+- **A chord left out for another binding counts as a key that didn't
+  register** (2026-11-01): without Karabiner, Super+Print is listed in red
+  and named by `tilemo doctor`, beside its fallback notice. The
+  alternative is listing only the keys macOS refused. Reversible: where
+  `bind_all` in `init.lua` adds `skipped` to `failed`.
+- **Keys show as a PC keyboard prints them** (2026-11-01), as tide's do:
+  `Super+Backspace`, `Super+Insert`, `Print`, `Alt+Tab`, not the Mac's
+  delete, Help, F13 or Karabiner's Ctrl+Option+Shift+Tab. The alternative
+  is the Mac's names. Reversible: `KEY_NAMES` and `keys_label` in
+  `keys.lua`.
 
 - **Home's apps match a Mac app's name ignoring case, with spaces, hyphens
   and underscores alike** (2026-11-01), so conf's shared `inApps`
