@@ -249,7 +249,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Meet: share a 16:9 slice of an ultrawide (tide §12) | ScreenCaptureKit can share a region *(unverified in Meet)* | **partial** |
 | Light and dark by time (tide §15) | Appearance › Auto follows the sun; a fixed 07:00–19:00 needs a scheduled job | **yes**, with a job |
 | US Dvorak | native input source | **yes** |
-| Mouse: fastest, acceleration on, left-handed, wheel 3× (conf `hyprland.lua`) | Mouse settings and `com.apple.mouse.scaling` (§10) | **partial**: wheel scaling *(unverified)* |
+| Mouse: fastest, acceleration on, left-handed, wheel 3× (conf `hyprland.lua`) | Mouse settings and `com.apple.mouse.scaling`; the wheel's speed and direction through LinearMouse, from tide's `input.json` (§10) | **partial**: the wheel **yes**; speed and left-handed in Mouse settings |
 | Touchpad: natural scroll, tap to click; mouse not natural | Trackpad settings (§10) | **partial**: one natural-scroll switch for both *(unverified)* |
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
 | Caps Lock as Compose | no Compose; Karabiner can map key sequences | **partial** |
@@ -1808,16 +1808,68 @@ two tabs. C is for clipboard and characters.
     gap that tileco §19.2 fills on chromeOS. `setup-macos` installs
     LinearMouse (free, open source, Accessibility) and gives every mouse
     ten lines a notch, with no acceleration (scripts `docs/MACOS.md`).
-  - tilemo checks LinearMouse is installed and running, as it starts and
-    every 30 s after, as it does for Karabiner (§7.1), and says so when
+  - **Built: tide's Scroll speed and Natural scrolling, through
+    LinearMouse.** They're tide's Mouse settings, `mouse.scrollSpeed` and
+    `mouse.naturalScroll` in `input.json` and `input.local.json` (tide
+    §16), read with tide's own `input.mjs`, copied unchanged as
+    `dashboard/tide-input.js`, so one setting serves both desktops. What
+    isn't set is what tide's page shows: 3× and off.
+    - tilemo writes them into LinearMouse's config, which LinearMouse
+      reloads when it changes (its `FileWatcher`). That's
+      `~/Library/Application Support/linearmouse/linearmouse.json` if it
+      exists, else `~/.config/linearmouse/linearmouse.json`, as LinearMouse
+      reads them (its `ConfigurationState.swift`); through a symlink if
+      it's one.
+    - One scheme for every mouse (`"if": {"device": {"category":
+      "mouse"}}`), kept last: LinearMouse merges schemes in order, and a
+      later one wins, so tide's values win over a device's own. When the
+      last scheme is one for every mouse, it's edited in place; otherwise
+      a new one is added last that sets only those. Only the vertical
+      `distance` and `reverse` change, and every other scheme keeps its
+      place, so a device's own pointer speed or horizontal scrolling
+      still wins over every mouse's. The edit is JavaScript
+      (`dashboard/linearmouse.js`) in JavaScriptCore, as Karabiner's is
+      (§15).
+    - Three lines a notch at 1×, so tide's 3× is nine, rounded to whole
+      lines, one at least. setup-macos's ten becomes nine the first time
+      tilemo runs.
+    - macOS has one natural-scrolling switch,
+      `com.apple.swipescrolldirection`, on while it's unset, read with
+      `defaults` each time (`hs.mouse.scrollDirection()` takes unset as
+      off). LinearMouse reverses every mouse when tide's
+      `naturalScroll` differs from it, so the mouse scrolls as tide says,
+      and the trackpad as macOS's switch says.
+    - **When:** as tilemo starts (each login); when tide's folder changes;
+      a second after the last USB device plugged in (`hs.usb.watcher`),
+      since a KVM switching back brings several; and a second after a
+      wake or an unlock (`hs.caffeinate.watcher`). Each of those starts
+      LinearMouse in the background (`open -g`, no window) if it's
+      installed and not running; a folder change does only when the Mouse
+      settings changed. The 30 s check (below) puts back a change made in
+      LinearMouse's own window, but never starts it: it says LinearMouse
+      quit, so quitting it on purpose lasts until the next event.
+    - The file is written only when it would change, compared as JSON,
+      so LinearMouse's own spacing doesn't count, and the JavaScript runs
+      only when a file or the switch changed. LinearMouse shows a
+      "Configuration Reloaded" notification of its own at each write.
+    - A config that isn't JSON (LinearMouse also reads one with comments)
+      or whose `schemes` isn't a list is left alone. That, a save that
+      fails, and an `input.json` that's wrong (by tide's checks: the last
+      good settings stay) are each a notification once, and the Mouse
+      section and `tilemo doctor` say so.
+    - Without LinearMouse installed, nothing is written.
+    - **Cost and reliability:** nothing to pay. One `defaults` run every
+      30 s and at each event, off the main thread.
+  - tilemo checks LinearMouse is installed and running, as it starts,
+    every 30 s after, and after a plug or a wake, as it does for Karabiner (§7.1), and says so when
     it isn't (§1, §15). LinearMouse's bundle ID is `com.lujjjh.LinearMouse`
     (Homebrew's cask). LinearMouse asks for Accessibility itself, with its
     own window, as it starts; tilemo can't see another app's permissions.
   - The Mouse section's buttons open Mouse settings and LinearMouse's
     window (§15).
 - **Trackpad:** natural scroll and tap to click, in Trackpad settings.
-  macOS may tie natural scrolling for the mouse and trackpad together
-  *(unverified)*; if so, LinearMouse can reverse the mouse alone (§13).
+  macOS ties natural scrolling for the mouse and trackpad together, in
+  one switch; LinearMouse reverses the mouse alone (Mouse, above).
 - **Keyboard:** repeat after 600 ms at 25 a second, set as `InitialKeyRepeat`
   and `KeyRepeat` in 15 ms steps, so the nearest is 40 and 3
   *(unverified units)*. US Dvorak is a native input source.
@@ -1923,13 +1975,13 @@ Each one names a workaround, or says there is none.
 | Own lock screen and login, with the hostname | The lock and login screens are the system's. | Lock Screen's "Show message when locked" can carry the hostname *(unverified on macOS 26)*. **None** for a custom lock screen. |
 | tide's idle timeline (dim, lock, off, suspend) | macOS sets its own timings (§10). | Energy and Lock Screen settings come close. `pmset` sets more, with admin rights (§11). |
 | Sharing a 16:9 slice of an ultrawide in Meet (tide §12) | Meet shares a screen, a window or a tab. | Share a window, or a virtual display from a tool such as BetterDisplay *(unverified)*. |
-| Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which `setup-macos` installs and tilemo checks is running (§10). |
+| Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which `setup-macos` installs, tilemo checks is running, and tilemo sets from tide's Scroll speed (§10). |
 | A Compose key | macOS has none. | Option dead keys, a custom layout made with Ukelele, or Karabiner sequences. |
 | Keys and the Super tap during Secure Input | While a password field or a terminal's secure keyboard entry is active, event taps stop seeing typed keys *(unverified for hotkeys)*. | **None**, by design. Registered hotkeys keep working, if they do. |
 | Three-finger swipe between workspaces (conf `hyprland.lua`) | No public API for trackpad gestures; the native swipe switches Spaces, which tilemo doesn't use. | BetterTouchTool, a paid app, can bind gestures to keys *(unverified price)*. Otherwise **none**. |
 | Pinning picture-in-picture to a corner (tide §6.4) | The app places it, and moves it back. | Leave it where the app puts it (§5.5). |
 | Option's text gestures alongside Super on Option | One key can't be both. | Karabiner's mapping (§7.1). Without it, **none**: tilemo takes them. |
-| Natural scrolling on the trackpad but not the mouse | macOS may have one switch for both *(unverified)*. | LinearMouse or Mos reverse the mouse alone *(unverified)*. |
+| Natural scrolling on the trackpad but not the mouse | macOS has one switch for both. | LinearMouse reverses the mouse alone, set from tide's Natural scrolling (§10). |
 | Mac App Store distribution | The sandbox forbids controlling other apps (§2.1). | **None.** Ship through Homebrew, or as a Hammerspoon config (§12). |
 
 ## 14. Focus and attention
@@ -2136,7 +2188,7 @@ Each one names a workaround, or says there is none.
     | Displays | Displays settings |
     | Sound | Sound settings |
     | Network and Bluetooth | Network settings, Bluetooth settings |
-    | Mouse | Mouse settings, LinearMouse settings |
+    | Mouse | Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
     | Keyboard | conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
@@ -2161,7 +2213,16 @@ Each one names a workaround, or says there is none.
     - The page sends a button's name, and tilemo opens what that name
       stands for, so the page can't open just any URL.
     - The Mouse section says what's wrong with LinearMouse, only when
-      something is: it isn't installed, or isn't running (§10).
+      something is: it isn't installed, isn't running, or its config
+      can't be set (§10).
+  - **Built: the Mouse section's Scroll speed and Natural scrolling,** as
+    tide's Mouse page's rows (tide §16), for every mouse: − and + step
+    through tide's marks (0.25× to 5×), and On or Off switches. A change
+    writes only `input.local.json`, with tide's `withSetting`, keeping
+    whatever else it says, and tilemo applies it to LinearMouse when the
+    folder changes (§10). A file that's wrong is named, and nothing
+    changes here until it's fixed. Speed and Left-handed stay in Mouse
+    settings for now (TODO.md).
   - **Built: the Keyboard section switches Karabiner's rules,** each rule
     in the files conf links into Karabiner's assets folder
     (`~/.config/karabiner/assets/complex_modifications/`) with On or Off, so
@@ -2181,7 +2242,8 @@ Each one names a workaround, or says there is none.
       `JSON.parse` and `JSON.stringify` keep the rest of the file as it was;
       `hs.json` can't tell `[]` from `{}`. It's written whole, to a file
       renamed over it, through a symlink if it's one.
-    - **Kept as conf has it,** as tilemo starts and every 30 s, when a file
+    - **Kept as conf has it,** as tilemo starts, every 30 s, and a second
+      after a device plugged in or a wake (§10), when a file
       or `karabiner.json` changed: a copy that differs from its file is
       brought up to date in its place, keeping what Karabiner added (a rule
       turned off in Karabiner's window stays off). A rule tilemo hasn't seen
@@ -2328,7 +2390,8 @@ Each one names a workaround, or says there is none.
   - another tiler running: Amethyst, Rectangle, yabai, AeroSpace;
   - a symbolichotkey holding one of tilemo's keys (§7.3), and any key that
     failed to register;
-  - Karabiner's rules loaded, and tilemo's rule up to date: Karabiner
+  - Karabiner's rules loaded, and tilemo's rule up to date, checked again
+    after a plug or a wake: Karabiner
     runs the copy it made when the rule was enabled, so a copy from before
     conf added Alt+Tab (Ctrl+Option+Shift+Tab) and the tap's Super+F20
     leaves those two dead. tilemo reads the copy in `karabiner.json`, and a
@@ -2342,7 +2405,8 @@ Each one names a workaround, or says there is none.
   - LinearMouse installed and running, for the mouse wheel (§10). A
     notification says so as tilemo starts, and once each time it changes,
     rechecked every 30 s. A click on the one for LinearMouse not running
-    starts it with its window showing;
+    starts it with its window showing; and what stops tilemo setting its
+    scrolling (§10);
   - the workspace file written and private, for scripts that read the
     workspace's name, and kitty's remote control on, for `TIDE_WORKSPACE`
     in new kitty windows (§6.3);

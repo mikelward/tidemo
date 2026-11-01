@@ -520,6 +520,34 @@ function M.new()
         end
     end
 
+    -- An app by bundle ID, in the background (`open -g`), without its
+    -- window: `done(ok, why)` once open has.
+    function a.open_bundle_in_background(bundle, done)
+        if not run("/usr/bin/open", { "-g", "-b", bundle }, function(code, err)
+            done(code == 0, code ~= 0 and (((err or ""):match("[^\n]+")) or ("exit " .. code)) or nil)
+        end) then
+            done(false, "couldn't run open")
+        end
+    end
+
+    -- macOS's natural-scrolling switch, read fresh each time, as
+    -- `done(code, out)` with what defaults printed, either stream:
+    -- hs.mouse.scrollDirection() takes the switch as off while it's unset,
+    -- where macOS takes it as on.
+    function a.read_natural(done)
+        if not run("/usr/bin/defaults", { "read", "-g", "com.apple.swipescrolldirection" }, function(code, err, out)
+            done(code, (out or "") .. (err or ""))
+        end) then
+            done(-1, "couldn't run defaults")
+        end
+    end
+
+    -- Whether a file is at `path`, through any symlink, as Foundation's
+    -- fileExists says.
+    function a.exists(path)
+        return hs.fs.attributes(path) ~= nil
+    end
+
     -- Whether an app of that exact name is running.
     function a.app_running(name)
         return hs.application.get(name) ~= nil
@@ -861,6 +889,26 @@ function M.watch_folder(dir, on_change)
     end)
     watcher:start()
     return watcher
+end
+
+-- `fn()` when a USB device is plugged in, and on a wake or an unlock
+-- (SPEC.md §10): the watchers, to keep.
+function M.plugs_and_wakes(fn)
+    local usb = hs.usb.watcher.new(function(e)
+        if e and e.eventType == "added" then
+            fn()
+        end
+    end)
+    usb:start()
+    local w = hs.caffeinate.watcher
+    local wakes = { [w.systemDidWake] = true, [w.screensDidWake] = true, [w.screensDidUnlock] = true }
+    local caffeinate = w.new(function(e)
+        if wakes[e] then
+            fn()
+        end
+    end)
+    caffeinate:start()
+    return { usb = usb, caffeinate = caffeinate }
 end
 
 -- Screenshot's folder, from its options (SPEC.md §10).

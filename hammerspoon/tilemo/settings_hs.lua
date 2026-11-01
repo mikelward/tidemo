@@ -1,7 +1,7 @@
 -- tilemo's settings window on Hammerspoon (SPEC.md §15): a section for each
 -- of tide's pages, dashboard.lua's settings page in an hs.webview. It writes
--- tide's clocks.local.json, layouts.local.json, startup.local.json and
--- clipboard.local.json, and tilemo hands the files back once they change on
+-- tide's clocks.local.json, layouts.local.json, startup.local.json,
+-- clipboard.local.json and input.local.json, and tilemo hands the files back once they change on
 -- disk, so the page shows what the bar and the next login do. What tilemo
 -- can't change itself, a section's buttons open (links.lua). Not runnable
 -- outside Hammerspoon.
@@ -60,6 +60,21 @@ local function build()
     return dashboard.page(read("settings.html"), read("launcher.css"), sources, dashboard.SETTINGS_MODULES)
 end
 
+-- What the Mouse section says is wrong, "" when nothing is: LinearMouse
+-- missing or stopped, and what stops tilemo setting its scrolling.
+function M.mouse_problem(tilemo)
+    local out = {}
+    local say = linearmouse.say(tilemo.linearmouse, "section")
+    if say then
+        out[#out + 1] = say
+    end
+    local applied = tilemo.linearmouse_settings and tilemo.linearmouse_settings.state.problem or ""
+    if applied ~= "" then
+        out[#out + 1] = applied
+    end
+    return table.concat(out, " ")
+end
+
 -- One of the Floating section's messages, { floatAdd = { app, title } },
 -- { floatMove = { index, app, title, step } } or { floatRemove = { index,
 -- app, title } }, through `floats` (floating_hs.new). Returns true, or nil
@@ -92,7 +107,8 @@ function M.float_edit(floats, body)
 end
 
 -- `tilemo` is the started tilemo module: its wm, adapter, clock_dir,
--- clock_files, layout_files, startup_files, clipboard_files and picker.
+-- clock_files, layout_files, startup_files, clipboard_files, input_files
+-- and picker.
 function M.new(tilemo)
     local self = {}
     local page = build()
@@ -124,7 +140,8 @@ function M.new(tilemo)
             -- Each section's buttons, and what's wrong with LinearMouse, if
             -- anything, for the Mouse section.
             links = links.page_list(),
-            mouse = { problem = linearmouse.say(tilemo.linearmouse, "section") or "" },
+            inputFiles = tilemo.input_files,
+            mouse = { problem = M.mouse_problem(tilemo) },
             -- conf's Karabiner rules, each on or off, and what's wrong, if
             -- anything (karabiner.lua).
             keyboard = {
@@ -198,6 +215,8 @@ function M.new(tilemo)
                 save(dashboard.LAYOUTS_LOCAL_FILE, body.writeLayouts, "the layouts")
             elseif type(body.writeStartup) == "string" then
                 save(dashboard.STARTUP_LOCAL_FILE, body.writeStartup, "Start at login's commands")
+            elseif type(body.writeInput) == "string" then
+                save(dashboard.INPUT_LOCAL_FILE, body.writeInput, "the Mouse settings")
             elseif type(body.writeClipboard) == "string" then
                 save(dashboard.CLIPBOARD_LOCAL_FILE, body.writeClipboard, "the clipboard settings")
             elseif body.clearClipboard and tilemo.picker then
