@@ -145,6 +145,8 @@ STATES.push(
   { name: "bar-hover-chip", width: 1440, state: HOVER, pointer: ["#workspaces button:nth-child(3)"] },
   { name: "bar-hover-icon", width: 1440, state: HOVER, pointer: ["#icons .battery"], scheme: "dark" },
   { name: "bar-hover-clocks", width: 1440, state: HOVER, pointer: ["#clocks"], scheme: "dark" },
+  // Keep awake beside the microphone: the same room around each on hover.
+  { name: "bar-hover-awake", width: 1440, state: { ...HOVER, icons: { awake: { on: false }, ...HOVER.icons } }, pointer: ["#icons .awake"] },
 );
 
 (async () => {

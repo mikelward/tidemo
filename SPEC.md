@@ -1368,6 +1368,10 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     doesn't fire there: tilemo's pointer tap tells the bar it's over where
     the pointer is, one small script per move over a bar, and the page
     marks that target. There's no appearance (dark mode) item in the bar.
+  - **The same room around each target's content.** The clocks pad their
+    sides 6 px, as a status icon does, and sit the icons' 2 px from the
+    first, so the clocks' hover doesn't end at their first letter, and keep
+    awake's isn't wider than the microphone's.
   - **Hovering the title shows all of it** in a tip below the bar,
     centered on the title, since the bar cuts a long one with an ellipsis.
     It wraps past 600 px. The page can't draw past its own strip, and a
