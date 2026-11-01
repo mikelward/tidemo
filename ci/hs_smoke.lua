@@ -248,6 +248,104 @@ local function check_bar_targets(after)
     end)
 end
 
+-- The chips as WebKit draws them (bar.html, as tide's are): on a hidden
+-- strip of chips, 7px corners on each, no fill on an empty one, and an
+-- occupied, current and urgent one each in its color, the urgent one amber
+-- even when it's the current one too. Each color is the page's own
+-- --chip-* property, which `make check-tide` compares with tide's palette.
+-- Gives back JSON: what's wrong, and the occupied fill.
+local CHIPS_JS = [==[
+(() => {
+  const nav = document.createElement("nav");
+  nav.style.cssText = "position: absolute; visibility: hidden";
+  const probe = document.createElement("div");
+  nav.append(probe);
+  const color = (v) => {
+    probe.style.backgroundColor = `var(${v})`;
+    return getComputedStyle(probe).backgroundColor;
+  };
+  const chip = (cls) => {
+    const b = document.createElement("button");
+    b.className = cls;
+    b.textContent = "in";
+    nav.append(b);
+    return b;
+  };
+  const chips = { empty: chip(""), occupied: chip("occupied"), current: chip("current occupied"), urgent: chip("current occupied urgent") };
+  document.body.append(nav);
+  const bad = [];
+  const is = (what, got, want) => {
+    if (got !== want) bad.push(`${what} ${got}, not ${want}`);
+  };
+  const style = (b) => getComputedStyle(b);
+  for (const [name, b] of Object.entries(chips)) is(`${name}'s corners`, style(b).borderTopLeftRadius, "7px");
+  is("empty's fill", style(chips.empty).backgroundColor, "rgba(0, 0, 0, 0)");
+  is("occupied's fill", style(chips.occupied).backgroundColor, color("--chip-surface"));
+  is("current's fill", style(chips.current).backgroundColor, color("--chip-current"));
+  is("urgent current's fill", style(chips.urgent).backgroundColor, color("--chip-urgent-bg"));
+  is("urgent current's ring", style(chips.urgent).borderTopColor, color("--chip-urgent-ring"));
+  const occupied = style(chips.occupied).backgroundColor;
+  nav.remove();
+  return JSON.stringify({ bad, occupied });
+})()
+]==]
+
+-- The chips in the bar's light look, then its dark one, which the webview's
+-- dark mode brings: the occupied fill changes when the page takes it, so
+-- the dark check waits for that, up to a deadline.
+local CHIPS_WAIT = 5
+
+local function check_bar_chips(after)
+    local _, v = next(tilemo.bar and tilemo.bar.views or {})
+    if not (v and v.ready) then
+        -- check_bar has said why.
+        after()
+        return
+    end
+    local view = v.view
+    local was = view:darkMode()
+    local function finish()
+        view:darkMode(was)
+        after()
+    end
+    local function run(done)
+        view:evaluateJavaScript(CHIPS_JS, function(result, err)
+            if bar.js_failed(err) then
+                fail("bar: couldn't check its chips: %s", hs.inspect(err))
+                finish()
+                return
+            end
+            done(hs.json.decode(result) or { bad = { "no result" } })
+        end)
+    end
+    view:darkMode(false)
+    run(function(light)
+        if #light.bad > 0 then
+            fail("bar, light: %s", table.concat(light.bad, "; "))
+        end
+        view:darkMode(true)
+        local started = hs.timer.secondsSinceEpoch()
+        local function dark_check()
+            run(function(dark)
+                if dark.occupied == light.occupied and hs.timer.secondsSinceEpoch() - started < CHIPS_WAIT then
+                    -- A global, like smoke_timer, so it isn't collected.
+                    smoke_chips_timer = hs.timer.doAfter(0.25, dark_check)
+                    return
+                end
+                if dark.occupied == light.occupied then
+                    fail("bar: dark mode left an occupied chip %s, as in light", tostring(light.occupied))
+                elseif #dark.bad > 0 then
+                    fail("bar, dark: %s", table.concat(dark.bad, "; "))
+                elseif #light.bad == 0 then
+                    say("bar: chips drawn as tide's, light (occupied %s) and dark (%s)", light.occupied, dark.occupied)
+                end
+                finish()
+            end)
+        end
+        dark_check()
+    end)
+end
+
 -- Wait for every bar page to load, up to a deadline, then check the bar
 -- and call `next`.
 local BAR_WAIT = 15
@@ -263,7 +361,9 @@ local function wait_for_bar(next)
         if ready or hs.timer.secondsSinceEpoch() - started > BAR_WAIT then
             smoke_bar_poll:stop()
             check_bar()
-            check_bar_targets(next)
+            check_bar_targets(function()
+                check_bar_chips(next)
+            end)
         end
     end)
 end

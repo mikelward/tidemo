@@ -69,6 +69,7 @@ check-tide:
 	cmp $(TIDE)/shell/lib/workspacepage.mjs hammerspoon/tilemo/dashboard/tide-workspacepage.js
 	cmp $(TIDE)/shell/chars/chars.tsv hammerspoon/tilemo/chars.tsv
 	cmp $(TIDE)/shell/icons/tide-symbolic.svg hammerspoon/tilemo/icons/tide-symbolic.svg
+	$(LUA) ci/check_chip_colors.lua $(TIDE)/theme/palette.json hammerspoon/tilemo/dashboard/bar.html
 
 check-geometry: check-tide
 
