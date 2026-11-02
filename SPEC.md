@@ -1209,7 +1209,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
 | `Print` / `Alt+Print` / `Shift+Print`, `Super+Print` | screenshot screen / window / region, Super+Print a region too (§10) | hotkey on F13, which a PC keyboard's Print sends *(unverified)* |
 | mic-mute key, `Super+Shift+M` | mute the microphone, everywhere | tilemo, through `hs.audiodevice`'s input mute on the default input device, with an on-screen sign; the bar's microphone item does the same |
-| media, brightness, volume keys | as macOS does them | native |
+| media, brightness, volume keys | as macOS does them; the volume keys step a monitor's speakers over DDC (§8) | native, `hs.eventtap` for DDC |
 
 - **The Super tap** must not fire after Super+T, Super+drag or
   Super+click (tide §8). A mouse button or scroll counts as "another key"
@@ -1597,8 +1597,15 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
         runs or one `ddcctl` run, every 30 s, only while the output has no
         volume of its own. DDC is slow and some monitors don't answer it,
         or not over a built-in HDMI port; then only the reading is lost.
-      - The volume keys still do nothing for a monitor's speakers, as
-        macOS's own don't *(a follow-up)*.
+      - **The volume keys** step a monitor's speakers it reads over DDC, as
+        a scroll does, and mute toggles them, as a click does; a sign at
+        the center of the screen says the level or "Sound muted". macOS
+        would show its "no volume" sign there. tilemo takes them with an
+        `hs.eventtap` on system-defined events (the media keys), which
+        needs Accessibility, as tilemo's other taps do; for any other
+        output, or before a reading, the keys go on to macOS. Steps are
+        5%, not macOS's sixteenths, and Shift+Option's quarter steps don't
+        apply *(unverified on a Mac)*.
   - network: Wi-Fi through `hs.wifi`, on or off with signal in three bars
     from the RSSI, or a wire, or no network, by which interface
     `hs.network.primaryInterfaces` says carries traffic. The Wi-Fi

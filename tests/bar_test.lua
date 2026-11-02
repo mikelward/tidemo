@@ -584,6 +584,21 @@ t.test("scrolling on the speaker steps the volume 5%, and up unmutes", function(
     t.eq({ bar.volume_step(50, true, -1) }, { 45, false })
 end)
 
+t.test("the volume keys are tilemo's only for a monitor it reads over DDC", function()
+    t.eq(bar.volume_key("SOUND_UP", true), 1)
+    t.eq(bar.volume_key("SOUND_DOWN", true), -1)
+    t.eq(bar.volume_key("MUTE", true), 0)
+    t.eq(bar.volume_key("BRIGHTNESS_UP", true), nil, "other media keys stay macOS's")
+    t.eq(bar.volume_key("SOUND_UP", false), nil, "an output macOS has a volume for stays macOS's")
+end)
+
+t.test("the volume keys' sign says the level or muted", function()
+    t.eq(bar.volume_sign(45, false), "Sound 45%")
+    t.eq(bar.volume_sign(44.6, nil), "Sound 45%")
+    t.eq(bar.volume_sign(45, true), "Sound muted")
+    t.eq(bar.volume_sign(nil, false), "Sound 0%")
+end)
+
 t.test("Super+Shift+M mutes the microphone", function()
     local keys = require("tilemo.keys")
     local found
