@@ -430,6 +430,7 @@ function M.items(apps, tabs, commands, settings, attention, workspaces, windows)
             arg = c.arg,
             quick = c.quick,
             logo = c.logo,
+            group = c.group,
             key = "command:" .. (c.key or c.title),
         }
     end
@@ -598,24 +599,273 @@ for _, c in ipairs({
     { title = "Maximize the window", action = "maximize" },
     { title = "Full screen", action = "fullscreen" },
     -- The Actions tab: the session, power, toggles and screenshots.
-    { title = "Lock", action = "lock", tab = "actions" },
-    { title = "Log out", action = "logout", tab = "actions" },
-    { title = "Sleep", quick = "sleep", tab = "actions" },
-    { title = "Restart", quick = "restart", tab = "actions" },
-    { title = "Shut down", quick = "shutdown", tab = "actions" },
-    { title = "Reload tide", key = "Reload tilemo", quick = "reload", logo = true, tab = "actions" },
-    { title = "Check tide (doctor)", key = "Check tilemo (doctor)", quick = "doctor", logo = true, tab = "actions" },
-    { title = "Keep awake", quick = "keep_awake", tab = "actions" },
-    { title = "Presenter mode: Do Not Disturb and keep awake", quick = "presenter", tab = "actions" },
-    { title = "Do Not Disturb", quick = "dnd", tab = "actions" },
-    { title = "Dark style", quick = "dark", tab = "actions" },
-    { title = "Focus follows mouse on or off", quick = "toggle_ffm", tab = "actions" },
-    { title = "Screenshot: window", quick = "screenshot_window", tab = "actions" },
-    { title = "Screenshot: screen", quick = "screenshot_screen", tab = "actions" },
-    { title = "Screenshot: region", quick = "screenshot_region", tab = "actions" },
+    { title = "Lock", action = "lock", tab = "actions", group = "Session" },
+    { title = "Log out", action = "logout", tab = "actions", group = "Session" },
+    { title = "Sleep", quick = "sleep", tab = "actions", group = "Session" },
+    { title = "Restart", quick = "restart", tab = "actions", group = "Session" },
+    { title = "Shut down", quick = "shutdown", tab = "actions", group = "Session" },
+    { title = "Reload tide", key = "Reload tilemo", quick = "reload", logo = true, tab = "actions", group = "tide" },
+    { title = "Check tide (doctor)", key = "Check tilemo (doctor)", quick = "doctor", logo = true, tab = "actions", group = "tide" },
+    { title = "Keep awake", quick = "keep_awake", tab = "actions", group = "Toggles" },
+    { title = "Presenter mode: Do Not Disturb and keep awake", quick = "presenter", tab = "actions", group = "Toggles" },
+    { title = "Do Not Disturb", quick = "dnd", tab = "actions", group = "Toggles" },
+    { title = "Dark style", quick = "dark", tab = "actions", group = "Toggles" },
+    { title = "Focus follows mouse on or off", quick = "toggle_ffm", tab = "actions", group = "Toggles" },
+    { title = "Screenshot: window", quick = "screenshot_window", tab = "actions", group = "Screenshots" },
+    { title = "Screenshot: screen", quick = "screenshot_screen", tab = "actions", group = "Screenshots" },
+    { title = "Screenshot: region", quick = "screenshot_region", tab = "actions", group = "Screenshots" },
 }) do
     M.COMMANDS[#M.COMMANDS + 1] = c
 end
 -- Workspaces are in the Workspaces tab, by name, not commands by number.
+
+
+-- How the switcher draws its rows (SPEC.md §9): which characters a query
+-- matched, the key that does the same, the icon, the section headers, and
+-- tide's colors. Pure; launcher_hs.lua turns them into hs.chooser's rows.
+
+-- `text` cut into runs, each { text, matched }, the matched ones holding
+-- the characters M.score found for `query`, in the same greedy order. Only
+-- ASCII bytes are marked, so a run never splits a multibyte character; a
+-- text that doesn't match, or an empty query, is one unmatched run.
+function M.marks(query, text)
+    text = text or ""
+    local q, t = (query or ""):lower(), text:lower()
+    local hit, from = {}, 1
+    if q:match("^%s*$") or not M.score(q, text) then
+        return { { text = text, matched = false } }
+    end
+    for ch in q:gmatch(".") do
+        if ch ~= " " then
+            local i = t:find(ch, from, true)
+            if not i then
+                break
+            end
+            if text:byte(i) < 0x80 then
+                hit[i] = true
+            end
+            from = i + 1
+        end
+    end
+    local runs = {}
+    for i = 1, #text do
+        local m = hit[i] == true
+        local last = runs[#runs]
+        if last and last.matched == m then
+            last.text = last.text .. text:sub(i, i)
+        else
+            runs[#runs + 1] = { text = text:sub(i, i), matched = m }
+        end
+    end
+    if #runs == 0 then
+        runs[1] = { text = "", matched = false }
+    end
+    return runs
+end
+
+-- The quick actions done by a Super key's action of another name.
+local QUICK_KEYS = { keep_awake = "keep_awake", presenter = "presenter" }
+local SHOT_QUICK = { screenshot_window = "window", screenshot_screen = "screen", screenshot_region = "region" }
+
+-- The key that does what `item` does, as tide shows it ("Super+L"), or
+-- nil: a command's action, a quick action's key, a screenshot's Print key.
+function M.key_hint(item)
+    local keys = require("tilemo.keys")
+    local shot = item.quick and SHOT_QUICK[item.quick]
+    if shot then
+        for _, b in ipairs(keys.plain) do
+            if b.action == "screenshot" and b.arg == shot then
+                return keys.keys_label(b, b.mods, false)
+            end
+        end
+        return nil
+    end
+    local action = item.quick and QUICK_KEYS[item.quick] or (not item.quick and item.action)
+    if not action or item.kind == "window" or item.kind == "attention" then
+        return nil
+    end
+    for _, b in ipairs(keys.map) do
+        if b.action == action and b.arg == nil and item.arg == nil then
+            return keys.keys_label(b, nil, true)
+        end
+    end
+    return nil
+end
+
+local SETTINGS_APP = "com.apple.systempreferences"
+local SCREENSHOT_APP = "com.apple.screenshot.launcher"
+-- macOS's own images for the session's rows (NSImage names).
+local ACTION_IMAGES = {
+    lock = "NSLockLockedTemplate",
+    logout = "NSUser",
+    sleep = "NSComputer",
+    restart = "NSComputer",
+    shutdown = "NSComputer",
+}
+
+-- Where `item`'s icon comes from, as { bundle = id }, { path = app },
+-- { name = NSImage name } or { logo = true }; nil for none. An app's comes
+-- from its bundle, a window's from its app's, a tab's from its browser's,
+-- a System Settings pane's from System Settings, a screenshot's from
+-- Screenshot; the session's from macOS's images; tide's own rows show its
+-- logo.
+function M.icon(item)
+    local k = item.kind
+    if k == "app" and item.logo then
+        return { logo = true }
+    elseif k == "app" then
+        return item.path and { path = item.path } or nil
+    elseif k == "window" or k == "attention" then
+        return item.bundle and { bundle = item.bundle } or nil
+    elseif k == "tab" then
+        local b = M.browser(item.browser)
+        return b and { bundle = b.bundle } or nil
+    elseif k == "setting" then
+        return { bundle = SETTINGS_APP }
+    elseif k == "workspace" then
+        return { name = "NSMultipleDocuments" }
+    end
+    if item.quick and SHOT_QUICK[item.quick] then
+        return { bundle = SCREENSHOT_APP }
+    end
+    local name = ACTION_IMAGES[item.quick or item.action or ""]
+    if name then
+        return { name = name }
+    end
+    -- tide's own commands and toggles.
+    return { logo = true }
+end
+
+-- A string key for caching icon `spec`.
+function M.icon_key(spec)
+    if not spec then
+        return nil
+    end
+    return (spec.logo and "logo") or (spec.bundle and "bundle:" .. spec.bundle)
+        or (spec.path and "path:" .. spec.path) or (spec.name and "name:" .. spec.name)
+end
+
+-- How many recently used rows an empty Launch tab shows under Recent.
+M.RECENT = 5
+local KIND_HEADERS = { app = "Apps", setting = "System Settings", command = "Commands" }
+
+-- `found` (M.rank's rows) as the switcher lists them: { header = text }
+-- rows between { item = item } rows. Only an empty query gets headers: on
+-- Launch, Recent (up to M.RECENT used before, latest first) then each
+-- kind's own; on Actions, each action's group. A typed query, and the
+-- other tabs, are one ranked list.
+function M.sections(scope, query, found, recency)
+    local out = {}
+    if not (query or ""):match("^%s*$") or (scope ~= "launch" and scope ~= "actions") then
+        for _, item in ipairs(found) do
+            out[#out + 1] = { item = item }
+        end
+        return out
+    end
+    local rest = found
+    if scope == "launch" then
+        recency = recency or {}
+        local used = {}
+        for _, item in ipairs(found) do
+            if recency[item.key] then
+                used[#used + 1] = item
+            end
+        end
+        table.sort(used, function(a, b)
+            return recency[a.key] > recency[b.key]
+        end)
+        local recent = {}
+        if #used > 0 then
+            out[#out + 1] = { header = "Recent" }
+            for i = 1, math.min(M.RECENT, #used) do
+                out[#out + 1] = { item = used[i] }
+                recent[used[i]] = true
+            end
+        end
+        rest = {}
+        for _, item in ipairs(found) do
+            if not recent[item] then
+                rest[#rest + 1] = item
+            end
+        end
+    end
+    local last
+    for _, item in ipairs(rest) do
+        local h = scope == "actions" and item.group or KIND_HEADERS[item.kind]
+        if h and h ~= last then
+            out[#out + 1] = { header = h }
+        end
+        last = h
+        out[#out + 1] = { item = item }
+    end
+    return out
+end
+
+-- The switcher's rows for `query` on tab `scope`: M.rank's, laid out by
+-- M.sections. With nothing typed on Launch, Recent is drawn from every
+-- Launch row, so a recent command or settings pane isn't lost behind the
+-- first M.LIMITS.launch apps; the rows under it are capped as before.
+function M.rows(scope, query, items, recency)
+    local empty = (query or ""):match("^%s*$")
+    if not (empty and scope == "launch") then
+        return M.sections(scope, query, M.rank(query or "", items, { recency = recency, scope = scope }), recency)
+    end
+    local all = M.rank("", items, { recency = recency, scope = scope, limit = math.huge })
+    local rows = M.sections(scope, query, all, recency)
+    local limit = M.LIMITS[scope] or M.LIMIT
+    local out, shown, in_recent = {}, 0, false
+    for _, r in ipairs(rows) do
+        if r.header then
+            in_recent = r.header == "Recent"
+            out[#out + 1] = r
+        elseif in_recent then
+            out[#out + 1] = r
+        elseif shown < limit then
+            shown = shown + 1
+            out[#out + 1] = r
+        end
+    end
+    -- Drop a header left with no rows under it.
+    local tidy = {}
+    for i, r in ipairs(out) do
+        if not (r.header and (not out[i + 1] or out[i + 1].header)) then
+            tidy[#tidy + 1] = r
+        end
+    end
+    return tidy
+end
+
+-- The first row of `rows` (M.sections) that isn't a header, or 1.
+function M.first_row(rows)
+    for i, r in ipairs(rows) do
+        if r.item then
+            return i
+        end
+    end
+    return 1
+end
+
+-- tide's colors for the switcher, dark or light (tide SPEC.md §15): the
+-- text, the line under it, a key hint dimmer still, a header, and the
+-- accent blue a match is drawn in. hs.drawing color tables.
+function M.look(dark)
+    if dark then
+        return {
+            fg = { white = 0.9 }, sub = { white = 0.62 }, hint = { white = 0.45 }, header = { white = 0.5 },
+            accent = { hex = "#78aeed" },
+        }
+    end
+    return {
+        fg = { white = 0.1 }, sub = { white = 0.38 }, hint = { white = 0.55 }, header = { white = 0.5 },
+        accent = { hex = "#1c71d8" },
+    }
+end
+
+-- How the switcher is sized: the share of the display's width, and the
+-- rows it shows before it scrolls.
+M.WIDTH = 40
+M.ROWS = 10
+-- The point sizes of a row's title, the line under it, and a header.
+M.FONT = { title = 16, sub = 12, header = 11 }
 
 return M

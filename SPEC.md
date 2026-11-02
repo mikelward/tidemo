@@ -1715,6 +1715,34 @@ tab, the search field naming the tab you're in.
   `Cmd+M` has no row to mute. `hs.chooser` has no footer, so the hint is
   the one place to say it.
 
+- **How a row looks,** in tide's colors, dark or light as macOS is when
+  it opens (`launcher.look`), 40% of the display wide and 10 rows tall:
+  - **An icon on every row:** an app's own, a window's or a wanting-attention
+    row's from its app, a tab's from its browser, a System Settings pane's
+    from System Settings, a screenshot's from Screenshot, and the session's
+    (lock, log out, sleep, restart, shut down) from macOS's images. tide's
+    own rows, Tide Settings and its commands and toggles, show its logo.
+    Each icon is read once and kept, since the rows are rebuilt on every
+    keystroke; one that can't be read is left out.
+  - **The query's matched letters** are bold and in the accent blue, where
+    the fuzzy match found them.
+  - **The line under the title** ends with the key that does the same,
+    dimmer: `Super+L` beside Lock, `Shift+Print` beside a region's
+    screenshot.
+  - **Headers with nothing typed:** Launch shows Recent (the five used
+    last) and then Apps, System Settings and Commands; Actions groups its
+    rows as Session, tide, Toggles and Screenshots. A typed query, and the
+    other tabs, are one ranked list. A header is a row that can't be
+    chosen: `hs.chooser` has no other kind. The first real row is selected
+    when the rows change, but the arrow keys still stop on a header, Return
+    there does nothing (`hs.chooser` honors a row that can't be chosen only
+    with an invalid callback, so tilemo registers an empty one), and
+    `Cmd+1…9` count it as a row.
+  - **Colors come from each row's styled text.** The switcher sets no
+    chooser-wide text colors: `hs.chooser` applies those over every row,
+    which would undo a match's accent, a header's gray and the dimmer key
+    hint.
+
 - **Tabs,** in this order *(the order is a guess, to confirm)*:
   - **Launch:** apps, System Settings' panes and tilemo's commands.
     **Tide Settings** is listed among the apps, with tide's logo, and opens
