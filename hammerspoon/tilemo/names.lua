@@ -50,12 +50,14 @@ function M.sanitize(name, run_js)
 end
 
 -- What a workspace's name can't hold, as on tide (tide SPEC.md §6.5):
--- quotes, backslashes and control characters. A name reaches JSON, the
--- bar's web view, logs, and the workspace.name file a script or a shell
--- prompt prints (SPEC.md §6.3); with none of these in it, no quoting can
--- go wrong, and no escape sequence reaches a terminal.
-M.UNSAFE = "[%c\"'`\\]"
-M.UNSAFE_MESSAGE = "A workspace's name can't have quotes, backslashes or control characters"
+-- quotes, backslashes, `@` and control characters. A name reaches JSON,
+-- the bar's web view, logs, and the workspace.name file a script or a
+-- shell prompt prints (SPEC.md §6.3); with none of these in it, no quoting
+-- can go wrong, and no escape sequence reaches a terminal. tide keeps `@`
+-- for a monitor's part of a workspace, and the standing list is tide's
+-- too, so a name tide refuses is refused here.
+M.UNSAFE = "[%c\"'`\\@]"
+M.UNSAFE_MESSAGE = "A workspace's name can't have quotes, backslashes, @ or control characters"
 
 -- Whether `name` holds one of M.UNSAFE.
 function M.unsafe(name)

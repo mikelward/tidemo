@@ -64,7 +64,7 @@ local function problem(key, list)
         if v:find("[\n\r]") then
             return "standing: " .. quoted(v) .. ": a workspace's name is one line"
         elseif names.unsafe(v) then
-            return "standing: " .. quoted(v) .. ": a workspace's name can't have quotes, backslashes or control characters"
+            return "standing: " .. quoted(v) .. ": a workspace's name can't have quotes, backslashes, @ or control characters"
         elseif (utf8.len(v) or #v) > M.MAX_NAME then
             return string.format("standing: %s: a workspace's name is at most %d characters", quoted(v), M.MAX_NAME)
         elseif v:match("^%s") or v:match("%s$") then

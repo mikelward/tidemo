@@ -82,14 +82,14 @@ t.test("Enter makes the workspace, moves the window there and shows it, with foc
     t.eq(asked, { 2 })
 end)
 
-t.test("a name with quotes, backslashes or control characters is refused, and asked again", function()
+t.test("a name with quotes, backslashes, @ or control characters is refused, and asked again", function()
     local a, wm, asked = setup(1)
     open(a, wm, 2, { title = "ABC-123" })
     for i, bad in ipairs({ 'team "x"', "it's", "a`b", "a\\b", "a\27]0;x\7" }) do
         wm:answer(2, bad)
         t.eq(wm.windows[2].ws, "in", bad)
         t.eq(#a.notes, i, bad)
-        t.eq(a.notes[i], "A workspace's name can't have quotes, backslashes or control characters")
+        t.eq(a.notes[i], "A workspace's name can't have quotes, backslashes, @ or control characters")
         t.eq(#asked, i + 1, "asked again: " .. bad)
         t.eq(wm.holding_keyboard, true, "still asking")
     end

@@ -102,14 +102,15 @@ t.test("with no pattern, the default is the title's first word, without its app'
     t.eq(names.fallback("  spaced    out  ", ""), "spaced")
 end)
 
-t.test("a name can't hold quotes, backslashes or control characters, as on tide", function()
-    for _, bad in ipairs({ 'team "x"', "it's", "a`b", "a\\b", "a\tb", "a\127b", "a\27[0mb" }) do
+t.test("a name can't hold quotes, backslashes, @ or control characters, as on tide", function()
+    for _, bad in ipairs({ 'team "x"', "it's", "a`b", "a\\b", "a\tb", "a\127b", "a\27[0mb", "re@DP-2" }) do
         t.eq(names.unsafe(bad), true, bad)
     end
     for _, good in ipairs({ "PR-12 login", "café", "a/b", "x:y", "" }) do
         t.eq(names.unsafe(good), false, good)
     end
     t.eq(names.safe('it\'s "a`b\\c"\27'), "its abc")
+    t.eq(names.safe("mail@example.com"), "mailexample.com")
 end)
 
 t.test("a default name drops what a name can't hold", function()
