@@ -1932,6 +1932,14 @@ that isn't one is left out, and the log says so.
   scope, and otherwise moves there, as the switcher does. Esc, a choice,
   or clicking away closes it, and Esc gives focus back to the window you
   were in.
+- **Esc is tilemo's while it's open,** an `hs.hotkey`, so it closes at
+  once, however long WebKit takes to wake the hidden page: on CI's Mac the
+  page has answered from 100 ms to 3.8 s after an open, and a key it hears
+  waits as long. With something typed, tilemo hands Esc to the page
+  (`tilemo.escape()`), which clears the search as its own Esc does. The
+  page says `{ typed }` as the search goes from empty to not and back, so
+  a key typed while the page is still waking may not have said so yet, and
+  Esc then closes it.
 - **tileco's files are copied unchanged:** `launcherview.js`, `launcher.js`
   and what they import (`apps.js`, `workspaces.js`, `platform.js`,
   `extras.js`, `unread.js`, `watchers.js`, `keepawake.js`), and

@@ -241,6 +241,9 @@ function M.message(body)
     end
     if body.close then
         return { kind = "close" }
+    elseif body.typed ~= nil then
+        -- Whether there's anything in the search, as it changes.
+        return { kind = "typed", value = body.typed == true }
     elseif body.tabId ~= nil then
         return { kind = "row", value = tostring(body.tabId) }
     elseif type(body.command) == "string" then

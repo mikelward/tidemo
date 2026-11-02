@@ -50,6 +50,9 @@ function M.new(tilemo)
     -- The page has started, so tilemo.open can fill it; it's showing; and
     -- what to do once it has started, when a key came first.
     local loaded, visible, pending = false, false, nil
+    -- Esc, which tilemo takes while it's open, and whether there's anything
+    -- in the search, as the page last said.
+    local esc_key, typed = nil, false
     local by_id, collect, found_tabs = {}, nil, {}
 
     local function log_js(what)
@@ -68,6 +71,10 @@ function M.new(tilemo)
         visible = false
         pending = nil
         self.opened = nil
+        if esc_key then
+            esc_key:delete()
+            esc_key = nil
+        end
         tilemo.wm:hold("launcher", false)
         if view then
             view:hide()
@@ -144,6 +151,8 @@ function M.new(tilemo)
             hs.reload()
         elseif m.kind == "close" then
             close(true)
+        elseif m.kind == "typed" then
+            typed = m.value
         elseif m.kind == "clock_errors" then
             tilemo.report_clock_errors(m.value)
         elseif m.kind == "good_clocks" then
@@ -277,6 +286,17 @@ function M.new(tilemo)
         end)
         step("tabs")
         visible = true
+        -- Esc closes it at once, from here: the page hears a key only once
+        -- WebKit is done waking it, which can take seconds. With something
+        -- typed, the page clears it, as its own Esc does.
+        typed = false
+        esc_key = hs.hotkey.bind({}, "escape", function()
+            if typed then
+                push("tilemo.escape()")
+            else
+                close(true)
+            end
+        end)
         view:show()
         step("show")
         tilemo.wm:hold("launcher", true)

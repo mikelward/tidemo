@@ -41,11 +41,15 @@ class Element {
   getAttribute(k) {
     return this.attrs[k] ?? null;
   }
+  // Every listener for each event, as a real element keeps them.
   addEventListener(type, fn) {
-    this.listeners[type] = fn;
+    (this.listeners[type] ??= []).push(fn);
+  }
+  fire(type, e = {}) {
+    for (const fn of this.listeners[type] ?? []) fn(e);
   }
   click() {
-    this.listeners.click?.({ preventDefault() {} });
+    this.fire("click", { preventDefault() {} });
   }
   contains() {
     return false;
@@ -83,6 +87,7 @@ const sandbox = {
       return chips;
     },
     addEventListener: (type, fn) => (docListeners[type] ??= []).push(fn),
+    dispatchEvent: (e) => fire(e.type, e),
     body: new Element("body"),
     activeElement: null,
   },
@@ -106,6 +111,13 @@ const sandbox = {
   URLSearchParams,
 };
 sandbox.window = sandbox;
+// A key event, as the page makes one for tilemo.escape().
+sandbox.KeyboardEvent = class {
+  constructor(type, init) {
+    Object.assign(this, init, { type });
+  }
+  preventDefault() {}
+};
 // A frame, as WebKit paints one: after the work queued before it.
 sandbox.requestAnimationFrame = (fn) => setTimeout(fn, 0);
 sandbox.globalThis = sandbox;
@@ -120,13 +132,14 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 const rows = () => ids.results.children.map((li) => li.children[1].textContent);
 const details = () => ids.results.children.map((li) => li.children[2].textContent);
 const keys = () => ids.results.children.map((li) => li.children[3].textContent);
-const press = (key, extra = {}) => ids.query.listeners.keydown({ key, preventDefault() {}, ...extra });
+const press = (key, extra = {}) => ids.query.fire("keydown", { key, preventDefault() {}, ...extra });
 const type = async (text) => {
   ids.query.value = text;
-  ids.query.listeners.input();
+  ids.query.fire("input");
   await settle();
 };
-const choices = () => sent.filter((m) => !m.goodClocks && !m.clockErrors);
+const choices = () => sent.filter((m) => !m.goodClocks && !m.clockErrors && m.typed === undefined);
+const typedSaid = () => sent.filter((m) => m.typed !== undefined).map((m) => m.typed);
 
 (async () => {
   await settle();
@@ -234,6 +247,26 @@ const choices = () => sent.filter((m) => !m.goodClocks && !m.clockErrors);
   await settle();
   assert.strictEqual(ids.query.value, "no");
   assert.strictEqual(sandbox.tilemo.scope(), "tabs");
+  // tide takes Esc while it's open, so the page says when there's
+  // something typed, once each way, and hands Esc back as tilemo.escape(),
+  // which clears the search and leaves it open; with nothing typed it
+  // closes.
+  sandbox.tilemo.open(feed, "launch");
+  await settle();
+  const said = typedSaid().length;
+  await type("sa");
+  await type("saf");
+  assert.deepStrictEqual(typedSaid().slice(said), [true], "said once as the search fills");
+  let made = choices().length;
+  sandbox.tilemo.escape();
+  await settle();
+  assert.strictEqual(ids.query.value, "");
+  assert.deepStrictEqual(choices().slice(made), [], "clearing leaves it open");
+  assert.deepStrictEqual(typedSaid().slice(said), [true, false]);
+  made = choices().length;
+  sandbox.tilemo.escape();
+  await settle();
+  assert.deepStrictEqual(choices().slice(made), [{ close: true }]);
   console.log("launcher page: ok");
 })().catch((e) => {
   console.error(e);
