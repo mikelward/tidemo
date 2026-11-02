@@ -418,14 +418,34 @@ function M.is_vpn(name)
     return false
 end
 
+-- Whether a network service that's up, as bar_hs.lua reads it ({ interface,
+-- type, subtype }, the type from the service's Setup:/.../Interface), is a
+-- VPN's: a tunnel whose service macOS itself calls a VPN. That's a VPN app's
+-- Network Extension (type VPN), Cisco IPSec, or L2TP or PPTP over PPP, but
+-- not PPPoE, a modem's PPP, or a tunnel macOS has no VPN service for, such
+-- as its own and other apps' utun interfaces.
+M.VPN_SERVICE_TYPES = { VPN = true, IPSec = true }
+M.VPN_PPP_SUBTYPES = { L2TP = true, PPTP = true }
+
+function M.is_vpn_service(svc)
+    if type(svc) ~= "table" or not M.is_vpn(svc.interface) then
+        return false
+    end
+    if M.VPN_SERVICE_TYPES[svc.type] then
+        return true
+    end
+    return svc.type == "PPP" and M.VPN_PPP_SUBTYPES[svc.subtype] == true
+end
+
 -- Which network carries traffic: Wi-Fi, a wire, or none, and whether a VPN
 -- is up, as tide's lock on the network icon (tide §7.4). Without the
 -- primary interface, Wi-Fi being on stands in for it.
--- A VPN is up when traffic goes through one, or when any network service
--- has an address on one (`raw.network.services`, the interfaces macOS's
--- services are up on), which also catches a VPN that carries only some
--- traffic. Under a VPN that carries it all, the link below is Wi-Fi while
--- that's joined to a network, else a wire.
+-- A VPN is up when traffic goes through a tunnel, or when a VPN's network
+-- service is up (`raw.network.services`, M.is_vpn_service), which also
+-- catches a VPN that carries only some traffic. A tunnel that's up with no
+-- VPN service, as macOS's own utun interfaces are, isn't one. Under a VPN
+-- that carries it all, the link below is Wi-Fi while that's joined to a
+-- network, else a wire.
 function ITEMS.network(raw)
     local w = raw.wifi
     local net = raw.network
@@ -436,8 +456,8 @@ function ITEMS.network(raw)
         primary = w.interface or "wifi"
     end
     local vpn = M.is_vpn(primary)
-    for _, name in ipairs(net and net.services or {}) do
-        vpn = vpn or M.is_vpn(name)
+    for _, svc in ipairs(net and net.services or {}) do
+        vpn = vpn or M.is_vpn_service(svc)
     end
     local kind = "none"
     if M.is_vpn(primary) then

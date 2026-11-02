@@ -1608,14 +1608,18 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
       bar's color at the icon's bottom right, and ", VPN on" after the tip.
       Hammerspoon has no VPN module, so a VPN is up when the interface
       carrying traffic is a tunnel (`utun`, `ipsec`, `ppp`, `tun`, `tap`),
-      or when any network service in the System Configuration store
-      (`hs.network.configuration`, `State:/Network/Service/*/IPv4` and
-      `IPv6`) is up on one. The second catches a VPN that carries only some
-      traffic. Under a VPN that carries it all, the icon is the link below:
+      or when a VPN's network service is up: one in the System
+      Configuration store (`hs.network.configuration`,
+      `State:/Network/Service/*/IPv4` and `IPv6`) on a tunnel whose
+      `Setup:/Network/Service/*/Interface` type is `VPN` (a VPN app's
+      Network Extension), `IPSec`, or `PPP` for L2TP or PPTP. The second
+      catches a VPN that carries only some traffic. A tunnel with no VPN
+      service, as macOS's own `utun` interfaces and some apps' are, isn't
+      one. Under a VPN that carries it all, the icon is the link below:
       Wi-Fi while it's joined to a network, else a wire. No "connecting"
       state: macOS's store shows a tunnel only once it's up *(unverified
-      for every VPN client; a tunnel that isn't a VPN, such as some
-      relays', would show the lock too)*.
+      for every VPN client; a VPN client with no VPN service, such as
+      Tunnelblick's, shows the lock only while it carries all traffic)*.
   - battery: `hs.battery`, with its percentage and a charging mark, and on
     hover how long until full or empty when macOS knows. None on a Mac
     without one.

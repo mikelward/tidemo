@@ -480,10 +480,25 @@ end)
 
 t.test("a VPN carrying only some traffic still shows the lock", function()
     local wifi = { power = true, rssi = -55, interface = "en0" }
-    t.eq(bar.icons({ wifi = wifi, network = { primary = "en0", services = { "en0", "utun3" } } }).network,
-        { kind = "wifi", vpn = true })
-    t.eq(bar.icons({ wifi = wifi, network = { primary = "en0", services = { "en0", "en7" } } }).network,
-        { kind = "wifi" }, "no tunnel, no lock")
+    local en0 = { interface = "en0", type = "IEEE80211" }
+    local function network(svc)
+        return bar.icons({ wifi = wifi, network = { primary = "en0", services = { en0, svc } } }).network
+    end
+    t.eq(network({ interface = "utun3", type = "VPN", subtype = "com.wireguard.macos" }), { kind = "wifi", vpn = true })
+    t.eq(network({ interface = "ipsec0", type = "IPSec" }), { kind = "wifi", vpn = true })
+    t.eq(network({ interface = "ppp0", type = "PPP", subtype = "L2TP" }), { kind = "wifi", vpn = true })
+    t.eq(network({ interface = "en7", type = "Ethernet" }), { kind = "wifi" }, "no tunnel, no lock")
+end)
+
+t.test("a tunnel with no VPN service behind it isn't a VPN", function()
+    local wifi = { power = true, rssi = -55, interface = "en0" }
+    local function network(svc)
+        return bar.icons({ wifi = wifi, network = { primary = "en0", services = { svc } } }).network
+    end
+    t.eq(network({ interface = "utun2" }), { kind = "wifi" }, "macOS's own utun, with no Setup: interface")
+    t.eq(network({ interface = "utun5", type = "Ethernet" }), { kind = "wifi" }, "not a VPN's type")
+    t.eq(network({ interface = "ppp0", type = "PPP", subtype = "PPPoE" }), { kind = "wifi" }, "PPPoE is a link")
+    t.eq(network("utun3"), { kind = "wifi" }, "a bare name is no service")
 end)
 
 t.test("the CPU's share is busy ticks over all ticks between readings", function()
