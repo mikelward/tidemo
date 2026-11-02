@@ -226,7 +226,38 @@ local function internal(s)
     return false
 end
 
--- Each string literal in Lua or JavaScript `src`, outside comments.
+-- Whether the `/` at `i` in JavaScript `src` starts a regex literal rather
+-- than dividing: it does after an operator or opening bracket, or at the
+-- start, but not after a value.
+local function regex_start(src, i)
+    local before = src:sub(1, i - 1):match("(%S)%s*$")
+    return before == nil or before:find("[%(,=:%[!&|%?{};]") ~= nil
+end
+
+-- Where the regex literal whose body starts at `i` ends, past its closing
+-- `/`: a `/` inside a character class or after a backslash doesn't close it.
+local function regex_end(src, i, n)
+    local class = false
+    while i <= n do
+        local c = src:sub(i, i)
+        if c == "\\" then
+            i = i + 1
+        elseif c == "[" then
+            class = true
+        elseif c == "]" then
+            class = false
+        elseif c == "/" and not class then
+            return i + 1
+        elseif c == "\n" then
+            return i
+        end
+        i = i + 1
+    end
+    return i
+end
+
+-- Each string literal in Lua or JavaScript `src`, outside comments and
+-- regex literals.
 local function literals(src, js)
     local out = {}
     local i, n = 1, #src
@@ -241,6 +272,8 @@ local function literals(src, js)
             end
         elseif js and two == "/*" then
             i = (src:find("*/", i + 2, true) or n) + 2
+        elseif js and c == "/" and regex_start(src, i) then
+            i = regex_end(src, i + 1, n)
         elseif not js and two == "[[" then
             local stop = src:find("]]", i + 2, true) or n
             out[#out + 1] = src:sub(i + 2, stop - 1)
@@ -265,6 +298,7 @@ end
 t.test("the scan finds strings, not comments", function()
     t.eq(literals('-- "tilemo"\nx("a \\"b\\"", \'c\') --[[ "d" ]] y([[e]])'), { 'a \\"b\\"', "c", "e" })
     t.eq(literals('// "tilemo"\n/* "x" */ f(`a`, "b")', true), { "a", "b" })
+    t.eq(literals('const r = /["\'`]/u; f("a", x / 2, "b")', true), { "a", "b" }, "a regex's quotes start no string")
 end)
 
 local function files(dir, ext)
