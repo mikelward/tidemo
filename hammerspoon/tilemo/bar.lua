@@ -106,12 +106,6 @@ function M.tip_size(text_w, line_h, max)
     return max + 18, math.ceil(line_h) * (math.ceil(text_w / max) + 1) + 10
 end
 
--- Whether hs.webview:evaluateJavaScript's error says it failed. It passes a
--- table even on success, made from no error at all: { code = 0 }.
-function M.js_failed(err)
-    return type(err) == "table" and ((err.code or 0) ~= 0 or err.localizedDescription ~= nil)
-end
-
 -- A chip shows the app icon of each window there wanting attention, up to
 -- this many, then "+n" (SPEC.md §8).
 M.CHIP_APPS = 5

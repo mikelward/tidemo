@@ -53,7 +53,7 @@ function M.new(tilemo)
     local function push(v)
         local state = hs.json.encode(dashboard.state(tilemo.wm, tilemo.adapter, uuid, tilemo.clock_files, tilemo.good_clocks))
         v:evaluateJavaScript("tilemo.update(" .. state .. ")", function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("dashboard: " .. hs.inspect(err))
             end
         end)

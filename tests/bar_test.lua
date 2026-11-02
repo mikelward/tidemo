@@ -695,9 +695,9 @@ end)
 
 t.test("a page's script failing is told from Hammerspoon's empty error", function()
     -- hs.webview passes { code = 0 } when the script ran.
-    t.eq(bar.js_failed({ code = 0 }), false)
-    t.eq(bar.js_failed(nil), false)
-    t.eq(bar.js_failed({ code = 4, localizedDescription = "A JavaScript exception occurred" }), true)
+    t.eq(dashboard.js_failed({ code = 0 }), false)
+    t.eq(dashboard.js_failed(nil), false)
+    t.eq(dashboard.js_failed({ code = 4, localizedDescription = "A JavaScript exception occurred" }), true)
 end)
 
 t.test("the bar's page carries tileco's stylesheet and its own script", function()

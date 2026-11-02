@@ -43,6 +43,13 @@ local function stub()
                     v.deleted = true
                 end
                 function methods:hswindow() end
+                -- As Hammerspoon answers a script that ran.
+                function methods:evaluateJavaScript(js, done)
+                    s.ran = (s.ran or 0) + 1
+                    if done then
+                        done(nil, { code = 0 })
+                    end
+                end
                 setmetatable(v, {
                     __index = function(_, name)
                         return methods[name] or function() end
@@ -58,6 +65,9 @@ local function stub()
             focused = function() end,
             log = function(line)
                 s.logged = line
+            end,
+            after = function(_, fn)
+                fn()
             end,
         },
         wm = {
@@ -117,6 +127,23 @@ t.test("a page that fails to load while open closes, and the next key makes it a
     t.eq(#s.views, 2, "a new webview, loading the page again")
     t.eq(s.views[2].shown, true)
     t.eq(page.is_open(), true)
+end)
+
+t.test("a call the page ran isn't logged as a failure", function()
+    local s = stub()
+    _G.hs = s.hs
+    s.hs.json = { encode = function() return "{}" end }
+    s.hs.caffeinate = { get = function() return false end }
+    s.tilemo.wm.listed = function() return {}, {} end
+    s.tilemo.wm.bar_state = function() return {} end
+    s.tilemo.wm.windows = {}
+    s.tilemo.wm.screens = function() return {} end
+    local page = launcher_with(s)
+    s.views[1].navigate("didFinishNavigation", s.views[1])
+    page.show("launch")
+    t.eq(s.ran, 1, "the page was filled")
+    t.eq(s.logged, nil)
+    page.cancel()
 end)
 
 t.done("launcherpage_hs")

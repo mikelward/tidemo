@@ -506,7 +506,7 @@ function M.new(tilemo)
 
     local function run(v, js)
         v.view:evaluateJavaScript(js, function(_, err)
-            if bar.js_failed(err) then
+            if dashboard.js_failed(err) then
                 log("bar: " .. hs.inspect(err))
             end
         end)

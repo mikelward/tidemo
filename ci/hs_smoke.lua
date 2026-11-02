@@ -9,6 +9,7 @@
 -- TILEMO_SMOKE_OUT set to where the results go.
 
 local bar = require("tilemo.bar")
+local dashboard = require("tilemo.dashboard")
 local layout = require("tilemo.layout")
 
 local out_path = TILEMO_SMOKE_OUT
@@ -237,7 +238,7 @@ local function check_bar_targets(after)
         return
     end
     v.view:evaluateJavaScript(TARGETS_JS, function(result, err)
-        if bar.js_failed(err) then
+        if dashboard.js_failed(err) then
             fail("bar: couldn't check its click targets: %s", hs.inspect(err))
         elseif result ~= "ok" then
             fail("bar: clicks at %s reach no item", tostring(result))
@@ -310,7 +311,7 @@ local function check_bar_chips(after)
     end
     local function run(done)
         view:evaluateJavaScript(CHIPS_JS, function(result, err)
-            if bar.js_failed(err) then
+            if dashboard.js_failed(err) then
                 fail("bar: couldn't check its chips: %s", hs.inspect(err))
                 finish()
                 return
@@ -501,8 +502,8 @@ local function check_launcher_page(after)
             tilemo.adapter.after(0, function()
                 page.cancel()
                 -- A string is evaluate()'s own; a table is { code = 0 } on
-                -- success (bar.js_failed).
-                if type(err) == "string" or bar.js_failed(err) then
+                -- success (dashboard.js_failed).
+                if type(err) == "string" or dashboard.js_failed(err) then
                     fail("launcher: tileco's launcher on %s: %s", tab, hs.inspect(err))
                     done()
                     return
@@ -951,7 +952,7 @@ local function check_settings_page(next)
     })]], function(result, err)
         -- Out of the page's own callback.
         tilemo.adapter.after(0, function()
-            local got = type(result) == "string" and not bar.js_failed(err) and hs.json.decode(result) or nil
+            local got = type(result) == "string" and not dashboard.js_failed(err) and hs.json.decode(result) or nil
             if not got then
                 fail("settings: the page didn't say what it shows: %s", hs.inspect(err))
             elseif table.concat(got.shown or {}, ",") ~= "page-startup" then
