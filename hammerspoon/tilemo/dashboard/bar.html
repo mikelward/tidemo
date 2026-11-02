@@ -59,6 +59,18 @@ body {
     --chip-urgent-ring: #f6d32d;
   }
 }
+/* The system monitor's warning and danger colors, tide's palette's, after the
+   chips', which `make check-tide` reads first. */
+:root {
+  --warn: #c64600;
+  --danger: #c01c28;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --warn: #ffa348;
+    --danger: #ff7b63;
+  }
+}
 /* A chip's window icons follow its number. */
 nav button {
   display: flex;
@@ -262,13 +274,21 @@ nav button .app.none.win:hover {
   color: var(--urgent);
 }
 #icons .battery .text,
-#icons .volume .text {
+#icons .volume .text,
+#icons .sysmon .text {
   font-variant-numeric: tabular-nums;
 }
 /* Held as wide as two digits and a %, as tide's, so the icons beside it
    don't move as the level changes, except at 100%. */
-#icons .volume .text {
+#icons .volume .text,
+#icons .sysmon .text {
   min-width: 2.2em;
+}
+#icons .sysmon[data-state="warn"] {
+  color: var(--warn);
+}
+#icons .sysmon[data-state="danger"] {
+  color: var(--danger);
 }
 </style>
 </head>

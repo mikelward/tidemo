@@ -454,6 +454,79 @@ function ITEMS.network(raw)
     return { kind = kind }
 end
 
+-- The system monitor (SPEC.md §8), as tide's (tide §7.4): the CPU's % in
+-- the bar, in the warning color when the Mac is hot or memory is 90% full,
+-- and the urgent color while macOS says it's throttling.
+M.MEMORY_HIGH = 0.9
+
+-- The share of time the CPU was busy between two hs.host.cpuUsageTicks()
+-- readings' overall ticks ({ active, idle }), or nil without both.
+function M.cpu_share(before, after)
+    if type(before) ~= "table" or type(after) ~= "table" then
+        return nil
+    end
+    local busy = (after.active or 0) - (before.active or 0)
+    local idle = (after.idle or 0) - (before.idle or 0)
+    if busy < 0 or idle < 0 or busy + idle <= 0 then
+        return nil
+    end
+    return busy / (busy + idle)
+end
+
+-- Memory in use from hs.host.vmStat(): wired, active and compressed pages,
+-- near Activity Monitor's "Memory Used" *(an approximation)*, as { used,
+-- total } in bytes, or nil when a count is missing.
+function M.memory(vm)
+    if type(vm) ~= "table" then
+        return nil
+    end
+    local page, total = vm.pageSize, vm.memSize
+    local wired, active, compressed = vm.pagesWiredDown, vm.pagesActive, vm.pagesUsedByVMCompressor
+    -- Counted, not ipairs'd: a missing one would end the list early.
+    local counts = { page, total, wired, active, compressed }
+    for i = 1, 5 do
+        if type(counts[i]) ~= "number" then
+            return nil
+        end
+    end
+    if total <= 0 then
+        return nil
+    end
+    return { used = (wired + active + compressed) * page, total = total }
+end
+
+-- raw.sysmon is { cpu = 0…1 or nil, memory = { used, total } or nil,
+-- thermal = hs.host.thermalState()'s "nominal", "fair", "serious" or
+-- "critical" }. macOS gives no temperature or throttle count: its thermal
+-- state stands in. "serious" (high) is hot, and "critical" (performance
+-- significantly cut until it cools) is throttling.
+function ITEMS.sysmon(raw)
+    local s = raw.sysmon
+    if not s then
+        return nil
+    end
+    local text = s.cpu and (math.floor(s.cpu * 100 + 0.5) .. "%") or "–"
+    local full = s.memory and s.memory.total > 0 and s.memory.used / s.memory.total >= M.MEMORY_HIGH
+    local throttling = s.thermal == "critical"
+    local hot = s.thermal == "serious"
+    local tone = "normal"
+    if throttling then
+        tone = "danger"
+    elseif hot or full then
+        tone = "warn"
+    end
+    local tip = { s.cpu and ("CPU " .. text) or "CPU" }
+    if throttling then
+        tip[#tip + 1] = "throttling"
+    elseif hot then
+        tip[#tip + 1] = "hot"
+    end
+    if full then
+        tip[#tip + 1] = "memory nearly full"
+    end
+    return { text = text, tone = tone, tip = table.concat(tip, ", ") }
+end
+
 -- Every item at once. One that can't make sense of its reading is left
 -- out, and `on_error(name, err)` hears why, so one bad reading can't stop
 -- the rest of the bar.
@@ -498,6 +571,9 @@ M.PANES = {
     wifi = links.PANES.wifi,
     network = links.PANES.network,
     bluetooth = links.PANES.bluetooth,
+    -- Not a pane: the system monitor's click opens Activity Monitor, where
+    -- tide's opens a popover with the busiest processes.
+    sysmon = "/System/Applications/Utilities/Activity Monitor.app",
 }
 
 -- The managed window a page names: ids come back through JSON, which may

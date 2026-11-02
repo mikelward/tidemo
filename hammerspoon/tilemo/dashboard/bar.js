@@ -3,7 +3,7 @@
 // clocks and status icons right. tilemo fills it with tilemo.update(state),
 // says where the pointer is with tilemo.pointer(x, y), and hears back through the "tilemo" message handler: { uuid, show: n },
 // { uuid, step: 1 or -1 }, { uuid, focus: window id } from an attention icon,
-// { open: "battery" | "wifi" | "network" },
+// { open: "battery" | "wifi" | "network" | "volume" | "bluetooth" | "sysmon" },
 // { toggle: "mic" | "volume" | "awake" | "presenter" | "source" },
 // { volume: 1 or -1 },
 // { dashboard: true }, { switcher: true } from the logo, { maximize: true }, { tip: { text, x } } while
@@ -155,6 +155,9 @@ const PATHS = {
   dot: `<path d="M8 12.8v.01"/>`,
   wired: `<path d="M5.5 2v3M10.5 2v3"/><path d="M3.5 5h9v2.5a4.5 4.5 0 0 1-9 0z"/><path d="M8 12v2.5"/>`,
   bolt: `<path d="M5.5 2.5l-3 6h3l-1 5 4-7h-3z"/>`,
+  // A processor, as tide's cpu-symbolic: a chip with pins on each side.
+  cpu: `<rect x="4" y="4" width="8" height="8" rx="1.5"/><rect x="6.5" y="6.5" width="3" height="3" rx="0.5"/>` +
+    `<path d="M6 1.5v2M10 1.5v2M6 12.5v2M10 12.5v2M1.5 6h2M1.5 10h2M12.5 6h2M12.5 10h2"/>`,
 };
 
 const VOLUME = { mute: 0, low: 1, mid: 2, high: 3 };
@@ -282,6 +285,14 @@ function renderIcons(box, icons) {
   }
   box.append(network(icons));
   if (icons.battery) box.append(battery(icons.battery));
+  // The system monitor: CPU %, colored when hot, throttling or short of
+  // memory; a click opens Activity Monitor.
+  if (icons.sysmon) {
+    const s = icons.sysmon;
+    const b = icon("sysmon", s.tip || "CPU", { open: "sysmon" }, svg(PATHS.cpu), s.tone || "normal");
+    b.append(el("span", "text", s.text));
+    box.append(b);
+  }
 }
 
 // Sets each item's reach (hitInsets) as --reach-* for its ::before, which

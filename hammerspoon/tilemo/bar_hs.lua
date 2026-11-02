@@ -183,6 +183,15 @@ function M.new(tilemo)
             local d = hs.wifi.interfaceDetails()
             return d and { power = d.power, rssi = d.rssi, ssid = d.ssid, interface = d.interface }
         end)
+        -- The CPU's share busy since the last reading, so the first has
+        -- none; memory; and macOS's thermal state (bar.lua).
+        raw.sysmon = try("the system monitor", function()
+            local ticks = hs.host.cpuUsageTicks()
+            local now = ticks and ticks.overall
+            local share = bar.cpu_share(self.cpu_ticks, now)
+            self.cpu_ticks = now
+            return { cpu = share, memory = bar.memory(hs.host.vmStat()), thermal = hs.host.thermalState() }
+        end)
         raw.network = try("the network", function()
             -- false with no route, as Hammerspoon reports it.
             local v4, v6 = hs.network.primaryInterfaces()
