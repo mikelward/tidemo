@@ -6,7 +6,15 @@
 local t = require("t")
 
 local function stub()
-    local s = { views = {}, holds = {} }
+    local s = { views = {}, holds = {}, keys = {}, scripts = {} }
+    -- The live hotkey for `key`, if any.
+    function s.key(key)
+        for i = #s.keys, 1, -1 do
+            if s.keys[i].key == key and not s.keys[i].deleted then
+                return s.keys[i]
+            end
+        end
+    end
     s.hs = {
         settings = { get = function() end, set = function() end },
         inspect = function(v)
@@ -18,6 +26,16 @@ local function stub()
             end,
         },
         drawing = { windowLevels = { modalPanel = 8 } },
+        hotkey = {
+            bind = function(mods, key, fn)
+                local k = { mods = mods, key = key, fn = fn }
+                function k:delete()
+                    k.deleted = true
+                end
+                s.keys[#s.keys + 1] = k
+                return k
+            end,
+        },
         screen = {
             mainScreen = function()
                 return { fullFrame = function() return { x = 0, y = 0, w = 800, h = 600 } end }
@@ -26,7 +44,14 @@ local function stub()
         webview = {
             usercontent = {
                 new = function()
-                    return { setCallback = function() end }
+                    return {
+                        setCallback = function(_, fn)
+                            -- What the page sends, as WebKit hands it over.
+                            s.send = function(body)
+                                fn({ body = body })
+                            end
+                        end,
+                    }
                 end,
             },
             new = function(frame)
@@ -51,6 +76,7 @@ local function stub()
                 -- As Hammerspoon answers a script that ran.
                 function methods:evaluateJavaScript(js, done)
                     s.ran = (s.ran or 0) + 1
+                    s.scripts[#s.scripts + 1] = js
                     if done then
                         done(nil, { code = 0 })
                     end
@@ -149,6 +175,57 @@ t.test("a call the page ran isn't logged as a failure", function()
     t.eq(s.ran, 1, "the page was filled")
     t.eq(s.logged, nil)
     page.cancel()
+end)
+
+-- The rest of a loaded page's world: enough for an open to fill it.
+local function loaded(s)
+    s.hs.json = { encode = function() return "{}" end }
+    s.hs.caffeinate = { get = function() return false end }
+    s.tilemo.wm.listed = function() return {}, {} end
+    s.tilemo.wm.bar_state = function() return {} end
+    s.tilemo.wm.windows = {}
+    s.tilemo.wm.screens = function() return {} end
+    local page = launcher_with(s)
+    s.views[1].navigate("didFinishNavigation", s.views[1])
+    return page
+end
+
+t.test("Esc closes the launcher at once, without waiting on the page", function()
+    local s = stub()
+    local page = loaded(s)
+    page.show("launch")
+    local ran = #s.scripts
+    t.eq(s.key("escape") ~= nil, true, "tilemo takes Esc while it's open")
+    s.key("escape").fn()
+    t.eq(page.is_open(), false)
+    t.eq(s.views[1].shown, false)
+    t.eq(#s.scripts, ran, "nothing asked of the page")
+    t.eq(s.key("escape"), nil, "Esc is given back")
+end)
+
+t.test("with something typed, Esc clears the search and leaves it open", function()
+    local s = stub()
+    local page = loaded(s)
+    page.show("launch")
+    s.send({ typed = true })
+    s.key("escape").fn()
+    t.eq(page.is_open(), true)
+    t.eq(s.scripts[#s.scripts], "tilemo.escape()")
+    -- Cleared, the next Esc closes it.
+    s.send({ typed = false })
+    s.key("escape").fn()
+    t.eq(page.is_open(), false)
+end)
+
+t.test("each open starts with nothing typed", function()
+    local s = stub()
+    local page = loaded(s)
+    page.show("launch")
+    s.send({ typed = true })
+    page.cancel()
+    page.show("launch")
+    s.key("escape").fn()
+    t.eq(page.is_open(), false)
 end)
 
 t.done("launcherpage_hs")

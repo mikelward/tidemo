@@ -703,7 +703,8 @@ local function check_launcher_keys(after)
                             "%s opens in %d ms (busy %s ms, %s%s) and Esc closes it in %d ms (busy %s ms, %s%s)",
                             choice, open_ms, tostring(open_lag), open_work,
                             painted and (", painted at " .. painted .. " ms") or "", close_ms, tostring(lag),
-                            counted(), heard_esc and (", the page heard it at " .. heard_esc .. " ms") or "")
+                            counted(), heard_esc and (", the page heard it at " .. heard_esc .. " ms")
+                                or (launcher.evaluate and ", tilemo's, not the page's" or ""))
                         next()
                     end
                     until_(function()
@@ -722,8 +723,11 @@ local function check_launcher_keys(after)
                                 tilemo.adapter.after(0, function()
                                     local got = type(answer) == "string" and hs.json.decode(answer) or {}
                                     local painted = got.opened and got.opened.painted
+                                    -- Esc is tilemo's while it's open, so the
+                                    -- page shouldn't hear it at all.
+                                    local heard = got.esc and got.esc >= t1 * 1000
                                     report(painted and tostring(math.floor(painted - t0 * 1000)) or "not",
-                                        got.esc and tostring(math.floor(got.esc - t1 * 1000)) or "never")
+                                        heard and tostring(math.floor(got.esc - t1 * 1000)) or nil)
                                 end)
                             end)
                         end)

@@ -222,4 +222,9 @@ t.test("each launcher has its name for the settings window", function()
     end
 end)
 
+t.test("the page says whether there's anything in the search", function()
+    t.eq(launcherpage.message({ typed = true }), { kind = "typed", value = true })
+    t.eq(launcherpage.message({ typed = false }), { kind = "typed", value = false })
+end)
+
 t.done("launcherpage")
