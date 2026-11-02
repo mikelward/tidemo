@@ -345,26 +345,103 @@ function M.new(tilemo)
     local self = { tilemo = tilemo, recency = saved.get(hs.settings, M.RECENCY_KEY, M.OLD_RECENCY_KEY) or {} }
     local items = {}
     local before
-    local chooser
     local scope = launcher.SCOPE_ORDER[1]
 
+    -- Icons, read once each and kept: the rows are rebuilt on every
+    -- keystroke. A missing one is left out (false), never waited on.
+    local icons = {}
+    local function icon(spec)
+        local key = launcher.icon_key(spec)
+        if not key then
+            return nil
+        end
+        if icons[key] == nil then
+            local ok, img
+            if spec.logo then
+                ok, img = true, tilemo.adapter.logo(brand.LOGO)
+            elseif spec.bundle then
+                ok, img = pcall(hs.image.imageFromAppBundle, spec.bundle)
+            elseif spec.path then
+                ok, img = pcall(hs.image.iconForFile, spec.path)
+            else
+                ok, img = pcall(hs.image.imageFromName, spec.name)
+            end
+            if not ok then
+                tilemo.adapter.log("launcher: couldn't read the icon " .. key .. ": " .. tostring(img))
+            end
+            icons[key] = ok and img or false
+        end
+        return icons[key] or nil
+    end
+
+    -- tide's colors, for the system's appearance as the switcher opens.
+    local look = launcher.look(true)
+    local function font(size, bold)
+        return { name = bold and ".AppleSystemUIFontBold" or ".AppleSystemUIFont", size = size }
+    end
+    -- The title, with the query's matched characters bold and in the accent.
+    local function title(query, text)
+        local out
+        for _, run in ipairs(launcher.marks(query, text)) do
+            local styled = hs.styledtext.new(run.text, {
+                font = font(launcher.FONT.title, run.matched),
+                color = run.matched and look.accent or look.fg,
+            })
+            out = out and out .. styled or styled
+        end
+        return out
+    end
+    -- The line under it, then the key that does the same, dimmer.
+    local function subtitle(item)
+        local sub = hs.styledtext.new(launcher.subtitle(item), { font = font(launcher.FONT.sub), color = look.sub })
+        local hint = launcher.key_hint(item)
+        if hint then
+            sub = sub .. hs.styledtext.new("   " .. hint, { font = font(launcher.FONT.sub), color = look.hint })
+        end
+        return sub
+    end
+
     local function choices(query)
-        local found = launcher.rank(query or "", items, { recency = self.recency, scope = scope })
+        local rows = launcher.rows(scope, query, items, self.recency)
         local out = {}
-        for _, item in ipairs(found) do
-            out[#out + 1] = {
-                text = item.title,
-                subText = launcher.subtitle(item),
-                id = item.id,
-                -- tide's own commands show its logo.
-                image = item.logo and tilemo.adapter.logo(brand.LOGO) or nil,
-            }
+        for _, row in ipairs(rows) do
+            local item = row.item
+            if item then
+                out[#out + 1] = {
+                    text = title(query, item.title),
+                    subText = subtitle(item),
+                    -- Plain, for CI's smoke test.
+                    title = item.title,
+                    id = item.id,
+                    image = icon(launcher.icon(item)),
+                }
+            else
+                -- A section's header, which can't be chosen.
+                out[#out + 1] = {
+                    text = hs.styledtext.new(row.header:upper(), {
+                        font = font(launcher.FONT.header, true),
+                        color = look.header,
+                    }),
+                    valid = false,
+                }
+            end
         end
         -- An empty scope says so, in a row that can't be chosen.
         if #out == 0 and (query or ""):match("^%s*$") then
             out[1] = { text = launcher.SCOPE_EMPTY[scope], valid = false }
         end
-        return out
+        return out, launcher.first_row(rows)
+    end
+
+    local chooser
+    -- Show the rows for `query`, with the first real one selected, past
+    -- any header.
+    local function show_rows(query)
+        local out, first = choices(query)
+        chooser:choices(out)
+        if first > 1 then
+            chooser:selectedRow(first)
+        end
     end
 
     local by_id = {}
@@ -381,7 +458,7 @@ function M.new(tilemo)
     local function set_scope(s)
         scope = s
         chooser:placeholderText(launcher.placeholder(scope))
-        chooser:choices(choices(chooser:query()))
+        show_rows(chooser:query())
     end
     -- As Tab and Shift+Tab move, for CI's smoke test.
     self.set_scope = set_scope
@@ -405,8 +482,12 @@ function M.new(tilemo)
             M.run(tilemo, self.recency, item, fresh)
         end
     end)
+    -- hs.chooser honors a row's `valid = false` only with an invalid
+    -- callback; without one, Return on a header closes the switcher and
+    -- runs the completion callback. With this no-op it stays open.
+    chooser:invalidCallback(function() end)
     chooser:queryChangedCallback(function(query)
-        chooser:choices(choices(query))
+        show_rows(query)
     end)
 
     -- Cmd+M or a right-click on a row in the Windows or Attention tab
@@ -452,7 +533,7 @@ function M.new(tilemo)
         fill()
         refill = function()
             fill()
-            chooser:choices(choices(chooser:query()))
+            show_rows(chooser:query())
         end
         -- The windows show at once; each browser's tabs join them when it
         -- answers, while the switcher's still open.
@@ -469,7 +550,7 @@ function M.new(tilemo)
             -- §14.2).
             tilemo.wm:note_tabs(list)
             fill()
-            chooser:choices(choices(chooser:query()))
+            show_rows(chooser:query())
         end)
         tilemo.wm:hold("launcher", true)
         fresh = false
@@ -496,6 +577,15 @@ function M.new(tilemo)
                 toggle_mute(row and by_id[row.id])
             end),
         }
+        -- tide's look, for the system's appearance now (SPEC.md §9).
+        local dark = hs.host.interfaceStyle() == "Dark"
+        look = launcher.look(dark)
+        -- No chooser-wide fgColor or subTextColor: hs.chooser applies them
+        -- over each row's styled text, which would undo a match's accent,
+        -- a header's dimmer gray and the dimmer key hint.
+        chooser:bgDark(dark)
+        chooser:width(launcher.WIDTH)
+        chooser:rows(launcher.ROWS)
         chooser:query("")
         set_scope(tab)
         chooser:show()
@@ -527,6 +617,12 @@ function M.new(tilemo)
 
     function self.cancel()
         chooser:cancel()
+    end
+
+    -- Choosing row `n` as Return does: for CI's smoke test, which checks
+    -- that a header leaves the switcher open.
+    function self.choose(n)
+        chooser:select(n)
     end
 
     return self

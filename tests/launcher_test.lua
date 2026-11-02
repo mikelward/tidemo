@@ -628,4 +628,171 @@ t.test("the switcher's mute key is Cmd+M, physical Ctrl+M as tide's", function()
     t.eq(table.concat(hs_launcher.MUTE_KEY.mods, "+"), "cmd")
 end)
 
+local function joined(runs)
+    local out = {}
+    for _, r in ipairs(runs) do
+        out[#out + 1] = r.matched and "[" .. r.text .. "]" or r.text
+    end
+    return table.concat(out)
+end
+
+t.test("a query's matched characters are marked where the score found them", function()
+    t.eq(joined(launcher.marks("gc", "Google Calendar")), "[G]oogle [C]alendar")
+    t.eq(joined(launcher.marks("saf", "Safari")), "[Saf]ari")
+end)
+
+t.test("no marks for an empty query or a title that doesn't match", function()
+    t.eq(joined(launcher.marks("", "Safari")), "Safari")
+    t.eq(joined(launcher.marks("zx", "Safari")), "Safari")
+    -- Matched by a tab's host, not its title.
+    t.eq(joined(launcher.marks("chat.google", "Inbox")), "Inbox")
+end)
+
+t.test("marks never split a multibyte character", function()
+    local runs = launcher.marks("ce", "Café Ce")
+    t.eq(joined(runs), "[C]af\xc3\xa9 C[e]")
+    for _, r in ipairs(runs) do
+        t.eq(utf8.len(r.text) ~= nil, true, r.text)
+    end
+end)
+
+local function command(title)
+    for _, item in ipairs(launcher.items({}, {}, launcher.COMMANDS, {})) do
+        if item.title == title then
+            return item
+        end
+    end
+    error("no command " .. title)
+end
+
+t.test("a row's key hint is the key that does the same", function()
+    t.eq(launcher.key_hint(command("Lock")), "Super+L")
+    t.eq(launcher.key_hint(command("Log out")), "Super+Shift+E")
+    t.eq(launcher.key_hint(command("Keep awake")), "Super+S")
+    t.eq(launcher.key_hint(command("Float or tile the window")), "Super+Shift+F")
+    t.eq(launcher.key_hint(command("Screenshot: region")), "Shift+Print")
+    t.eq(launcher.key_hint(command("Screenshot: window")), "Alt+Print")
+end)
+
+t.test("rows with no key of their own have no hint", function()
+    t.eq(launcher.key_hint(command("Sleep")), nil)
+    t.eq(launcher.key_hint(command("Layout: tile")), nil)
+    t.eq(launcher.key_hint(command("Tide Settings")), nil)
+    t.eq(launcher.key_hint({ kind = "app", title = "Safari", path = "/Applications/Safari.app" }), nil)
+end)
+
+t.test("every row's icon says where it comes from", function()
+    local items = launcher.items(
+        { { name = "Safari", path = "/Applications/Safari.app" } },
+        { { title = "Docs", url = "https://example.com/", browser = "Google Chrome", window = 1, tab = 1 } },
+        launcher.COMMANDS,
+        { { name = "Mouse", id = "com.apple.Mouse-Settings.extension" } },
+        { { title = "Chat", app = "Chrome", bundle = "com.google.Chrome", window = 7 } },
+        { { name = "in", apps = "Chrome" } },
+        { { id = 3, title = "Notes", app_name = "Notes", bundle = "com.apple.Notes" } }
+    )
+    local by = {}
+    for _, item in ipairs(items) do
+        by[item.title] = item
+    end
+    t.eq(launcher.icon(by["Safari"]).path, "/Applications/Safari.app")
+    t.eq(launcher.icon(by["Docs"]).bundle, "com.google.Chrome")
+    t.eq(launcher.icon(by["Mouse settings"]).bundle, "com.apple.systempreferences")
+    t.eq(launcher.icon(by["Chat"]).bundle, "com.google.Chrome")
+    t.eq(launcher.icon(by["Notes"]).bundle, "com.apple.Notes")
+    t.eq(launcher.icon(by["in"]).name, "NSMultipleDocuments")
+    t.eq(launcher.icon(by["Tide Settings"]).logo, true)
+    t.eq(launcher.icon(by["Tide Settings: Mouse"]).logo, true)
+    t.eq(launcher.icon(by["Lock"]).name, "NSLockLockedTemplate")
+    t.eq(launcher.icon(by["Screenshot: screen"]).bundle, "com.apple.screenshot.launcher")
+    t.eq(launcher.icon(by["Keep awake"]).logo, true)
+    for _, item in ipairs(items) do
+        t.eq(launcher.icon_key(launcher.icon(item)) ~= nil, true, item.title)
+    end
+end)
+
+local function headers(rows)
+    local out = {}
+    for _, r in ipairs(rows) do
+        out[#out + 1] = r.header and "# " .. r.header or r.item.title
+    end
+    return table.concat(out, " | ")
+end
+
+t.test("Launch with nothing typed: Recent, then each kind under its own header", function()
+    local items = launcher.items(
+        { { name = "Safari", path = "/a/Safari.app" }, { name = "Notes", path = "/a/Notes.app" } },
+        {},
+        { { title = "Tide Settings", as = "app", action = "settings", logo = true }, { title = "Monocle", action = "monocle" } },
+        { { name = "Mouse", id = "m" } }
+    )
+    local recency = { ["app:/a/Notes.app"] = 5, ["command:Monocle"] = 9 }
+    local found = launcher.rank("", items, { scope = "launch", recency = recency })
+    local rows = launcher.sections("launch", "", found, recency)
+    t.eq(headers(rows), "# Recent | Monocle | Notes | # Apps | Safari | Tide Settings | # System Settings | Mouse settings")
+    t.eq(launcher.first_row(rows), 2)
+end)
+
+t.test("Recent comes from every Launch row, not just the first M.LIMITS.launch", function()
+    local apps = {}
+    for i = 1, 30 do
+        apps[i] = { name = string.format("App%02d", i), path = "/a/" .. i .. ".app" }
+    end
+    local items = launcher.items(apps, {}, { { title = "Monocle", action = "monocle" } })
+    local recency = { ["command:Monocle"] = 9 }
+    local rows = launcher.rows("launch", "", items, recency)
+    t.eq(rows[1].header, "Recent")
+    t.eq(rows[2].item.title, "Monocle")
+    -- The rest are still capped.
+    local n = 0
+    for _, r in ipairs(rows) do
+        if r.item then
+            n = n + 1
+        end
+    end
+    t.eq(n, 1 + launcher.LIMITS.launch)
+end)
+
+t.test("Launch never shows more than M.RECENT under Recent", function()
+    local apps, recency = {}, {}
+    for i = 1, 8 do
+        apps[i] = { name = "App" .. i, path = "/a/" .. i .. ".app" }
+        recency["app:/a/" .. i .. ".app"] = i
+    end
+    local items = launcher.items(apps)
+    local rows = launcher.sections("launch", "", launcher.rank("", items, { scope = "launch", recency = recency }), recency)
+    t.eq(headers(rows), "# Recent | App8 | App7 | App6 | App5 | App4 | # Apps | App3 | App2 | App1")
+end)
+
+t.test("Actions with nothing typed are grouped: Session, tide, Toggles, Screenshots", function()
+    local items = launcher.items({}, {}, launcher.COMMANDS, {})
+    local rows = launcher.sections("actions", "", launcher.rank("", items, { scope = "actions" }))
+    local seen = {}
+    for _, r in ipairs(rows) do
+        if r.header then
+            seen[#seen + 1] = r.header
+        end
+    end
+    t.eq(table.concat(seen, ", "), "Session, tide, Toggles, Screenshots")
+    t.eq(rows[1].header, "Session")
+    t.eq(rows[2].item.title, "Lock")
+    t.eq(launcher.first_row(rows), 2)
+end)
+
+t.test("a typed query, and the other tabs, get no headers", function()
+    local items = launcher.items({ { name = "Safari", path = "/a/Safari.app" } }, {}, launcher.COMMANDS, {})
+    local rows = launcher.sections("launch", "saf", launcher.rank("saf", items, { scope = "launch" }), {})
+    t.eq(rows[1].item.title, "Safari")
+    t.eq(launcher.first_row(rows), 1)
+    local acts = launcher.sections("actions", "lock", launcher.rank("lock", items, { scope = "actions" }))
+    t.eq(acts[1].item.title, "Lock")
+    t.eq(launcher.first_row(launcher.sections("windows", "", {})), 1)
+end)
+
+t.test("tide's look has a dark and a light palette", function()
+    t.eq(launcher.look(true).accent.hex, "#78aeed")
+    t.eq(launcher.look(false).accent.hex, "#1c71d8")
+    t.eq(launcher.look(true).fg.white > launcher.look(false).fg.white, true)
+end)
+
 t.done("launcher")

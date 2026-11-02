@@ -370,6 +370,14 @@ end
 
 -- The launcher's Attention scope lists a window marked for attention, by
 -- its title, with its app and workspace (SPEC.md §9).
+-- A row's text as a plain string: the rows are hs.styledtext (SPEC.md §9).
+local function plain(v)
+    if type(v) == "userdata" and v.getString then
+        return v:getString()
+    end
+    return v
+end
+
 local function check_launcher_attention()
     local wm = tilemo.wm
     local id
@@ -393,10 +401,10 @@ local function check_launcher_attention()
         local row = tilemo.launcher.row(1) or {}
         tilemo.launcher.cancel()
         local want = tilemo.adapter.title(id)
-        if row.text ~= want or not tostring(row.subText):find("TextEdit", 1, true) then
-            fail("launcher: Attention shows %s (%s), not %s", tostring(row.text), tostring(row.subText), want)
+        if plain(row.text) ~= want or not tostring(plain(row.subText)):find("TextEdit", 1, true) then
+            fail("launcher: Attention shows %s (%s), not %s", tostring(plain(row.text)), tostring(plain(row.subText)), want)
         else
-            say("launcher: Attention lists %s (%s)", row.text, row.subText)
+            say("launcher: Attention lists %s (%s)", plain(row.text), plain(row.subText))
         end
         -- The Windows tab lists every window, with its app and workspace
         -- (SPEC.md §9).
@@ -407,13 +415,27 @@ local function check_launcher_attention()
             if not r then
                 break
             end
-            listed = listed or (r.text == want and tostring(r.subText):find("TextEdit", 1, true) ~= nil)
+            listed = listed or (plain(r.text) == want and tostring(plain(r.subText)):find("TextEdit", 1, true) ~= nil)
         end
         tilemo.launcher.cancel()
         if not listed then
             fail("launcher: the Windows tab doesn't list %s", tostring(want))
         else
             say("launcher: Windows lists %s", want)
+        end
+        -- Return on a header leaves the switcher open (SPEC.md §9): Actions
+        -- with nothing typed starts with its Session header.
+        tilemo.launcher.show("actions")
+        local header = tilemo.launcher.row(1) or {}
+        tilemo.launcher.choose(1)
+        local stayed = tilemo.launcher.is_open()
+        tilemo.launcher.cancel()
+        if header.valid ~= false then
+            fail("launcher: Actions' first row is %s, not a header", tostring(plain(header.text)))
+        elseif not stayed then
+            fail("launcher: Return on a header closed the switcher")
+        else
+            say("launcher: Return on a header leaves the switcher open")
         end
         -- The bar's logo closes the switcher on any tab, and opens it on
         -- Launch (SPEC.md §8).

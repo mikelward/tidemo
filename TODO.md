@@ -223,6 +223,15 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **The switcher's look** (2026-11-02): headers only with nothing typed, on
+  Launch (Recent, the five used last, then Apps, System Settings,
+  Commands) and Actions (Session, tide, Toggles, Screenshots); fonts at
+  16/12/11 pt, 40% wide, 10 rows; the session's icons are macOS's
+  `NSLockLockedTemplate`, `NSUser` and `NSComputer`, and tide's toggles
+  show its logo, for want of a fitting system image; a workspace shows
+  `NSMultipleDocuments`. Unseen on a Mac: whether a template image tints
+  on the dark rows, and whether a styled title keeps hs.chooser's own
+  size. Reversible: `launcher.look`, `launcher.icon`, `launcher.FONT`.
 - **A display that goes away hands its windows to the first display
   left** (`hs.screen.allScreens()`'s first, the main one), each at the end
   of that display's stack in its old order, rather than to the nearest
