@@ -756,8 +756,10 @@ numbered ones:
   workspaces can't share a name; names are compared ignoring case
   *(a guess, to confirm)*, with Unicode's case folding for Latin, Greek
   and Cyrillic letters, so "Équipe" and "équipe" are one workspace.
-- **A name has no quotes (`"`, `'`, `` ` ``), backslashes or control
-  characters,** as on tide (tide §6.5).
+- **A name has no quotes (`"`, `'`, `` ` ``), backslashes, `@` or control
+  characters,** as on tide (tide §6.5). tide keeps `@` for a monitor's
+  part of a workspace, and the standing list is shared, so a name tide
+  refuses is refused here too.
   - A name reaches JSON, the bar's web view, logs, and `workspace.name`,
     which a script or a shell prompt prints (§6.3). Without those
     characters, no quoting can go wrong, and no escape sequence reaches a
@@ -2316,7 +2318,7 @@ Each one names a workaround, or says there is none.
     names, `{ "in", "re", "oc", "me" }` by default (§6.1), and `home_apps`,
     a list of app names, tilemo's eight by default (§6.2).
   - They're checked as tide checks them. An empty `standing`, a name in it
-    twice (ignoring case), one with quotes, backslashes or control
+    twice (ignoring case), one with quotes, backslashes, `@` or control
     characters, space around it or over 32 characters, or an `inApps`
     entry that isn't text, is an error at load. It's a notification and a
     line in `tilemo doctor`, naming the file and the setting, and the last

@@ -154,7 +154,7 @@ function M.check_standing(list)
             error(string.format("workspaces[%d] must be a name", i), 3)
         end
         if names.unsafe(n) then
-            error(string.format("workspaces[%d]: %q can't have quotes, backslashes or control characters", i, n), 3)
+            error(string.format("workspaces[%d]: %q can't have quotes, backslashes, @ or control characters", i, n), 3)
         end
         local f = M.fold(n)
         if seen[f] then
