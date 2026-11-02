@@ -598,6 +598,118 @@ local function check_launcher_page(after)
     end)
 end
 
+-- Super+Space and Esc as a person presses them, for each launcher: how
+-- long from the key until the launcher is open, and from Esc until it's
+-- closed, polled every 10 ms, so a busy Hammerspoon shows in the times.
+-- hs.eventtap.keyStroke waits between key down and up, holding Hammerspoon
+-- that long, so it's 1 ms here.
+local KEY_WAIT = 3
+
+local function check_launcher_keys(after)
+    local key = require("tilemo.launcherpage").SETTINGS_KEY
+    local results = {}
+    -- Poll until `cond()`, then done(ms, met): met only within KEY_WAIT,
+    -- since a Hammerspoon held past it polls first once it's done.
+    local function until_(cond, done)
+        local t0 = hs.timer.secondsSinceEpoch()
+        smoke_key_poll = hs.timer.doEvery(0.01, function()
+            local met = cond()
+            local elapsed = hs.timer.secondsSinceEpoch() - t0
+            if met or elapsed > KEY_WAIT then
+                smoke_key_poll:stop()
+                done(math.floor(elapsed * 1000), met and elapsed <= KEY_WAIT)
+            end
+        end)
+    end
+    local before = tilemo.adapter.focused()
+    -- How many times the window manager synced and retiled meanwhile: a
+    -- launcher showing or hiding moves no window.
+    local counts = { sync = 0, retile = 0 }
+    for _, name in ipairs({ "sync", "retile" }) do
+        local real = tilemo.wm[name]
+        tilemo.wm[name] = function(...)
+            counts[name] = counts[name] + 1
+            return real(...)
+        end
+    end
+    local function counted()
+        local out = string.format("%d syncs, %d retiles", counts.sync, counts.retile)
+        counts.sync, counts.retile = 0, 0
+        return out
+    end
+    local function try(choice, next)
+        local ok, why = tilemo.set_launcher(choice)
+        if not ok then
+            fail("launcher keys: couldn't switch to %s: %s", choice, tostring(why))
+            next()
+            return
+        end
+        local launcher = tilemo.launcher
+        -- Loaded, and the focus back where it was, as a person's key finds
+        -- it.
+        until_(function()
+            return (not launcher.ready or launcher.ready()) and tilemo.adapter.focused() == before
+        end, function(_, settled)
+            if not settled then
+                fail("launcher keys: %s didn't settle before its key", choice)
+            end
+            counted()
+            local t0 = hs.timer.secondsSinceEpoch()
+            local lag
+            hs.eventtap.keyStroke(tilemo.super, "space", 1000)
+            -- How long Hammerspoon is busy after the key: a timer for now
+            -- fires once it's free.
+            smoke_key_lag = hs.timer.doAfter(0, function()
+                lag = math.floor((hs.timer.secondsSinceEpoch() - t0) * 1000)
+            end)
+            until_(function()
+                return launcher.is_open()
+            end, function(open_ms, opened)
+                if not opened then
+                    fail("launcher keys: Super+Space didn't open %s in %ds", choice, KEY_WAIT)
+                    next()
+                    return
+                end
+                local open_lag = lag
+                lag = nil
+                local open_work = counted()
+                local t1 = hs.timer.secondsSinceEpoch()
+                hs.eventtap.keyStroke({}, "escape", 1000)
+                smoke_key_lag = hs.timer.doAfter(0, function()
+                    lag = math.floor((hs.timer.secondsSinceEpoch() - t1) * 1000)
+                end)
+                until_(function()
+                    return not launcher.is_open()
+                end, function(close_ms, closed)
+                    if not closed then
+                        fail("launcher keys: Esc didn't close %s in %ds", choice, KEY_WAIT)
+                        launcher.cancel()
+                    end
+                    -- What the window manager did after the close, once the
+                    -- focus is back: a sync waits 50 ms for more changes.
+                    until_(function()
+                        return tilemo.adapter.focused() == before
+                    end, function()
+                        smoke_key_lag = hs.timer.doAfter(0.3, function()
+                            results[#results + 1] = string.format(
+                                "%s opens in %d ms (busy %s ms, %s) and Esc closes it in %d ms (busy %s ms, %s)",
+                                choice, open_ms, tostring(open_lag), open_work, close_ms, tostring(lag), counted())
+                            next()
+                        end)
+                    end)
+                end)
+            end)
+        end)
+    end
+    try("dashboard", function()
+        try("chooser", function()
+            hs.settings.clear(key)
+            say("launcher keys: %s", table.concat(results, "; "))
+            after()
+        end)
+    end)
+end
+
 local function check_tiling()
     if not hs.accessibilityState() then
         fail("tiling: Hammerspoon doesn't have Accessibility on this runner")
@@ -635,7 +747,9 @@ local function check_tiling()
             if done then
                 say("%d TextEdit windows tiled", WANT)
                 check_launcher_attention()
-                check_launcher_page(finish)
+                check_launcher_page(function()
+                    check_launcher_keys(finish)
+                end)
                 return
             elseif not misses then
                 fail("tiling: %s after %ds", why, TILE_WAIT)
