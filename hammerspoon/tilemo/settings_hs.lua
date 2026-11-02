@@ -13,6 +13,7 @@ local mute = require("tilemo.mute")
 local picker = require("tilemo.picker")
 local floating = require("tilemo.floating")
 local links = require("tilemo.links")
+local launcherpage = require("tilemo.launcherpage")
 local linearmouse = require("tilemo.linearmouse")
 local checklist = require("tilemo.checklist")
 
@@ -121,6 +122,23 @@ function M.float_edit(floats, body)
     end)
 end
 
+-- The Switcher row's choice, `value`: tilemo switches at once. Returns
+-- true, or nil and why, which the log keeps with what was asked.
+function M.switch_launcher(tilemo, value)
+    local ok, why
+    if tilemo.set_launcher then
+        ok, why = tilemo.set_launcher(value)
+    else
+        why = "this tide can't switch launchers"
+    end
+    if ok then
+        return true
+    end
+    why = tostring(why)
+    tilemo.adapter.log("settings: couldn't switch the launcher to " .. tostring(value) .. ": " .. why)
+    return nil, why
+end
+
 -- `tilemo` is the started tilemo module: its wm, adapter, shortcuts,
 -- clock_dir, clock_files, layout_files, workspace_files, workspace_base,
 -- startup_files, clipboard_files, input_files and picker.
@@ -166,6 +184,14 @@ function M.new(tilemo)
             mouse = { problem = M.mouse_problem(tilemo) },
             -- conf's Karabiner rules, each on or off, and what's wrong, if
             -- anything (karabiner.lua).
+            -- The launcher the switcher's keys open, and the choices.
+            launcher = tilemo.launcher_choice and {
+                value = tilemo.launcher_choice,
+                choices = {
+                    { value = "chooser", label = launcherpage.LABELS.chooser },
+                    { value = "dashboard", label = launcherpage.LABELS.dashboard },
+                },
+            } or nil,
             keyboard = {
                 rules = "__karabiner_rules__",
                 problem = tilemo.karabiner_rules and tilemo.karabiner_rules.state.problem or "",
@@ -310,6 +336,14 @@ function M.new(tilemo)
                         view:evaluateJavaScript("tilemo.floatingError(" .. hs.json.encode({ tostring(why) }):sub(2, -2) .. ")")
                     end
                 end
+            elseif type(body.launcher) == "string" then
+                -- The Switcher row: tilemo switches at once, and the page
+                -- shows the one in use.
+                local ok, why = M.switch_launcher(tilemo, body.launcher)
+                if not ok then
+                    tilemo.adapter.notify("Couldn't switch the launcher: " .. why)
+                end
+                push()
             elseif type(body.karabinerRule) == "table" and type(body.karabinerRule.description) == "string" then
                 -- A Keyboard switch: tilemo edits karabiner.json, and the
                 -- page shows the rules as they are after.

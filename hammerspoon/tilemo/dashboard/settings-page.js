@@ -621,6 +621,26 @@ document.getElementById("floating-add-button").addEventListener("click", addFloa
 // tilemo switches in karabiner.json (SPEC.md §15), and what's wrong, only
 // when something is. A click sends { karabinerRule: { description, on } },
 // and tilemo answers with tilemo.update(), or tilemo.keyboardError(why).
+// What the switcher's keys and the bar's logo open: tide's switcher or
+// tileco's launcher page (SPEC.md §9.2). ‹ and › step through the choices,
+// sending { launcher: value }, and tilemo switches at once.
+function renderLauncher(launcher) {
+  const box = document.getElementById("launcher-choice");
+  box.replaceChildren();
+  const choices = Array.isArray(launcher?.choices) ? launcher.choices : [];
+  const i = choices.findIndex((c) => c.value === launcher.value);
+  if (i < 0) return;
+  const step = (d) => send({ launcher: choices[(i + d + choices.length) % choices.length].value });
+  const shown = el("span", choices[i].label);
+  shown.className = "value";
+  box.append(
+    el("span", "Switcher"),
+    button("‹", "Previous: Switcher", choices.length < 2, () => step(-1)),
+    shown,
+    button("›", "Next: Switcher", choices.length < 2, () => step(1)),
+  );
+}
+
 function renderKeyboard(keyboard) {
   const list = document.getElementById("karabiner-rules");
   list.replaceChildren();
@@ -753,6 +773,7 @@ window.tilemo = {
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
+    if (state.launcher && typeof state.launcher === "object") renderLauncher(state.launcher);
     if (state.shortcuts && typeof state.shortcuts === "object") renderShortcuts(state.shortcuts);
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";

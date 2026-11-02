@@ -44,6 +44,29 @@ function M.module_for(value)
     return M.MODULE[M.front(value)]
 end
 
+-- The launcher chosen under Keyboard in tide's settings, kept on this Mac
+-- in hs.settings: it wins over start()'s `launcher`, which is the default
+-- until it's chosen there (SPEC.md §9.2, §15).
+M.SETTINGS_KEY = "tilemo.launcher"
+
+-- The launcher to run: `chosen`, the settings window's, if it's one there
+-- is; else start()'s `value`, which is an error if it's wrong. A stored
+-- value that isn't one is left out, and `log` says so.
+function M.choose(chosen, value, log)
+    if chosen ~= nil then
+        if M.MODULE[chosen] then
+            return chosen
+        end
+        if log then
+            log("the launcher chosen in settings, " .. tostring(chosen) .. ", isn't one; using start()'s")
+        end
+    end
+    return M.front(value)
+end
+
+-- The two choices, as the settings window's Keyboard section names them.
+M.LABELS = { chooser = "tide's switcher", dashboard = "tileco's launcher" }
+
 -- The page's scope for the switcher's tab `tab`, which a key opens it on.
 -- tileco's page has no Attention scope, so the windows wanting attention
 -- are among the windows, on Tabs.

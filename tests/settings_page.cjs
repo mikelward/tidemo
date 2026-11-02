@@ -648,4 +648,24 @@ sandbox.tilemo.reveal("nothing-by-this-id");
   assert.deepStrictEqual(sent, [{ setupRefresh: true }]);
 }
 
+// The Switcher row: the launcher in use, with ‹ and › to the other, which
+// asks tilemo to switch.
+{
+  const choices = [
+    { value: "chooser", label: "tide's switcher" },
+    { value: "dashboard", label: "tileco's launcher" },
+  ];
+  sandbox.tilemo.update({ clockFiles: [], launcher: { value: "chooser", choices } });
+  const row = ids["launcher-choice"].children;
+  assert.deepStrictEqual(row.map((c) => c.textContent), ["Switcher", "‹", "tide's switcher", "›"]);
+  sent.length = 0;
+  row[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ launcher: "dashboard" }]);
+  sent.length = 0;
+  row[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ launcher: "dashboard" }], "two choices: either way is the other");
+  sandbox.tilemo.update({ clockFiles: [], launcher: { value: "dashboard", choices } });
+  assert.strictEqual(ids["launcher-choice"].children[2].textContent, "tileco's launcher");
+}
+
 console.log("settings page: ok");

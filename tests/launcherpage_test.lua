@@ -198,4 +198,28 @@ t.test("the page lists, searches and chooses tide's rows", function()
     end
 end)
 
+t.test("the launcher chosen in settings wins over start()'s, which is the default until then", function()
+    t.eq(launcherpage.choose(nil, nil), "chooser")
+    t.eq(launcherpage.choose(nil, "dashboard"), "dashboard")
+    t.eq(launcherpage.choose("dashboard", "chooser"), "dashboard")
+    t.eq(launcherpage.choose("chooser", "dashboard"), "chooser")
+end)
+
+t.test("a stored launcher that isn't one is left out, and said", function()
+    local said = {}
+    t.eq(launcherpage.choose("raycast", "dashboard", function(text)
+        said[#said + 1] = text
+    end), "dashboard")
+    t.eq(#said, 1)
+    t.eq(said[1]:find("raycast", 1, true) ~= nil, true, said[1])
+    -- start()'s own value is still checked.
+    t.eq(pcall(launcherpage.choose, "raycast", "spotlight"), false)
+end)
+
+t.test("each launcher has its name for the settings window", function()
+    for value in pairs(launcherpage.MODULE) do
+        t.eq(type(launcherpage.LABELS[value]), "string", value)
+    end
+end)
+
 t.done("launcherpage")

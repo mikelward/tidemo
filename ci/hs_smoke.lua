@@ -450,6 +450,32 @@ local function check_launcher_attention()
         else
             say("launcher: the logo closes the switcher and opens it on Launch")
         end
+        -- The settings window's Switcher row (SPEC.md §9.2): tileco's
+        -- launcher takes the keys at once, kept on this Mac, and the
+        -- switcher comes back the same way.
+        local switcher = tilemo.launcher
+        local to, why = tilemo.set_launcher("dashboard")
+        local page = tilemo.launcher
+        if not to then
+            fail("launcher: couldn't switch to tileco's: %s", tostring(why))
+        elseif page == switcher or page.row() ~= nil or tilemo.launcher_choice ~= "dashboard"
+            or hs.settings.get(require("tilemo.launcherpage").SETTINGS_KEY) ~= "dashboard" then
+            fail("launcher: switching to tileco's left %s, kept as %s", tostring(tilemo.launcher_choice),
+                tostring(hs.settings.get(require("tilemo.launcherpage").SETTINGS_KEY)))
+        else
+            page.show("launch")
+            local shown = page.is_open()
+            page.cancel()
+            local back = tilemo.set_launcher("chooser")
+            if not shown then
+                fail("launcher: tileco's launcher didn't open once switched to")
+            elseif not back or tilemo.launcher == page or tilemo.launcher_choice ~= "chooser" then
+                fail("launcher: switching back to the switcher left %s", tostring(tilemo.launcher_choice))
+            else
+                say("launcher: the settings window switches to tileco's launcher and back")
+            end
+        end
+        hs.settings.clear(require("tilemo.launcherpage").SETTINGS_KEY)
     end, debug.traceback)
     if not ok then
         fail("launcher: %s", err)

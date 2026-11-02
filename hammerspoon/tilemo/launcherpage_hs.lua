@@ -257,6 +257,11 @@ function M.new(tilemo)
         close(true)
     end
 
+    -- Done with, as the settings window switches launchers.
+    function self.delete()
+        close(false)
+    end
+
     return self
 end
 

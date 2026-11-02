@@ -259,8 +259,12 @@ function M.start(config)
     self.adapter = adapter_mod.new()
     config = config or {}
     -- The switcher, or the dashboard launcher, switched off by default
-    -- (SPEC.md §9.2): a bad value is an error now, not on the first key.
-    local launcher_module = launcherpage.module_for(config.launcher)
+    -- (SPEC.md §9.2): the one chosen under Keyboard in tide's settings, or
+    -- else start()'s, where a bad value is an error now, not on the first
+    -- key.
+    self.launcher_choice = launcherpage.choose(hs.settings.get(launcherpage.SETTINGS_KEY), config.launcher,
+        self.adapter.log)
+    local launcher_module = launcherpage.MODULE[self.launcher_choice]
     config.saved = adapter_mod.load()
     -- The tiling area starts below the bar.
     config.top = config.bar ~= false and bar.HEIGHT or 0
@@ -614,6 +618,30 @@ function M.start(config)
     self.launcher = require(launcher_module).new(self)
     self.wm.open_launcher = function(tab)
         self.launcher.show(tab)
+    end
+    -- The settings window's choice of launcher, kept on this Mac and taken
+    -- at once: the one in use goes, closed if it's open, and the other
+    -- takes the keys and the bar's logo. Returns true, or nil and why.
+    function self.set_launcher(value)
+        if not launcherpage.MODULE[value] then
+            return nil, "there's no launcher " .. tostring(value)
+        end
+        if value ~= self.launcher_choice then
+            local ok, made = pcall(function()
+                return require(launcherpage.MODULE[value]).new(self)
+            end)
+            if not ok then
+                return nil, tostring(made)
+            end
+            local old = self.launcher
+            self.launcher = made
+            self.launcher_choice = value
+            if old and old.delete then
+                old.delete()
+            end
+        end
+        hs.settings.set(launcherpage.SETTINGS_KEY, value)
+        return true
     end
     self.dashboard = dashboard_hs.new(self)
     self.wm.open_dashboard = function()

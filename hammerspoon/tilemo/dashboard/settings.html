@@ -53,6 +53,15 @@ body.settings {
 .settings #muted-list li {
   grid-template-columns: 1fr auto;
 }
+/* A choice: its name, then ‹, the value, and ›, as a Layouts row. */
+.settings .choice {
+  display: grid;
+  grid-template-columns: 1fr auto 10em auto;
+  padding: 2px 0 8px;
+}
+.settings .choice .value {
+  text-align: center;
+}
 /* A Karabiner rule, then its On or Off. */
 .settings #karabiner-rules li {
   grid-template-columns: 1fr auto;
@@ -202,6 +211,7 @@ body.settings {
 <h1 id="trackpad">Trackpad</h1>
 <p class="row links" id="trackpad-links"></p>
 <h1 id="keyboard">Keyboard</h1>
+<div class="row choice" id="launcher-choice"></div>
 <ul id="karabiner-rules"></ul>
 <p class="error" id="keyboard-error" role="alert"></p>
 <p class="row links" id="keyboard-links"></p>
