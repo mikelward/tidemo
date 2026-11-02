@@ -9,6 +9,8 @@ local ddc = require("tilemo.ddc")
 local tray_hs = require("tilemo.tray_hs")
 local dashboard = require("tilemo.dashboard")
 local brand = require("tilemo.brand")
+local volume = require("tilemo.volume")
+local volume_hs = require("tilemo.volume_hs")
 
 local M = {}
 
@@ -224,6 +226,9 @@ function M.new(tilemo)
     function self.refresh()
         read_icons()
         self.update()
+        if self.volume_popover then
+            self.volume_popover.refresh()
+        end
     end
 
     -- A watcher can fire many times in a burst (a volume slider, a device
@@ -314,6 +319,51 @@ function M.new(tilemo)
         self.refresh()
     end
 
+    -- The volume popover (volume.lua): the output in use, read as the bar
+    -- reads it, the outputs to pick from, and what its controls change.
+    local function popover_state()
+        local dev = hs.audiodevice.defaultOutputDevice()
+        local m = ddc_state(dev)
+        local audio = dev and ddc.merge({ volume = dev:outputVolume(), muted = dev:outputMuted(), name = dev:name() }, m)
+        local outputs = {}
+        for _, o in ipairs(hs.audiodevice.allOutputDevices() or {}) do
+            outputs[#outputs + 1] = { uid = o:uid(), name = o:name() }
+        end
+        return volume.state(audio, outputs, dev and dev:uid(), m ~= nil)
+    end
+    local popover_ops = {
+        state = popover_state,
+        set_volume = function(v)
+            local dev = hs.audiodevice.defaultOutputDevice()
+            if ddc_state(dev) then
+                self.ddc:set_volume(v)
+            elseif dev and dev:outputVolume() ~= nil and not dev:setOutputVolume(v) then
+                log("bar: setOutputVolume failed on " .. tostring(dev:name()))
+            end
+            self.refresh()
+        end,
+        set_mute = function(on)
+            local dev = hs.audiodevice.defaultOutputDevice()
+            local m = ddc_state(dev)
+            if m and m.muted ~= nil then
+                self.ddc:set_mute(on)
+            elseif dev and not dev:setOutputMuted(on) then
+                log("bar: setOutputMuted failed on " .. tostring(dev:name()))
+            end
+            self.refresh()
+        end,
+        use = function(uid)
+            local dev = hs.audiodevice.findDeviceByUID(uid)
+            if not dev or not dev:setDefaultOutputDevice() then
+                log("bar: couldn't switch the output to " .. tostring(dev and dev:name() or uid))
+            end
+            self.refresh()
+        end,
+        settings = function()
+            open_url(bar.PANES.volume)
+        end,
+    }
+
     -- A bar item's tip, or the full title's, below a bar (SPEC.md §8),
     -- drawn as the tray's tips are: the page can't draw past its own strip.
     local TIP_MAX = 600
@@ -387,6 +437,26 @@ function M.new(tilemo)
         self.session_menu:popupMenu({ x = x, y = v.frame.y + v.frame.h })
     end
 
+    -- The volume popover under the speaker of display `uuid`'s bar, at its
+    -- right edge `at.right`, or closed if it's open.
+    local function show_sound(uuid, at)
+        local v = uuid and self.views[uuid]
+        if not v or v.hidden then
+            return
+        end
+        hide_tip()
+        if not self.volume_popover then
+            local ok, p = pcall(volume_hs.new, tilemo, popover_ops)
+            if not ok then
+                log("bar: couldn't make the volume popover: " .. tostring(p))
+                tilemo.adapter.notify("Couldn't open the volume popover: " .. tostring(p))
+                return
+            end
+            self.volume_popover = p
+        end
+        self.volume_popover.toggle(v.frame, at.right)
+    end
+
     local function on_message(msg, from)
         local body = msg.body or {}
         if body.error then
@@ -412,6 +482,7 @@ function M.new(tilemo)
                 good_clocks = tilemo.keep_good_clocks,
                 tip = show_tip,
                 session = show_session,
+                sound = show_sound,
             })
         end)
     end

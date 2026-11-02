@@ -5,6 +5,7 @@
 // { uuid, step: 1 or -1 }, { uuid, focus: window id } from an attention icon,
 // { open: "battery" | "wifi" | "network" | "volume" | "bluetooth" | "sysmon" },
 // { toggle: "mic" | "volume" | "awake" | "presenter" | "source" },
+// { sound: { right } } from the speaker, its right edge,
 // { volume: 1 or -1 }, { session: { x } } from the session icon at x,
 // { dashboard: true }, { switcher: true } from the logo, { maximize: true }, { tip: { text, x } } while
 // an item with a tip is hovered and { tip: { text: "" } } once none is, { clockErrors } naming a clocks file that's wrong, or
@@ -265,12 +266,17 @@ function renderIcons(box, icons) {
   if (icons.volume) {
     // Four levels with mute, then the level as a %. An output with no
     // volume control (fixed) draws the full speaker with no %, and can't
-    // be scrolled; a click opens Sound settings unless it can mute.
+    // be scrolled.
     const v = icons.volume;
     const waves = v.level === "fixed" ? 3 : (VOLUME[v.level] ?? 0);
     const art = svg(PATHS.speaker + (waves === 0 ? PATHS.speakerOff : PATHS.waves.slice(0, waves).join("")));
-    const msg = v.fixed && !v.can_mute ? { open: "volume" } : { toggle: "volume" };
-    const b = icon("volume", v.tip || (v.muted ? "Sound muted" : "Sound"), msg, art, v.level);
+    const b = icon("volume", v.tip || (v.muted ? "Sound muted" : "Sound"), null, art, v.level);
+    // A click opens the volume popover under it, as tide's; tilemo places
+    // it, so it sends where the speaker's right edge is.
+    b.addEventListener("click", () => {
+      const r = b.getBoundingClientRect();
+      send({ sound: { right: Math.round(r.right) } });
+    });
     if (v.text) b.append(el("span", "text", v.text));
     if (!v.fixed) {
       let wheeled = 0;

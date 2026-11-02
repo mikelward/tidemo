@@ -250,7 +250,7 @@ assert.strictEqual(
     { uuid: "B", step: 1 },
     { uuid: "B", step: -1 },
     { uuid: "B", toggle: "mic" },
-    { uuid: "B", toggle: "volume" },
+    { uuid: "B", sound: { right: 0 } },
     { uuid: "B", toggle: "awake" },
     { uuid: "B", toggle: "source" },
     { uuid: "B", open: "battery" },
@@ -313,7 +313,7 @@ sent.length = 0;
 
 // The speaker's level as a %, and an output with no volume control (a
 // monitor's speakers): the full speaker with no %, no scrolling, and a
-// click opens Sound settings when it can't mute either.
+// click opens the popover under it all the same.
 sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: { volume: { level: "mid", muted: false, text: "40%", tip: "Sound 40%" } } });
 {
   const v = ids.icons.children[0];
@@ -334,8 +334,9 @@ for (const can_mute of [true, false]) {
   assert.strictEqual(v.innerHTML.split("<path ").length - 1, 4, "the speaker and all three waves");
   assert.strictEqual(v.attrs["data-tip"], "Sound: LG has no volume control");
   assert.strictEqual(v.listeners.wheel, undefined, "nothing to scroll");
+  v.rect = { left: 1700, right: 1730, top: 0, bottom: 30, width: 30, height: 30 };
   v.listeners.click();
-  assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify(can_mute ? { uuid: "B", toggle: "volume" } : { uuid: "B", open: "volume" }));
+  assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify({ uuid: "B", sound: { right: 1730 } }), "the popover, which says it has no volume control");
 }
 sent.length = 0;
 

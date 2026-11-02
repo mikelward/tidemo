@@ -36,8 +36,9 @@ It brings tide's desktop to macOS:
   workspaces, the window's title, the clocks
   and tilemo's own status items (input source, keep awake, camera,
   microphone, Bluetooth on or off with `blueutil`, Bluetooth headphones,
-  speaker, with a monitor's own speakers over DDC with `m1ddc` or
-  `ddcctl`, network with a lock while a VPN is up, battery, CPU %, and a
+  speaker, opening a volume popover with a slider, mute and the outputs,
+  and a monitor's own speakers over DDC with `m1ddc` or `ddcctl`, the
+  volume keys included, network with a lock while a VPN is up, battery, CPU %, and a
   session menu to lock, log out, sleep, restart or shut down), with
   Super+Shift+M to mute the microphone
   (§7.2, §8, §14.2);

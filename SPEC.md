@@ -1557,18 +1557,30 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - speaker: the default output device, in four levels with mute, then
     its level as a %, dimmed while muted and held as wide as two digits, as
     tide's (tide §7.4). Its tip is "Sound 40%" or "Sound muted". A click
-    mutes or unmutes; scrolling on it changes the volume 5% a step, and up
-    unmutes, as the volume keys do.
+    opens the volume popover; scrolling on it changes the volume 5% a step,
+    and up unmutes, as the volume keys do.
+    - **The volume popover,** as tide's (tide §7.4), in a borderless
+      `hs.webview` under the speaker (`volume.lua`, `volume_hs.lua`,
+      `dashboard/volume.html`): the output's name, a mute button and a
+      slider with its %, then every output device by name, the one in use
+      checked, and "Sound Settings…". Clicking an output makes it the
+      default. macOS's own volume follows the slider as it moves; a DDC
+      monitor's is set once it's let go, since each change is a run of its
+      tool. An output with no volume control says so in place of the
+      slider, and its mute is off unless it can mute. A second click on
+      the speaker, Esc, or a click anywhere else closes it; focus follows
+      mouse waits while it's open. No per-app volumes or inputs, which
+      tide's has: macOS has no API for an app's volume *(unverified on a
+      Mac)*.
     - **An output with no volume control still shows:** a monitor's own
       speakers over HDMI or DisplayPort, and many USB interfaces, have none
       macOS can read, so `outputVolume()` is nil. The speaker shows full,
       with no % and no scrolling, and its tip names the device and says it
-      has no volume control. A click mutes it if it can mute, else opens
-      Sound settings.
+      has no volume control.
     - **A monitor's speakers answer over DDC/CI** (`ddc.lua`): MCCS's
       audio speaker volume (VCP `0x62`) and mute (`0x8D`). With a reading,
-      the speaker shows as any other output's, level and %, and a click and
-      a scroll set the monitor's own volume and mute. The change shows at
+      the speaker shows as any other output's, level and %, and the
+      popover and a scroll set the monitor's own volume and mute. The change shows at
       once, then goes to the monitor.
       - The tool is Homebrew's `m1ddc` on Apple silicon or `ddcctl` on
         Intel, found at `/opt/homebrew/bin` or `/usr/local/bin`; scripts'

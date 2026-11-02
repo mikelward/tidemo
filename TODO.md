@@ -223,6 +223,9 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **The volume popover** (2026-11-02): a click on the speaker opens it
+  rather than muting, as tide's does; mute is in the popover. No inputs
+  or per-app volumes, unlike tide's.
 - **The volume keys over DDC** (2026-11-02): 5% steps, the bar's scroll
   step, not macOS's sixteenths, and the level as an `hs.alert` sign rather
   than a drawn bar like macOS's.
@@ -879,6 +882,15 @@ script, as "Brave Browser" (`com.brave.Browser`), and a chosen tab is
 brought forward the way Chrome's is. Only `tests/launcher_test.lua` covers
 it. **Check on a Mac** that Brave answers, that macOS asks for Automation
 for Brave once, and that a Brave window's tabs land under its window.
+
+## The volume popover
+
+**Built** (SPEC.md §8): a click on the speaker opens a slider, mute,
+the outputs and Sound Settings under it. Only `tests/volume_test.lua` and
+`tests/volume_page.cjs` cover it. **Check on a Mac** that it opens under
+the speaker, takes focus and closes on a click elsewhere, that dragging the
+slider follows on the built-in speakers and sets a DDC monitor on release,
+and that picking an output switches it.
 
 ## A monitor's speakers over DDC
 
