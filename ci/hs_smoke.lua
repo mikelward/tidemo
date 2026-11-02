@@ -501,19 +501,30 @@ local function check_launcher_page(after)
             done()
             return
         end
-        page.evaluate("tilemo.scope()", function(scope, err)
-            local ms = math.floor((hs.timer.secondsSinceEpoch() - asked) * 1000)
+        -- The page's own clock says where the time went: from the key to
+        -- the page hearing tilemo.open, drawing it, and answering this.
+        page.evaluate([[JSON.stringify({ scope: tilemo.scope(), at: Date.now(), opened: tilemo.opened })]],
+            function(answer, err)
+            local back = hs.timer.secondsSinceEpoch()
+            local ms = math.floor((back - asked) * 1000)
             local stayed = page.is_open()
             tilemo.adapter.after(0, function()
                 page.cancel()
                 -- A string is evaluate()'s own; a table is { code = 0 } on
                 -- success (dashboard.js_failed).
-                if type(err) == "string" or dashboard.js_failed(err) then
+                local got = type(answer) == "string" and hs.json.decode(answer) or nil
+                if type(err) == "string" or dashboard.js_failed(err) or not got then
                     fail("launcher: tileco's launcher on %s: %s", tab, hs.inspect(err))
                     done()
                     return
                 end
-                heard(ms, lua_ms, scope, stayed)
+                local o = got.opened or {}
+                local t0 = asked * 1000
+                say("launcher: on %s, the page heard the open at %s ms, %s, ran it by %s ms and answered at %s ms; "
+                    .. "Lua had the answer at %d ms", tab, tostring(o.heard and math.floor(o.heard - t0)),
+                    tostring(o.visibility), tostring(o.ran and math.floor(o.ran - t0)),
+                    tostring(got.at and math.floor(got.at - t0)), ms)
+                heard(ms, lua_ms, got.scope, stayed)
             end)
         end)
     end
@@ -687,14 +698,34 @@ local function check_launcher_keys(after)
                     end
                     -- What the window manager did after the close, once the
                     -- focus is back: a sync waits 50 ms for more changes.
+                    local function report(painted, heard_esc)
+                        results[#results + 1] = string.format(
+                            "%s opens in %d ms (busy %s ms, %s%s) and Esc closes it in %d ms (busy %s ms, %s%s)",
+                            choice, open_ms, tostring(open_lag), open_work,
+                            painted and (", painted at " .. painted .. " ms") or "", close_ms, tostring(lag),
+                            counted(), heard_esc and (", the page heard it at " .. heard_esc .. " ms") or "")
+                        next()
+                    end
                     until_(function()
                         return tilemo.adapter.focused() == before
                     end, function()
                         smoke_key_lag = hs.timer.doAfter(0.3, function()
-                            results[#results + 1] = string.format(
-                                "%s opens in %d ms (busy %s ms, %s) and Esc closes it in %d ms (busy %s ms, %s)",
-                                choice, open_ms, tostring(open_lag), open_work, close_ms, tostring(lag), counted())
-                            next()
+                            if not launcher.evaluate then
+                                report(nil, nil)
+                                return
+                            end
+                            -- When the page had painted the open, from
+                            -- Super+Space, and heard Esc, from Esc, by its
+                            -- clock.
+                            launcher.evaluate("JSON.stringify({ esc: tilemo.esc, opened: tilemo.opened })",
+                                function(answer)
+                                tilemo.adapter.after(0, function()
+                                    local got = type(answer) == "string" and hs.json.decode(answer) or {}
+                                    local painted = got.opened and got.opened.painted
+                                    report(painted and tostring(math.floor(painted - t0 * 1000)) or "not",
+                                        got.esc and tostring(math.floor(got.esc - t1 * 1000)) or "never")
+                                end)
+                            end)
                         end)
                     end)
                 end)

@@ -68,7 +68,10 @@ const chips = ["launch", "tabs", "workspaces", "actions"].map((s) => {
   b.dataset.scope = s;
   return b;
 });
+// Every listener for each event, in the order they were added, as a real
+// document keeps them: the page's Esc handler and the clock's both hear Esc.
 const docListeners = {};
+const fire = (type, e) => (docListeners[type] ?? []).forEach((fn) => fn(e));
 const winListeners = {};
 const sent = [];
 const sandbox = {
@@ -79,7 +82,7 @@ const sandbox = {
       assert.strictEqual(sel, ".scopes button");
       return chips;
     },
-    addEventListener: (type, fn) => (docListeners[type] = fn),
+    addEventListener: (type, fn) => (docListeners[type] ??= []).push(fn),
     body: new Element("body"),
     activeElement: null,
   },
@@ -103,6 +106,8 @@ const sandbox = {
   URLSearchParams,
 };
 sandbox.window = sandbox;
+// A frame, as WebKit paints one: after the work queued before it.
+sandbox.requestAnimationFrame = (fn) => setTimeout(fn, 0);
 sandbox.globalThis = sandbox;
 sandbox.addEventListener = (type, fn) => (winListeners[type] = fn);
 sandbox.webkit = { messageHandlers: { tilemo: { postMessage: (m) => sent.push(JSON.parse(JSON.stringify(m))) } } };
@@ -200,8 +205,13 @@ const choices = () => sent.filter((m) => !m.goodClocks && !m.clockErrors);
   assert.ok(rows().includes("Later"));
   assert.strictEqual(ids["keep-awake"].attrs["aria-pressed"], "true");
 
-  // Esc with nothing typed closes it; the footer's Settings opens the window.
-  docListeners.keydown({ key: "Escape", preventDefault() {} });
+  // Esc with nothing typed closes it, and the page notes when it heard it;
+  // the footer's Settings opens the window.
+  const before = choices().length;
+  fire("keydown", { key: "Escape", preventDefault() {} });
+  await settle();
+  assert.deepStrictEqual(choices().slice(before), [{ close: true }], "Esc itself closes it");
+  assert.strictEqual(typeof sandbox.tilemo.esc, "number");
   ids["open-settings"].click();
   await settle();
   assert.deepStrictEqual(choices().slice(-2), [{ close: true }, { settings: true }]);
