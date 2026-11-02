@@ -54,7 +54,7 @@ function M.new(tilemo)
 
     local function log_js(what)
         return function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("dashboard launcher: " .. what .. ": " .. hs.inspect(err))
             end
         end

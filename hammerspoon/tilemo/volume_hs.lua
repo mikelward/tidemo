@@ -4,6 +4,7 @@
 -- Hammerspoon.
 
 local brand = require("tilemo.brand")
+local dashboard = require("tilemo.dashboard")
 local volume = require("tilemo.volume")
 
 local M = {}
@@ -58,7 +59,7 @@ function M.new(tilemo, ops)
         end
         local json = hs.json.encode(ops.state())
         view:evaluateJavaScript("tilemo.update(" .. json .. ")", function(_, err)
-            if err and next(err) and (err.code or 0) ~= 0 then
+            if dashboard.js_failed(err) then
                 log("volume: " .. hs.inspect(err))
             end
         end)

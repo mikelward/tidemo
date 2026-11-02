@@ -135,6 +135,13 @@ end
 
 -- The page: the template with tileco's stylesheet and the bundled script in
 -- place of its two markers.
+-- Whether hs.webview:evaluateJavaScript's error says a page's script
+-- failed. It passes a table even on success, made from no error at all:
+-- { code = 0 }.
+function M.js_failed(err)
+    return type(err) == "table" and ((err.code or 0) ~= 0 or err.localizedDescription ~= nil)
+end
+
 function M.page(template, css, sources, modules)
     local script = M.bundle(sources, modules)
     local html = template:gsub("/%*TILEMO_CSS%*/", function()

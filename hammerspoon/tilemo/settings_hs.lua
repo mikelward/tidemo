@@ -249,7 +249,7 @@ function M.new(tilemo)
             return M.list(tilemo.wm:floating_now(), M.encode_fill)
         end)
         view:evaluateJavaScript("tilemo.update(" .. json .. ")", function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("settings: " .. hs.inspect(err))
             end
         end)
@@ -263,7 +263,7 @@ function M.new(tilemo)
             return
         end
         view:evaluateJavaScript("tilemo.reveal(" .. hs.json.encode({ id }):sub(2, -2) .. ")", function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("settings: " .. hs.inspect(err))
             end
         end)
@@ -289,7 +289,7 @@ function M.new(tilemo)
             return
         end
         view:evaluateJavaScript("tilemo.setup(" .. M.encode_setup(tilemo) .. ")", function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("settings: " .. hs.inspect(err))
             end
         end)
@@ -400,7 +400,7 @@ function M.new(tilemo)
             return
         end
         view:evaluateJavaScript("tilemo.count(" .. math.tointeger(#tilemo.picker.history.items) .. ")", function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("settings: " .. hs.inspect(err))
             end
         end)
@@ -412,7 +412,7 @@ function M.new(tilemo)
             return
         end
         view:evaluateJavaScript("tilemo.floatingFill(" .. M.encode_fill(fill) .. ")", function(_, err)
-            if err and next(err) then
+            if dashboard.js_failed(err) then
                 tilemo.adapter.log("settings: " .. hs.inspect(err))
             end
         end)
