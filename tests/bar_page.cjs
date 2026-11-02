@@ -181,7 +181,7 @@ const icons = ids.icons.children;
 const byName = Object.fromEntries(icons.map((b) => [b.className.replace("icon ", ""), b]));
 assert.deepStrictEqual(
   icons.map((b) => b.className),
-  ["icon source", "icon awake", "icon camera", "icon mic", "icon volume", "icon wifi", "icon battery"],
+  ["icon source", "icon awake", "icon camera", "icon mic", "icon volume", "icon wifi", "icon battery", "icon session"],
 );
 assert.strictEqual(byName.source.textContent, "DVO");
 assert.strictEqual(byName.source.attrs["data-tip"], "Dvorak");
@@ -285,14 +285,29 @@ for (const tone of ["normal", "warn", "danger"]) {
     icons: { battery: { percent: 50, text: "50%" }, sysmon: { text: "23%", tone, tip: "CPU 23%" } },
   });
   const shown = ids.icons.children.map((c) => c.className);
-  assert.deepStrictEqual(shown.slice(-2), ["icon battery", "icon sysmon"], "after the battery");
-  const s = ids.icons.children.at(-1);
+  assert.deepStrictEqual(shown.slice(-3), ["icon battery", "icon sysmon", "icon session"], "after the battery");
+  const s = ids.icons.children.at(-2);
   assert.strictEqual(s.attrs["data-state"], tone);
   assert.strictEqual(s.attrs["data-tip"], "CPU 23%");
   assert.strictEqual(s.children[0].textContent, "23%");
   assert.ok(s.innerHTML.startsWith("<svg "), "drawn");
   s.listeners.click();
   assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify({ uuid: "B", open: "sysmon" }));
+}
+sent.length = 0;
+
+// The session icon, always last, sends where it is, so tilemo can hang
+// macOS's menu under it.
+sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: {} });
+{
+  const s = ids.icons.children.at(-1);
+  assert.strictEqual(s.className, "icon session");
+  assert.strictEqual(s.attrs["data-tip"], "Lock, log out or power off");
+  assert.ok(s.innerHTML.startsWith("<svg "), "drawn");
+  s.rect = { left: 1880, right: 1906, top: 5, bottom: 31, width: 26, height: 26 };
+  s.listeners.click();
+  assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify({ uuid: "B", session: { x: 1880 } }));
+  assert.strictEqual(sent.filter((m) => m.session).length, 1, "one message per click");
 }
 sent.length = 0;
 
@@ -334,7 +349,7 @@ sandbox.tilemo.update({
 });
 {
   const shown = ids.icons.children;
-  assert.strictEqual(shown.map((b) => b.className).join("|"), "icon headphones|icon headphones|icon volume|icon wired", "no Bluetooth reading: no Bluetooth icon, headphones still");
+  assert.strictEqual(shown.map((b) => b.className).join("|"), "icon headphones|icon headphones|icon volume|icon wired|icon session", "no Bluetooth reading: no Bluetooth icon, headphones still");
   assert.strictEqual(shown.slice(0, 2).map((b) => b.attrs["data-tip"]).join("|"), "Buds|Car");
   assert.strictEqual(shown[0].attrs["aria-label"], "Buds");
   assert.ok(shown[0].innerHTML.startsWith("<svg "), "drawn");
@@ -353,7 +368,7 @@ for (const on of [true, false]) {
     icons: { bluetooth: { on }, headphones: { devices: [{ name: "Buds" }] }, network: { kind: "wired" } },
   });
   const shown = ids.icons.children;
-  assert.strictEqual(shown.map((b) => b.className).join("|"), "icon bluetooth|icon headphones|icon wired");
+  assert.strictEqual(shown.map((b) => b.className).join("|"), "icon bluetooth|icon headphones|icon wired|icon session");
   assert.strictEqual(shown[0].attrs["data-state"], on ? "on" : "off");
   assert.strictEqual(shown[0].attrs["data-tip"], on ? "Bluetooth on" : "Bluetooth off");
   assert.ok(shown[0].innerHTML.startsWith("<svg "), "drawn");

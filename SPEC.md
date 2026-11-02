@@ -1638,6 +1638,21 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
       busiest processes; Activity Monitor already lists them on a Mac.
     - Read on the 5 s icon poll, where tide reads every 3 s. Each reading
       is a few kernel counters, with no process started.
+  - session: a power symbol, last, as tide's (tide §7.4), whose tip is
+    "Lock, log out or power off". A click shows macOS's own menu under it
+    (`hs.menubar`'s `popupMenu`, from a menu item that's never in the menu
+    bar): Lock, Log Out, then Sleep, Restart and Shut Down, in the Apple
+    menu's words and groups. tide's Suspend is macOS's Sleep.
+    - Lock and Sleep are `hs.caffeinate`'s `lockScreen` and
+      `systemSleep`. Log out, restart and shut down ask System Events
+      through `hs.osascript`, as `hs.caffeinate`'s do, but check its answer:
+      a refusal, such as Automation access to System Events being denied,
+      is logged and shown as a notification, where `hs.caffeinate` drops
+      it. They go through macOS, so an app with unsaved work can stop them
+      and say why, as tide's "blocked by" does *(unverified that none of
+      them asks first)*.
+    - The page sends where the icon is, and the menu opens below the bar
+      there; macOS keeps it on screen at the right edge.
   - The battery, network, Bluetooth and headphones items open their System Settings panes, named
     by URL (`x-apple.systempreferences:…`) *(unverified on macOS 26)*.
 - **Not drawn:** Focus (Do Not Disturb). Hammerspoon has no module for it

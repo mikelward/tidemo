@@ -342,6 +342,39 @@ function M.new(tilemo)
         canvas:show()
     end
 
+    -- The session menu (bar.lua), macOS's own, under the icon on display
+    -- `uuid`'s bar. Log out, restart and shut down ask System Events, which
+    -- lets an app with unsaved work stop them, as on any Mac; the adapter
+    -- logs and says so when System Events refuses.
+    local SESSION_RUN = {
+        lock = tilemo.adapter.lock,
+        logout = tilemo.adapter.logout,
+        sleep = tilemo.adapter.sleep,
+        restart = tilemo.adapter.restart,
+        shutdown = tilemo.adapter.shutdown,
+    }
+    local function show_session(uuid, at)
+        local v = uuid and self.views[uuid]
+        if not v or v.hidden then
+            return
+        end
+        hide_tip()
+        self.session_menu = self.session_menu or hs.menubar.new(false)
+        if not self.session_menu then
+            log("bar: couldn't make the session menu")
+            return
+        end
+        self.session_menu:setMenu(bar.session_menu(function(id)
+            local ok, err = pcall(SESSION_RUN[id])
+            if not ok then
+                log("bar: session " .. id .. " failed: " .. tostring(err))
+                tilemo.adapter.notify("Couldn't " .. id .. ": " .. tostring(err))
+            end
+        end))
+        local x = v.frame.x + (tonumber(at.x) or v.frame.w)
+        self.session_menu:popupMenu({ x = x, y = v.frame.y + v.frame.h })
+    end
+
     local function on_message(msg, from)
         local body = msg.body or {}
         if body.error then
@@ -366,6 +399,7 @@ function M.new(tilemo)
                 clock_errors = tilemo.report_clock_errors,
                 good_clocks = tilemo.keep_good_clocks,
                 tip = show_tip,
+                session = show_session,
             })
         end)
     end

@@ -5,7 +5,7 @@
 // { uuid, step: 1 or -1 }, { uuid, focus: window id } from an attention icon,
 // { open: "battery" | "wifi" | "network" | "volume" | "bluetooth" | "sysmon" },
 // { toggle: "mic" | "volume" | "awake" | "presenter" | "source" },
-// { volume: 1 or -1 },
+// { volume: 1 or -1 }, { session: { x } } from the session icon at x,
 // { dashboard: true }, { switcher: true } from the logo, { maximize: true }, { tip: { text, x } } while
 // an item with a tip is hovered and { tip: { text: "" } } once none is, { clockErrors } naming a clocks file that's wrong, or
 // { goodClocks }, the clocks to keep while one is.
@@ -155,6 +155,8 @@ const PATHS = {
   dot: `<path d="M8 12.8v.01"/>`,
   wired: `<path d="M5.5 2v3M10.5 2v3"/><path d="M3.5 5h9v2.5a4.5 4.5 0 0 1-9 0z"/><path d="M8 12v2.5"/>`,
   bolt: `<path d="M5.5 2.5l-3 6h3l-1 5 4-7h-3z"/>`,
+  // A power symbol, as tide's system-shutdown-symbolic.
+  power: `<path d="M8 2v5.5"/><path d="M4.6 4.3a5 5 0 1 0 6.8 0"/>`,
   // A processor, as tide's cpu-symbolic: a chip with pins on each side.
   cpu: `<rect x="4" y="4" width="8" height="8" rx="1.5"/><rect x="6.5" y="6.5" width="3" height="3" rx="0.5"/>` +
     `<path d="M6 1.5v2M10 1.5v2M6 12.5v2M10 12.5v2M1.5 6h2M1.5 10h2M12.5 6h2M12.5 10h2"/>`,
@@ -174,7 +176,7 @@ function icon(name, label, msg, art, state) {
   b.setAttribute("data-tip", label);
   b.setAttribute("data-state", state);
   b.innerHTML = art;
-  b.addEventListener("click", () => send(msg));
+  if (msg) b.addEventListener("click", () => send(msg));
   return b;
 }
 
@@ -293,6 +295,14 @@ function renderIcons(box, icons) {
     b.append(el("span", "text", s.text));
     box.append(b);
   }
+  // The session menu, last, as tide's: tilemo shows macOS's own menu under
+  // the icon, so it sends where the icon is.
+  const session = icon("session", "Lock, log out or power off", null, svg(PATHS.power), "normal");
+  session.addEventListener("click", () => {
+    const r = session.getBoundingClientRect();
+    send({ session: { x: Math.round(r.left) } });
+  });
+  box.append(session);
 }
 
 // Sets each item's reach (hitInsets) as --reach-* for its ::before, which

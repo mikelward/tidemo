@@ -683,11 +683,33 @@ function M.new()
         hs.caffeinate.lockScreen()
     end
 
-    function a.logout()
-        local ok, _, err = hs.osascript.applescript('tell application "System Events" to log out')
+    -- Asks System Events to log out, restart or shut down, as
+    -- hs.caffeinate's do, but saying so when it can't: AppleScript returns a
+    -- failure, such as Automation access to System Events being denied,
+    -- rather than raising it, and hs.caffeinate drops it.
+    local function system_events(verb)
+        local ok, _, err = hs.osascript.applescript('tell application "System Events" to ' .. verb)
         if not ok then
-            a.notify("Couldn't log out: " .. hs.inspect(err))
+            a.log("couldn't " .. verb .. ": " .. hs.inspect(err))
+            a.notify("Couldn't " .. verb .. ": " .. hs.inspect(err))
         end
+        return ok
+    end
+
+    function a.logout()
+        return system_events("log out")
+    end
+
+    function a.restart()
+        return system_events("restart")
+    end
+
+    function a.shutdown()
+        return system_events("shut down")
+    end
+
+    function a.sleep()
+        hs.caffeinate.systemSleep()
     end
 
     -- Write `text` to `path` whole: to a file beside it, then renamed over
