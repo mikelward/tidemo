@@ -619,6 +619,17 @@ function M.new(tilemo)
         chooser:cancel()
     end
 
+    -- Done with, as the settings window switches launchers: its chooser
+    -- goes, closed first if it's open. A browser's tabs that answer
+    -- later are dropped before they touch the deleted chooser.
+    function self.delete()
+        self.opened = nil
+        if chooser:isVisible() then
+            chooser:cancel()
+        end
+        chooser:delete()
+    end
+
     -- Choosing row `n` as Return does: for CI's smoke test, which checks
     -- that a header leaves the switcher open.
     function self.choose(n)

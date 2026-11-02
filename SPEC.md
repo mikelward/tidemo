@@ -1877,8 +1877,11 @@ two tabs. C is for clipboard and characters.
 ### 9.2 The dashboard launcher (switched off)
 
 **tileco's dashboard page as the launcher,** in a borderless `hs.webview`
-over the display you're on, in place of the switcher. It runs only with
-`start({ launcher = "dashboard" })`; the default stays `"chooser"` (§9).
+over the display you're on, in place of the switcher. The Switcher row under
+Keyboard in tide's settings chooses it, at once, and this Mac keeps the
+choice in `hs.settings`; until it's chosen there, `start({ launcher =
+"dashboard" })` does. The default stays `"chooser"` (§9). A stored choice
+that isn't one is left out, and the log says so.
 
 - **Opened by the same keys,** each on its own scope, and by the bar's
   logo, which also closes it. tileco's scopes are Launch, Tabs, Workspaces
@@ -2488,7 +2491,7 @@ Each one names a workaround, or says there is none.
     | Network and Bluetooth | Network settings, Bluetooth settings |
     | Mouse | Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
-    | Keyboard | conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
+    | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
     | Appearance | Appearance settings |

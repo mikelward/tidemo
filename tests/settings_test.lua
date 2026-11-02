@@ -131,4 +131,31 @@ t.test("the settings page builds, and changes the clocks as tide's page does", f
     end
 end)
 
+t.test("a launcher switch that fails says why, and the log keeps it", function()
+    local settings_hs = require("tilemo.settings_hs")
+    local logged = {}
+    local tilemo = {
+        adapter = {
+            log = function(line)
+                logged[#logged + 1] = line
+            end,
+        },
+        set_launcher = function()
+            return nil, "can't read the dashboard launcher's launcherpage.html"
+        end,
+    }
+    local ok, why = settings_hs.switch_launcher(tilemo, "dashboard")
+    t.eq(ok, nil)
+    t.eq(why, "can't read the dashboard launcher's launcherpage.html")
+    t.eq(logged, { "settings: couldn't switch the launcher to dashboard: can't read the dashboard launcher's launcherpage.html" })
+    tilemo.set_launcher = nil
+    ok, why = settings_hs.switch_launcher(tilemo, "dashboard")
+    t.eq(why, "this tide can't switch launchers")
+    tilemo.set_launcher = function()
+        return true
+    end
+    t.eq(settings_hs.switch_launcher(tilemo, "chooser"), true)
+    t.eq(#logged, 2)
+end)
+
 t.done("settings")
