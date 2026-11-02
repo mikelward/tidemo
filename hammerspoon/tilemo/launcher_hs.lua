@@ -71,7 +71,10 @@ local running_tasks = {}
 local function fetch_tabs(tilemo, done)
     for _, b in ipairs(launcher.BROWSERS) do
         local browser, script = b.name, launcher.tab_script(b)
-        if hs.application.get(b.bundle) then
+        -- By bundle ID alone: hs.application.get falls back to walking
+        -- every running app by name when it finds none, tens of
+        -- milliseconds for each browser that isn't running.
+        if #(hs.application.applicationsForBundleID(b.bundle) or {}) > 0 then
             local task, timer
             task = hs.task.new("/usr/bin/osascript", function(code, out, err)
                 running_tasks[task] = nil

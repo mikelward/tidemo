@@ -104,4 +104,56 @@ t.test("a browser's tabs that answer while the switcher's open join it", functio
     launcher.cancel()
 end)
 
+-- hs.application.get as Hammerspoon's application.lua has it: by bundle
+-- ID first, and failing that, a walk of every running app by name, which
+-- takes tens of milliseconds a time.
+local function apps_stub(running)
+    local s = { walks = 0, tasks = {} }
+    _G.hs = {
+        application = {
+            applicationsForBundleID = function(bundle)
+                return running[bundle] and { running[bundle] } or {}
+            end,
+            get = function(hint)
+                if running[hint] then
+                    return running[hint]
+                end
+                s.walks = s.walks + 1
+            end,
+        },
+        task = {
+            new = function(path, done, args)
+                local task = { path = path, args = args }
+                function task:start()
+                    s.tasks[#s.tasks + 1] = task
+                    return task
+                end
+                return task
+            end,
+        },
+        timer = {
+            doAfter = function()
+                return { stop = function() end }
+            end,
+        },
+    }
+    package.loaded["tilemo.launcher_hs"] = nil
+    return s, require("tilemo.launcher_hs")
+end
+
+t.test("asking for tabs doesn't walk every running app for a browser that isn't running", function()
+    local s, launcher_hs = apps_stub({})
+    launcher_hs.fetch_tabs({ adapter = { log = function() end } }, function() end)
+    t.eq(s.walks, 0)
+    t.eq(#s.tasks, 0, "no browser is asked")
+end)
+
+t.test("only a running browser is asked for its tabs", function()
+    local s, launcher_hs = apps_stub({ ["com.apple.Safari"] = { name = "Safari" } })
+    launcher_hs.fetch_tabs({ adapter = { log = function() end } }, function() end)
+    t.eq(#s.tasks, 1)
+    t.eq(s.tasks[1].path, "/usr/bin/osascript")
+    t.eq(s.tasks[1].args[2]:find("Safari", 1, true) ~= nil, true, s.tasks[1].args[2])
+end)
+
 t.done("launcher_hs")

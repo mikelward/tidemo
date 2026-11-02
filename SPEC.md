@@ -1840,7 +1840,10 @@ tab, the search field naming the tab you're in.
     the windows at once, and adds the tabs when they arrive. The call gets
     a 2 s timeout, and a browser that misses it is skipped this time.
   - **A browser that isn't running** isn't asked, since an Apple Event to it
-    would launch it.
+    would launch it. tilemo asks macOS for it by bundle ID alone
+    (`hs.application.applicationsForBundleID`): `hs.application.get` walks
+    every running app by name when the ID finds none, which held each open
+    for 165 ms on CI's Mac, with no browser running.
   - **Cost:** nothing in money, no network, and no work at all while the
     switcher is closed.
 - **Matching:** tileco's fuzzy match and ranking (`src/launcher.js`), with
