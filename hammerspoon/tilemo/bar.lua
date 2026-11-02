@@ -563,6 +563,38 @@ function M.volume_step(volume, muted, d)
     return v, muted and d > 0
 end
 
+-- The session menu (SPEC.md §8), as tide's (tide §7.4): lock, log out,
+-- sleep (tide's suspend), restart and shut down, in the Apple menu's
+-- groups. Each id is a function in `run` (bar_hs.lua's, hs.caffeinate's).
+M.SESSION = {
+    { id = "lock", label = "Lock" },
+    { id = "logout", label = "Log Out" },
+    "-",
+    { id = "sleep", label = "Sleep" },
+    { id = "restart", label = "Restart" },
+    { id = "shutdown", label = "Shut Down" },
+}
+M.SESSION_TIP = "Lock, log out or power off"
+
+-- The session menu as hs.menubar's menu table: each entry runs its action
+-- from `run`, by id.
+function M.session_menu(run)
+    local menu = {}
+    for _, e in ipairs(M.SESSION) do
+        if e == "-" then
+            menu[#menu + 1] = { title = "-" }
+        else
+            menu[#menu + 1] = {
+                title = e.label,
+                fn = function()
+                    run(e.id)
+                end,
+            }
+        end
+    end
+    return menu
+end
+
 -- The System Settings pane each icon opens *(unverified on macOS 26)*: the
 -- settings window's, so the two agree.
 M.PANES = {
@@ -594,7 +626,8 @@ end
 -- B's bar brings a hidden workspace to B with its window, its clocks open the
 -- dashboard on B, and a double-click on its title maximizes the focused
 -- window only if that window is on B, where the title shows. `act` holds what needs Hammerspoon: open(url),
--- dashboard(uuid), switcher(uuid) for the logo, toggle(what), volume(step)
+-- dashboard(uuid), switcher(uuid) for the logo, toggle(what), volume(step),
+-- session(uuid, { x }) for the session menu under the icon at x
 -- and tip(uuid, tip).
 function M.handle(wm, body, act)
     local uuid = body.uuid
@@ -625,6 +658,8 @@ function M.handle(wm, body, act)
         act.toggle(body.toggle)
     elseif body.volume then
         act.volume(tonumber(body.volume))
+    elseif type(body.session) == "table" and act.session then
+        act.session(uuid, body.session)
     elseif type(body.tip) == "table" and act.tip then
         act.tip(uuid, body.tip)
     elseif body.clockErrors and act.clock_errors then

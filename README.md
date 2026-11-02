@@ -37,7 +37,9 @@ It brings tide's desktop to macOS:
   and tilemo's own status items (input source, keep awake, camera,
   microphone, Bluetooth on or off with `blueutil`, Bluetooth headphones,
   speaker, with a monitor's own speakers over DDC with `m1ddc` or
-  `ddcctl`, network, battery), with Super+Shift+M to mute the microphone
+  `ddcctl`, network with a lock while a VPN is up, battery, CPU %, and a
+  session menu to lock, log out, sleep, restart or shut down), with
+  Super+Shift+M to mute the microphone
   (§7.2, §8, §14.2);
 - Super+S to keep the display awake, and Super+P for presenter mode, Do
   Not Disturb and keep awake together (§10). Do Not Disturb needs two

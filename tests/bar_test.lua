@@ -518,6 +518,32 @@ t.test("the system monitor shows CPU %, colored as tide's when hot, throttling o
     t.eq(bar.icons({}).sysmon, nil)
 end)
 
+t.test("the session menu locks, logs out, sleeps, restarts and shuts down, in the Apple menu's groups", function()
+    local ran = {}
+    local menu = bar.session_menu(function(id)
+        ran[#ran + 1] = id
+    end)
+    local titles = {}
+    for _, item in ipairs(menu) do
+        titles[#titles + 1] = item.title
+        if item.fn then
+            item.fn()
+        end
+    end
+    t.eq(titles, { "Lock", "Log Out", "-", "Sleep", "Restart", "Shut Down" })
+    t.eq(ran, { "lock", "logout", "sleep", "restart", "shutdown" })
+end)
+
+t.test("the session icon opens the menu under itself, on its own bar", function()
+    local got
+    bar.handle(nil, { uuid = "B", session = { x = 1880 } }, {
+        session = function(uuid, at)
+            got = { uuid, at.x }
+        end,
+    })
+    t.eq(got, { "B", 1880 })
+end)
+
 t.test("the system monitor's click opens Activity Monitor", function()
     local opened = {}
     bar.handle(nil, { uuid = "B", open = "sysmon" }, { open = function(u) opened[#opened + 1] = u end })
