@@ -175,18 +175,32 @@ function icon(name, label, msg, art, state) {
   return b;
 }
 
-// Wi-Fi with its bars, a wire, or neither.
+// A VPN's lock, as tide's (tide §7.4): bottom right, on a disc of the
+// bar's color so it reads over the icon.
+const LOCK =
+  `<circle cx="12.5" cy="12.5" r="3.9" fill="var(--bar)" stroke="none"/>` +
+  `<rect x="10.4" y="12" width="4.2" height="3" rx="0.6" fill="currentColor" stroke="none"/>` +
+  `<path d="M11.3 12v-0.9a1.2 1.2 0 0 1 2.4 0V12" stroke-width="1.1"/>`;
+
+// Wi-Fi with its bars, a wire, or neither, with the lock while a VPN is up.
 function network(icons) {
   const kind = icons.network?.kind ?? (icons.wifi?.on ? "wifi" : "none");
+  const vpn = !!icons.network?.vpn;
   const w = icons.wifi;
+  // The lock goes last, over the icon; the tip says so after the rest.
+  const drawn = (art, label, msg, state) => {
+    const b = icon(kind === "wired" ? "wired" : "wifi", vpn ? `${label}, VPN on` : label, msg, svg(art + (vpn ? LOCK : "")), state);
+    if (vpn) b.setAttribute("data-vpn", "on");
+    return b;
+  };
   if (kind === "wifi" && w) {
-    return icon("wifi", w.name || "Wi-Fi", { open: "wifi" }, svg(arcs(w.bars)), `bars-${w.bars}`);
+    return drawn(arcs(w.bars), w.name || "Wi-Fi", { open: "wifi" }, `bars-${w.bars}`);
   }
   if (kind === "wired") {
-    return icon("wired", "Wired network", { open: "network" }, svg(PATHS.wired), "wired");
+    return drawn(PATHS.wired, "Wired network", { open: "network" }, "wired");
   }
   const off = w && !w.on;
-  return icon("wifi", off ? "Wi-Fi off" : "No network", { open: w ? "wifi" : "network" }, svg(arcs(0) + SLASH), off ? "off" : "none");
+  return drawn(arcs(0) + SLASH, off ? "Wi-Fi off" : "No network", { open: w ? "wifi" : "network" }, off ? "off" : "none");
 }
 
 // The battery: an outline with a bar as full as it is, and a bolt beside it

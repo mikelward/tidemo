@@ -89,6 +89,25 @@ function M.new(tilemo)
         end
     end
 
+    -- The interfaces macOS's network services have an address on, from the
+    -- System Configuration store, for the VPN lock (bar.lua): a VPN's
+    -- service is up on its tunnel even when it carries only some traffic.
+    local function service_interfaces()
+        local out = {}
+        local store = self.net_store
+        if not store then
+            store = hs.network.configuration.open()
+            self.net_store = store
+        end
+        for _, v in pairs(store:contents("State:/Network/Service/.+/IPv[46]", true) or {}) do
+            if type(v) == "table" and type(v.InterfaceName) == "string" then
+                out[#out + 1] = v.InterfaceName
+            end
+        end
+        table.sort(out)
+        return out
+    end
+
     local function read_icons()
         local raw = {}
         raw.bluetooth = self.bluetooth and self.bluetooth.state
@@ -167,7 +186,7 @@ function M.new(tilemo)
         raw.network = try("the network", function()
             -- false with no route, as Hammerspoon reports it.
             local v4, v6 = hs.network.primaryInterfaces()
-            return { primary = v4 or v6 or nil }
+            return { primary = v4 or v6 or nil, services = service_interfaces() }
         end)
         self.sources = raw.source and raw.source.list or {}
         self.current_source = raw.source and raw.source.current

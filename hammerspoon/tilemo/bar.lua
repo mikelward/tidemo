@@ -288,7 +288,8 @@ end
 --   awake = whether the display is kept from sleeping,
 --   presenting = whether presenter mode is on,
 --   wifi = { power, rssi, ssid, interface } or nil with no Wi-Fi interface,
---   network = { primary = the interface carrying traffic, or nil }.
+--   network = { primary = the interface carrying traffic, or nil,
+--     services = the interfaces macOS's network services are up on }.
 -- The Wi-Fi network's name needs Location Services on recent macOS, so it
 -- may be missing while the rest is there; then the icon shows without it.
 -- Each item's drawing state from the raw readings, by name.
@@ -398,22 +399,59 @@ function ITEMS.wifi(raw)
     end
 end
 
--- Which network carries traffic: Wi-Fi, a wire, or none. Without the
+-- The interfaces a VPN runs over on macOS: utun for IKEv2, WireGuard and
+-- most apps' Network Extension tunnels, ipsec for Cisco IPSec, ppp for
+-- L2TP, and tun or tap for OpenVPN's older drivers *(unverified for every
+-- client)*.
+M.VPN_INTERFACES = { "utun", "ipsec", "ppp", "tun", "tap" }
+
+-- Whether interface `name` is a VPN's.
+function M.is_vpn(name)
+    if type(name) ~= "string" then
+        return false
+    end
+    for _, prefix in ipairs(M.VPN_INTERFACES) do
+        if name:match("^" .. prefix .. "%d+$") then
+            return true
+        end
+    end
+    return false
+end
+
+-- Which network carries traffic: Wi-Fi, a wire, or none, and whether a VPN
+-- is up, as tide's lock on the network icon (tide §7.4). Without the
 -- primary interface, Wi-Fi being on stands in for it.
+-- A VPN is up when traffic goes through one, or when any network service
+-- has an address on one (`raw.network.services`, the interfaces macOS's
+-- services are up on), which also catches a VPN that carries only some
+-- traffic. Under a VPN that carries it all, the link below is Wi-Fi while
+-- that's joined to a network, else a wire.
 function ITEMS.network(raw)
     local w = raw.wifi
+    local net = raw.network
     local primary
-    if raw.network then
-        primary = raw.network.primary
+    if net then
+        primary = net.primary
     elseif w and w.power then
         primary = w.interface or "wifi"
     end
-    if primary and w and (primary == w.interface or primary == "wifi") then
-        return { kind = "wifi" }
-    elseif primary then
-        return { kind = "wired" }
+    local vpn = M.is_vpn(primary)
+    for _, name in ipairs(net and net.services or {}) do
+        vpn = vpn or M.is_vpn(name)
     end
-    return { kind = "none" }
+    local kind = "none"
+    if M.is_vpn(primary) then
+        local joined = w and w.power and ((w.rssi or 0) < 0 or (w.ssid or "") ~= "")
+        kind = joined and "wifi" or "wired"
+    elseif primary and w and (primary == w.interface or primary == "wifi") then
+        kind = "wifi"
+    elseif primary then
+        kind = "wired"
+    end
+    if vpn then
+        return { kind = kind, vpn = true }
+    end
+    return { kind = kind }
 end
 
 -- Every item at once. One that can't make sense of its reading is left

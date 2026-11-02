@@ -261,6 +261,20 @@ assert.strictEqual(
 );
 sent.length = 0;
 
+// A VPN's lock sits on the network icon, as tide's, and the tip says so.
+for (const [network, wifi, cls, tip] of [
+  [{ kind: "wifi", vpn: true }, { on: true, bars: 3, name: "home" }, "icon wifi", "home, VPN on"],
+  [{ kind: "wired", vpn: true }, undefined, "icon wired", "Wired network, VPN on"],
+  [{ kind: "wired" }, undefined, "icon wired", "Wired network"],
+]) {
+  sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: { network, wifi } });
+  const n = ids.icons.children[0];
+  assert.strictEqual(n.className, cls);
+  assert.strictEqual(n.attrs["data-tip"], tip);
+  assert.strictEqual(n.innerHTML.includes("<circle "), !!network.vpn, `${tip}: the lock`);
+  assert.strictEqual(n.attrs["data-vpn"], network.vpn ? "on" : undefined);
+}
+
 // The speaker's level as a %, and an output with no volume control (a
 // monitor's speakers): the full speaker with no %, no scrolling, and a
 // click opens Sound settings when it can't mute either.
