@@ -134,7 +134,7 @@ t.test("a bar's messages act on its own display, not where the keys are", functi
     t.eq(opened, { bar.PANES.wifi })
 end)
 
-t.test("a bar's toggles and volume steps go to Hammerspoon", function()
+t.test("a bar's toggles, volume steps and volume popover go to Hammerspoon", function()
     local _, wm = two_displays()
     local got = {}
     local act = {
@@ -145,9 +145,14 @@ t.test("a bar's toggles and volume steps go to Hammerspoon", function()
             got[#got + 1] = "volume " .. d
         end,
     }
+    act.sound = function(uuid, at)
+        got[#got + 1] = "sound " .. uuid .. " " .. tostring(at.right)
+    end
     bar.handle(wm, { uuid = "B", toggle = "mic" }, act)
     bar.handle(wm, { uuid = "B", volume = -1 }, act)
-    t.eq(got, { "toggle mic", "volume -1" })
+    bar.handle(wm, { uuid = "B", sound = { right = 1730 } }, act)
+    bar.handle(wm, { uuid = "B", sound = "junk" }, act)
+    t.eq(got, { "toggle mic", "volume -1", "sound B 1730" })
 end)
 
 t.test("a bar's clocks, kept while a file is wrong, go to Hammerspoon", function()

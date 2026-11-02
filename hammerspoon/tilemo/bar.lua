@@ -669,7 +669,8 @@ end
 -- dashboard on B, and a double-click on its title maximizes the focused
 -- window only if that window is on B, where the title shows. `act` holds what needs Hammerspoon: open(url),
 -- dashboard(uuid), switcher(uuid) for the logo, toggle(what), volume(step),
--- session(uuid, { x }) for the session menu under the icon at x
+-- session(uuid, { x }) for the session menu under the icon at x,
+-- sound(uuid, { right }) for the volume popover under the speaker,
 -- and tip(uuid, tip).
 function M.handle(wm, body, act)
     local uuid = body.uuid
@@ -702,6 +703,8 @@ function M.handle(wm, body, act)
         act.volume(tonumber(body.volume))
     elseif type(body.session) == "table" and act.session then
         act.session(uuid, body.session)
+    elseif type(body.sound) == "table" and act.sound then
+        act.sound(uuid, body.sound)
     elseif type(body.tip) == "table" and act.tip then
         act.tip(uuid, body.tip)
     elseif body.clockErrors and act.clock_errors then
