@@ -275,6 +275,27 @@ for (const [network, wifi, cls, tip] of [
   assert.strictEqual(n.attrs["data-vpn"], network.vpn ? "on" : undefined);
 }
 
+// The system monitor: CPU % after the battery, its tone as its state, and
+// a click opens Activity Monitor.
+for (const tone of ["normal", "warn", "danger"]) {
+  sandbox.tilemo.update({
+    uuid: "B",
+    workspaces: ws,
+    title: "",
+    icons: { battery: { percent: 50, text: "50%" }, sysmon: { text: "23%", tone, tip: "CPU 23%" } },
+  });
+  const shown = ids.icons.children.map((c) => c.className);
+  assert.deepStrictEqual(shown.slice(-2), ["icon battery", "icon sysmon"], "after the battery");
+  const s = ids.icons.children.at(-1);
+  assert.strictEqual(s.attrs["data-state"], tone);
+  assert.strictEqual(s.attrs["data-tip"], "CPU 23%");
+  assert.strictEqual(s.children[0].textContent, "23%");
+  assert.ok(s.innerHTML.startsWith("<svg "), "drawn");
+  s.listeners.click();
+  assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify({ uuid: "B", open: "sysmon" }));
+}
+sent.length = 0;
+
 // The speaker's level as a %, and an output with no volume control (a
 // monitor's speakers): the full speaker with no %, no scrolling, and a
 // click opens Sound settings when it can't mute either.

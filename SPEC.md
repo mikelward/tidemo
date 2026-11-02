@@ -1619,6 +1619,25 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - battery: `hs.battery`, with its percentage and a charging mark, and on
     hover how long until full or empty when macOS knows. None on a Mac
     without one.
+  - system monitor: the CPU's %, as tide's (tide §7.4), held as wide as
+    two digits. It's the share busy since the last reading, from
+    `hs.host.cpuUsageTicks()`, so the first reading shows "–".
+    - **Colors:** the warning color when the Mac is hot or memory is 90%
+      full, and the danger color while it's throttling, both from tide's
+      palette. Its tip says why: "CPU 23%, hot", "throttling", "memory
+      nearly full".
+    - macOS gives no temperature or throttle count to an app, so
+      `hs.host.thermalState()` stands in: "serious" (high) is hot, and
+      "critical" (performance cut until it cools) is throttling. "fair"
+      (slightly raised) is normal, since it comes with any steady load
+      *(a guess to confirm on a Mac under load)*.
+    - Memory is wired, active and compressed pages from `hs.host.vmStat()`
+      over its `memSize`, near Activity Monitor's "Memory Used" *(an
+      approximation)*.
+    - A click opens Activity Monitor. tide's opens a popover with the
+      busiest processes; Activity Monitor already lists them on a Mac.
+    - Read on the 5 s icon poll, where tide reads every 3 s. Each reading
+      is a few kernel counters, with no process started.
   - The battery, network, Bluetooth and headphones items open their System Settings panes, named
     by URL (`x-apple.systempreferences:…`) *(unverified on macOS 26)*.
 - **Not drawn:** Focus (Do Not Disturb). Hammerspoon has no module for it

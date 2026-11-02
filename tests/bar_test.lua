@@ -486,6 +486,44 @@ t.test("a VPN carrying only some traffic still shows the lock", function()
         { kind = "wifi" }, "no tunnel, no lock")
 end)
 
+t.test("the CPU's share is busy ticks over all ticks between readings", function()
+    t.eq(bar.cpu_share({ active = 100, idle = 300 }, { active = 130, idle = 370 }), 0.3)
+    t.eq(bar.cpu_share(nil, { active = 130, idle = 370 }), nil, "the first reading has nothing to compare")
+    t.eq(bar.cpu_share({ active = 100, idle = 300 }, { active = 100, idle = 300 }), nil, "no time passed")
+    t.eq(bar.cpu_share({ active = 500, idle = 900 }, { active = 10, idle = 20 }), nil, "the counters went back")
+end)
+
+t.test("memory in use is wired, active and compressed pages", function()
+    local vm = { pageSize = 16384, memSize = 16384 * 1000, pagesWiredDown = 200, pagesActive = 300, pagesUsedByVMCompressor = 100 }
+    t.eq(bar.memory(vm), { used = 600 * 16384, total = 16384 * 1000 })
+    vm.pagesUsedByVMCompressor = nil
+    t.eq(bar.memory(vm), nil, "a missing count: no reading")
+    t.eq(bar.memory(nil), nil)
+end)
+
+t.test("the system monitor shows CPU %, colored as tide's when hot, throttling or short of memory", function()
+    local mem = { used = 5, total = 10 }
+    t.eq(bar.icons({ sysmon = { cpu = 0.234, memory = mem, thermal = "nominal" } }).sysmon,
+        { text = "23%", tone = "normal", tip = "CPU 23%" })
+    t.eq(bar.icons({ sysmon = { cpu = 0.2, thermal = "fair" } }).sysmon.tone, "normal", "fair is only warm")
+    t.eq(bar.icons({ sysmon = { cpu = 0.2, thermal = "serious" } }).sysmon,
+        { text = "20%", tone = "warn", tip = "CPU 20%, hot" })
+    t.eq(bar.icons({ sysmon = { cpu = 0.2, thermal = "critical" } }).sysmon,
+        { text = "20%", tone = "danger", tip = "CPU 20%, throttling" })
+    t.eq(bar.icons({ sysmon = { cpu = 0.2, memory = { used = 9, total = 10 } } }).sysmon,
+        { text = "20%", tone = "warn", tip = "CPU 20%, memory nearly full" })
+    t.eq(bar.icons({ sysmon = { cpu = 0.2, memory = { used = 9.5, total = 10 }, thermal = "critical" } }).sysmon,
+        { text = "20%", tone = "danger", tip = "CPU 20%, throttling, memory nearly full" })
+    t.eq(bar.icons({ sysmon = {} }).sysmon, { text = "–", tone = "normal", tip = "CPU" }, "before a second reading")
+    t.eq(bar.icons({}).sysmon, nil)
+end)
+
+t.test("the system monitor's click opens Activity Monitor", function()
+    local opened = {}
+    bar.handle(nil, { uuid = "B", open = "sysmon" }, { open = function(u) opened[#opened + 1] = u end })
+    t.eq(opened, { "/System/Applications/Utilities/Activity Monitor.app" })
+end)
+
 t.test("the network is Wi-Fi, a wire, or none, by the interface carrying traffic", function()
     local wifi = { power = true, rssi = -55, interface = "en0" }
     t.eq(bar.icons({ wifi = wifi, network = { primary = "en0" } }).network, { kind = "wifi" })
