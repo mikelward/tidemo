@@ -934,6 +934,40 @@ if not ok then
     fail("launcher: %s", err)
 end
 
+-- The settings window opened on Start at login: that page alone shows,
+-- beside the sidebar's pages under tide's three groups (SPEC.md §15), as
+-- the bundled script draws them in WebKit.
+local function check_settings_page(next)
+    local want = 0
+    for _, sec in ipairs(require("tilemo.launcher").SETTINGS_SECTIONS) do
+        if not sec.page then
+            want = want + 1
+        end
+    end
+    tilemo.settings.evaluate([[JSON.stringify({
+        shown: Array.from(document.querySelectorAll(".page")).filter((p) => !p.hidden).map((p) => p.id),
+        headings: Array.from(document.querySelectorAll("#sidebar h3")).map((h) => h.textContent),
+        pages: document.querySelectorAll("#sidebar button").length,
+    })]], function(result, err)
+        -- Out of the page's own callback.
+        tilemo.adapter.after(0, function()
+            local got = type(result) == "string" and not bar.js_failed(err) and hs.json.decode(result) or nil
+            if not got then
+                fail("settings: the page didn't say what it shows: %s", hs.inspect(err))
+            elseif table.concat(got.shown or {}, ",") ~= "page-startup" then
+                fail("settings: it shows %s, not Start at login alone", table.concat(got.shown or {}, ", "))
+            elseif table.concat(got.headings or {}, ",") ~= "Hardware,Windows,General" or got.pages ~= want then
+                fail("settings: the sidebar has %s pages under %s, not %d under Hardware, Windows and General",
+                    tostring(got.pages), table.concat(got.headings or {}, ", "), want)
+            else
+                say("settings: Start at login shows alone, beside %d pages under %s", got.pages,
+                    table.concat(got.headings, ", "))
+            end
+            next()
+        end)
+    end)
+end
+
 -- The settings window builds its page and opens, on Start at login as its
 -- launcher row asks; the clocks come from tide's folder, which tilemo makes
 -- if it's missing, to watch it.
@@ -972,9 +1006,11 @@ smoke_timer = hs.timer.doAfter(3, function()
     end
     say("dashboard opened and closed")
     check_failing_helper(function()
-        check_screenshot(function()
-            check_moved_screenshot(function()
-                wait_for_bar(check_tiling)
+        check_settings_page(function()
+            check_screenshot(function()
+                check_moved_screenshot(function()
+                    wait_for_bar(check_tiling)
+                end)
             end)
         end)
     end)

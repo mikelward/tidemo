@@ -13,6 +13,7 @@ local mute = require("tilemo.mute")
 local picker = require("tilemo.picker")
 local floating = require("tilemo.floating")
 local links = require("tilemo.links")
+local launcher = require("tilemo.launcher")
 local launcherpage = require("tilemo.launcherpage")
 local linearmouse = require("tilemo.linearmouse")
 local checklist = require("tilemo.checklist")
@@ -177,6 +178,9 @@ function M.new(tilemo)
                 maxItems = tilemo.clipboard_settings.max_items,
             } or nil,
             muted = "__muted__",
+            -- The sidebar's groups and pages, as tide's settings panel has
+            -- them.
+            sidebar = launcher.settings_sidebar(),
             -- Each section's buttons, and what's wrong with LinearMouse, if
             -- anything, for the Mouse section.
             links = links.page_list(),
@@ -436,7 +440,9 @@ function M.new(tilemo)
             tilemo.adapter.log("settings: no display to show it on")
             return
         end
-        local w, h = 560, 560
+        -- Wide enough for the sidebar beside a page, and tall enough for
+        -- every page and heading in it, as tide's card is.
+        local w, h = 760, 700
         local frame = { x = s.area.x + (s.area.w - w) / 2, y = s.area.y + (s.area.h - h) / 2, w = w, h = h }
         view = hs.webview.new(frame, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "titled", "closable" })
@@ -465,6 +471,16 @@ function M.new(tilemo)
         if hw then
             hw:focus()
         end
+    end
+
+    -- What the page answers to `js`, done(result, err), after anything
+    -- pushed before it: for CI's smoke test.
+    function self.evaluate(js, done)
+        if not view then
+            done(nil, "the settings window isn't open")
+            return
+        end
+        view:evaluateJavaScript(js, done)
     end
 
     return self

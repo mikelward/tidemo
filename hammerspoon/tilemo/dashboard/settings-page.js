@@ -17,7 +17,10 @@
 // switch, the Setup checklist's { setupTick } and { setupRefresh }, or
 // { close: true }. Keyboard's Shortcuts, tilemo's key bindings,
 // come in update()'s `shortcuts` and are read-only.
-// tilemo.reveal(id) scrolls to a section, for the launcher's rows.
+// The sidebar, update()'s `sidebar`, lists the pages under their groups, as
+// tide's settings panel does, and one page shows at a time.
+// tilemo.reveal(id) shows a page, or the part of one, for the launcher's
+// rows.
 
 import { editableClocks, editedClocks, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
 import { editableStartup, editedStartup, movedCommand, withCommand, withoutCommand } from "./tide-startup.js";
@@ -737,16 +740,110 @@ function renderSetup(setup) {
   document.getElementById("setup-summary").textContent = left === 0 ? "All done." : `${left} of ${items.length} still to do.`;
 }
 
+// The sidebar (SPEC.md §15), as tide's settings panel's: each group's
+// heading, which can't be chosen, then its pages, with one page showing at
+// a time. tilemo sends it as { rows: [{ heading } or { page, label }],
+// parts: { id: page } }, a part being a heading within a page.
+let sidebarRows = [];
+let sidebarParts = {};
+let sidebarDrawn = "";
+let shownPage = "displays";
+// A reveal() that came before the sidebar, done once it's drawn.
+let pendingReveal = null;
+const sidebarButtons = new Map();
+
+const pageIds = () => sidebarRows.filter((r) => typeof r.page === "string").map((r) => r.page);
+
+// Show page `id`, or the first page for one the sidebar doesn't have.
+function showPage(id) {
+  const ids = pageIds();
+  if (ids.length === 0) return;
+  shownPage = ids.includes(id) ? id : ids[0];
+  for (const p of ids) {
+    const el = document.getElementById(`page-${p}`);
+    if (el) el.hidden = p !== shownPage;
+  }
+  for (const [p, b] of sidebarButtons) b.setAttribute("aria-current", p === shownPage ? "page" : "false");
+}
+
+// To page `id`, at its top.
+function turnTo(id) {
+  showPage(id);
+  const content = document.getElementById("content");
+  if (content) content.scrollTop = 0;
+}
+
+// Page `id`, or the page a part `id` is on, scrolled to the part.
+function reveal(id) {
+  const page = sidebarParts[id] ?? id;
+  turnTo(page);
+  if (page !== id) document.getElementById(id)?.scrollIntoView?.({ block: "start" });
+}
+
+// The page `step` pages on from the one showing, passing over the headings
+// and stopping at either end, as tide's Up and Down do.
+function movedPage(step) {
+  const ids = pageIds();
+  const i = Math.max(0, ids.indexOf(shownPage));
+  return ids[Math.max(0, Math.min(ids.length - 1, i + step))];
+}
+
+function renderSidebar(sidebar) {
+  const rows = Array.isArray(sidebar.rows) ? sidebar.rows : [];
+  const parts = isObject(sidebar.parts) ? sidebar.parts : {};
+  // Drawn again only when it changes, so a sidebar button keeps the focus.
+  const drawn = JSON.stringify([rows, parts]);
+  if (drawn === sidebarDrawn) return;
+  sidebarDrawn = drawn;
+  sidebarRows = rows;
+  sidebarParts = parts;
+  const nav = document.getElementById("sidebar");
+  nav.replaceChildren();
+  sidebarButtons.clear();
+  for (const row of rows) {
+    if (typeof row.page === "string") {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = String(row.label ?? row.page);
+      b.addEventListener("click", () => turnTo(row.page));
+      sidebarButtons.set(row.page, b);
+      nav.append(b);
+    } else {
+      const h = document.createElement("h3");
+      h.textContent = String(row.heading ?? "");
+      nav.append(h);
+    }
+  }
+  if (pendingReveal !== null) {
+    const id = pendingReveal;
+    pendingReveal = null;
+    reveal(id);
+  } else {
+    showPage(shownPage);
+  }
+}
+
+// Typing in a field, where Up and Down are the field's.
+const editing = (t) => ["INPUT", "TEXTAREA", "SELECT"].includes(t?.tagName) || t?.isContentEditable === true;
+
 // Back in the window, perhaps from Privacy & Security: ask for the
 // permissions as they are now, as tileco's keys list does.
 window.addEventListener?.("focus", () => send({ setupRefresh: true }));
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !e.handled) send({ close: true });
+  if (e.key === "Escape" && !e.handled) {
+    send({ close: true });
+  } else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !editing(e.target)) {
+    // Up and Down change the page, as on tide.
+    e.preventDefault?.();
+    const next = movedPage(e.key === "ArrowUp" ? -1 : 1);
+    if (next) turnTo(next);
+  }
 });
 
 window.tilemo = {
   update(state) {
+    if (isObject(state.sidebar)) renderSidebar(state.sidebar);
     files = state.clockFiles;
     startupFiles = state.startupFiles ?? null;
     clipboardFiles = state.clipboardFiles ?? null;
@@ -816,6 +913,7 @@ window.tilemo = {
     if (input.value === "") input.value = entry ?? "";
   },
   reveal(id) {
-    document.getElementById(id)?.scrollIntoView?.({ block: "start" });
+    if (sidebarRows.length === 0) pendingReveal = id;
+    else reveal(id);
   },
 };

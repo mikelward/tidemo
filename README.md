@@ -60,8 +60,8 @@ It brings tide's desktop to macOS:
   windows no rule covers yet; each section has its own launcher row (§15).
   Super+Shift+I opens Floating for the focused window, and floating a
   window with Super+Shift+F asks once whether to always float its app.
-  The window has a section for each of tide's settings pages, in tide's
-  order: where the settings are macOS's or a helper's, its buttons open
+  The window has a page for each of tide's settings pages, in tide's
+  order, under its sidebar's groups, Hardware, Windows and General: where the settings are macOS's or a helper's, its buttons open
   the System Settings pane, LinearMouse or Karabiner (§1, §15). Its
   Keyboard section turns conf's Karabiner rules, such as Ctrl+Tab's next
   tab, on and off itself, keeps them up to date with conf, and turns a new

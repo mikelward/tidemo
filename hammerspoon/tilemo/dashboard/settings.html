@@ -5,18 +5,62 @@
 <title>tide settings</title>
 <style>
 /*TILEMO_CSS*/
+/* The sidebar beside the page it shows, as tide's settings panel: each
+   scrolls on its own. */
 body.settings {
   margin: 0;
-  padding: 20px 24px;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  overflow: hidden;
   font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
 }
-/* tide's logo and name, atop the page. */
+.settings .side {
+  overflow-y: auto;
+  padding: 16px 8px;
+  border-right: 1px solid var(--raised);
+}
+.settings main {
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+.settings .page[hidden] {
+  display: none;
+}
+/* tide's logo and name, atop the sidebar. */
 .settings .brand {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 12px;
+  margin: 0 10px 8px;
   font-weight: 600;
+}
+/* A group's heading, which can't be chosen, then its pages. */
+.settings #sidebar h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 10px 10px 2px;
+}
+.settings #sidebar button {
+  display: block;
+  width: 100%;
+  margin: 1px 0;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.settings #sidebar button:hover {
+  background: var(--hover);
+}
+.settings #sidebar button[aria-current="page"] {
+  background: var(--raised);
 }
 .settings .brand svg {
   color: var(--accent);
@@ -196,20 +240,35 @@ body.settings {
 </style>
 </head>
 <body class="settings">
+<div class="side">
 <p class="brand"><svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg><span>tide</span></p>
+<div id="sidebar" role="navigation" aria-label="Settings pages"></div>
+</div>
+<main id="content">
+<section class="page" id="page-displays">
 <h1 id="displays">Displays</h1>
 <p class="row links" id="displays-links"></p>
+</section>
+<section class="page" id="page-sound" hidden>
 <h1 id="sound">Sound</h1>
 <p class="row links" id="sound-links"></p>
+</section>
+<section class="page" id="page-network" hidden>
 <h1 id="network">Network and Bluetooth</h1>
 <p class="row links" id="network-links"></p>
+</section>
+<section class="page" id="page-mouse" hidden>
 <h1 id="mouse">Mouse</h1>
 <div id="mouse-rows"></div>
 <p class="error" id="mouse-error" role="alert"></p>
 <p class="note">Every mouse's wheel, shared with tide's input.json, through LinearMouse. Natural scrolling here is the mouse's alone: Trackpad settings has the trackpad's.</p>
 <p class="row links" id="mouse-links"></p>
+</section>
+<section class="page" id="page-trackpad" hidden>
 <h1 id="trackpad">Trackpad</h1>
 <p class="row links" id="trackpad-links"></p>
+</section>
+<section class="page" id="page-keyboard" hidden>
 <h1 id="keyboard">Keyboard</h1>
 <div class="row choice" id="launcher-choice"></div>
 <ul id="karabiner-rules"></ul>
@@ -220,13 +279,19 @@ body.settings {
 <ul id="shortcut-list"></ul>
 <p class="error" id="shortcuts-error" role="alert"></p>
 <ul id="shortcut-failed"></ul>
+</section>
+<section class="page" id="page-power" hidden>
 <h1 id="power">Power</h1>
 <p class="row links" id="power-links"></p>
+</section>
+<section class="page" id="page-layouts" hidden>
 <h1 id="layouts">Layouts</h1>
 <p class="source" id="layouts-source"></p>
 <div id="layout-rows"></div>
 <p class="error" id="layouts-error" role="alert"></p>
 <p class="note">How a workspace tiles, shared with tide's layouts.json. A change reaches every workspace at once: each keeps its layout, and takes the new widths and masters in place of any set with the keys.</p>
+</section>
+<section class="page" id="page-workspaces" hidden>
 <h1 id="workspaces">Workspaces</h1>
 <p class="source" id="workspaces-source"></p>
 <h2>Standing workspaces</h2>
@@ -243,6 +308,8 @@ body.settings {
 <p class="add"><input id="ws-add-namePatterns" aria-label="Add a name pattern" spellcheck="false"></p>
 <p class="error" id="workspaces-error" role="alert"></p>
 <p class="note">Shared with tide's workspaces.json. A change applies at once. The muted apps and sites are under Notifications.</p>
+</section>
+<section class="page" id="page-floating" hidden>
 <h1 id="floating">Floating</h1>
 <p class="note">Rules that float an app's windows, by its bundle ID and, if you like, a Lua pattern found anywhere in the title, such as <code>^Save</code>. Escape a pattern's magic characters with <code>%</code>: <code>%.</code> is a dot. They come after start()'s rules, before tide's own, and dialogs float whatever they say. A new rule floats the windows open now that it covers, but not one you tiled by hand.</p>
 <p class="source" id="floating-source"></p>
@@ -261,8 +328,12 @@ body.settings {
 <h2>Floating now</h2>
 <p class="note">Floating windows no rule covers, one per app. Always float fills in a rule for it to trim and add.</p>
 <ul id="floating-now"></ul>
+</section>
+<section class="page" id="page-appearance" hidden>
 <h1 id="appearance">Appearance</h1>
 <p class="row links" id="appearance-links"></p>
+</section>
+<section class="page" id="page-muted" hidden>
 <h1 id="muted">Notifications</h1>
 <p class="row links" id="muted-links"></p>
 <p class="note">Apps and sites that are never marked for attention. Mute one with Cmd+M, or a right-click, on its row in the switcher's Windows or Attention tab, or type its bundle id, or site: and a host, below. macOS still shows their banners: turn those off in Notifications settings.</p>
@@ -271,6 +342,8 @@ body.settings {
 <input id="add-muted" placeholder="Mute an app's bundle id, or site:host" aria-label="Mute an app or site" spellcheck="false">
 </p>
 <p class="error" id="muted-error" role="alert"></p>
+</section>
+<section class="page" id="page-clipboard" hidden>
 <h1 id="clipboard">Clipboard</h1>
 <p class="source" id="clipboard-summary"></p>
 <p class="row">
@@ -284,6 +357,8 @@ body.settings {
 </p>
 <p class="error" id="clipboard-error" role="alert"></p>
 <p class="note">The picker's history, on Super+C, shared with tide's clipboard.json. It's kept in memory, so it starts empty at each login. Turning it off keeps what's there until it's cleared.</p>
+</section>
+<section class="page" id="page-clocks" hidden>
 <h1 id="clocks">Clocks</h1>
 <p class="source" id="source"></p>
 <ol id="clock-list"></ol>
@@ -293,8 +368,12 @@ body.settings {
 <p class="error" id="error" role="alert"></p>
 <p class="note">A label shows on the bar: any text, nothing for just the time, or <code>abbr</code> for the zone's abbreviation. Enter sets it. The bar shows local last, after these.</p>
 <p class="row links" id="clocks-links"></p>
+</section>
+<section class="page" id="page-idle" hidden>
 <h1 id="idle">Idle</h1>
 <p class="row links" id="idle-links"></p>
+</section>
+<section class="page" id="page-startup" hidden>
 <h1 id="startup">Start at login</h1>
 <p class="source" id="startup-source"></p>
 <ol id="startup-list"></ol>
@@ -304,6 +383,8 @@ body.settings {
 <p class="error" id="startup-error" role="alert"></p>
 <p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
 <p class="row links" id="startup-links"></p>
+</section>
+<section class="page" id="page-setup" hidden>
 <h1 id="setup">Setup checklist</h1>
 <p class="note">What macOS needs for tide, and the System Settings that bring it closer to tide. tide can't change them for you, so each says where to go.</p>
 <h2>Permissions</h2>
@@ -313,6 +394,8 @@ body.settings {
 <p class="source" id="setup-summary"></p>
 <ul id="setup-items"></ul>
 <p class="note">Tick them off as you go. The ticks stay on this Mac.</p>
+</section>
+</main>
 <script>
 /*TILEMO_SCRIPT*/
 </script>
