@@ -16,14 +16,35 @@ function turnTo(scope) {
   chips().find((b) => b.dataset.scope === scope)?.click();
 }
 
+// When the page last heard Esc, by the clock, for CI's smoke test.
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key === "Escape") window.tilemo.esc = Date.now();
+  },
+  true,
+);
+
 window.tilemo = {
   // The page is kept between opens, hidden, so each starts with an empty
   // search as a new page would.
   open(next, scope) {
+    // When the page heard it, when this had run, and when the page had
+    // painted after it, by the clock, for CI's smoke test: a hidden page
+    // can be slow to wake. update() starts an asynchronous refresh, which
+    // the second frame comes after.
+    const heard = Date.now();
     const query = document.getElementById("query");
     if (query) query.value = "";
     update(next);
     turnTo(scope);
+    const opened = { heard, ran: Date.now(), visibility: document.visibilityState };
+    window.tilemo.opened = opened;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        opened.painted = Date.now();
+      }),
+    );
   },
   update,
   press(scope) {
