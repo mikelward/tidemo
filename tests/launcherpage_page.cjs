@@ -208,6 +208,22 @@ const choices = () => sent.filter((m) => !m.goodClocks && !m.clockErrors);
 
   // tide hears the clocks to keep, as from the dashboard.
   assert.ok(sent.some((m) => m.goodClocks));
+
+  // The page is kept between opens: each starts with an empty search, on its
+  // scope, as a new page would.
+  await type("Safari");
+  sandbox.tilemo.open(feed, "launch");
+  await settle();
+  assert.strictEqual(ids.query.value, "");
+  assert.strictEqual(sandbox.tilemo.scope(), "launch");
+  assert.deepStrictEqual(rows(), ["Browser window", "Notes", "Safari", "Mouse settings", "Tide Settings"]);
+
+  // CI's turn keeps what's typed, as Tab does.
+  await type("no");
+  sandbox.tilemo.turn("tabs");
+  await settle();
+  assert.strictEqual(ids.query.value, "no");
+  assert.strictEqual(sandbox.tilemo.scope(), "tabs");
   console.log("launcher page: ok");
 })().catch((e) => {
   console.error(e);

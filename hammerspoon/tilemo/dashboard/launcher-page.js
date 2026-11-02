@@ -1,8 +1,9 @@
 // What tide calls on the dashboard launcher (SPEC.md §9.2), after tileco's
-// page has started: tilemo.open(feed, scope) fills it and turns to a scope,
-// tilemo.update(feed) brings in what arrived since, as browser tabs, and
-// tilemo.press(scope) is a switcher key while it's open, which closes it on
-// its own scope and otherwise turns to that one.
+// page has started: tilemo.open(feed, scope) fills it, clears the search
+// and turns to a scope, tilemo.update(feed) brings in what arrived since, as
+// browser tabs, tilemo.press(scope) is a switcher key while it's open, which
+// closes it on its own scope and otherwise turns to that one, and
+// tilemo.turn(scope) turns to a scope as Tab does, for CI's smoke test.
 
 import { update } from "./launcher-chrome.js";
 
@@ -16,7 +17,11 @@ function turnTo(scope) {
 }
 
 window.tilemo = {
+  // The page is kept between opens, hidden, so each starts with an empty
+  // search as a new page would.
   open(next, scope) {
+    const query = document.getElementById("query");
+    if (query) query.value = "";
     update(next);
     turnTo(scope);
   },
@@ -25,5 +30,6 @@ window.tilemo = {
     if (shown() === scope) window.close();
     else turnTo(scope);
   },
+  turn: turnTo,
   scope: shown,
 };

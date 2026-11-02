@@ -1940,8 +1940,15 @@ that isn't one is left out, and the log says so.
 - **Not yet, against the switcher:** `Cmd+Return`'s new workspace, `Cmd+M`'s
   mute, the Attention scope, a window's "minimized" and "muted", and app
   icons (TODO.md).
+- **Opens at once:** its webview is made, hidden, as it's chosen or
+  tilemo starts, and loads the page then. A key moves it to the display
+  you're on, fills it and shows it. Closing hides it. Each open starts with
+  an empty search, on its key's scope. Making a webview and loading the
+  page on each key took most of the time before: in Chromium, loading took
+  45 to 275 ms and filling with 300 rows 10 to 30 ms. CI's smoke test logs
+  the times on a Mac.
 - **Cost:** no money and no network. The page is built once at start;
-  each open makes a new webview *(unverified how fast on a Mac)*.
+  the hidden webview keeps a WebKit process running while it's chosen.
 
 ## 10. The rest of the desktop
 

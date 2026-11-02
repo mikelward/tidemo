@@ -177,10 +177,10 @@ page's test, against a fake DOM, cover it.
 
 - **Next: make the dashboard launcher the default,** once it's been tried
   on a Mac with `launcher = "dashboard"`. Check there:
-  - **open speed:** each open makes a new webview and loads the page. If
-    that's slow, keep the webview built and hidden between uses, and open
-    it with `tilemo.open()` alone, which already takes a new feed and
-    scope;
+  - **open speed:** the webview is now kept, hidden, and loaded as it's
+    chosen; CI's smoke test logs how long an open takes to answer. If it
+    still feels slow, time the Lua side: the collector reads each window's
+    title and app name on every open;
   - **key focus:** the search field has the keyboard as it opens, with no
     click; Esc, a click away and a second key give focus back to the
     window you were in, and a choice to the window it chose;
