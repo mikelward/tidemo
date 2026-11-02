@@ -461,6 +461,31 @@ t.test("Super+S keeps awake and Super+P turns on presenter mode", function()
     t.eq(calls, { "awake", "presenter" })
 end)
 
+t.test("a VPN's interfaces are its tunnels, not a link", function()
+    for _, name in ipairs({ "utun0", "utun12", "ipsec0", "ppp0", "tun3", "tap1" }) do
+        t.eq(bar.is_vpn(name), true, name)
+    end
+    for _, name in ipairs({ "en0", "en7", "bridge0", "awdl0", "utun", "lo0", "", false }) do
+        t.eq(bar.is_vpn(name), false, tostring(name))
+    end
+end)
+
+t.test("a VPN carrying all traffic shows the link under it, with the lock", function()
+    local joined = { power = true, rssi = -55, ssid = "home", interface = "en0" }
+    t.eq(bar.icons({ wifi = joined, network = { primary = "utun4" } }).network, { kind = "wifi", vpn = true })
+    t.eq(bar.icons({ wifi = { power = true, rssi = 0, interface = "en0" }, network = { primary = "utun4" } }).network,
+        { kind = "wired", vpn = true }, "Wi-Fi on but not joined: the VPN runs over a wire")
+    t.eq(bar.icons({ network = { primary = "ppp0" } }).network, { kind = "wired", vpn = true })
+end)
+
+t.test("a VPN carrying only some traffic still shows the lock", function()
+    local wifi = { power = true, rssi = -55, interface = "en0" }
+    t.eq(bar.icons({ wifi = wifi, network = { primary = "en0", services = { "en0", "utun3" } } }).network,
+        { kind = "wifi", vpn = true })
+    t.eq(bar.icons({ wifi = wifi, network = { primary = "en0", services = { "en0", "en7" } } }).network,
+        { kind = "wifi" }, "no tunnel, no lock")
+end)
+
 t.test("the network is Wi-Fi, a wire, or none, by the interface carrying traffic", function()
     local wifi = { power = true, rssi = -55, interface = "en0" }
     t.eq(bar.icons({ wifi = wifi, network = { primary = "en0" } }).network, { kind = "wifi" })
