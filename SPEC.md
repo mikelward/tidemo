@@ -307,7 +307,11 @@ can open before its page names it, and a title rule needs that name.
    since its width is fixed though its height isn't, so step 4 misses it
    and a tile would leave a gap beside it. Notification Center's windows
    are left alone, whatever they report: they're macOS's own, over every
-   window. Bitwarden's pop-outs in Chrome and Brave float: its extension
+   window. Hammerspoon's console and preferences float. Its other windows
+   are tilemo's own, the bar, the launchers and the settings window, and
+   are left alone: the window manager doesn't even hear them come, go or
+   take focus, as each did when the switcher closed, syncing and retiling
+   every window while it did. Bitwarden's pop-outs in Chrome and Brave float: its extension
    asks you to sign in, fill a login or use a passkey in a popup window
    titled "Bitwarden". The vault's own tab is titled otherwise, and the
    desktop app is another app.

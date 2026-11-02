@@ -5,6 +5,21 @@
 
 local M = {}
 
+-- Hammerspoon's own windows, by title: they float. Its others are tilemo's
+-- (the bar, the launcher, the settings window), which tilemo places itself.
+M.HAMMERSPOON = "org.hammerspoon.Hammerspoon"
+M.HAMMERSPOON_OWN = { "^Hammerspoon Console$", "^Hammerspoon Preferences$" }
+
+-- Whether a window of Hammerspoon's, titled `title`, is one of tilemo's.
+function M.tilemos(title)
+    for _, p in ipairs(M.HAMMERSPOON_OWN) do
+        if (title or ""):match(p) then
+            return false
+        end
+    end
+    return true
+end
+
 -- Rules that ship with tilemo, after the user's own. `app` is a bundle ID and
 -- `title` a Lua pattern; either may be left out to match anything.
 M.defaults = {
@@ -14,9 +29,9 @@ M.defaults = {
     -- Hammerspoon's console and preferences float; the rest of its windows
     -- are tilemo's own (the launcher, the dashboard), placed by tilemo, so
     -- they're left alone.
-    { app = "org.hammerspoon.Hammerspoon", title = "^Hammerspoon Console$", action = "float" },
-    { app = "org.hammerspoon.Hammerspoon", title = "^Hammerspoon Preferences$", action = "float" },
-    { app = "org.hammerspoon.Hammerspoon", action = "ignore" },
+    { app = M.HAMMERSPOON, title = M.HAMMERSPOON_OWN[1], action = "float" },
+    { app = M.HAMMERSPOON, title = M.HAMMERSPOON_OWN[2], action = "float" },
+    { app = M.HAMMERSPOON, action = "ignore" },
     -- System Settings is a fixed width, though its height can change, so a
     -- tile would leave a gap beside it.
     { app = "com.apple.systempreferences", action = "float" },

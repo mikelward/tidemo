@@ -5,6 +5,7 @@
 local atomic = require("tilemo.atomic")
 local brand = require("tilemo.brand")
 local kitty = require("tilemo.kitty")
+local rules = require("tilemo.rules")
 local saved = require("tilemo.saved")
 local runner = require("tilemo.runner")
 local shots = require("tilemo.shots")
@@ -857,7 +858,20 @@ end
 -- changes size, `on_min(id)` / `on_unmin(id)` when one is minimized or
 -- comes back, and `on_title(id)` when its title changes (Hammerspoon waits
 -- 0.5 s after the last change to say so). Returns what to keep alive.
+-- tilemo's own windows, which the rules leave alone, are left out: each
+-- time the launcher showed or hid, its window's coming and going made the
+-- window manager sync and retile every window, and its focus made it list
+-- them all again, while Esc waited.
 function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
+    local me = hs.processInfo.processID
+    local function tilemos(w)
+        local ok, pid = pcall(w.pid, w)
+        if not ok or pid ~= me then
+            return false
+        end
+        local got, title = pcall(w.title, w)
+        return rules.tilemos(got and title or "")
+    end
     local wf = hs.window.filter.new(false)
     wf:setDefaultFilter({ allowRoles = "*" })
     wf:subscribe({
@@ -867,11 +881,16 @@ function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
         hs.window.filter.windowUnhidden,
         hs.window.filter.windowFullscreened,
         hs.window.filter.windowUnfullscreened,
-    }, function()
-        on_change()
+    }, function(w)
+        if not (w and tilemos(w)) then
+            on_change()
+        end
     end)
     local function with_id(fn)
         return function(w)
+            if tilemos(w) then
+                return
+            end
             local ok, id = pcall(w.id, w)
             if ok and id then
                 fn(id)
