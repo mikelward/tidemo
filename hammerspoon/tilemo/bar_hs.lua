@@ -89,22 +89,34 @@ function M.new(tilemo)
         end
     end
 
-    -- The interfaces macOS's network services have an address on, from the
-    -- System Configuration store, for the VPN lock (bar.lua): a VPN's
-    -- service is up on its tunnel even when it carries only some traffic.
-    local function service_interfaces()
-        local out = {}
+    -- The network services that are up, from the System Configuration
+    -- store, for the VPN lock (bar.lua): each with the interface it has an
+    -- address on and the type and subtype of its Setup: interface, so a
+    -- VPN's service counts even when it carries only some traffic, and a
+    -- tunnel with no VPN service doesn't.
+    local function services()
         local store = self.net_store
         if not store then
             store = hs.network.configuration.open()
             self.net_store = store
         end
-        for _, v in pairs(store:contents("State:/Network/Service/.+/IPv[46]", true) or {}) do
-            if type(v) == "table" and type(v.InterfaceName) == "string" then
-                out[#out + 1] = v.InterfaceName
+        local up = {}
+        for key, v in pairs(store:contents("State:/Network/Service/[^/]+/IPv[46]", true) or {}) do
+            local id = key:match("^State:/Network/Service/([^/]+)/")
+            if id and type(v) == "table" and type(v.InterfaceName) == "string" then
+                up[id] = v.InterfaceName
             end
         end
-        table.sort(out)
+        local out = {}
+        for id, interface in pairs(up) do
+            local key = "Setup:/Network/Service/" .. id .. "/Interface"
+            local setup = store:contents(key)
+            setup = setup and setup[key] or {}
+            out[#out + 1] = { interface = interface, type = setup.Type, subtype = setup.SubType }
+        end
+        table.sort(out, function(a, b)
+            return a.interface < b.interface
+        end)
         return out
     end
 
@@ -195,7 +207,7 @@ function M.new(tilemo)
         raw.network = try("the network", function()
             -- false with no route, as Hammerspoon reports it.
             local v4, v6 = hs.network.primaryInterfaces()
-            return { primary = v4 or v6 or nil, services = service_interfaces() }
+            return { primary = v4 or v6 or nil, services = services() }
         end)
         self.sources = raw.source and raw.source.list or {}
         self.current_source = raw.source and raw.source.current
