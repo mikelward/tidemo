@@ -12,6 +12,11 @@ local function stub()
         inspect = function(v)
             return tostring(v)
         end,
+        timer = {
+            secondsSinceEpoch = function()
+                return 0
+            end,
+        },
         drawing = { windowLevels = { modalPanel = 8 } },
         screen = {
             mainScreen = function()

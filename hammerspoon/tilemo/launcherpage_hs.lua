@@ -226,7 +226,16 @@ function M.new(tilemo)
             push(string.format("tilemo.press(%q)", want))
             return
         end
+        -- How long each step takes, for CI's smoke test.
+        local steps, last = {}, hs.timer.secondsSinceEpoch()
+        local function step(name)
+            local now = hs.timer.secondsSinceEpoch()
+            steps[#steps + 1] = { name = name, ms = math.floor((now - last) * 1000) }
+            last = now
+        end
+        self.steps = steps
         before = tilemo.adapter.focused()
+        step("focused")
         uuid = tilemo.wm:current_screen()
         local s = tilemo.wm:screen_by_uuid(uuid)
         if not s then
@@ -236,11 +245,13 @@ function M.new(tilemo)
         scope = want
         collect = launcher_hs.collector(tilemo)
         found_tabs = {}
+        step("rows")
         if view then
             view:frame(s.full)
         else
             make(s.full)
         end
+        step("frame")
         -- Filled now if the page has started, else as soon as it has.
         local function fill()
             push(string.format("tilemo.open(%s, %q)", feed(), scope))
@@ -250,6 +261,7 @@ function M.new(tilemo)
         else
             pending = fill
         end
+        step("fill")
         -- Browser tabs join the windows as each browser answers.
         local opened = {}
         self.opened = opened
@@ -263,13 +275,17 @@ function M.new(tilemo)
             tilemo.wm:note_tabs(list)
             push("tilemo.update(" .. feed() .. ")")
         end)
+        step("tabs")
         visible = true
         view:show()
+        step("show")
         tilemo.wm:hold("launcher", true)
+        step("hold")
         local w = view:hswindow()
         if w then
             w:focus()
         end
+        step("focus")
     end
 
     -- The bar's logo: closes it, or opens it on Launch.

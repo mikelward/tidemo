@@ -487,11 +487,15 @@ local function check_launcher_page(after)
         return
     end
     -- Open on `tab`, and hear which scope the page is on once it has
-    -- filled: heard(ms, scope), out of the page's own callback, as the
-    -- switch back deletes the page.
+    -- filled: heard(ms, lua_ms, scope, stayed), out of the page's own
+    -- callback, as the switch back deletes the page. lua_ms is show()'s own
+    -- share: the rows gathered and the window shown, before the page fills.
+    -- stayed says it was still open as the page answered: a window that
+    -- took the focus meanwhile closes it, and WebKit slows a hidden page.
     local function open(tab, heard)
         local asked = hs.timer.secondsSinceEpoch()
         page.show(tab)
+        local lua_ms = math.floor((hs.timer.secondsSinceEpoch() - asked) * 1000)
         if not page.is_open() then
             fail("launcher: tileco's launcher didn't open on %s", tab)
             done()
@@ -499,6 +503,7 @@ local function check_launcher_page(after)
         end
         page.evaluate("tilemo.scope()", function(scope, err)
             local ms = math.floor((hs.timer.secondsSinceEpoch() - asked) * 1000)
+            local stayed = page.is_open()
             tilemo.adapter.after(0, function()
                 page.cancel()
                 -- A string is evaluate()'s own; a table is { code = 0 } on
@@ -508,7 +513,7 @@ local function check_launcher_page(after)
                     done()
                     return
                 end
-                heard(ms, scope)
+                heard(ms, lua_ms, scope, stayed)
             end)
         end)
     end
@@ -526,20 +531,68 @@ local function check_launcher_page(after)
             return
         end
         say("launcher: tileco's launcher page loaded, hidden, in %d ms", math.floor((now - made) * 1000))
-        open("launch", function(first, scope)
+        -- The Lua side's parts, each as an open runs it: the apps read
+        -- from disk, then that with each window's title and app, then the
+        -- rows made from them.
+        local launcher_hs = require("tilemo.launcher_hs")
+        local function ms(fn)
+            local t0 = hs.timer.secondsSinceEpoch()
+            local out = fn()
+            return math.floor((hs.timer.secondsSinceEpoch() - t0) * 1000), out
+        end
+        local scan_ms, scanned = ms(launcher_hs.scan)
+        local collector_ms, collect = ms(function()
+            return launcher_hs.collector(tilemo)
+        end)
+        local rows_ms, rows = ms(function()
+            return collect({})
+        end)
+        local placed = 0
+        for _, w in pairs(tilemo.wm.windows) do
+            if w.ws then
+                placed = placed + 1
+            end
+        end
+        say("launcher: its Lua side reads %d apps in %d ms, and with %d windows in %d ms, and makes %d rows in %d ms",
+            #scanned, scan_ms, placed, collector_ms, #rows, rows_ms)
+        local before = tilemo.adapter.focused()
+        local function shown(stayed)
+            return stayed and "open" or "closed"
+        end
+        open("launch", function(first, first_lua, scope, first_stayed)
             if scope ~= "launch" then
                 fail("launcher: tileco's launcher opened on %s, not launch", tostring(scope))
                 done()
                 return
             end
-            open("windows", function(again, scope2)
-                if scope2 ~= "tabs" then
-                    fail("launcher: tileco's launcher reopened on %s, not tabs", tostring(scope2))
-                else
-                    say("launcher: tileco's launcher answers in %d ms, and %d ms reopened", first, again)
-                    say("launcher: the settings window switches to tileco's launcher and back")
+            -- Esc gave the focus back to the window it came from: once
+            -- that window has it, as a person's next key would find it,
+            -- open it again.
+            local closed = hs.timer.secondsSinceEpoch()
+            smoke_page_poll = hs.timer.doEvery(0.05, function()
+                local back = tilemo.adapter.focused() == before
+                if not back and hs.timer.secondsSinceEpoch() - closed <= 2 then
+                    return
                 end
-                done()
+                smoke_page_poll:stop()
+                local settled = math.floor((hs.timer.secondsSinceEpoch() - closed) * 1000)
+                open("windows", function(again, again_lua, scope2, again_stayed)
+                    local parts = {}
+                    for _, st in ipairs(page.steps or {}) do
+                        parts[#parts + 1] = st.name .. " " .. st.ms
+                    end
+                    say("launcher: the reopen's Lua steps, in ms: %s", table.concat(parts, ", "))
+                    if scope2 ~= "tabs" then
+                        fail("launcher: tileco's launcher reopened on %s, not tabs", tostring(scope2))
+                    else
+                        say("launcher: tileco's launcher answers in %d ms (%d in Lua, %s as it answered), and %d ms "
+                            .. "(%d in Lua, %s) reopened once the focus was back, %s in %d ms", first, first_lua,
+                            shown(first_stayed), again, again_lua, shown(again_stayed),
+                            back and "back" or "not back", settled)
+                        say("launcher: the settings window switches to tileco's launcher and back")
+                    end
+                    done()
+                end)
             end)
         end)
     end)
