@@ -450,36 +450,98 @@ local function check_launcher_attention()
         else
             say("launcher: the logo closes the switcher and opens it on Launch")
         end
-        -- The settings window's Switcher row (SPEC.md §9.2): tileco's
-        -- launcher takes the keys at once, kept on this Mac, and the
-        -- switcher comes back the same way.
-        local switcher = tilemo.launcher
-        local to, why = tilemo.set_launcher("dashboard")
-        local page = tilemo.launcher
-        if not to then
-            fail("launcher: couldn't switch to tileco's: %s", tostring(why))
-        elseif page == switcher or page.row() ~= nil or tilemo.launcher_choice ~= "dashboard"
-            or hs.settings.get(require("tilemo.launcherpage").SETTINGS_KEY) ~= "dashboard" then
-            fail("launcher: switching to tileco's left %s, kept as %s", tostring(tilemo.launcher_choice),
-                tostring(hs.settings.get(require("tilemo.launcherpage").SETTINGS_KEY)))
-        else
-            page.show("launch")
-            local shown = page.is_open()
-            page.cancel()
-            local back = tilemo.set_launcher("chooser")
-            if not shown then
-                fail("launcher: tileco's launcher didn't open once switched to")
-            elseif not back or tilemo.launcher == page or tilemo.launcher_choice ~= "chooser" then
-                fail("launcher: switching back to the switcher left %s", tostring(tilemo.launcher_choice))
-            else
-                say("launcher: the settings window switches to tileco's launcher and back")
-            end
-        end
-        hs.settings.clear(require("tilemo.launcherpage").SETTINGS_KEY)
     end, debug.traceback)
     if not ok then
         fail("launcher: %s", err)
     end
+end
+
+-- The settings window's Switcher row (SPEC.md §9.2): tileco's launcher
+-- takes the keys at once, kept on this Mac, and the switcher comes back the
+-- same way. Its page loads as it's made, hidden, so a key only shows it:
+-- how long the first open and a reopen take to answer goes in the log.
+local PAGE_WAIT = 15
+
+local function check_launcher_page(after)
+    local key = require("tilemo.launcherpage").SETTINGS_KEY
+    local switcher = tilemo.launcher
+    local function done()
+        local back = tilemo.set_launcher("chooser")
+        if not back or tilemo.launcher == switcher or tilemo.launcher_choice ~= "chooser" then
+            fail("launcher: switching back to the switcher left %s", tostring(tilemo.launcher_choice))
+        end
+        hs.settings.clear(key)
+        after()
+    end
+    local made = hs.timer.secondsSinceEpoch()
+    local to, why = tilemo.set_launcher("dashboard")
+    local page = tilemo.launcher
+    if not to then
+        fail("launcher: couldn't switch to tileco's: %s", tostring(why))
+        done()
+        return
+    elseif page == switcher or page.row() ~= nil or tilemo.launcher_choice ~= "dashboard" or hs.settings.get(key) ~= "dashboard" then
+        fail("launcher: switching to tileco's left %s, kept as %s", tostring(tilemo.launcher_choice), tostring(hs.settings.get(key)))
+        done()
+        return
+    end
+    -- Open on `tab`, and hear which scope the page is on once it has
+    -- filled: heard(ms, scope), out of the page's own callback, as the
+    -- switch back deletes the page.
+    local function open(tab, heard)
+        local asked = hs.timer.secondsSinceEpoch()
+        page.show(tab)
+        if not page.is_open() then
+            fail("launcher: tileco's launcher didn't open on %s", tab)
+            done()
+            return
+        end
+        page.evaluate("tilemo.scope()", function(scope, err)
+            local ms = math.floor((hs.timer.secondsSinceEpoch() - asked) * 1000)
+            tilemo.adapter.after(0, function()
+                page.cancel()
+                -- A string is evaluate()'s own; a table is { code = 0 } on
+                -- success (bar.js_failed).
+                if type(err) == "string" or bar.js_failed(err) then
+                    fail("launcher: tileco's launcher on %s: %s", tab, hs.inspect(err))
+                    done()
+                    return
+                end
+                heard(ms, scope)
+            end)
+        end)
+    end
+    local waited = hs.timer.secondsSinceEpoch()
+    -- A global, like smoke_poll, so it isn't collected.
+    smoke_page_poll = hs.timer.doEvery(0.1, function()
+        local now = hs.timer.secondsSinceEpoch()
+        if not page.ready() and now - waited <= PAGE_WAIT then
+            return
+        end
+        smoke_page_poll:stop()
+        if not page.ready() then
+            fail("launcher: tileco's launcher page didn't load in %ds", PAGE_WAIT)
+            done()
+            return
+        end
+        say("launcher: tileco's launcher page loaded, hidden, in %d ms", math.floor((now - made) * 1000))
+        open("launch", function(first, scope)
+            if scope ~= "launch" then
+                fail("launcher: tileco's launcher opened on %s, not launch", tostring(scope))
+                done()
+                return
+            end
+            open("windows", function(again, scope2)
+                if scope2 ~= "tabs" then
+                    fail("launcher: tileco's launcher reopened on %s, not tabs", tostring(scope2))
+                else
+                    say("launcher: tileco's launcher answers in %d ms, and %d ms reopened", first, again)
+                    say("launcher: the settings window switches to tileco's launcher and back")
+                end
+                done()
+            end)
+        end)
+    end)
 end
 
 local function check_tiling()
@@ -519,6 +581,8 @@ local function check_tiling()
             if done then
                 say("%d TextEdit windows tiled", WANT)
                 check_launcher_attention()
+                check_launcher_page(finish)
+                return
             elseif not misses then
                 fail("tiling: %s after %ds", why, TILE_WAIT)
             else
