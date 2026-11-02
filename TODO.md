@@ -26,7 +26,8 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 ## Settings pages, for parity with tide
 
 tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
-a section for each, in tide's order, then a Setup checklist of its own.
+a page for each, in tide's order and under its sidebar's groups, then a
+Setup checklist of its own.
 Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list,
 Floating, Keyboard's Shortcuts and the Setup checklist are tilemo's own;
 the rest are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
@@ -45,6 +46,10 @@ so on macOS 26; ticks survive a reload. What's left:
 
 - **Appearance**, if anything's left for it: the dim's strength, once the
   dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
+- **The sidebar's icons,** as tide's sidebar has one per page (its
+  `settings.mjs` names a symbolic icon for each). **Check on a Mac:** every
+  page and heading fits the window without scrolling the sidebar, and Up
+  and Down change the page.
 
 ## Keep the Mac as you set it
 
@@ -223,6 +228,9 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **The Setup checklist is General's last page** in the settings window's
+  sidebar (2026-11-02), since tide has no such page and General is "the
+  rest". Reversible: its `group` in `launcher.SETTINGS_SECTIONS`.
 - **The volume popover** (2026-11-02): a click on the speaker opens it
   rather than muting, as tide's does; mute is in the popover. No inputs
   or per-app volumes, unlike tide's.

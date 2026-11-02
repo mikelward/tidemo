@@ -32,11 +32,15 @@ class Element {
 
 const ids = {};
 const sent = [];
+// The document's own listeners, such as keydown for Up and Down.
+const docListeners = {};
 const sandbox = {
   document: {
     createElement: (tag) => new Element(tag),
     getElementById: (id) => (ids[id] ??= new Element(id)),
-    addEventListener: () => {},
+    addEventListener: (type, fn) => {
+      docListeners[type] = fn;
+    },
   },
   Intl,
   Date,
@@ -248,14 +252,63 @@ assert.strictEqual(rows()[0].children[1].value, "Tok");
 sandbox.tilemo.count(0);
 assert.strictEqual(clip("clipboard-clear").disabled, true);
 
-// The launcher's rows scroll to their section.
-let revealed = null;
-sandbox.document.getElementById("startup").scrollIntoView = () => {
-  revealed = "startup";
-};
-sandbox.tilemo.reveal("startup");
-assert.strictEqual(revealed, "startup");
-sandbox.tilemo.reveal("nothing-by-this-id");
+// The sidebar, as tide's settings panel's: each group's heading, then its
+// pages, with one page showing at a time.
+{
+  const sidebar = {
+    rows: [
+      { heading: "Hardware" },
+      { page: "displays", label: "Displays" },
+      { page: "keyboard", label: "Keyboard" },
+      { heading: "General" },
+      { page: "clocks", label: "Clocks" },
+      { page: "startup", label: "Start at login" },
+    ],
+    parts: { shortcuts: "keyboard" },
+  };
+  const nav = () => ids.sidebar.children;
+  const showing = () => ["displays", "keyboard", "clocks", "startup"].filter((p) => !ids[`page-${p}`].hidden);
+  // The launcher's row for a page shows it, even when it comes before the
+  // sidebar does.
+  sandbox.tilemo.reveal("startup");
+  sandbox.tilemo.update({ clockFiles: [], sidebar });
+  assert.deepStrictEqual(nav().map((c) => `${c.tag} ${c.textContent}`), [
+    "h3 Hardware", "button Displays", "button Keyboard", "h3 General", "button Clocks", "button Start at login",
+  ]);
+  assert.deepStrictEqual(showing(), ["startup"]);
+  assert.deepStrictEqual(nav().filter((c) => c.attrs["aria-current"] === "page").map((c) => c.textContent), ["Start at login"]);
+  // A click on a page shows it alone, at its top.
+  ids.content.scrollTop = 40;
+  nav()[4].listeners.click();
+  assert.deepStrictEqual(showing(), ["clocks"]);
+  assert.strictEqual(ids.content.scrollTop, 0);
+  // Up and Down pass over the headings and stop at either end, but are a
+  // field's own while typing there.
+  const key = (k, target = {}) => docListeners.keydown({ key: k, target, preventDefault() {} });
+  key("ArrowUp");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  key("ArrowUp");
+  key("ArrowUp");
+  assert.deepStrictEqual(showing(), ["displays"]);
+  key("ArrowDown", { tagName: "INPUT" });
+  assert.deepStrictEqual(showing(), ["displays"]);
+  for (let i = 0; i < 4; i++) key("ArrowDown");
+  assert.deepStrictEqual(showing(), ["startup"]);
+  // A part of a page shows its page, scrolled to the part.
+  let revealed = null;
+  sandbox.document.getElementById("shortcuts").scrollIntoView = () => {
+    revealed = "shortcuts";
+  };
+  sandbox.tilemo.reveal("shortcuts");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  assert.strictEqual(revealed, "shortcuts");
+  // A new update keeps the page showing; an id it doesn't have shows the
+  // first page.
+  sandbox.tilemo.update({ clockFiles: [], sidebar });
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  sandbox.tilemo.reveal("nothing-by-this-id");
+  assert.deepStrictEqual(showing(), ["displays"]);
+}
 
 // An app or site typed at the Muted list's foot goes to tilemo, which
 // checks it with the mute module and mutes it, or says why not.

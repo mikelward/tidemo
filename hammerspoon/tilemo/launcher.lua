@@ -536,37 +536,71 @@ function M.scan_settings(list, read)
     return panes
 end
 
+-- The settings window's sidebar groups, in its order, as tide's settings
+-- panel has them (tide SPEC.md §16): Hardware is the machine and what's
+-- plugged into it, Windows is how windows are placed, and General is the
+-- rest.
+M.SETTINGS_GROUPS = {
+    { id = "hardware", label = "Hardware" },
+    { id = "windows", label = "Windows" },
+    { id = "general", label = "General" },
+}
+
 -- The settings window's sections (dashboard/settings.html), in its order:
--- the id it scrolls to, the name its heading shows, and what it covers, so
--- a query finds a section by either. `key` is the row's title before
--- "Tide Settings", which the switcher remembers its use by.
+-- the id it shows, the name its heading shows, and what it covers, so a
+-- query finds a section by either. Each page is in its `group`, a group's
+-- pages together; a part of a page names its `page`. `key` is the row's
+-- title before "Tide Settings", which the switcher remembers its use by.
 M.SETTINGS_SECTIONS = {
-    { id = "displays", name = "Displays", covers = "screens monitors resolution arrangement" },
-    { id = "sound", name = "Sound", covers = "volume speakers microphone audio output input" },
-    { id = "network", name = "Network and Bluetooth", covers = "wifi wi-fi internet vpn bluetooth" },
-    { id = "mouse", name = "Mouse", covers = "pointer speed scrolling left-handed linearmouse" },
-    { id = "trackpad", name = "Trackpad", covers = "touchpad tap to click scrolling gestures" },
-    { id = "keyboard", name = "Keyboard", covers = "keys shortcuts bindings repeat layouts karabiner rules ctrl+tab" },
+    { id = "displays", group = "hardware", name = "Displays", covers = "screens monitors resolution arrangement" },
+    { id = "sound", group = "hardware", name = "Sound", covers = "volume speakers microphone audio output input" },
+    { id = "network", group = "hardware", name = "Network and Bluetooth", covers = "wifi wi-fi internet vpn bluetooth" },
+    { id = "mouse", group = "hardware", name = "Mouse", covers = "pointer speed scrolling left-handed linearmouse" },
+    { id = "trackpad", group = "hardware", name = "Trackpad", covers = "touchpad tap to click scrolling gestures" },
+    { id = "keyboard", group = "hardware", name = "Keyboard",
+      covers = "keys shortcuts bindings repeat layouts karabiner rules ctrl+tab" },
     -- Keyboard's Shortcuts, as tide's launcher has its own row for them.
-    { id = "shortcuts", name = "Keyboard shortcuts", covers = "keys bindings hotkeys" },
-    { id = "power", name = "Power", covers = "battery energy sleep lid" },
-    { id = "layouts", name = "Layouts", covers = "tile columns master ultrawide new windows",
+    { id = "shortcuts", page = "keyboard", name = "Keyboard shortcuts", covers = "keys bindings hotkeys" },
+    { id = "power", group = "hardware", name = "Power", covers = "battery energy sleep lid" },
+    { id = "layouts", group = "windows", name = "Layouts", covers = "tile columns master ultrawide new windows",
       key = "Settings: layouts" },
-    { id = "workspaces", name = "Workspaces", covers = "standing workspaces home apps name patterns" },
-    { id = "floating", name = "Floating", covers = "floating windows rules", key = "Settings: floating windows" },
-    { id = "appearance", name = "Appearance", covers = "dark style light theme accent" },
-    { id = "muted", name = "Notifications", covers = "muted apps and sites mute unmute",
+    { id = "workspaces", group = "windows", name = "Workspaces", covers = "standing workspaces home apps name patterns" },
+    { id = "floating", group = "windows", name = "Floating", covers = "floating windows rules",
+      key = "Settings: floating windows" },
+    { id = "appearance", group = "general", name = "Appearance", covers = "dark style light theme accent" },
+    { id = "muted", group = "general", name = "Notifications", covers = "muted apps and sites mute unmute",
       key = "Settings: muted apps and sites" },
-    { id = "clipboard", name = "Clipboard", covers = "clipboard history copies paste",
+    { id = "clipboard", group = "general", name = "Clipboard", covers = "clipboard history copies paste",
       key = "Settings: clipboard history" },
-    { id = "clocks", name = "Clocks", covers = "time zones world clocks", key = "Settings: clocks" },
-    { id = "idle", name = "Idle", covers = "screensaver lock display off", },
-    { id = "startup", name = "Start at login", covers = "login items autostart apps at login",
+    { id = "clocks", group = "general", name = "Clocks", covers = "time zones world clocks", key = "Settings: clocks" },
+    { id = "idle", group = "general", name = "Idle", covers = "screensaver lock display off" },
+    { id = "startup", group = "general", name = "Start at login", covers = "login items autostart apps at login",
       key = "Settings: start at login" },
     -- tilemo's own, after tide's pages: tide has no checklist page.
-    { id = "setup", name = "Setup checklist",
+    { id = "setup", group = "general", name = "Setup checklist",
       covers = "permissions privacy accessibility input monitoring automation mission control spaces minimize" },
 }
+
+-- The sidebar as the settings page takes it: `rows`, top to bottom, each
+-- group's heading ({ heading }) then its pages ({ page, label }); and
+-- `parts`, each part of a page by the page it's on.
+function M.settings_sidebar()
+    local rows, parts = {}, {}
+    for _, g in ipairs(M.SETTINGS_GROUPS) do
+        rows[#rows + 1] = { heading = g.label }
+        for _, s in ipairs(M.SETTINGS_SECTIONS) do
+            if s.group == g.id then
+                rows[#rows + 1] = { page = s.id, label = s.name }
+            end
+        end
+    end
+    for _, s in ipairs(M.SETTINGS_SECTIONS) do
+        if s.page then
+            parts[s.id] = s.page
+        end
+    end
+    return { rows = rows, parts = parts }
+end
 
 -- tilemo's commands, as the launcher lists them. `action` names a window
 -- manager action; `quick` names one of the adapter's quick actions

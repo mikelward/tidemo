@@ -561,9 +561,48 @@ t.test("each settings section is one the settings window has", function()
     local f = assert(io.open("hammerspoon/tilemo/dashboard/settings.html"))
     local html = f:read("a")
     f:close()
-    for _, sec in ipairs(launcher.SETTINGS_SECTIONS) do
-        t.eq(html:find('id="' .. sec.id .. '"', 1, true) ~= nil, true, sec.id)
+    -- Each page's markup, from its section to the next.
+    local pages = {}
+    for id, body in html:gmatch('<section class="page" id="page%-([%w-]+)"[^>]*>(.-)</section>') do
+        pages[id] = body
     end
+    for _, sec in ipairs(launcher.SETTINGS_SECTIONS) do
+        local page = pages[sec.page or sec.id]
+        t.eq(page ~= nil, true, "a page for " .. sec.id)
+        t.eq((page or ""):find('id="' .. sec.id .. '"', 1, true) ~= nil, true, sec.id .. " on its page")
+    end
+end)
+
+t.test("the settings sidebar groups the pages under tide's headings", function()
+    local sidebar = launcher.settings_sidebar()
+    local shown = {}
+    for _, row in ipairs(sidebar.rows) do
+        shown[#shown + 1] = row.heading and row.heading:upper() or row.label
+    end
+    t.eq(shown, {
+        "HARDWARE", "Displays", "Sound", "Network and Bluetooth", "Mouse", "Trackpad", "Keyboard", "Power",
+        "WINDOWS", "Layouts", "Workspaces", "Floating",
+        "GENERAL", "Appearance", "Notifications", "Clipboard", "Clocks", "Idle", "Start at login", "Setup checklist",
+    })
+    t.eq(sidebar.parts, { shortcuts = "keyboard" })
+end)
+
+t.test("the sidebar's pages are the window's, in its order", function()
+    -- A page left out of every group, or a group's pages apart, would show
+    -- in the sidebar out of the window's order, or not at all.
+    local window = {}
+    for _, sec in ipairs(launcher.SETTINGS_SECTIONS) do
+        if not sec.page then
+            window[#window + 1] = sec.id
+        end
+    end
+    local sidebar = {}
+    for _, row in ipairs(launcher.settings_sidebar().rows) do
+        if row.page then
+            sidebar[#sidebar + 1] = row.page
+        end
+    end
+    t.eq(sidebar, window)
 end)
 
 t.test("a settings section keeps the use remembered under its old title", function()

@@ -2509,6 +2509,23 @@ Each one names a workaround, or says there is none.
       coming back, as tileco's keys list does.
     - **Cost and reliability:** nothing to pay, and nothing new to run; one
       Accessibility query each time the window draws or comes forward.
+  - **Built: the sidebar, as tide's panel's** (tide §16): the pages run
+    down the window's side under tide's group headings, Hardware, Windows
+    and General, and one page shows beside them at a time.
+    - Hardware is the machine and what's plugged into it, Windows is how
+      windows are placed, and General is the rest. The Setup checklist,
+      tilemo's own, is General's last page *(a guess, to confirm)*.
+    - A heading can't be chosen. A click shows its page, at the top. Up and
+      Down change the page, passing over the headings and stopping at the
+      first and last, except while you're typing in a field.
+    - The groups and each page's group are data in `launcher.lua`
+      (`SETTINGS_GROUPS` and `SETTINGS_SECTIONS`), the list the launcher's
+      rows come from, so a new page names its group.
+    - A launcher row opens the window on its page. Keyboard shortcuts' row
+      opens Keyboard, scrolled to them.
+    - The window is 760 by 700 points, tall enough for every page and
+      heading, as tide's card is.
+    - The pages have no icons yet, as tide's have (TODO.md).
   - **Built: every page of tide's is a section, in tide's order,** so the
     window is laid out as tide's panel is. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,
@@ -2624,7 +2641,7 @@ Each one names a workaround, or says there is none.
     login, Clipboard and Muted sections. Each section has its own launcher
     row ("Tide Settings: Clocks", "Tide Settings: Start at login" and so
     on, §9), found by its name, which opens the window there, or
-    scrolls an open one, as tide's per-page rows do (tide §16). As tide's Clocks page, it adds a
+    turns an open one to it, as tide's per-page rows do (tide §16). As tide's Clocks page, it adds a
     zone by its ID, relabels, moves and removes clocks, and writes only
     `clocks.local.json`, with tide's own functions, so the first change
     copies the list the bar shows. A zone Intl doesn't know is refused.
