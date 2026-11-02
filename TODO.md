@@ -223,6 +223,9 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **The volume keys over DDC** (2026-11-02): 5% steps, the bar's scroll
+  step, not macOS's sixteenths, and the level as an `hs.alert` sign rather
+  than a drawn bar like macOS's.
 - **The switcher's look** (2026-11-02): headers only with nothing typed, on
   Launch (Recent, the five used last, then Apps, System Settings,
   Commands) and Actions (Session, tide, Toggles, Screenshots); fonts at
@@ -888,6 +891,8 @@ named as the display is, that the reading follows the monitor's own
 buttons within 30 s, and that the log names the reason when it can't
 read.
 
-**Next:** the volume keys do nothing for a monitor's speakers, as on
-macOS itself. tilemo could take them while the output is one it reads
-over DDC, with an on-screen level, as MonitorControl does.
+**Built:** the volume keys step and mute a monitor's speakers read over
+DDC, with a sign saying the level. Only `tests/bar_test.lua` covers the
+choice of keys. **Check on a Mac** (Intel with `ddcctl` and Apple silicon
+with `m1ddc`) that the keys reach the eventtap rather than only macOS's
+sign, and that holding a key repeats.

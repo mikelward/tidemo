@@ -722,6 +722,49 @@ function M.new(tilemo)
     end
     self.poll_ddc()
 
+    -- The volume keys, for a monitor's speakers read over DDC: macOS has no
+    -- volume there and shows its "no volume" sign, so tilemo steps the
+    -- monitor's own, as a scroll on the speaker does, and shows the level.
+    -- Any other output's keys go on to macOS untouched.
+    local function volume_key(e)
+        local k = e:systemKey()
+        if not k or not k.key then
+            return false
+        end
+        local dev = hs.audiodevice.defaultOutputDevice()
+        local d = bar.volume_key(k.key, ddc_state(dev) ~= nil)
+        if d == nil then
+            return false
+        end
+        if k.down then
+            if d == 0 then
+                toggle("volume")
+            else
+                step_volume(d)
+            end
+            local m = ddc_state(dev)
+            if m then
+                local muted = m.muted
+                if muted == nil then
+                    muted = dev:outputMuted()
+                end
+                hs.alert.closeAll(0)
+                hs.alert.show(bar.volume_sign(m.volume, muted), {}, hs.screen.mainScreen(), 1)
+            end
+        end
+        return true
+    end
+    try("the volume keys", function()
+        self.volume_keys = hs.eventtap.new({ hs.eventtap.event.types.systemDefined }, function(e)
+            local ok, taken = pcall(volume_key, e)
+            if not ok then
+                log("bar: a volume key failed: " .. tostring(taken))
+                return false
+            end
+            return taken
+        end):start()
+    end)
+
     self.bluetooth_timer = hs.timer.doEvery(M.BLUETOOTH_POLL, function()
         self.bluetooth:poll()
         self.poll_ddc()

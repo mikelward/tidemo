@@ -583,6 +583,28 @@ function M.volume_step(volume, muted, d)
     return v, muted and d > 0
 end
 
+-- The volume keys, as hs.eventtap's systemKey() names them, and the step
+-- each takes: up, down, or 0 for mute.
+M.VOLUME_KEYS = { SOUND_UP = 1, SOUND_DOWN = -1, MUTE = 0 }
+
+-- The step a volume key takes, or nil to leave the key to macOS. tilemo takes
+-- them only for an output it reads over DDC (ddc.lua), a monitor's speakers
+-- that macOS has no volume for and answers with its "no volume" sign.
+function M.volume_key(key, over_ddc)
+    if not over_ddc then
+        return nil
+    end
+    return M.VOLUME_KEYS[key]
+end
+
+-- What the on-screen sign says after a volume key: the level, or muted.
+function M.volume_sign(volume, muted)
+    if muted then
+        return "Sound muted"
+    end
+    return "Sound " .. math.max(0, math.min(100, math.floor((volume or 0) + 0.5))) .. "%"
+end
+
 -- The session menu (SPEC.md §8), as tide's (tide §7.4): lock, log out,
 -- sleep (tide's suspend), restart and shut down, in the Apple menu's
 -- groups. Each id is a function in `run` (bar_hs.lua's, hs.caffeinate's).
