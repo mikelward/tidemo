@@ -554,7 +554,7 @@ M.SETTINGS_GROUPS = {
 M.SETTINGS_SECTIONS = {
     { id = "displays", group = "hardware", name = "Displays", covers = "screens monitors resolution arrangement" },
     { id = "sound", group = "hardware", name = "Sound", covers = "volume speakers microphone audio output input" },
-    -- Network and Bluetooth are a page each, where tide has one for both.
+    -- Network and Bluetooth are a page each, as on tide's panel.
     { id = "network", group = "hardware", name = "Network", covers = "wifi wi-fi internet vpn ethernet",
       key = "Tide Settings: Network and Bluetooth" },
     { id = "bluetooth", group = "hardware", name = "Bluetooth", covers = "devices pair pairing wireless" },

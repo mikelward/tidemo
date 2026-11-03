@@ -2647,8 +2647,7 @@ Each one names a workaround, or says there is none.
       heading, as tide's card is.
     - The pages have no icons yet, as tide's have (TODO.md).
   - **Built: every page of tide's is a section, in tide's order,** so the
-    window is laid out as tide's panel is. Network and Bluetooth are a
-    page each, where tide has one for both. Where a page's settings are
+    window is laid out as tide's panel is. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,
     and nothing else (§1):
 
