@@ -1707,8 +1707,15 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     A bar placed in the frame sat under the notch, wasting the strip.
   - **So the bar goes up to the very top there,** over the notch's strip,
     as tall as the strip or 36 px, whichever is taller, and windows tile
-    below it (`bar.place`). Its window is borderless, which macOS doesn't
-    push down out of the strip *(unverified on every model)*.
+    below it (`bar.place`).
+  - **macOS can refuse the strip:** on the owner's MacBook it moved the
+    bar's window back down below the notch, so windows, tiled from the top
+    of the strip, sat under the bar. So tilemo reads the bar's frame back
+    each time it places it, and when macOS has moved it lower, windows tile
+    below where the bar really is (`bar.place`'s floor), and the log says
+    where macOS put it. Getting the window into the strip is still open: a
+    borderless `hs.webview` at the floating level doesn't stay there
+    *(what does, a higher level or a canvas, is to try on a Mac)*.
   - A display counts as having a notch when the menu bar is set to hide
     always (`_HIHideMenuBar`, read once with `defaults`) and its frame
     still starts below its full frame: with the menu bar hidden, the notch
