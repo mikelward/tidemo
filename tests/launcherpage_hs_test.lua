@@ -236,7 +236,7 @@ t.test("while it's open the launcher is one of tilemo's own windows, and closing
     local s = stub()
     local page = loaded(s)
     page.show("launch")
-    t.eq(s.own.launcher, { x = 0, y = 0, w = 800, h = 600 })
+    t.eq(s.own.launcher, { x = 36, y = 26, w = 728, h = 520 }, "the panel, not the whole display")
     s.key("escape").fn()
     t.eq(s.own.launcher, nil)
 end)

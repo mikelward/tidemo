@@ -1976,7 +1976,15 @@ two tabs. C is for clipboard and characters.
 ### 9.2 The dashboard launcher (switched off)
 
 **tileco's dashboard page as the launcher,** in a borderless `hs.webview`
-over the display you're on, in place of the switcher. The Switcher row under
+on the display you're on, in place of the switcher.
+
+- **A panel, not the whole display:** 728 by up to 600 points, tileco's
+  680-point launcher card and its padding, near tide's switcher's 560,
+  centered across and a third of the way down (`launcherpage.frame`).
+  tileco's bar along the page's top is hidden: tilemo's own bar already
+  shows the workspaces, clocks and status icons, which sat elsewhere in
+  tileco's (the owner's call). The page's body stays tileco's, as
+  `make check-tileco` checks; only tilemo's style block hides the bar. The Switcher row under
 Keyboard in tide's settings chooses it, at once, and this Mac keeps the
 choice in `hs.settings`; until it's chosen there, `start({ launcher =
 "dashboard" })` does. The default stays `"chooser"` (§9). A stored choice

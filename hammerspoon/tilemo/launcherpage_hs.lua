@@ -257,9 +257,9 @@ function M.new(tilemo)
         found_tabs = {}
         step("rows")
         if view then
-            view:frame(s.full)
+            view:frame(launcherpage.frame(s.full))
         else
-            make(s.full)
+            make(launcherpage.frame(s.full))
         end
         step("frame")
         -- Filled now if the page has started, else as soon as it has.
@@ -301,7 +301,7 @@ function M.new(tilemo)
         view:show()
         -- Focus follows mouse leaves it be, and a resync as it closes
         -- doesn't ask Accessibility about the page (wm.own_window).
-        tilemo.wm:own_window("launcher", s.full)
+        tilemo.wm:own_window("launcher", launcherpage.frame(s.full))
         step("show")
         tilemo.wm:hold("launcher", true)
         step("hold")
@@ -374,7 +374,7 @@ function M.new(tilemo)
 
     -- Made and loaded now, hidden, so the first key finds it ready.
     local s = tilemo.wm:screen_by_uuid(tilemo.wm:current_screen())
-    make(s and s.full or hs.screen.mainScreen():fullFrame())
+    make(launcherpage.frame(s and s.full or hs.screen.mainScreen():fullFrame()))
 
     return self
 end
