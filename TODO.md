@@ -226,6 +226,22 @@ tests and the bar page's test cover it. **Check on a Mac:**
 - the display stays awake, and the screen saver and lock hold off, while
   `displayIdle` is held.
 
+## The bar at the main menu's level everywhere
+
+On a display with a notch the bar now sits at the main menu's window level,
+the lowest macOS leaves in the notch's strip (SPEC.md §8); every other bar
+stays floating, below the menu bar. Consider the main menu's level on every
+display, so the bar looks and stacks the same everywhere, and, further on,
+hiding the system menu bar for good, so tilemo's bar is the only one:
+
+- **What the menu bar still gives** (SPEC.md §8): the app's own menus, the
+  Apple menu and other apps' status items. Those need a way in first, such
+  as a key that reveals the menu bar or a menu of the app's menus, and the
+  status items have no public API to draw elsewhere.
+- **Check first, on a Mac:** whether the revealed menu bar shows over a bar
+  at the same level, or under it, which decides whether the bar must hide
+  while the menu bar is out.
+
 ## Decisions needing review
 
 - **Over a notch, overflowing workspace chips hide behind "+n"** (SPEC.md
