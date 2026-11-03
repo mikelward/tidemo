@@ -2136,6 +2136,31 @@ that isn't one is left out, and the log says so.
   - A switch by hand lasts until the next scheduled change.
   - macOS's dynamic wallpapers already change with the appearance, and
     kitty can follow it with its automatic themes *(unverified version)*.
+  - **Built: tide's wallpapers, light and dark, are the desktop picture.**
+    - **The settings:** tide's own, `lightWallpaper` and `darkWallpaper` in
+      tide's `appearance.json`, and in `appearance.local.json` over it. The
+      settings window's Appearance page reads and changes them with tide's
+      appearance module, copied unchanged (`dashboard/tide-appearance.js`;
+      `make check-tide`), and saves a change to `appearance.local.json`.
+    - **The picture:** tilemo sets it on every display for the mode macOS
+      is in (`hs.screen:desktopImageURL`). It sets it again as the mode
+      changes (`AppleInterfaceThemeChangedNotification`), as a display
+      comes, and as the files change. A display showing it already is left
+      alone.
+    - **With none set** for the mode, or no such file, macOS's own picture
+      stays, and System Settings' Wallpaper pane sets it. A missing file is
+      logged. Taking a setting out leaves the last picture tilemo set.
+    - **Choosing one:** each wallpaper's field has a choose button, which
+      opens macOS's own file dialog (`hs.dialog.chooseFileOrFolder`),
+      offering images, where the wallpaper is now, or in Pictures. The file
+      chosen is set as a typed path is: from `~/` when it's in your home
+      folder, so it reads the same on Linux, where tide shows it. A cancel
+      changes nothing.
+    - The dialog is modal, so tilemo waits on it, as Hammerspoon's
+      dialogs do: windows that open meanwhile are tiled once it closes.
+    - **Cost and reliability:** nothing to install or pay for; one
+      notification watcher, and a desktop picture set only when it
+      changes.
 - **Screenshots** (tide §13): macOS's own, with tide's Print keys mapped to
   them (§7.2). tilemo presses macOS's screenshot keys rather than running
   `screencapture`, because a capture an app starts needs Screen Recording
@@ -2695,7 +2720,7 @@ Each one names a workaround, or says there is none.
     | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
-    | Appearance | Appearance settings |
+    | Appearance | the wallpapers, light and dark, each chosen in macOS's file dialog (§10), and the Menu bar switch; Appearance settings |
     | Notifications | Notifications settings, above the muted list (below) |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |

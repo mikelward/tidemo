@@ -369,6 +369,10 @@ body.settings {
   overflow-wrap: anywhere;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
+/* A wallpaper: its name, its file, then the button that chooses one. */
+.settings #wallpapers li {
+  grid-template-columns: 1fr 220px auto;
+}
 /* A permission, its state, then Open; an item's tick, its title, then
    Open. What to do there goes under both, across the row. */
 .settings #setup-permissions li {
@@ -416,6 +420,7 @@ body.settings {
 [data-icon="next"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z%22/%3E%3C/svg%3E"); }
 [data-icon="open"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h240q17 0 28.5 11.5T480-800q0 17-11.5 28.5T440-760H200v560h560v-240q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440v240q0 33-23.5 56.5T760-120H200Zm560-584L416-360q-11 11-28 11t-28-11q-11-11-11-28t11-28l344-344H600q-17 0-28.5-11.5T560-800q0-17 11.5-28.5T600-840h200q17 0 28.5 11.5T840-800v200q0 17-11.5 28.5T800-560q-17 0-28.5-11.5T760-600v-104Z%22/%3E%3C/svg%3E"); }
 [data-icon="expand"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M480-362q-8 0-15-2.5t-13-8.5L268-557q-11-11-11-28t11-28q11-11 28-11t28 11l156 156 156-156q11-11 28-11t28 11q11 11 11 28t-11 28L508-373q-6 6-13 8.5t-15 2.5Z%22/%3E%3C/svg%3E"); }
+[data-icon="folder"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h207q16 0 30.5 6t25.5 17l57 57h360q17 0 28.5 11.5T880-680q0 17-11.5 28.5T840-640H447l-80-80H160v480l79-263q8-26 29.5-41.5T316-560h516q41 0 64.5 32.5T909-457l-72 240q-8 26-29.5 41.5T760-160H160Zm84-80h516l72-240H316l-72 240Zm-84-262v-218 218Zm84 262 72-240-72 240Z%22/%3E%3C/svg%3E"); }
 </style>
 </head>
 <body class="settings">
@@ -513,6 +518,9 @@ body.settings {
 </section>
 <section class="page" id="page-appearance" hidden>
 <h1 id="appearance">Appearance</h1>
+<p class="note">The wallpapers, light and dark, shared with tide's appearance.json: the desktop shows the one for the mode macOS is in, as tide does. Empty leaves macOS's own picture.</p>
+<ul id="wallpapers"></ul>
+<p class="error" id="appearance-error" role="alert"></p>
 <h2 id="menubar">Menu bar</h2>
 <p class="note">While it's kept hidden, the pointer stops one point short of the top edge over the bar, so macOS's menu bar doesn't slide over it; the Apple logo at the bar's left opens the Apple menu. Off, the menu bar shows at the top edge as usual, and top hot corners work again.</p>
 <p class="row"><button type="button" id="menubar-hidden" aria-pressed="true"></button></p>

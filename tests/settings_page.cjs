@@ -254,6 +254,39 @@ assert.strictEqual(rows()[0].children[1].value, "Tok");
 sandbox.tilemo.count(0);
 assert.strictEqual(clip("clipboard-clear").disabled, true);
 
+// Appearance's wallpapers, light and dark, in tide's appearance files: the
+// one set shows, Enter sets a typed path, the choose button asks tilemo for
+// macOS's file dialog, and its answer is set as a typed one.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  const walls = () => ids.wallpapers.children;
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { shared: '{"darkWallpaper": "~/night.png"}' } });
+  assert.deepStrictEqual(walls().map((li) => li.children[0].textContent), ["Light wallpaper", "Dark wallpaper"]);
+  assert.deepStrictEqual(walls().map((li) => li.children[1].value), ["", "~/night.png"]);
+  assert.strictEqual(walls()[0].children[1].placeholder, "macOS's own");
+  sent.length = 0;
+  walls()[0].children[1].value = " ~/Pictures/day.jpg ";
+  walls()[0].children[1].listeners.keydown({ key: "Enter" });
+  assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/Pictures/day.jpg" }, "only this Mac's own, in appearance.local.json");
+  assert.strictEqual(walls()[0].children[1].value, "~/Pictures/day.jpg", "shown at once");
+  walls()[1].children[2].listeners.click();
+  assert.deepStrictEqual(sent.at(-1), { pickWallpaper: "darkWallpaper" });
+  assert.strictEqual(walls()[1].children[2].attrs["data-icon"], "folder");
+  sandbox.tilemo.setWallpaper("darkWallpaper", "/Library/Desktop Pictures/Sky.heic");
+  assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/Pictures/day.jpg", darkWallpaper: "/Library/Desktop Pictures/Sky.heic" });
+  // A path tide wouldn't take is refused, saying why, and nothing's saved.
+  const before = sent.length;
+  walls()[0].children[1].value = "day.jpg";
+  walls()[0].children[1].listeners.keydown({ key: "Enter" });
+  assert.strictEqual(sent.length, before);
+  assert.match(ids["appearance-error"].textContent, /lightWallpaper must be a file's path/);
+  // A file that's wrong is said, and nothing can be changed until it's fixed.
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: "{" } });
+  assert.match(ids["appearance-error"].textContent, /appearance\.local\.json/);
+  assert.strictEqual(walls()[0].children[1].disabled, true);
+  assert.strictEqual(walls()[0].children[2].disabled, true);
+}
+
 // The sidebar, as tide's settings panel's: each group's heading, then its
 // pages, with one page showing at a time.
 {

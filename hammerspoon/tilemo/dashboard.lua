@@ -13,7 +13,7 @@ M.MODULES = { "clocks.js", "calendar.js", "tide-clocks.js", "settings.js", "cloc
 -- The bar's page (bar_hs.lua) is built the same way, from the same files.
 M.BAR_MODULES = { "clocks.js", "calendar.js", "tide-clocks.js", "settings.js", "clockview.js", "bar.js" }
 -- And the settings page (settings_hs.lua).
-M.SETTINGS_MODULES = { "clocks.js", "tide-clocks.js", "tide-startup.js", "tide-clipboard.js", "tide-steps.js", "tide-layouts.js", "tide-input.js", "linearmouse.js", "tide-fuzzy.js", "tide-workspacenames.js", "tide-workspacepage.js", "settings.js", "settings-page.js" }
+M.SETTINGS_MODULES = { "clocks.js", "tide-clocks.js", "tide-startup.js", "tide-clipboard.js", "tide-steps.js", "tide-layouts.js", "tide-input.js", "tide-appearance.js", "linearmouse.js", "tide-fuzzy.js", "tide-workspacenames.js", "tide-workspacepage.js", "settings.js", "settings-page.js" }
 
 -- tide's modules, copied unchanged, import each other by tide's names: a
 -- module registered here is also found by the name in `ALIASES`.
@@ -59,6 +59,13 @@ function M.clipboard_files(dir, read)
 end
 
 M.CLIPBOARD_LOCAL_FILE = "clipboard.local.json"
+
+-- And the Appearance settings' (wallpaper.lua).
+function M.appearance_files(dir, read)
+    return { shared = read(dir .. "/appearance.json"), ["local"] = read(dir .. "/appearance.local.json") }
+end
+
+M.APPEARANCE_LOCAL_FILE = "appearance.local.json"
 
 -- And the Layouts settings' (layout.lua).
 function M.layout_files(dir, read)
