@@ -2298,6 +2298,13 @@ Each one names a workaround, or says there is none.
   - a Dock icon bouncing *(unverified that it can be seen)*.
 - **A badge marks the app; a title or activation marks the window.**
   `Super+A`'s list (§9) shows the window, or the app's last-used window.
+- **Read every two seconds, on Hammerspoon's thread,** so it asks only what
+  it needs: each Dock item's badge (`AXStatusLabel`), and only a badged
+  item's name, which one look at the running apps turns into its bundle
+  ID. It used to ask each item's name too and look each up with
+  `hs.application.get`, which walks every running app for a name: 334 ms a
+  read on CI's Mac with a near-empty Dock, and seconds on an old Mac with a
+  full one, every two seconds.
 - **A mark clears** when you focus the window or app, as on tide
   (tide §14.4).
 - **Where it shows:** the app icon of each marked window on its
