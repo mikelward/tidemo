@@ -1,0 +1,610 @@
+// Light or dark (SPEC.md §15), as pure functions the QML binds to: the
+// settings in appearance.json and appearance.local.json, the schedule they
+// give, and a manual flip that lasts until the schedule's next change.
+//
+// Local time comes in as a `clock`, so the tests can pin a time zone:
+// `clock.time(y, m, d, h, min)` is the instant of a local wall time (month
+// from 1), and `clock.dayOf(ms)` the local date {y, m, d} an instant falls
+// on. LOCAL is the engine's own local time, which follows the system's
+// time zone and its daylight saving changes.
+
+import { jsonError } from "./clocks.mjs";
+import { stepped } from "./steps.mjs";
+
+export const LOCAL = Object.freeze({
+    time: (y, m, d, h, min) => new Date(y, m - 1, d, h, min).getTime(),
+    dayOf: (ms) => {
+        const t = new Date(ms);
+        return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() };
+    },
+});
+
+export const DEFAULTS = Object.freeze({ mode: "schedule", light: "07:00", dark: "19:00" });
+
+const MODES = ["schedule", "sun", "light", "dark"];
+// The settings that decide light or dark, and every one there is.
+const THEME_KEYS = ["mode", "light", "dark", "latitude", "longitude"];
+const KEYS = THEME_KEYS.concat(["dimStrength", "lightWallpaper", "darkWallpaper"]);
+const DAY = 24 * 60 * 60 * 1000;
+
+// "HH:MM" as {h, min}, or null when it isn't a 24-hour time.
+export function parseTime(text) {
+    const m = typeof text === "string" ? /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(text) : null;
+    return m ? { h: Number(m[1]), min: Number(m[2]) } : null;
+}
+
+// One file's settings: an object with any of KEYS. Returns {settings} or
+// {error}, never throws. Whether they make sense together is checkSettings'.
+export function parseAppearance(text) {
+    let value;
+    try {
+        value = JSON.parse(text);
+    } catch (e) {
+        return { error: jsonError(text) };
+    }
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+        return { error: "expected an object of settings" };
+    }
+    const settings = {};
+    for (const key of Object.keys(value)) {
+        const v = value[key];
+        switch (key) {
+        case "mode":
+            if (!MODES.includes(v)) {
+                return { error: `mode must be one of ${MODES.map(m => `"${m}"`).join(", ")}` };
+            }
+            break;
+        case "light":
+        case "dark":
+            if (!parseTime(v)) {
+                return { error: `${key} must be a time like "07:00"` };
+            }
+            break;
+        case "latitude":
+            if (typeof v !== "number" || !(v >= -90 && v <= 90)) {
+                return { error: "latitude must be a number from -90 to 90" };
+            }
+            break;
+        case "longitude":
+            if (typeof v !== "number" || !(v >= -180 && v <= 180)) {
+                return { error: "longitude must be a number from -180 to 180" };
+            }
+            break;
+        case "dimStrength":
+            // Hyprland's decoration:dim_strength, as conf takes it.
+            if (typeof v !== "number" || !(v >= 0 && v <= 1)) {
+                return { error: "dimStrength must be a number from 0 to 1" };
+            }
+            break;
+        case "lightWallpaper":
+        case "darkWallpaper":
+            if (wallpaperError(key, v)) {
+                return { error: wallpaperError(key, v) };
+            }
+            break;
+        default:
+            return { error: `unknown setting "${key}"` };
+        }
+        settings[key] = v;
+    }
+    return { settings };
+}
+
+// Whether merged settings work together: null, or what's wrong.
+export function checkSettings(s) {
+    if (s.mode === "sun" && (s.latitude === undefined || s.longitude === undefined)) {
+        return 'mode "sun" needs latitude and longitude';
+    }
+    if (s.mode === "schedule" && s.light === s.dark) {
+        return "light and dark must be different times";
+    }
+    return null;
+}
+
+// The settings in effect, from appearance.json and appearance.local.json
+// (SPEC.md §16.1). Each text is the file's contents, or null when it
+// doesn't exist. The local file's settings replace the shared file's one
+// by one. A file that fails to parse, or settings that don't work
+// together, keep `lastGood` (the defaults the first time), and `errors`
+// names every problem: {settings, errors}.
+export function loadAppearance(sharedText, localText, lastGood = DEFAULTS) {
+    const errors = [];
+    let settings = Object.assign({}, DEFAULTS);
+    for (const [name, text] of [["appearance.json", sharedText], ["appearance.local.json", localText]]) {
+        if (text === null || text === undefined) {
+            continue;
+        }
+        const parsed = parseAppearance(text);
+        if (parsed.error) {
+            errors.push(`${name}: ${parsed.error}`);
+            continue;
+        }
+        settings = Object.assign(settings, parsed.settings);
+    }
+    if (errors.length === 0) {
+        const wrong = checkSettings(settings);
+        if (wrong) {
+            errors.push(`${localText !== null && localText !== undefined ? "appearance.local.json" : "appearance.json"}: ${wrong}`);
+        }
+    }
+    return errors.length > 0 ? { settings: lastGood, errors } : { settings, errors };
+}
+
+// The sun's altitude in degrees at an instant (ms), at a latitude and
+// longitude (east positive): the low-precision solar position, good to a
+// fraction of a degree, which puts a sunrise within a minute or two. No
+// network lookup.
+export function sunAltitude(ms, latitude, longitude) {
+    const rad = Math.PI / 180;
+    const d = ms / DAY + 2440587.5 - 2451545.0;
+    const g = (357.529 + 0.98560028 * d) * rad;
+    const q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad;
+    const e = (23.439 - 0.00000036 * d) * rad;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
+    const decl = Math.asin(Math.sin(e) * Math.sin(L));
+    const gmst = (18.697374558 + 24.06570982441908 * d) * 15 * rad;
+    const hourAngle = gmst + longitude * rad - ra;
+    const lat = latitude * rad;
+    return Math.asin(Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(hourAngle)) / rad;
+}
+
+// Sunrise and sunset are the sun's upper edge on the horizon, with
+// refraction.
+const HORIZON_ALTITUDE = -0.833;
+
+// Whether it's dark (the sun below the horizon) at an instant.
+export function sunDown(ms, latitude, longitude) {
+    return sunAltitude(ms, latitude, longitude) < HORIZON_ALTITUDE;
+}
+
+// How far ahead the sun's next change is looked for: past the longest
+// polar day or night, about six months at the poles.
+const HORIZON_DAYS = 400;
+const MINUTE = 60 * 1000;
+
+// The instant the sun next rises or sets after `now` (to the second), or
+// null if it doesn't within HORIZON_DAYS. The altitude changes at most a
+// quarter of a degree a minute, the Earth's turn, so a step as long as its
+// distance from the horizon allows can't skip a crossing; that keeps the
+// steps long through a polar day or night.
+export function nextSunChange(now, latitude, longitude) {
+    const down = sunDown(now, latitude, longitude);
+    const end = now + HORIZON_DAYS * DAY;
+    let before = now;
+    while (before < end) {
+        const gap = Math.abs(sunAltitude(before, latitude, longitude) - HORIZON_ALTITUDE);
+        const after = Math.min(end, before + Math.max(MINUTE, gap / 0.26 * MINUTE));
+        if (sunDown(after, latitude, longitude) !== down) {
+            let lo = before;
+            let hi = after;
+            while (hi - lo > 1000) {
+                const mid = (lo + hi) / 2;
+                if (sunDown(mid, latitude, longitude) !== down) {
+                    hi = mid;
+                } else {
+                    lo = mid;
+                }
+            }
+            return hi;
+        }
+        before = after;
+    }
+    return null;
+}
+
+let sunCache = null;
+
+// What the settings say at `now`: {dark, next}, `next` being the instant
+// of the next change, or null when the mode is fixed.
+export function scheduled(s, now, clock = LOCAL) {
+    if (s.mode === "light" || s.mode === "dark") {
+        return { dark: s.mode === "dark", next: null };
+    }
+    if (s.mode === "sun") {
+        // Where the sun is now, not a day's rise and set: a polar day or
+        // night, and the days either side of one, need no special case.
+        // Through a polar day the search runs months ahead, so the answer
+        // is kept until the change it found, rather than found each minute.
+        const c = sunCache;
+        if (c && c.latitude === s.latitude && c.longitude === s.longitude && now >= c.from && (c.next === null ? now < c.from + DAY : now < c.next)) {
+            return { dark: c.dark, next: c.next };
+        }
+        const dark = sunDown(now, s.latitude, s.longitude);
+        const next = nextSunChange(now, s.latitude, s.longitude);
+        sunCache = { latitude: s.latitude, longitude: s.longitude, from: now, dark, next };
+        return { dark, next };
+    }
+    const light = parseTime(s.light);
+    const darkAt = parseTime(s.dark);
+    const today = clock.dayOf(now);
+    // Noon steps a whole local day whatever daylight saving does.
+    const noon = clock.time(today.y, today.m, today.d, 12, 0);
+    const changes = [];
+    for (let offset = -2; offset <= 2; offset++) {
+        const day = clock.dayOf(noon + offset * DAY);
+        changes.push({ at: clock.time(day.y, day.m, day.d, light.h, light.min), dark: false });
+        changes.push({ at: clock.time(day.y, day.m, day.d, darkAt.h, darkAt.min), dark: true });
+    }
+    changes.sort((a, b) => a.at - b.at);
+    let dark = true;
+    for (const c of changes) {
+        if (c.at <= now) {
+            dark = c.dark;
+        }
+    }
+    const next = changes.find(c => c.at > now && c.dark !== dark);
+    return { dark, next: next ? next.at : null };
+}
+
+// The settings that decide light or dark as a key, so a flip made under
+// some settings is dropped when they change, and kept when only the dim
+// does.
+export function settingsKey(s) {
+    return JSON.stringify(THEME_KEYS.filter(k => s[k] !== undefined).map(k => [k, s[k]]));
+}
+
+// What shows at `now`: the schedule, unless a flip still holds. A flip
+// ({dark, until, settings}) holds until the schedule's next change after it
+// was made (`until`, null when the mode is fixed) and while the settings
+// are the ones it was made under. Returns {dark, next, override}, where
+// `override` is the flip still holding, or null.
+export function themeAt(s, now, override, clock = LOCAL) {
+    const plan = scheduled(s, now, clock);
+    const holds = override !== null && override !== undefined
+        && override.settings === settingsKey(s)
+        && (override.until === null || now < override.until);
+    if (!holds) {
+        return { dark: plan.dark, next: plan.next, override: null };
+    }
+    return { dark: override.dark, next: override.until === null ? null : plan.next, override };
+}
+
+// The flip from the launcher: the other one from what shows now, until the
+// schedule's next change. Flipping back to what the schedule says drops it.
+export function flip(s, now, override, clock = LOCAL) {
+    const shown = themeAt(s, now, override, clock);
+    const plan = scheduled(s, now, clock);
+    if (!shown.dark === plan.dark) {
+        return null;
+    }
+    return { dark: !shown.dark, until: plan.next, settings: settingsKey(s) };
+}
+
+// Whether a line of `gsettings monitor` output (`color-scheme:
+// 'prefer-dark'`) or `gsettings get` output means dark; `default` is
+// GNOME's "no preference", which apps show light. null for any other line.
+export function schemeIsDark(line) {
+    if (typeof line !== "string") {
+        return null;
+    }
+    const m = /^(?:color-scheme:\s*)?'(default|prefer-dark|prefer-light)'\s*$/.exec(line.trim());
+    return m ? m[1] === "prefer-dark" : null;
+}
+
+// "HH:MM" of an instant in local time.
+export function clockTime(ms) {
+    const t = new Date(ms);
+    const pad = n => String(n).padStart(2, "0");
+    return `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+}
+
+// The commands that tell apps (SPEC.md §15): the color scheme, which
+// xdg-desktop-portal-gtk publishes to them, and the GTK 3 theme. Adwaita
+// until setup installs adw-gtk3 (M7). Switches wait for each other
+// (tellNext), so each is stopped after `seconds`, as the hook is: a
+// gsettings stuck on an unresponsive dconf would otherwise hold up every
+// later switch. `--verbose` has timeout itself say when it stops one, which
+// Launcher logs.
+export const SCHEME_SECONDS = 10;
+
+export function schemeCommands(dark, seconds = SCHEME_SECONDS) {
+    const set = (key, value) => ["timeout", "--verbose", "--kill-after=5", String(seconds),
+        "gsettings", "set", "org.gnome.desktop.interface", key, value];
+    return [
+        set("color-scheme", dark ? "prefer-dark" : "prefer-light"),
+        set("gtk-theme", dark ? "Adwaita-dark" : "Adwaita"),
+    ];
+}
+
+// The hook a user's config can install to follow the scheme with what the
+// shell doesn't draw (SPEC.md §15): `appearance-hook` in the tide config
+// directory `dir`, run with no arguments after each change, once the
+// scheme commands have finished, so it can read the scheme as it now is.
+// No hook is the usual case and does nothing; one that can't run says so,
+// a link to a file that's gone included.
+// Switches wait for each other (tellNext), so a hook still running after
+// `seconds` is stopped rather than holding up every later switch: TERM,
+// then KILL 5 s later for one that ignores TERM. timeout says so itself
+// (`--verbose`), since a hook's own exit status can't tell a stop apart.
+// Not exec'd: on KILL, timeout kills itself too, and sh turns that into
+// an exit of 137 for Launcher to log.
+export const HOOK_SECONDS = 30;
+
+export function hookCommand(dir, seconds = HOOK_SECONDS) {
+    return ["sh", "-c",
+        'if ! test -e "$1"; then if test -L "$1"; then echo "$1 is a link to nothing" >&2; exit 1; fi; exit 0; fi; if ! test -x "$1"; then echo "$1 is not executable" >&2; exit 1; fi; '
+        + 'timeout --verbose --kill-after=5 "$2" "$1"',
+        "sh", `${dir}/appearance-hook`, String(seconds)];
+}
+
+// Telling apps, one run at a time (SPEC.md §15): a change while a run is
+// going is held, and runs once that run ends, for the scheme as it is then,
+// so runs can't overtake each other and the last always tells the latest.
+// {running, again}; each step returns {state, start}: whether to start a
+// run now.
+export const TELL_IDLE = Object.freeze({ running: false, again: false });
+
+export function tellNext(state, event) {
+    switch (event) {
+    case "change":
+        if (state.running) {
+            return { state: Object.freeze({ running: true, again: true }), start: false };
+        }
+        return { state: Object.freeze({ running: true, again: false }), start: true };
+    case "done":
+        if (state.again) {
+            return { state: Object.freeze({ running: true, again: false }), start: true };
+        }
+        return { state: TELL_IDLE, start: false };
+    default:
+        throw new Error(`unknown tell event: ${event}`);
+    }
+}
+
+// The settings panel's Appearance page (SPEC.md §16): its modes, in the
+// order ‹ and › step through them.
+export const MODE_CHOICES = Object.freeze([
+    Object.freeze({ mode: "schedule", label: "By the clock" }),
+    Object.freeze({ mode: "sun", label: "Sunrise and sunset" }),
+    Object.freeze({ mode: "light", label: "Always light" }),
+    Object.freeze({ mode: "dark", label: "Always dark" }),
+]);
+
+// The mode `steps` steps through MODE_CHOICES from the one at index `at`,
+// as an index, stopping at either end. "sun" is stepped past while
+// `settings` has no latitude and longitude, which it needs, so the modes
+// on its far side can still be reached.
+export function steppedModeAt(settings, at, steps) {
+    const located = settings.latitude !== undefined && settings.longitude !== undefined;
+    const dir = Math.sign(steps);
+    let i = at;
+    for (let n = Math.abs(steps); n > 0; n--) {
+        let j = i + dir;
+        while (!located && MODE_CHOICES[j]?.mode === "sun") {
+            j += dir;
+        }
+        if (j < 0 || j >= MODE_CHOICES.length) {
+            break;
+        }
+        i = j;
+    }
+    return i;
+}
+
+// The page's − and + move a time by this many minutes.
+export const TIME_STEP = 15;
+
+function hhmm(minutes) {
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+// The time `steps` quarter hours from `text` ("HH:MM"), stopping at 00:00
+// and 23:45. One off a quarter hour goes to the next one that way first,
+// so 07:10 goes to 07:15 or 07:00.
+export function steppedTime(text, steps) {
+    const t = parseTime(text);
+    if (t === null || steps === 0) {
+        return text;
+    }
+    const at = t.h * 60 + t.min;
+    let next;
+    if (at % TIME_STEP === 0) {
+        next = at + steps * TIME_STEP;
+    } else {
+        const edge = steps > 0 ? Math.ceil(at / TIME_STEP) : Math.floor(at / TIME_STEP);
+        next = (edge + steps - Math.sign(steps)) * TIME_STEP;
+    }
+    const clamped = Math.max(0, Math.min(24 * 60 - TIME_STEP, next));
+    // Past the last quarter hour (23:50, typed by hand), + has nowhere to
+    // go, and stays rather than stepping back.
+    return (steps > 0 && clamped < at) || (steps < 0 && clamped > at) ? text : hhmm(clamped);
+}
+
+// As steppedTime, but a step that would land on `other`, the opposite
+// time, goes past it: light and dark can't be the same, and an overnight
+// schedule needs the two to cross. At the end of the day, with nowhere
+// past it, the time stays where it is.
+export function steppedTimePast(text, steps, other) {
+    const next = steppedTime(text, steps);
+    if (next !== other) {
+        return next;
+    }
+    const past = steppedTime(next, Math.sign(steps));
+    return past === next ? text : past;
+}
+
+// A latitude or longitude as typed on the page: a decimal number, east and
+// north positive. Returns {value} or {error} naming the setting.
+export function parseCoordinate(key, text) {
+    const trimmed = typeof text === "string" ? text.trim() : "";
+    if (!/^[-+]?\d+(\.\d+)?$/.test(trimmed)) {
+        return { error: `${key} must be a number in decimal degrees, such as ${key === "latitude" ? "37.77" : "-122.42"}` };
+    }
+    const value = Number(trimmed);
+    const bad = parseAppearance(JSON.stringify({ [key]: value }));
+    return bad.error ? { error: bad.error } : { value };
+}
+
+// appearance.local.json's text with `key` set to `value`, keeping whatever
+// else it says. Each text is the file's, or null when it doesn't exist. The
+// settings panel writes only the .local file (§16.1). A bad value, a file
+// that doesn't parse (never overwritten, so a hand edit gone wrong isn't
+// lost), or settings that wouldn't work together with the shared file's
+// (`mode` "sun" with no latitude and longitude, say) is an {error}.
+export function withSetting(localText, key, value, sharedText = null) {
+    const bad = parseAppearance(JSON.stringify({ [key]: value }));
+    if (bad.error) {
+        return { error: bad.error };
+    }
+    const files = {};
+    for (const [name, text] of [["appearance.json", sharedText], ["appearance.local.json", localText]]) {
+        if (text === null || text === undefined) {
+            files[name] = {};
+            continue;
+        }
+        const parsed = parseAppearance(text);
+        if (parsed.error) {
+            return { error: `${name}: ${parsed.error}` };
+        }
+        files[name] = parsed.settings;
+    }
+    const local = Object.assign({}, files["appearance.local.json"], { [key]: value });
+    const wrong = checkSettings(Object.assign({}, DEFAULTS, files["appearance.json"], local));
+    if (wrong) {
+        return { error: wrong };
+    }
+    const next = {};
+    for (const k of KEYS) {
+        if (local[k] !== undefined) {
+            next[k] = local[k];
+        }
+    }
+    return { text: JSON.stringify(next, null, 2) + "\n" };
+}
+
+// The inactive dim's strength (SPEC.md §6.2) when nothing sets it: conf's
+// hyprland.lua's, which applies then.
+export const DIM_STRENGTH = 0.07;
+
+// The page's − and + for it: a point at a time, from none to half.
+const DIM_STEP = 0.01;
+const DIM_HI = 0.5;
+
+// The dim strength in effect.
+export function dimStrength(settings) {
+    return settings.dimStrength ?? DIM_STRENGTH;
+}
+
+// The dim strength moved `steps` steps, as shell/lib/steps.mjs moves one.
+export function steppedDim(value, steps) {
+    return stepped(value, steps, DIM_STEP, 0, DIM_HI);
+}
+
+// How the page shows a dim strength: as a percentage.
+export function formatDim(value) {
+    return `${Math.round(value * 100)}%`;
+}
+
+// What reaches Hyprland, as the Lua table conf's hyprland.lua reads from
+// ~/.config/hypr/tide-appearance.lua: only what's set, so the config's own
+// stands for the rest. A number is all it holds, so it needs no escapes.
+export function appearanceLua(settings) {
+    const lines = [
+        "-- Written by tide from appearance.json and appearance.local.json (tide SPEC.md §16).",
+        "-- Change those, or the Appearance page of tide's settings, not this file. Only",
+        "-- what's set is here; hyprland.lua has the rest.",
+        "return {",
+    ];
+    if (settings.dimStrength !== undefined) {
+        lines.push(`    dim_strength = ${settings.dimStrength},`);
+    }
+    lines.push("}");
+    return lines.join("\n") + "\n";
+}
+
+// What's wrong with a wallpaper setting, or "": a file's path, absolute or
+// from ~/, on one line, or "" for the default.
+function wallpaperError(key, v) {
+    if (typeof v !== "string" || /[\n\r]/.test(v) || (v !== "" && !v.startsWith("/") && !v.startsWith("~/"))) {
+        return `${key} must be a file's path, such as "~/Pictures/day.jpg", or "" for the default`;
+    }
+    return "";
+}
+
+// `path` with a leading ~/ as `home`.
+export function expandHome(path, home) {
+    return path.startsWith("~/") ? `${home}/${path.slice(2)}` : path;
+}
+
+// The wallpapers to try, in order, for light or `dark` (SPEC.md §15): the
+// one set for it, then $TIDE_WALLPAPER (`env`, "" when it's unset), then
+// conf's per-mode image and its one for both, as theme.sh and tide-shell
+// have them. The shell shows the first that can be read.
+export function wallpaperCandidates(settings, dark, home, env = "") {
+    const mode = dark ? "dark" : "light";
+    const set = settings[`${mode}Wallpaper`] ?? "";
+    const out = [];
+    for (const path of [set, env, `~/.config/hypr/wallpaper-${mode}.jpg`, "~/.config/hypr/wallpaper.jpg"]) {
+        const full = path === "" ? "" : expandHome(path, home);
+        if (full !== "" && !out.includes(full)) {
+            out.push(full);
+        }
+    }
+    return out;
+}
+
+// The command that asks for a wallpaper, `label`'s (SPEC.md §16): tide-pick,
+// the desktop portal's file chooser, offering images, and opening where
+// `setting`'s file is, when one is set.
+export function pickCommand(label, setting, home) {
+    const command = ["tide-pick", "--images", "--title", label];
+    const full = typeof setting === "string" && setting !== "" ? expandHome(setting, home) : "";
+    const folder = full.slice(0, full.lastIndexOf("/"));
+    if (folder !== "") {
+        command.push("--folder", folder);
+    }
+    return command;
+}
+
+// The setting for the file tide-pick chose, from what it printed, `text`:
+// a file under `home` as from ~/, so it reads the same on another machine
+// sharing appearance.json; "" for none, as when the chooser was cancelled.
+export function pickedWallpaper(text, home) {
+    const path = String(text ?? "").replace(/\n$/, "");
+    if (!path.startsWith("/") || /[\n\r]/.test(path)) {
+        return "";
+    }
+    return home !== "" && path.startsWith(`${home}/`) ? `~/${path.slice(home.length + 1)}` : path;
+}
+
+// The command that prints the first of `paths` that's a regular file it
+// can read, or exits 1 with none: so a directory, which `test -r` alone
+// passes, isn't taken for a picture.
+export function findCommand(paths) {
+    return ["sh", "-c", 'for f; do if test -f "$f" && test -r "$f"; then printf %s "$f"; exit 0; fi; done; exit 1', "sh"].concat(paths);
+}
+
+// `candidates` less those the shell found it couldn't draw, a corrupt
+// image say, so the next is tried.
+export function drawableCandidates(candidates, undrawable) {
+    return candidates.filter(c => !undrawable.includes(c));
+}
+
+// What the shell writes for the lock to draw, blurred (SPEC.md §15): the
+// wallpaper it draws now, `path`, on a line, or an empty line for none.
+// Never empty: Quickshell 0.3.1's FileView.setText skips text equal to what
+// it holds, and a file that doesn't exist holds "", so it could never be
+// written empty.
+export function wallpaperRecord(path) {
+    return `${path}\n`;
+}
+
+// The wallpaper a record the shell wrote names: {path}, "" for none, or
+// {path: "", error} for one that isn't a file's absolute path on a line.
+export function recordedWallpaper(text) {
+    const path = text.endsWith("\n") ? text.slice(0, -1) : text;
+    if (path === "") {
+        return { path: "" };
+    }
+    if (!path.startsWith("/") || /[\n\r\0]/.test(path)) {
+        return { path: "", error: "expected a file's absolute path, on a line of its own" };
+    }
+    return { path };
+}
+
+// A file's path as a file: URL, each part escaped, so a name with a space,
+// a # or a ? still names the file.
+export function fileUrl(path) {
+    return "file://" + path.split("/").map(encodeURIComponent).join("/");
+}

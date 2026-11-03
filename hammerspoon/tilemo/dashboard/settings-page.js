@@ -34,6 +34,7 @@ import {
 } from "./tide-input.js";
 import { LISTS, editedList, itemNote, movedItem, withItem, withoutItem } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings } from "./tide-workspacenames.js";
+import { loadAppearance, withSetting as withAppearance } from "./tide-appearance.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { steppedPointer } from "./linearmouse.js";
 
@@ -43,6 +44,7 @@ let files = null;
 let muted = [];
 let startupFiles = null;
 let clipboardFiles = null;
+let appearanceFiles = null;
 let layoutFiles = null;
 let inputFiles = null;
 // What's wrong with LinearMouse, from tilemo, shown with the Mouse rows.
@@ -239,6 +241,58 @@ function renderClipboard() {
   document.getElementById("clipboard-fewer").disabled ||= steppedMax(s.maxItems, -1) === s.maxItems;
   document.getElementById("clipboard-more").disabled ||= steppedMax(s.maxItems, 1) === s.maxItems;
   document.getElementById("clipboard-clear").disabled = clipboardCount === 0;
+}
+
+// The Appearance page's wallpapers, light and dark, as tide's has them
+// (tide SPEC.md §15, §16): appearance.json and appearance.local.json, read
+// and changed with tide's own module, so the Mac's desktop shows the ones
+// tide does. Enter sets one typed; its choose button asks tilemo for
+// macOS's file dialog ({ pickWallpaper: key }), and tilemo answers with
+// tilemo.setWallpaper(key, value). A change goes to appearance.local.json
+// ({ writeAppearance: text }).
+const WALLPAPERS = [
+  { key: "lightWallpaper", label: "Light wallpaper" },
+  { key: "darkWallpaper", label: "Dark wallpaper" },
+];
+const appearanceText = (which) => (typeof appearanceFiles?.[which] === "string" ? appearanceFiles[which] : null);
+
+function setWallpaper(key, value) {
+  const r = withAppearance(appearanceText("local"), key, value, appearanceText("shared"));
+  const error = document.getElementById("appearance-error");
+  if (r.error) {
+    error.textContent = `${r.error}; not changing ${key}`;
+    return;
+  }
+  error.textContent = "";
+  // Shown at once, before the folder's watcher brings the file back.
+  appearanceFiles = { ...appearanceFiles, local: r.text };
+  send({ writeAppearance: r.text });
+  renderAppearance();
+}
+
+function renderAppearance() {
+  const list = document.getElementById("wallpapers");
+  list.replaceChildren();
+  const { settings, errors } = loadAppearance(appearanceText("shared"), appearanceText("local"));
+  if (errors.length) {
+    document.getElementById("appearance-error").textContent = `${errors.join("; ")}. Fix the file to change these here.`;
+  }
+  for (const w of WALLPAPERS) {
+    const li = el("li");
+    const input = el("input");
+    input.value = settings[w.key] ?? "";
+    input.placeholder = "macOS's own";
+    input.spellcheck = false;
+    input.disabled = errors.length > 0;
+    input.setAttribute("aria-label", w.label);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") setWallpaper(w.key, input.value.trim());
+    });
+    const choose = button("…", `Choose the ${w.label.toLowerCase()}`, errors.length > 0, () => send({ pickWallpaper: w.key }));
+    choose.setAttribute("data-icon", "folder");
+    li.append(el("span", w.label), input, choose);
+    list.append(li);
+  }
 }
 
 document.getElementById("clipboard-history").addEventListener("click", () => {
@@ -889,6 +943,7 @@ window.tilemo = {
     files = state.clockFiles;
     startupFiles = state.startupFiles ?? null;
     clipboardFiles = state.clipboardFiles ?? null;
+    appearanceFiles = state.appearanceFiles ?? null;
     layoutFiles = state.layoutFiles ?? null;
     inputFiles = state.inputFiles ?? null;
     layoutBase = isObject(state.layoutBase) ? state.layoutBase : {};
@@ -903,12 +958,14 @@ window.tilemo = {
     showStartupError("");
     document.getElementById("muted-error").textContent = "";
     document.getElementById("layouts-error").textContent = "";
+    document.getElementById("appearance-error").textContent = "";
     showWorkspacesError("");
     render();
     renderLayouts();
     renderWorkspaces();
     renderStartup();
     renderClipboard();
+    renderAppearance();
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
@@ -950,6 +1007,10 @@ window.tilemo = {
   // A Keyboard switch that couldn't be made.
   keyboardError(why) {
     document.getElementById("keyboard-error").textContent = String(why ?? "");
+  },
+  // The file macOS's dialog chose for wallpaper `key`, as a setting.
+  setWallpaper(key, value) {
+    if (WALLPAPERS.some((w) => w.key === key) && typeof value === "string") setWallpaper(key, value);
   },
   mutedError(why, entry) {
     document.getElementById("muted-error").textContent = why;

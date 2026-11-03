@@ -33,6 +33,7 @@ local launcherpage = require("tilemo.launcherpage")
 local picker_hs = require("tilemo.picker_hs")
 local picker = require("tilemo.picker")
 local settings_hs = require("tilemo.settings_hs")
+local wallpaper_hs = require("tilemo.wallpaper_hs")
 local floating_hs = require("tilemo.floating_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
@@ -568,6 +569,10 @@ function M.start(config)
         self.clock_files = dashboard.clock_files(self.clock_dir, self.adapter.read)
         self.startup_files = dashboard.startup_files(self.clock_dir, self.adapter.read)
         self.input_files = dashboard.input_files(self.clock_dir, self.adapter.read)
+        self.appearance_files = dashboard.appearance_files(self.clock_dir, self.adapter.read)
+        if self.wallpaper then
+            self.wallpaper.apply()
+        end
         if self.set_mouse then
             self.set_mouse("folder")
         end
@@ -583,6 +588,10 @@ function M.start(config)
         end
         self.settings.refresh()
     end)
+    -- The desktop picture from tide's wallpapers, light and dark
+    -- (SPEC.md §10), and the files the settings window sets them in.
+    self.appearance_files = dashboard.appearance_files(self.clock_dir, self.adapter.read)
+    self.wallpaper = wallpaper_hs.new(self)
     self.settings = settings_hs.new(self)
     self.wm.open_settings = function(section)
         self.settings.show(section)

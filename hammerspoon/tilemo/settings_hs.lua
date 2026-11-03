@@ -170,6 +170,8 @@ function M.new(tilemo)
             -- defaults, so the page shows and steps what's in effect.
             layoutBase = tilemo.layout_base and layout.file_form(tilemo.layout_base) or nil,
             clipboardFiles = tilemo.clipboard_files,
+            -- tide's Appearance files, for the wallpapers, light and dark.
+            appearanceFiles = tilemo.appearance_files,
             -- tide's workspaces files, and what they lay over: start()'s
             -- lists, or tilemo's defaults.
             workspaceFiles = tilemo.workspace_files,
@@ -325,6 +327,16 @@ function M.new(tilemo)
                 save(dashboard.WORKSPACES_LOCAL_FILE, body.writeWorkspaces, "the workspaces")
             elseif type(body.writeClipboard) == "string" then
                 save(dashboard.CLIPBOARD_LOCAL_FILE, body.writeClipboard, "the clipboard settings")
+            elseif type(body.writeAppearance) == "string" then
+                save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
+            elseif type(body.pickWallpaper) == "string" and tilemo.wallpaper then
+                -- macOS's file dialog, over this window; the file chosen
+                -- goes back to the page, which sets it as a typed one.
+                local key = body.pickWallpaper
+                local value = tilemo.wallpaper.pick(key)
+                if value and view then
+                    view:evaluateJavaScript("tilemo.setWallpaper(" .. hs.json.encode({ key, value }):sub(2, -2) .. ")")
+                end
             elseif body.clearClipboard and tilemo.picker then
                 picker.clear(tilemo.picker.history)
                 push()
