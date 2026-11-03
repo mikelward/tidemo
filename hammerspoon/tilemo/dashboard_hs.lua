@@ -43,6 +43,7 @@ function M.new(tilemo)
         local v = view
         view = nil
         tilemo.wm:hold("dashboard", false)
+        tilemo.wm:own_window("dashboard", nil)
         v:delete()
         if refocus and before then
             tilemo.wm:focus_window(before)
@@ -121,11 +122,14 @@ function M.new(tilemo)
             elseif action == "closing" then
                 view = nil
                 tilemo.wm:hold("dashboard", false)
+                tilemo.wm:own_window("dashboard", nil)
             end
         end)
         view:html(page)
         view:show()
         tilemo.wm:hold("dashboard", true)
+        -- Focus follows mouse leaves it be (wm.own_window).
+        tilemo.wm:own_window("dashboard", s.full)
         local w = view:hswindow()
         if w then
             w:focus()

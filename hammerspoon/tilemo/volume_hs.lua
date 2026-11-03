@@ -47,6 +47,7 @@ function M.new(tilemo, ops)
         local v = view
         view = nil
         tilemo.wm:hold("volume", false)
+        tilemo.wm:own_window("volume", nil)
         v:delete()
         if refocus and before then
             tilemo.wm:focus_window(before)
@@ -104,7 +105,8 @@ function M.new(tilemo, ops)
         end
         local state = ops.state()
         before = tilemo.adapter.focused()
-        view = hs.webview.new(volume.frame(frame, right, #state.outputs), { developerExtrasEnabled = false }, content)
+        local box = volume.frame(frame, right, #state.outputs)
+        view = hs.webview.new(box, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "borderless" })
         view:transparent(true)
         -- A title for the rules to see: tilemo leaves its own windows alone.
@@ -126,10 +128,13 @@ function M.new(tilemo, ops)
             elseif action == "closing" then
                 view = nil
                 tilemo.wm:hold("volume", false)
+                tilemo.wm:own_window("volume", nil)
             end
         end)
         view:html(page)
         view:show()
+        -- Focus follows mouse leaves it be (wm.own_window).
+        tilemo.wm:own_window("volume", box)
         -- Focus follows mouse waits while it's open, so moving the pointer
         -- off it doesn't focus a window under it and close it.
         tilemo.wm:hold("volume", true)

@@ -2207,6 +2207,57 @@ function M:raise_floats(n, pid)
     end
 end
 
+-- tilemo's own windows, by owner: the settings window, tileco's launcher,
+-- the dashboard. They're web pages, and asking Accessibility what's under
+-- the pointer over one waits on the page, a quarter of a second each
+-- question, so focus follows mouse leaves them be. `frame` is the
+-- window's box, or a function giving it; nil says it has gone, and its box
+-- counts for M.OWN_GRACE more seconds, while macOS takes it off the
+-- screen.
+M.OWN_GRACE = 0.5
+
+function M:own_window(owner, frame)
+    self.own = self.own or {}
+    local o = self.own[owner] or {}
+    self.own[owner] = o
+    if frame then
+        o.frame, o.gone_at = frame, nil
+    elseif o.frame then
+        o.last = type(o.frame) == "function" and o.frame() or o.frame
+        o.frame, o.gone_at = nil, self.a.now()
+    end
+end
+
+local function own_box(o, now)
+    if o.frame then
+        if type(o.frame) == "function" then
+            return o.frame()
+        end
+        return o.frame
+    end
+    if o.gone_at and now - o.gone_at < M.OWN_GRACE then
+        return o.last
+    end
+end
+
+-- Whether x, y is over one of tilemo's own windows, or its overlays (the
+-- tray).
+function M:own_at(x, y)
+    for _, box in ipairs(self.overlays or {}) do
+        if inside(box, x, y) then
+            return true
+        end
+    end
+    local now = self.a.now()
+    for _, o in pairs(self.own or {}) do
+        local box = own_box(o, now)
+        if box and inside(box, x, y) then
+            return true
+        end
+    end
+    return false
+end
+
 -- Hold the keyboard for `owner` (the launcher, the dashboard, resize mode)
 -- or let it go. Focus follows mouse pauses while anyone holds it, so one
 -- overlay closing can't release another's hold.

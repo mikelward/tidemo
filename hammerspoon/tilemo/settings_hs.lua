@@ -384,6 +384,7 @@ function M.new(tilemo)
                     tilemo.adapter.log("settings: no button named " .. body.open)
                 end
             elseif body.close and view then
+                tilemo.wm:own_window("settings", nil)
                 view:delete()
                 view = nil
             end
@@ -462,8 +463,15 @@ function M.new(tilemo)
         end)
         view:windowCallback(function(action)
             if action == "closing" then
+                tilemo.wm:own_window("settings", nil)
                 view = nil
             end
+        end)
+        -- Focus follows mouse leaves it be, wherever it's dragged: asking
+        -- Accessibility about a page waits on it (wm.own_window).
+        tilemo.wm:own_window("settings", function()
+            local f = view and view:frame()
+            return f and { x = f.x, y = f.y, w = f.w, h = f.h }
         end)
         view:html(page)
         view:show()

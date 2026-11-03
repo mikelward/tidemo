@@ -111,6 +111,10 @@ local function stub()
             hold = function(_, what, on)
                 s.holds[what] = on
             end,
+            own_window = function(_, owner, frame)
+                s.own = s.own or {}
+                s.own[owner] = frame
+            end,
             focus_window = function() end,
         },
     }
@@ -226,6 +230,15 @@ t.test("each open starts with nothing typed", function()
     page.show("launch")
     s.key("escape").fn()
     t.eq(page.is_open(), false)
+end)
+
+t.test("while it's open the launcher is one of tilemo's own windows, and closing says it's gone", function()
+    local s = stub()
+    local page = loaded(s)
+    page.show("launch")
+    t.eq(s.own.launcher, { x = 0, y = 0, w = 800, h = 600 })
+    s.key("escape").fn()
+    t.eq(s.own.launcher, nil)
 end)
 
 t.done("launcherpage_hs")
