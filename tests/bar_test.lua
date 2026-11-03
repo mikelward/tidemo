@@ -621,6 +621,17 @@ t.test("the session menu locks, logs out, sleeps, restarts and shuts down, in th
     t.eq(ran, { "lock", "logout", "sleep", "restart", "shutdown" })
 end)
 
+t.test("the pointer is kept off a bar's top row, so the hidden menu bar stays hidden", function()
+    local frames = { A = { x = 0, y = 0, w = 1512, h = 36 }, B = { x = 1512, y = 0, w = 1920, h = 36, hidden = true } }
+    t.eq(bar.off_top(frames, 100, 0), 1, "one point down")
+    t.eq(bar.off_top(frames, 100, 0.4), 1)
+    t.eq(bar.off_top(frames, 100, 1), nil, "already off it")
+    t.eq(bar.off_top(frames, 100, 20), nil)
+    t.eq(bar.off_top(frames, 1600, 0), nil, "a hidden bar, under a full-screen window, leaves the menu bar to show")
+    t.eq(bar.off_top({ C = { x = 0, y = -1080, w = 1920, h = 36 } }, 100, -1080), -1079, "a display above another")
+    t.eq(bar.off_top(frames, 2000, 500), nil)
+end)
+
 t.test("the Apple logo opens the Apple menu, from its own bar", function()
     local got
     bar.handle(nil, { uuid = "B", menubar = true }, {

@@ -113,6 +113,21 @@ function M.pointer_at(frames, x, y)
     return nil
 end
 
+-- Where to put a pointer at x, y back to, or nil to leave it: macOS shows
+-- the hidden menu bar when the pointer reaches the top row of a display, so
+-- over a shown bar's top row it goes one point down (SPEC.md §8). The Apple
+-- logo opens the Apple menu without it. `frames` are the bars', as for
+-- pointer_at; a hidden bar (a full-screen window) leaves the menu bar to
+-- show as usual.
+function M.off_top(frames, x, y)
+    for _, f in pairs(frames) do
+        if not f.hidden and x >= f.x and x < f.x + f.w and y < f.y + 1 and y > f.y - 1 then
+            return f.y + 1
+        end
+    end
+    return nil
+end
+
 -- A bar item's tip, or the full title's, below bar `frame` and centered at
 -- `x` in it, `w` by `h`, kept on the bar's display with M.TIP_GAP to spare
 -- (SPEC.md §8).

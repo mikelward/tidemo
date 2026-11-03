@@ -590,6 +590,13 @@ function M.new(tilemo)
         for uuid, v in pairs(self.views) do
             frames[uuid] = { x = v.frame.x, y = v.frame.y, w = v.frame.w, h = v.frame.h, hidden = v.hidden }
         end
+        -- Kept off the top row, so the hidden menu bar doesn't slide over
+        -- the bar; the Apple logo opens the Apple menu instead.
+        local down = bar.off_top(frames, x, y)
+        if down then
+            hs.mouse.absolutePosition({ x = x, y = down })
+            y = down
+        end
         local uuid, px, py = bar.pointer_at(frames, x, y)
         local old = hovered and self.views[hovered]
         if old and hovered ~= uuid and old.ready then
