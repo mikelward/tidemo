@@ -842,9 +842,6 @@ t.test("an empty workspace goes once you leave it, unless you minimized what's o
     wm:act("show", "web")
     a.focus_ = 2
     wm:act("send", "in")
-    t.eq(wm.names, { "in", "web", "docs" }, "refused: 2 isn't one of \"in\"'s apps")
-    wm.windows[2].name = "Mail"
-    wm:act("send", "in")
     t.eq(wm.names, { "in", "web", "docs" }, "still showing, so not left yet")
     wm:act("show", "docs")
     t.eq(wm.names, { "in", "docs" }, "web went once left empty")
@@ -888,14 +885,14 @@ t.test("names are compared ignoring case, and keep the case they were made with"
     t.eq(wm.windows[1].ws, "Web")
 end)
 
-t.test('sending another app\'s window to "in" is refused, with a notice', function()
+t.test('any app\'s window can be sent to "in"', function()
     local a, wm = setup(1)
     a.focus_ = 1
     wm:act("send", "web")
     wm:act("show", "web")
     wm:act("send", "IN")
-    t.eq(wm.windows[1].ws, "web")
-    t.eq(#a.notes, 1)
+    t.eq(wm.windows[1].ws, "in")
+    t.eq(#a.notes, 0)
 end)
 
 t.test('"in"\'s apps always open on "in", by app name, wherever you are', function()
@@ -1106,15 +1103,10 @@ t.test("the standing workspaces are a setting, checked at start, the first being
     t.eq(wm.windows[1].ws, "in")
     wm:act("home")
     t.eq((wm:listed()), { "work", "home", "in" })
-    -- Home's apps open on home, and only they go there.
+    -- Home's apps open on home.
     a.add(2, { name = "Mail" })
     wm:sync()
     t.eq(wm.windows[2].ws, "work")
-    a.focus_ = 1
-    wm:act("show", "in")
-    a.focus_ = 1
-    wm:act("send", "WORK")
-    t.eq(wm.windows[1].ws, "in", "refused")
     local function err(list)
         local ok, e = pcall(wm_mod.new, fake.new(), { workspaces = list })
         return not ok and tostring(e) or nil
@@ -1262,12 +1254,12 @@ t.test("Super+Shift+Return asks for a workspace and moves the window there, foll
     asked(nil)
     t.eq(wm.windows[2].ws, "Web")
     t.eq(wm.current, "Web")
-    -- Home takes only its own apps: refused, nothing moves or shows.
+    -- Home takes any window, and you follow it there.
     wm:act("move_to")
     asked("IN")
-    t.eq(wm.windows[2].ws, "Web")
-    t.eq(wm.current, "Web")
-    t.eq(#a.notes, 1)
+    t.eq(wm.windows[2].ws, "in")
+    t.eq(wm.current, "in")
+    t.eq(#a.notes, 0)
 end)
 
 t.test("Super+Shift+Return refuses a name with what a name can't hold, and asks again", function()

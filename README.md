@@ -139,8 +139,9 @@ case, with hyphens as spaces, and at login only the ones that are Mac apps
 start.
 
 Any other window opening on "in" asks for a workspace name, and so does a
-launch from "in": Enter makes or uses the workspace and moves there, and
-Esc closes the window or cancels the launch. The default name comes from
+launch from "in": Enter makes or uses the workspace and moves there, "in"
+included, and Esc closes the window or cancels the launch. Any window can be
+sent to "in". The default name comes from
 the window's title: its first word, or a match of tide's `namePatterns` in
 `~/.config/tide/workspaces.json`, which are JavaScript regular expressions.
 Apps tilemo starts get the workspace's name, letters and digits only (in
