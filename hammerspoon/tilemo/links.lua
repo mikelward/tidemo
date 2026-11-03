@@ -64,7 +64,8 @@ M.APPS = {
 M.SECTIONS = {
     { id = "displays", links = { { "displays", "Displays settings" } } },
     { id = "sound", links = { { "sound", "Sound settings" } } },
-    { id = "network", links = { { "network", "Network settings" }, { "bluetooth", "Bluetooth settings" } } },
+    { id = "network", links = { { "network", "Network settings" } } },
+    { id = "bluetooth", links = { { "bluetooth", "Bluetooth settings" } } },
     { id = "mouse", links = { { "mouse", "Mouse settings" }, { "linearmouse", "LinearMouse settings" } } },
     { id = "trackpad", links = { { "trackpad", "Trackpad settings" } } },
     { id = "keyboard", links = { { "keyboard", "Keyboard settings" }, { "karabiner", "Karabiner settings" } } },

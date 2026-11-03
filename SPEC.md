@@ -2647,7 +2647,8 @@ Each one names a workaround, or says there is none.
       heading, as tide's card is.
     - The pages have no icons yet, as tide's have (TODO.md).
   - **Built: every page of tide's is a section, in tide's order,** so the
-    window is laid out as tide's panel is. Where a page's settings are
+    window is laid out as tide's panel is. Network and Bluetooth are a
+    page each, where tide has one for both. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,
     and nothing else (§1):
 
@@ -2655,7 +2656,8 @@ Each one names a workaround, or says there is none.
     |---|---|
     | Displays | Displays settings |
     | Sound | Sound settings |
-    | Network and Bluetooth | Network settings, Bluetooth settings |
+    | Network | Network settings |
+    | Bluetooth | Bluetooth settings |
     | Mouse | Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
     | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |

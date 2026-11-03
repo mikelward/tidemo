@@ -62,9 +62,10 @@ t.test("the bar's icons and the mute notice open the same panes as the window", 
     t.eq(mute.NOTIFICATIONS_URL, links.PANES.notifications)
 end)
 
--- tide's pages in tide's order (tide SPEC.md §16).
+-- tide's pages in tide's order (tide SPEC.md §16), but for Network and
+-- Bluetooth, which tide has on one page.
 local TIDE_ORDER = {
-    "displays", "sound", "network", "mouse", "trackpad", "keyboard", "power",
+    "displays", "sound", "network", "bluetooth", "mouse", "trackpad", "keyboard", "power",
     "layouts", "workspaces", "floating",
     "appearance", "muted", "clipboard", "clocks", "idle", "startup",
     -- Then tilemo's own Setup checklist, which tide has no page for.
