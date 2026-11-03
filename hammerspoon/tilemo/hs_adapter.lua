@@ -27,6 +27,17 @@ local function ignore_own_windows()
     hs.window.filter.ignoreAlways["Hammerspoon"] = true
 end
 
+-- The displays as last read, until Hammerspoon is next idle or they
+-- change (a.screens).
+local displays = {}
+local function forget_displays()
+    displays.list = nil
+    if displays.forget then
+        displays.forget:stop()
+        displays.forget = nil
+    end
+end
+
 local function box(r)
     return { x = math.floor(r.x + 0.5), y = math.floor(r.y + 0.5), w = math.floor(r.w + 0.5), h = math.floor(r.h + 0.5) }
 end
@@ -328,7 +339,27 @@ function M.new()
         return menu_bar_hidden
     end
 
+    -- The displays, read once until Hammerspoon is next idle: each read
+    -- of every display's ID and frames takes 20 ms or more, even on CI's
+    -- Mac, and one change redraws the bar and the tray, which asked eight
+    -- times. A display that changes meanwhile is read afresh as macOS says
+    -- so (M.watch). Each caller gets its own copy.
+    local function copy(list)
+        local out = {}
+        for i, s in ipairs(list) do
+            out[i] = {
+                uuid = s.uuid,
+                area = { x = s.area.x, y = s.area.y, w = s.area.w, h = s.area.h },
+                full = { x = s.full.x, y = s.full.y, w = s.full.w, h = s.full.h },
+                notch = s.notch,
+            }
+        end
+        return out
+    end
     function a.screens()
+        if displays.list then
+            return copy(displays.list)
+        end
         local out = {}
         for _, s in ipairs(hs.screen.allScreens()) do
             local area, full = box(s:frame()), box(s:fullFrame())
@@ -343,7 +374,11 @@ function M.new()
             end
             return p.full.y < q.full.y
         end)
-        return out
+        displays.list = out
+        if not displays.forget then
+            displays.forget = hs.timer.doAfter(0, forget_displays)
+        end
+        return copy(out)
     end
 
     -- Nothing, while Hammerspoon has the focus: one of tilemo's own
@@ -964,7 +999,10 @@ function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
     wf:subscribe(hs.window.filter.windowMinimized, with_id(on_min))
     wf:subscribe(hs.window.filter.windowUnminimized, with_id(on_unmin))
     wf:subscribe(hs.window.filter.windowTitleChanged, with_id(on_title))
-    local sw = hs.screen.watcher.new(on_change)
+    local sw = hs.screen.watcher.new(function(...)
+        forget_displays()
+        on_change(...)
+    end)
     sw:start()
     return { wf, sw }
 end
