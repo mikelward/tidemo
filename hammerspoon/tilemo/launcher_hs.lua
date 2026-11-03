@@ -538,8 +538,19 @@ function M.new(tilemo)
             end
             return
         end
+        -- How long each step takes, for CI's smoke test, as tileco's
+        -- launcher keeps them.
+        local steps, last = {}, hs.timer.secondsSinceEpoch()
+        local function step(name)
+            local now = hs.timer.secondsSinceEpoch()
+            steps[#steps + 1] = { name = name, ms = math.floor((now - last) * 1000) }
+            last = now
+        end
+        self.steps = steps
         before = tilemo.adapter.focused()
+        step("focused")
         local collect = M.collector(tilemo)
+        step("collect")
         local found_tabs = {}
         local function fill()
             items = collect(found_tabs)
@@ -549,6 +560,7 @@ function M.new(tilemo)
             end
         end
         fill()
+        step("fill")
         refill = function()
             fill()
             show_rows(chooser:query())
@@ -570,7 +582,9 @@ function M.new(tilemo)
             fill()
             show_rows(chooser:query())
         end)
+        step("tabs")
         tilemo.wm:hold("launcher", true)
+        step("hold")
         fresh = false
         open_keys = {
             hs.hotkey.bind({ "cmd" }, "return", function()
@@ -595,6 +609,7 @@ function M.new(tilemo)
                 toggle_mute(row and by_id[row.id])
             end),
         }
+        step("keys")
         -- tide's look, for the system's appearance now (SPEC.md §9).
         local dark = hs.host.interfaceStyle() == "Dark"
         look = launcher.look(dark)
@@ -605,8 +620,11 @@ function M.new(tilemo)
         chooser:width(launcher.WIDTH)
         chooser:rows(launcher.ROWS)
         chooser:query("")
+        step("look")
         set_scope(tab)
+        step("rows")
         chooser:show()
+        step("show")
     end
 
     -- The bar's logo (SPEC.md §8): closes the switcher on any tab, as a

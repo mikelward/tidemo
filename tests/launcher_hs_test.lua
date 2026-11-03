@@ -32,6 +32,11 @@ local function stub()
             get = function() end,
             set = function() end,
         },
+        timer = {
+            secondsSinceEpoch = function()
+                return 0
+            end,
+        },
         chooser = {
             new = function(fn)
                 on_choice = fn
