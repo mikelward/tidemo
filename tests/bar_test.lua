@@ -38,6 +38,48 @@ t.test("the strip sits along the top of the area, and tiling starts below it", f
     t.eq(bar.below(area, 36), { x = 0, y = 61, w = 1920, h = 1019 })
 end)
 
+t.test("on a display with a notch, the bar goes up to the top of the screen", function()
+    -- A 14-inch MacBook Pro's display, the menu bar hidden: macOS still
+    -- keeps the notch's 32 px at the top.
+    local notched = { area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
+    local strip, below = bar.place(notched, 36)
+    t.eq(strip, { x = 0, y = 0, w = 1512, h = 36 }, "over the notch, its own height")
+    t.eq(below, { x = 0, y = 36, w = 1512, h = 946 }, "windows start under the bar")
+    local tall = { area = { x = 0, y = 38, w = 1728, h = 1079 }, full = { x = 0, y = 0, w = 1728, h = 1117 }, notch = true }
+    strip, below = bar.place(tall, 36)
+    t.eq(strip, { x = 0, y = 0, w = 1728, h = 38 }, "a notch taller than the bar: the notch's height")
+    t.eq(below, { x = 0, y = 38, w = 1728, h = 1079 })
+end)
+
+t.test("without a notch, the bar sits at the top of the area as before", function()
+    local plain = { area = { x = 0, y = 25, w = 1920, h = 1055 }, full = { x = 0, y = 0, w = 1920, h = 1080 } }
+    local strip, below = bar.place(plain, 36)
+    t.eq(strip, bar.strip(plain.area, 36), "a visible menu bar's room stays the menu bar's")
+    t.eq(below, bar.below(plain.area, 36))
+    plain.notch = true
+    plain.area.y, plain.area.h = 0, 1080
+    strip = bar.place(plain, 36)
+    t.eq(strip.y, 0, "a notch flag with no room kept is just the top")
+end)
+
+t.test("a display with a notch tiles under the raised bar, and shows no title", function()
+    local a = fake.new()
+    a.screens_[1] = { uuid = "A", area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
+    a.add(1, { title = "Notes" })
+    local wm = wm_mod.new(a, { top = bar.HEIGHT, workspaces = { "in" } })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(a.wins[1].frame.y, 36)
+    t.eq(a.wins[1].frame.h, 946)
+    a.focus_ = 1
+    t.eq(bar.state(wm, "A", "Notes", {}).title, "", "the notch is where the title would be")
+    t.eq(bar.state(wm, "A", "Notes", {}).notch, true, "the page keeps the middle clear")
+    local opened
+    bar.handle(wm, { uuid = "A", workspaces = true }, { workspaces = function(uuid) opened = uuid end })
+    t.eq(opened, "A", "the +n chip opens the switcher's Workspaces")
+end)
+
 t.test("with the bar on, windows tile below it and maximize stops at it", function()
     local a, wm = two_displays()
     a.add(2, {})

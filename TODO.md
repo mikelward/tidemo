@@ -228,6 +228,12 @@ tests and the bar page's test cover it. **Check on a Mac:**
 
 ## Decisions needing review
 
+- **Over a notch, overflowing workspace chips hide behind "+n"** (SPEC.md
+  §8, 2026-11-03), which opens the switcher's Workspaces tab; the middle 220 px stays
+  clear. The alternatives were shrinking every chip's name further, or
+  moving the chips to the right of the notch. Reversible: `NOTCH_ROOM` and
+  `fitNotch` in `dashboard/bar.js`.
+
 - **The Setup checklist is General's last page** in the settings window's
   sidebar (2026-11-02), since tide has no such page and General is "the
   rest". Reversible: its `group` in `launcher.SETTINGS_SECTIONS`.

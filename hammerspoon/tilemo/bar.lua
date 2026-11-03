@@ -61,6 +61,22 @@ function M.below(area, h)
     return { x = area.x, y = area.y + h, w = area.w, h = math.max(0, area.h - h) }
 end
 
+-- Display `s`'s bar strip and the tiling area below it, for a bar `h` tall.
+-- On a MacBook's display with a notch, macOS keeps a strip as tall as the
+-- notch at the top of the screen even with the menu bar hidden, so its
+-- `area` (hs.screen's frame) starts below the notch. There (`s.notch`, from
+-- the adapter) the bar goes up to the top of the screen, as tall as that
+-- strip or `h`, whichever is taller, and windows tile below it.
+function M.place(s, h)
+    local area = s.area
+    if s.notch and s.full and s.full.y < area.y then
+        local strip = { x = area.x, y = s.full.y, w = area.w, h = math.max(h, area.y - s.full.y) }
+        local top = strip.y + strip.h
+        return strip, { x = area.x, y = top, w = area.w, h = math.max(0, area.y + area.h - top) }
+    end
+    return M.strip(area, h), M.below(area, h)
+end
+
 -- Which bar the pointer at x, y is over, and where on it: the uuid and the
 -- point in that bar's page, or nil off every bar. `frames` are the bars'
 -- frames by display uuid; a hidden one doesn't count.
@@ -184,10 +200,18 @@ function M.state(wm, uuid, title, icons, icon_of)
     -- window.
     local f = wm.a.focused()
     local on = wm:screen_of(f) or wm:current_screen()
+    -- The notch sits where the title goes, so a display with one has none.
+    local notch = false
+    for _, s in ipairs(wm.a.screens()) do
+        if s.uuid == uuid and s.notch then
+            notch = true
+        end
+    end
     return {
         uuid = uuid,
         workspaces = ws,
-        title = on == uuid and title or "",
+        title = on == uuid and not notch and title or "",
+        notch = notch,
         icons = icons or {},
         app_icons = app_icons,
     }
@@ -695,6 +719,8 @@ function M.handle(wm, body, act)
         act.toggle(body.toggle)
     elseif body.volume then
         act.volume(tonumber(body.volume))
+    elseif body.workspaces and act.workspaces then
+        act.workspaces(uuid)
     elseif type(body.session) == "table" and act.session then
         act.session(uuid, body.session)
     elseif type(body.sound) == "table" and act.sound then

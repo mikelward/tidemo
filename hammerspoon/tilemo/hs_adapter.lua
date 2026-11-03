@@ -316,10 +316,25 @@ function M.new()
         return out
     end
 
+    -- Whether the menu bar is set to hide always ("Automatically hide and
+    -- show the menu bar": Always, which scripts' setup-macos sets). Read
+    -- once: it changes only in System Settings, and tilemo reloads after.
+    local menu_bar_hidden
+    local function hides_menu_bar()
+        if menu_bar_hidden == nil then
+            local out, ok = hs.execute("/usr/bin/defaults read -g _HIHideMenuBar 2>/dev/null")
+            menu_bar_hidden = ok and (out or ""):match("^%s*1") ~= nil
+        end
+        return menu_bar_hidden
+    end
+
     function a.screens()
         local out = {}
         for _, s in ipairs(hs.screen.allScreens()) do
-            out[#out + 1] = { uuid = s:getUUID(), area = box(s:frame()), full = box(s:fullFrame()) }
+            local area, full = box(s:frame()), box(s:fullFrame())
+            -- With the menu bar hidden, the only room macOS still keeps at
+            -- the top is a notch's (bar.place).
+            out[#out + 1] = { uuid = s:getUUID(), area = area, full = full, notch = area.y > full.y and hides_menu_bar() }
         end
         -- Left to right, then top to bottom, so numbering is stable.
         table.sort(out, function(p, q)
