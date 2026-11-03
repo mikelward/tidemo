@@ -95,6 +95,14 @@ t.test("apps and panes are the page's apps, most recently used first", function(
     t.eq(f.apps[1].command, "row:app:/System/Applications/Notes.app")
 end)
 
+t.test("the app scripts are the page's apps too", function()
+    local commands = launcher.with_scripts(launcher.COMMANDS, function(run)
+        return run == "google-meet"
+    end)
+    local f = launcherpage.feed(launcher.items({}, {}, commands, {}))
+    t.eq(f.apps, { { name = "Google Meet", command = "row:command:script:google-meet" } }, "not Tide Settings")
+end)
+
 t.test("the Actions tab's rows are the page's actions, in order, with keep awake on or off", function()
     local f = feed({ keep_awake = true })
     t.eq(f.actions[1], { kind = "action", title = "Lock", detail = "", key = "", command = "row:command:Lock" })

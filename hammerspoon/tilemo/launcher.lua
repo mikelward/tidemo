@@ -430,6 +430,7 @@ function M.items(apps, tabs, commands, settings, attention, workspaces, windows)
             arg = c.arg,
             quick = c.quick,
             logo = c.logo,
+            bundle = c.bundle,
             group = c.group,
             key = "command:" .. (c.key or c.title),
         }
@@ -654,6 +655,65 @@ for _, c in ipairs({
 }) do
     M.COMMANDS[#M.COMMANDS + 1] = c
 end
+
+-- The scripts in ~/scripts that open an app, as scripts' setup-tide lists
+-- them for tide's launcher (its LAUNCHER_SCRIPTS), less the ones that only
+-- work on Linux: each is listed among the apps by name and run through
+-- runenv, as the app keys run them (SPEC.md §9). `bundle` is the app whose
+-- icon it shows: Chrome's for a web app, which opens in a Chrome app
+-- window. The other scripts are command-line tools, which do nothing
+-- visible run with no terminal, so a new app script needs a line here.
+local CHROME = "com.google.Chrome"
+M.SCRIPTS = {
+    { run = "gmail", name = "Gmail", bundle = CHROME },
+    { run = "google-calendar", name = "Google Calendar", bundle = CHROME },
+    { run = "google-chat", name = "Google Chat", bundle = CHROME },
+    { run = "google-meet", name = "Google Meet", bundle = CHROME },
+    { run = "youtube-music", name = "YouTube Music", bundle = CHROME },
+    { run = "discord", name = "Discord", bundle = CHROME },
+    { run = "remote-desktop", name = "Remote desktop", bundle = CHROME },
+    { run = "browser1", name = "Browser", bundle = CHROME },
+    { run = "browser2", name = "Browser, second profile", bundle = CHROME },
+    { run = "browser3", name = "Browser, third profile", bundle = CHROME },
+    { run = "terminal_on_workstation", name = "Terminal on the workstation", bundle = "net.kovidgoyal.kitty" },
+    { run = "terminal_on_vm", name = "Terminal on the VM", bundle = "net.kovidgoyal.kitty" },
+    { run = "notepad", name = "Notepad", bundle = "com.apple.TextEdit" },
+    { run = "irc", name = "IRC" },
+    { run = "home", name = "Home folder", bundle = "com.apple.finder" },
+}
+
+-- `commands` with each of M.SCRIPTS that `exists(run)` says is there
+-- added as an app. One with an app key runs as that key does, so it comes
+-- forward with its workspace, and the home workspace's apps launch from
+-- home (keys.APPS).
+function M.with_scripts(commands, exists)
+    local keyed = {}
+    for _, a in ipairs(require("tilemo.keys").APPS) do
+        if a.spec.run and not keyed[a.spec.run] then
+            keyed[a.spec.run] = a.spec
+        end
+    end
+    local out = {}
+    for _, c in ipairs(commands) do
+        out[#out + 1] = c
+    end
+    for _, sc in ipairs(M.SCRIPTS) do
+        if exists(sc.run) then
+            out[#out + 1] = {
+                title = sc.name,
+                as = "app",
+                action = "app",
+                arg = keyed[sc.run] or { run = sc.run },
+                sub = "~/scripts/" .. sc.run,
+                extra = sc.run,
+                bundle = sc.bundle,
+                key = "script:" .. sc.run,
+            }
+        end
+    end
+    return out
+end
+
 -- Workspaces are in the Workspaces tab, by name, not commands by number.
 
 
@@ -751,7 +811,10 @@ function M.icon(item)
     if k == "app" and item.logo then
         return { logo = true }
     elseif k == "app" then
-        return item.path and { path = item.path } or nil
+        if item.path then
+            return { path = item.path }
+        end
+        return item.bundle and { bundle = item.bundle } or nil
     elseif k == "window" or k == "attention" then
         return item.bundle and { bundle = item.bundle } or nil
     elseif k == "tab" then

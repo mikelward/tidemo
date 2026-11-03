@@ -228,8 +228,13 @@ end
 function M.collector(tilemo)
     local apps, settings = M.scan()
     local wins = windows(tilemo)
+    -- The app scripts in ~/scripts, as runenv finds them.
+    local scripts = (os.getenv("HOME") or "") .. "/scripts/"
+    local commands = launcher.with_scripts(launcher.COMMANDS, function(run)
+        return hs.fs.attributes(scripts .. run, "mode") == "file"
+    end)
     return function(tabs)
-        local items = launcher.items(apps, tabs, launcher.COMMANDS, settings, attention(tilemo), workspaces(tilemo), wins)
+        local items = launcher.items(apps, tabs, commands, settings, attention(tilemo), workspaces(tilemo), wins)
         mute.mark_rows(items, tilemo.wm.muted)
         return items
     end
@@ -289,7 +294,17 @@ end
 function M.run(tilemo, recency, item, fresh)
     recency[item.key] = os.time()
     hs.settings.set(M.RECENCY_KEY, recency)
-    if item.kind == "app" and not item.path then
+    if item.kind == "app" and not item.path and item.action == "app" then
+        -- An app script (launcher.with_scripts): as its app key runs it,
+        -- with Cmd+Return's new workspace. One of home's apps by name
+        -- (Gmail) launches from home, as an app on disk does, key or none.
+        local spec = {}
+        for k, v in pairs(item.arg) do
+            spec[k] = v
+        end
+        spec.home_app = spec.home_app or tilemo.wm:home_app_named(item.title)
+        tilemo.wm.actions.app(tilemo.wm, spec, fresh)
+    elseif item.kind == "app" and not item.path then
         -- One of tilemo's own, as Tide Settings is: a window manager
         -- action.
         tilemo.wm:act(item.action, item.arg)

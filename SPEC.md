@@ -1892,6 +1892,19 @@ tab, the search field naming the tab you're in.
     its Utilities, `/System/Library/CoreServices/Applications` (Archive
     Utility, Screen Sharing, …) and Finder. Not Spotlight's index, which
     would also bring installers and the helper apps inside other apps.
+  - **App scripts,** as tide's launcher lists them (tide §8): the scripts
+    in `~/scripts` that open an app (Gmail, Google Calendar, Google Chat,
+    Google Meet, YouTube Music, Discord, Remote desktop, the browsers, the
+    terminals, Notepad, IRC, Home folder), by the name scripts'
+    `setup-tide` gives each, found by the script's own name too, among the
+    apps. Only the ones there are listed, read as the switcher opens. One
+    runs through runenv as the app keys run them (§7.2), as its key does
+    when it has one. One of home's apps by name (Gmail, Google Calendar,
+    Google Chat, YouTube Music) launches from home, as an app does, and
+    Cmd+Return asks for a new workspace. The dashboard launcher lists them
+    among its apps. A web app shows Chrome's icon, the terminals kitty's.
+    `launcher.SCRIPTS` follows `setup-tide`'s list, less
+    `bluetooth-connect`, which needs `bluetoothctl`.
   - **Settings panes** are the app extensions in
     `/System/Library/ExtensionKit/Extensions` that plug into System Settings
     (`com.apple.Settings.extension.ui`), listed as "Mouse settings" and so on,
