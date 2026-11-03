@@ -1894,17 +1894,19 @@ tab, the search field naming the tab you're in.
     would also bring installers and the helper apps inside other apps.
   - **App scripts,** as tide's launcher lists them (tide §8): the scripts
     in `~/scripts` that open an app (Gmail, Google Calendar, Google Chat,
-    Google Meet, YouTube Music, Discord, Remote desktop, the browsers, the
-    terminals, Notepad, IRC, Home folder), by the name scripts'
-    `setup-tide` gives each, found by the script's own name too, among the
-    apps. Only the ones there are listed, read as the switcher opens. One
-    runs through runenv as the app keys run them (§7.2), as its key does
-    when it has one. One of home's apps by name (Gmail, Google Calendar,
-    Google Chat, YouTube Music) launches from home, as an app does, and
-    Cmd+Return asks for a new workspace. The dashboard launcher lists them
-    among its apps. A web app shows Chrome's icon, the terminals kitty's.
-    `launcher.SCRIPTS` follows `setup-tide`'s list, less
-    `bluetooth-connect`, which needs `bluetoothctl`.
+    Google Meet, YouTube Music, Discord, the browsers, the terminals, …),
+    from scripts' own list of them, `~/scripts/launcher-scripts`, which
+    `setup-tide` reads too. Each is listed among the apps by the name the
+    list gives it, found by the script's own name too, with the icon of
+    the Mac app the list names (Chrome's for a web app). One the list marks
+    `linux`, as `bluetooth-connect`, isn't listed, nor one whose script
+    isn't there. The list is read as the switcher opens, so a pull shows
+    at once; without it, no app scripts are listed and the log says why,
+    once. One runs through runenv as the app keys run them (§7.2), as its
+    key does when it has one. One of home's apps by name (Gmail, Google
+    Calendar, Google Chat, YouTube Music) launches from home, as an app
+    does, and Cmd+Return asks for a new workspace. The dashboard launcher
+    lists them among its apps.
   - **Settings panes** are the app extensions in
     `/System/Library/ExtensionKit/Extensions` that plug into System Settings
     (`com.apple.Settings.extension.ui`), listed as "Mouse settings" and so on,

@@ -656,37 +656,31 @@ for _, c in ipairs({
     M.COMMANDS[#M.COMMANDS + 1] = c
 end
 
--- The scripts in ~/scripts that open an app, as scripts' setup-tide lists
--- them for tide's launcher (its LAUNCHER_SCRIPTS), less the ones that only
--- work on Linux: each is listed among the apps by name and run through
--- runenv, as the app keys run them (SPEC.md §9). `bundle` is the app whose
--- icon it shows: Chrome's for a web app, which opens in a Chrome app
--- window. The other scripts are command-line tools, which do nothing
--- visible run with no terminal, so a new app script needs a line here.
-local CHROME = "com.google.Chrome"
-M.SCRIPTS = {
-    { run = "gmail", name = "Gmail", bundle = CHROME },
-    { run = "google-calendar", name = "Google Calendar", bundle = CHROME },
-    { run = "google-chat", name = "Google Chat", bundle = CHROME },
-    { run = "google-meet", name = "Google Meet", bundle = CHROME },
-    { run = "youtube-music", name = "YouTube Music", bundle = CHROME },
-    { run = "discord", name = "Discord", bundle = CHROME },
-    { run = "remote-desktop", name = "Remote desktop", bundle = CHROME },
-    { run = "browser1", name = "Browser", bundle = CHROME },
-    { run = "browser2", name = "Browser, second profile", bundle = CHROME },
-    { run = "browser3", name = "Browser, third profile", bundle = CHROME },
-    { run = "terminal_on_workstation", name = "Terminal on the workstation", bundle = "net.kovidgoyal.kitty" },
-    { run = "terminal_on_vm", name = "Terminal on the VM", bundle = "net.kovidgoyal.kitty" },
-    { run = "notepad", name = "Notepad", bundle = "com.apple.TextEdit" },
-    { run = "irc", name = "IRC" },
-    { run = "home", name = "Home folder", bundle = "com.apple.finder" },
-}
+-- The scripts in ~/scripts that open an app (SPEC.md §9), from scripts'
+-- launcher-scripts, which tide's launcher lists them from too: one per
+-- line, SCRIPT|NAME|ICON|MAC, where ICON is tide's and MAC is the bundle ID
+-- of the app whose icon tilemo shows (Chrome's for a web app), - for none,
+-- or linux for a script that only runs on Linux. Each as { run, name,
+-- bundle }, skipping comments, blank lines, Linux-only scripts and lines
+-- that aren't four fields.
+M.SCRIPTS_FILE = "launcher-scripts"
 
--- `commands` with each of M.SCRIPTS that `exists(run)` says is there
--- added as an app. One with an app key runs as that key does, so it comes
--- forward with its workspace, and the home workspace's apps launch from
--- home (keys.APPS).
-function M.with_scripts(commands, exists)
+function M.parse_scripts(text)
+    local out = {}
+    for line in (text or ""):gmatch("[^\n]+") do
+        local run, name, _, mac = line:match("^([^|#][^|]*)|([^|]+)|([^|]*)|([^|]+)$")
+        mac = mac and mac:match("^%s*(.-)%s*$")
+        if run and mac ~= "linux" then
+            out[#out + 1] = { run = run, name = name, bundle = mac ~= "-" and mac or nil }
+        end
+    end
+    return out
+end
+
+-- `commands` with each of `scripts` (M.parse_scripts') that `exists(run)`
+-- says is there added as an app. One with an app key runs as that key
+-- does, so it comes forward with its workspace (keys.APPS).
+function M.with_scripts(commands, scripts, exists)
     local keyed = {}
     for _, a in ipairs(require("tilemo.keys").APPS) do
         if a.spec.run and not keyed[a.spec.run] then
@@ -697,7 +691,7 @@ function M.with_scripts(commands, exists)
     for _, c in ipairs(commands) do
         out[#out + 1] = c
     end
-    for _, sc in ipairs(M.SCRIPTS) do
+    for _, sc in ipairs(scripts or {}) do
         if exists(sc.run) then
             out[#out + 1] = {
                 title = sc.name,

@@ -842,12 +842,33 @@ t.test("tide's look has a dark and a light palette", function()
     t.eq(launcher.look(true).fg.white > launcher.look(false).fg.white, true)
 end)
 
+local SCRIPTS = launcher.parse_scripts(table.concat({
+    "# SCRIPT|NAME|ICON|MAC",
+    "gmail|Gmail|mail-unread-symbolic|com.google.Chrome",
+    "google-chat|Google Chat|chat-symbolic|com.google.Chrome",
+    "google-meet|Google Meet|camera-web|com.google.Chrome",
+    "irc|IRC|io.github.Hexchat|-",
+    "bluetooth-connect|Connect the headphones|audio-headphones|linux",
+    "",
+}, "\n"))
+
+t.test("scripts' list of app scripts skips comments, blanks, Linux-only and bad lines", function()
+    t.eq(SCRIPTS, {
+        { run = "gmail", name = "Gmail", bundle = "com.google.Chrome" },
+        { run = "google-chat", name = "Google Chat", bundle = "com.google.Chrome" },
+        { run = "google-meet", name = "Google Meet", bundle = "com.google.Chrome" },
+        { run = "irc", name = "IRC" },
+    })
+    t.eq(launcher.parse_scripts("notepad|Notepad|x\nhome|Home|user-home|com.apple.finder|extra\n"), {}, "not four fields")
+    t.eq(launcher.parse_scripts(nil), {})
+end)
+
 t.test("the app scripts in ~/scripts are apps, found by name and run as their keys run them", function()
     local have = { ["google-meet"] = true, ["google-chat"] = true, gmail = true, ["some-tool"] = true }
-    local commands = launcher.with_scripts(launcher.COMMANDS, function(run)
+    local commands = launcher.with_scripts(launcher.COMMANDS, SCRIPTS, function(run)
         return have[run] == true
     end)
-    t.eq(#commands, #launcher.COMMANDS + 3, "only the app scripts that are there")
+    t.eq(#commands, #launcher.COMMANDS + 3, "only the listed scripts that are there")
     local items = launcher.items({}, {}, commands, {})
     local function first(q)
         return launcher.rank(q, items, { scope = "launch" })[1]
@@ -857,14 +878,15 @@ t.test("the app scripts in ~/scripts are apps, found by name and run as their ke
     t.eq(meet.kind, "app", "listed among the apps")
     t.eq(meet.action, "app")
     t.eq(meet.arg, { run = "google-meet" })
-    t.eq(launcher.icon(meet), { bundle = "com.google.Chrome" }, "a web app shows Chrome's icon")
+    t.eq(launcher.icon(meet), { bundle = "com.google.Chrome" }, "the list's Mac app's icon")
     t.eq(first("google-meet").title, "Google Meet", "by the script's own name too")
     t.eq(first("gmail").title, "Gmail")
     local chat = first("google chat")
     t.eq(chat.arg.home_app, true, "Google Chat runs as its key does, from the home workspace")
-    for _, sc in ipairs(launcher.SCRIPTS) do
-        t.eq(sc.run ~= "bluetooth-connect", true, "no Linux-only scripts")
-    end
+    local irc = launcher.items({}, {}, launcher.with_scripts({}, SCRIPTS, function(run)
+        return run == "irc"
+    end), {})[1]
+    t.eq(launcher.icon(irc), nil, "- shows no app's icon")
 end)
 
 t.done("launcher")
