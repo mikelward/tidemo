@@ -21,6 +21,9 @@ function M.new(tilemo)
 
     -- Every workspace listed, the standing ones made or not, filtered by
     -- what's typed, ignoring case; what's typed, if it names none, first.
+    -- Until you type, the default name filters nothing: it comes first, as
+    -- a new name or the workspace that has it, and every other workspace
+    -- follows in the bar's order.
     local function rows(query)
         local wm = tilemo.wm
         local name = wm.clean_name(query or "")
@@ -29,7 +32,10 @@ function M.new(tilemo)
         local exact = false
         for _, n in ipairs((wm:listed())) do
             local f = wm.fold(n)
-            if (want == "" or f:find(want, 1, true)) then
+            if f == want and not typed then
+                table.insert(out, 1, { text = n, name = n })
+                exact = true
+            elseif not typed or want == "" or f:find(want, 1, true) then
                 out[#out + 1] = { text = n, name = n }
                 exact = exact or f == want
             end
