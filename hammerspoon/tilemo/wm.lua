@@ -2669,7 +2669,9 @@ end
 -- the workspace without a focus event, such as one moved off a display that
 -- went away, still counts.
 function M:refocus(n)
-    if self.a.focused() then
+    -- One of tilemo's own windows having it counts: a close behind the
+    -- launcher or Tide Settings leaves them be.
+    if self.a.focused() or self.a.own_front() then
         return
     end
     if self.ffm and self.ffm.enabled then

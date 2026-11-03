@@ -390,6 +390,21 @@ t.test("after a close, a window not focused since tilemo started still gets focu
     t.eq(a.focus_, 1)
 end)
 
+t.test("after a close, a launcher or Tide Settings with the focus keeps it", function()
+    local a, wm = setup(2)
+    wm:focused(1)
+    a.drop(2)
+    a.focus_ = nil
+    a.own = true
+    a.calls = {}
+    wm:schedule()
+    a.tick()
+    t.eq(a.focus_, nil)
+    for _, c in ipairs(a.calls) do
+        t.eq(c:match("^focus") == nil, true, c)
+    end
+end)
+
 t.test("a new window that took focus first still goes after the one you were in", function()
     local cfg = {}
     for k, v in pairs(require("tilemo.layout").defaults) do

@@ -346,15 +346,32 @@ function M.new()
         return out
     end
 
-    function a.focused()
-        local w = hs.window.focusedWindow()
+    -- Nothing, while Hammerspoon has the focus: one of tilemo's own
+    -- windows, or the console, none of which the window manager knows
+    -- (M.watch). Asking Accessibility about Hammerspoon from its own thread
+    -- waits out M.AX_TIMEOUT, and the attention poll and the bar ask over
+    -- and over, which held Esc in the launcher for seconds.
+    local me = hs.processInfo.processID
+    local function focused_in(app)
+        if not app or app:pid() == me then
+            return nil
+        end
+        local w = try(app.focusedWindow, app)
         return w and try(w.id, w)
     end
 
+    function a.focused()
+        return focused_in(hs.application.frontmostApplication())
+    end
+
     function a.app_focused(pid)
-        local app = pid and hs.application.applicationForPID(pid)
-        local w = app and app:focusedWindow()
-        return w and try(w.id, w)
+        return focused_in(pid and hs.application.applicationForPID(pid))
+    end
+
+    -- Whether Hammerspoon has the focus, which focused() can't say.
+    function a.own_front()
+        local app = hs.application.frontmostApplication()
+        return app ~= nil and app:pid() == me
     end
 
     function a.pointer_screen()

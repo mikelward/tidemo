@@ -28,6 +28,7 @@ local function stub(items, running)
         }
     end
     _G.hs = {
+        processInfo = { processID = 42 },
         axuielement = {
             systemWideElement = function()
                 return { setTimeout = function() end }
