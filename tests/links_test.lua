@@ -62,8 +62,7 @@ t.test("the bar's icons and the mute notice open the same panes as the window", 
     t.eq(mute.NOTIFICATIONS_URL, links.PANES.notifications)
 end)
 
--- tide's pages in tide's order (tide SPEC.md §16), but for Network and
--- Bluetooth, which tide has on one page.
+-- tide's pages in tide's order (tide SPEC.md §16, shell/lib/settings.mjs).
 local TIDE_ORDER = {
     "displays", "sound", "network", "bluetooth", "mouse", "trackpad", "keyboard", "power",
     "layouts", "workspaces", "floating",
