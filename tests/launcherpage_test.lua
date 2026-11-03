@@ -227,4 +227,12 @@ t.test("the page says whether there's anything in the search", function()
     t.eq(launcherpage.message({ typed = false }), { kind = "typed", value = false })
 end)
 
+t.test("the launcher page is a panel about tide's switcher's size, not the whole display", function()
+    t.eq(launcherpage.frame({ x = 0, y = 0, w = 1512, h = 982 }), { x = 392, y = 127, w = 728, h = 600 })
+    t.eq(launcherpage.frame({ x = 1512, y = -200, w = 1920, h = 1080 }), { x = 2108, y = -40, w = 728, h = 600 },
+        "on its own display, wherever that is")
+    t.eq(launcherpage.frame({ x = 0, y = 0, w = 640, h = 480 }), { x = 20, y = 26, w = 600, h = 400 },
+        "kept on a small display")
+end)
+
 t.done("launcherpage")

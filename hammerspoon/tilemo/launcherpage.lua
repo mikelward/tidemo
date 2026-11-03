@@ -275,4 +275,22 @@ function M.message(body)
     return { kind = "unknown", value = table.concat(names, ", ") }
 end
 
+-- The launcher page's window on a display whose full frame is `full`: a
+-- panel about tide's switcher's size (tide's is 560 wide), as wide as
+-- tileco's launcher card (680) and its padding, up to 600 tall, centered
+-- across and a third of the way down, kept on the display. Not the whole
+-- display: tilemo's own bar already shows the workspaces, clocks and
+-- status icons tileco's page would repeat above it.
+M.WIDTH, M.HEIGHT = 728, 600
+function M.frame(full)
+    local w = math.min(M.WIDTH, full.w - 40)
+    local h = math.min(M.HEIGHT, full.h - 80)
+    return {
+        x = math.floor(full.x + (full.w - w) / 2),
+        y = math.floor(full.y + (full.h - h) / 3),
+        w = w,
+        h = h,
+    }
+end
+
 return M

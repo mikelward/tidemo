@@ -8,6 +8,18 @@
 <style>
 /*TILEMO_CSS*/
 </style>
+<style>
+/* tilemo shows this page in a panel about tide's switcher's size, not over
+   the whole display (launcherpage.lua's frame), and its own bar already
+   shows the workspaces, clocks and status icons: so no bar here, and the
+   card sits near the panel's top rather than 12% down the display. */
+header.bar {
+  display: none;
+}
+main {
+  padding: 20px 24px 12px;
+}
+</style>
 </head>
 <body>
 <header class="bar">
