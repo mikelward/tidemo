@@ -564,9 +564,8 @@ function M.new(tilemo)
         v.view:windowStyle({ "borderless" })
         -- A title for the rules to see: tilemo leaves its own windows alone.
         v.view:windowTitle(brand.title("bar"))
-        -- Above every app's windows, below the menu bar, so the menu bar
-        -- still shows over it when the pointer reaches the top.
-        v.view:level(hs.drawing.windowLevels.floating)
+        -- Above every app's windows; over a notch, at the main menu's level
+        -- (bar.level), set by sync_views before it places the window.
         v.view:behavior(hs.drawing.windowBehaviors.canJoinAllSpaces + hs.drawing.windowBehaviors.stationary)
         -- `nav` is how far the page got, for a smoke test that finds it
         -- not ready.
@@ -631,10 +630,19 @@ function M.new(tilemo)
             present[s.uuid] = true
             local frame = bar.place(s, bar.HEIGHT)
             local v = self.views[s.uuid]
+            local level = bar.level(s)
             if not v then
                 v = create(s.uuid, frame)
                 self.views[s.uuid] = v
-            elseif not same(v.frame, frame) then
+            end
+            -- The level first: macOS moves a window below the main menu's
+            -- level out of a notch's strip as it's placed.
+            if v.level ~= level then
+                v.level = level
+                v.view:level(hs.drawing.windowLevels[level])
+                v.frame = nil
+            end
+            if not v.frame or not same(v.frame, frame) then
                 v.frame = frame
                 v.view:frame(frame)
             end

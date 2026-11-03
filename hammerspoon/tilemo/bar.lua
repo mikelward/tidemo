@@ -51,6 +51,19 @@ function M.title(ws)
     return table.concat(parts, " ")
 end
 
+-- The window level for display `s`'s bar: floating, above every app's
+-- windows but below the menu bar, so the menu bar still shows over it when
+-- the pointer reaches the top. Over a notch, macOS moves any window below
+-- the main menu's level out of the notch's strip (canvases and web views
+-- alike, on the owner's MacBook), so that bar is at the main menu's level,
+-- the lowest that stays there.
+function M.level(s)
+    if s.notch then
+        return "mainMenu"
+    end
+    return "floating"
+end
+
 -- The strip along the top of a display's area, and the tiling area left
 -- below it.
 function M.strip(area, h)

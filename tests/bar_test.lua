@@ -62,6 +62,11 @@ t.test("without a notch, the bar sits at the top of the area as before", functio
     t.eq(strip.y, 0, "a notch flag with no room kept is just the top")
 end)
 
+t.test("a bar over a notch sits at the main menu's level, the lowest macOS leaves there", function()
+    t.eq(bar.level({ notch = true }), "mainMenu")
+    t.eq(bar.level({}), "floating", "elsewhere, below the menu bar, which shows over it")
+end)
+
 t.test("windows tile below where the bar really is, when macOS moved it down", function()
     local notched = { area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
     local strip, below = bar.place(notched, 36, 68)
