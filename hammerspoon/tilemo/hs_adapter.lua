@@ -275,13 +275,29 @@ function M.new()
         local list = el and try(function()
             return el:attributeValue("AXChildren")[1]
         end)
+        -- It runs every two seconds on Hammerspoon's thread, so it asks
+        -- each item only for its badge, and names the app of a badged one
+        -- alone, from one look at the running apps: hs.application.get by
+        -- name walks them all, once per item. An app left out has no badge,
+        -- as attention.dock takes it.
+        local apps
         for _, item in ipairs(list and try(list.attributeValue, list, "AXChildren") or {}) do
-            local name = try(item.attributeValue, item, "AXTitle")
             local label = try(item.attributeValue, item, "AXStatusLabel")
-            local app = name and hs.application.get(name)
-            local bundle = app and app:bundleID()
-            if bundle then
-                out[#out + 1] = { app = bundle, label = label }
+            if label and label ~= "" then
+                local name = try(item.attributeValue, item, "AXTitle")
+                if not apps then
+                    apps = {}
+                    for _, app in ipairs(hs.application.runningApplications()) do
+                        local n, bundle = try(app.name, app), try(app.bundleID, app)
+                        if n and bundle then
+                            apps[n] = bundle
+                        end
+                    end
+                end
+                local bundle = name and apps[name]
+                if bundle then
+                    out[#out + 1] = { app = bundle, label = label }
+                end
             end
         end
         return out
