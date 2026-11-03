@@ -1405,9 +1405,15 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     own (below), and draws the common status items itself, so they don't
     need the menu bar revealed.
   - **What still needs the menu bar:** the app's own menus, the Apple menu,
-    and other apps' status items (a VPN, an IT agent, Zoom). They show when
-    the pointer reaches the top edge, over the bar, which sits below the
-    menu bar's level.
+    and other apps' status items (a VPN, an IT agent, Zoom). The Apple
+    logo opens the Apple menu (below), which shows the menu bar with it.
+  - **The pointer is kept off the bar's top row,** one point down
+    (`bar.off_top`), so the hidden menu bar no longer slides over the bar
+    each time the pointer reaches the top edge. macOS shows it only for the
+    top row, and offers no setting to stop that. Top hot corners and
+    anything else that needs the very top edge are lost on displays with a
+    shown bar; under a full-screen window, where the bar hides, the menu bar
+    shows as usual *(unverified that one point is enough on every macOS)*.
   - **Option 2 stays as the fallback,** with `bar = false` in `start()`: a
     menu bar item draws tide's logo, as a template image macOS tints for a
     light or dark menu bar, then the workspaces' names as text, current,
