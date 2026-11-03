@@ -77,24 +77,24 @@ function M:blocked()
         or self.a.buttons_down() or self.a.menu_open() or false
 end
 
-function M:paused(x, y, super_held)
-    if super_held or self:blocked() then
+-- Where nothing is tilemo's to focus, and nothing need be asked: over
+-- tilemo's own windows and overlays, such as the settings window and the
+-- tray of windows you minimized (SPEC.md §6.7), and outside every work
+-- area, which is the menu bar, tilemo's bar or the Dock.
+function M:off_limits(x, y)
+    if self.wm:own_at(x, y) then
         return true
     end
-    -- tilemo's own floating overlays, such as the tray of windows you
-    -- minimized (SPEC.md §6.7), sit over the work area.
-    for _, box in ipairs(self.wm.overlays or {}) do
-        if inside(box, x, y) then
-            return true
-        end
-    end
-    -- Outside every work area is the menu bar, tilemo's bar or the Dock.
     for _, s in ipairs(self.wm:screens()) do
         if inside(s.area, x, y) then
             return false
         end
     end
     return true
+end
+
+function M:paused(x, y, super_held)
+    return super_held or self:blocked() or self:off_limits(x, y)
 end
 
 -- The pointer is still where nothing new can be: in the last window, and
@@ -293,7 +293,11 @@ end
 function M:resync()
     local x, y = self.a.pointer()
     if x then
-        local id = self:hit(x, y)
+        -- Over tilemo's own window, the bar or the Dock, nothing's there to
+        -- read, and asking about one of tilemo's web pages waits on it: it
+        -- counts as no window, so the one it was over is forgotten, as a
+        -- lookup that found none forgets it.
+        local id = not self:off_limits(x, y) and self:hit(x, y) or nil
         self:remember(id)
         if self.queued and (not id or self:prefer_dialog(id) ~= self.queued) then
             self.queued = nil

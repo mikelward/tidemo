@@ -76,6 +76,7 @@ function M.new(tilemo)
             esc_key = nil
         end
         tilemo.wm:hold("launcher", false)
+        tilemo.wm:own_window("launcher", nil)
         if view then
             view:hide()
         end
@@ -298,6 +299,9 @@ function M.new(tilemo)
             end
         end)
         view:show()
+        -- Focus follows mouse leaves it be, and a resync as it closes
+        -- doesn't ask Accessibility about the page (wm.own_window).
+        tilemo.wm:own_window("launcher", s.full)
         step("show")
         tilemo.wm:hold("launcher", true)
         step("hold")

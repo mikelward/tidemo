@@ -484,6 +484,16 @@ is.
      autocomplete list or tooltip (these sit above the normal level
      *(unverified for every kind)*), the menu bar, the Dock,
      notifications, Spotlight, or tilemo's own bar.
+   - **tilemo's own windows aren't asked about at all:** the settings
+     window, tileco's launcher, the dashboard, the volume popover and the
+     tray. Each says where it is as it shows (`wm.own_window`), and its
+     box counts for half a second after it goes, while macOS takes it off
+     the screen. They're web pages, and asking Accessibility what's under
+     the pointer over one waits on the page, up to a quarter of a second a
+     question and a dozen questions a lookup. On CI's Mac that held Esc on
+     tileco's launcher for 3.4 s, and over the settings window it would
+     stall each move. The resync after a raise skips them too, and the
+     bar and the Dock.
    - This is the rule Amethyst misses. It looks only among the windows it
      tiles, so the tile under a popover gets focus and the popover closes
      (Amethyst#337, #1566, #1629, #1872).

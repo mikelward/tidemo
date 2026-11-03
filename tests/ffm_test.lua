@@ -547,4 +547,61 @@ t.test("a queued focus skips a tile under another app's float", function()
     t.eq(focuses(a), { "focus 1" })
 end)
 
+-- How many times Accessibility was asked what's under the pointer.
+local function counting(a)
+    local real = a.window_at
+    a.asked = 0
+    function a.window_at(...)
+        a.asked = a.asked + 1
+        return real(...)
+    end
+end
+
+t.test("over one of tilemo's own windows, nothing asks what's under the pointer", function()
+    local a, wm, ffm = setup()
+    counting(a)
+    -- The settings window, over window 2.
+    wm:own_window("settings", function()
+        return { x = 1200, y = 300, w = 400, h = 400 }
+    end)
+    ffm:move(1300, 500)
+    t.eq(a.asked, 0)
+    t.eq(focuses(a), {})
+    a.px, a.py = 1300, 500
+    ffm:resync()
+    t.eq(a.asked, 0, "nor a resync after a raise")
+end)
+
+t.test("a window of tilemo's that just went still counts a moment, while macOS takes it away", function()
+    local a, wm, ffm = setup()
+    counting(a)
+    wm:own_window("launcher", { x = 0, y = 0, w = 3000, h = 2000 })
+    a.clock = 100
+    wm:own_window("launcher", nil)
+    a.px, a.py = 1500, 500
+    a.clock = 100.2
+    ffm:resync()
+    t.eq(a.asked, 0, "just closed")
+    a.clock = 101
+    ffm:resync()
+    t.eq(a.asked, 1, "gone a second later")
+end)
+
+t.test("a resync off every work area, over the bar or the Dock, asks nothing either", function()
+    local a, wm, ffm = setup()
+    counting(a)
+    a.px, a.py = 500, -5
+    ffm:resync()
+    t.eq(a.asked, 0)
+end)
+
+t.test("a resync skipped off the work area still forgets the window it was over", function()
+    local a, wm, ffm = setup()
+    ffm:move(500, -5) -- up into the bar, from window 1
+    wm:act("focus", 1) -- Super+J to window 2; the raise resyncs
+    a.calls = {}
+    ffm:move(500, 500) -- back down into window 1
+    t.eq(focuses(a), { "focus 1" })
+end)
+
 t.done("ffm")
