@@ -621,7 +621,31 @@ local KEY_WAIT = 3
 -- Mac, and nothing that waits out a timeout, 300 ms an ask.
 local POLL_LIMIT = 500
 
+-- What one read of the displays costs, call by call: the adapter's
+-- screens() asks for each display's ID and frames.
+local function time_displays()
+    local function ms(fn)
+        local t0 = hs.timer.absoluteTime()
+        local r = fn()
+        return (hs.timer.absoluteTime() - t0) / 1e6, r
+    end
+    local all_ms, all = ms(hs.screen.allScreens)
+    local parts = { string.format("allScreens %.1f", all_ms) }
+    for name, fn in pairs({ id = "id", getUUID = "getUUID", frame = "frame", fullFrame = "fullFrame" }) do
+        local total = 0
+        for _, s in ipairs(all) do
+            total = total + ms(function()
+                return s[fn](s)
+            end)
+        end
+        parts[#parts + 1] = string.format("%s %.1f", name, total)
+    end
+    table.sort(parts)
+    say("displays: one read of %d, in ms: %s", #all, table.concat(parts, ", "))
+end
+
 local function check_launcher_keys(after)
+    time_displays()
     local key = require("tilemo.launcherpage").SETTINGS_KEY
     local results = {}
     -- Poll until `cond()`, then done(ms, met): met only within KEY_WAIT,
@@ -716,6 +740,16 @@ local function check_launcher_keys(after)
     if tilemo.publish_workspace then
         tilemo.publish_workspace = timed("publish_workspace", tilemo.publish_workspace)
     end
+    -- What an open reads: the apps on disk, the rows made from them and
+    -- the windows, and the browsers asked for their tabs.
+    local launcher_hs = require("tilemo.launcher_hs")
+    for _, name in ipairs({ "scan", "fetch_tabs" }) do
+        launcher_hs[name] = timed("launcher_hs." .. name, launcher_hs[name])
+    end
+    local collector = launcher_hs.collector
+    launcher_hs.collector = timed("launcher_hs.collector", function(...)
+        return timed("launcher_hs.collect", collector(...))
+    end)
     local ffm = tilemo.wm.ffm
     for _, name in ipairs({ "move", "resync", "remember", "hit", "settled", "under_float", "prefer_dialog", "focus" }) do
         if ffm and ffm[name] then
@@ -741,6 +775,13 @@ local function check_launcher_keys(after)
             return
         end
         local launcher = tilemo.launcher
+        -- Shown once already, as tilemo's launcher has been by the time a
+        -- person presses the key: a new hs.chooser's first show makes its
+        -- window.
+        if not launcher.ready then
+            launcher.show("launch")
+            launcher.cancel()
+        end
         -- Loaded, and the focus back where it was, as a person's key finds
         -- it.
         until_(function()
@@ -750,6 +791,7 @@ local function check_launcher_keys(after)
                 fail("launcher keys: %s didn't settle before its key", choice)
             end
             counted()
+            busiest()
             local t0 = hs.timer.secondsSinceEpoch()
             local lag
             hs.eventtap.keyStroke(tilemo.super, "space", 1000)
@@ -769,6 +811,15 @@ local function check_launcher_keys(after)
                 local open_lag = lag
                 lag = nil
                 local open_work = counted()
+                -- Each step of the open, as the launcher timed it, and the
+                -- calls that took longest in all meanwhile.
+                local parts = {}
+                for _, st in ipairs(launcher.steps or {}) do
+                    parts[#parts + 1] = st.name .. " " .. st.ms
+                end
+                say("launcher keys: %s's open steps, in ms: %s", choice,
+                    #parts > 0 and table.concat(parts, ", ") or "none kept")
+                say("launcher keys: while %s opened, the busiest calls, in all, in ms: %s", choice, busiest())
                 -- The attention poll, as its timer runs it every two
                 -- seconds while you look at the launcher: one that holds
                 -- Hammerspoon then holds Esc too.
