@@ -98,4 +98,12 @@ t.test("each section with buttons has a row for them", function()
     end
 end)
 
+t.test("each section's buttons are at its foot, as tide's advanced row", function()
+    local html = read("hammerspoon/tilemo/dashboard/settings.html")
+    for _, s in ipairs(links.SECTIONS) do
+        local section = html:match('<section class="page" id="page%-' .. s.id .. '".-</section>')
+        t.eq(section:find('<p class="row links" id="' .. s.id .. '%-links"></p>\n</section>$') ~= nil, true, s.id)
+    end
+end)
+
 t.done("links")

@@ -188,6 +188,8 @@ assert.match(ids["startup-source"].textContent, /shared with tide/);
 // settings_test.lua checks the stylesheet gives a row this many columns.
 for (const li of ids["startup-list"].children) assert.strictEqual(li.children.length, 4, "a command, up, down and remove");
 const cmdRow = (c) => ids["startup-list"].children.find((li) => li.children[0].textContent === c);
+// Up, down and remove each drawn as tide's icon for it.
+assert.deepStrictEqual(cmdRow("google-calendar").children.slice(1).map((b) => b.attrs["data-icon"]), ["up", "down", "delete"]);
 assert.strictEqual(cmdRow("google-calendar").children[1].disabled, true, "the first can't move up");
 cmdRow("google-chat").children[1].listeners.click();
 assert.deepStrictEqual(lastStartup(), { note: 1, commands: ["google-chat", "google-calendar"] });
@@ -276,6 +278,9 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
     "h3 Hardware", "button Displays", "button Keyboard", "h3 General", "button Clocks", "button Start at login",
   ]);
   assert.deepStrictEqual(showing(), ["startup"]);
+  // Each page with its icon, as tide's sidebar has them.
+  assert.deepStrictEqual(nav().filter((c) => c.tag === "button").map((c) => c.attrs["data-icon"]),
+    ["displays", "keyboard", "clocks", "startup"]);
   assert.deepStrictEqual(nav().filter((c) => c.attrs["aria-current"] === "page").map((c) => c.textContent), ["Start at login"]);
   // A click on a page shows it alone, at its top.
   ids.content.scrollTop = 40;
@@ -481,6 +486,8 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   const mouse = ids["mouse-links"].children;
   assert.deepStrictEqual(mouse.map((b) => b.textContent), ["Mouse settings", "LinearMouse settings"]);
   assert.deepStrictEqual(ids["idle-links"].children.map((b) => b.textContent), ["Lock Screen settings"]);
+  // Each a row that opens another window, as tide's advanced row.
+  assert.deepStrictEqual(mouse.map((b) => b.attrs["data-icon"]), ["open", "open"]);
   sent.length = 0;
   mouse[1].listeners.click();
   assert.deepStrictEqual(sent, [{ open: "linearmouse" }]);

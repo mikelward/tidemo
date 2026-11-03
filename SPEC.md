@@ -2659,9 +2659,26 @@ Each one names a workaround, or says there is none.
       rows come from, so a new page names its group.
     - A launcher row opens the window on its page. Keyboard shortcuts' row
       opens Keyboard, scrolled to them.
-    - The window is 760 by 700 points, tall enough for every page and
-      heading, as tide's card is.
-    - The pages have no icons yet, as tide's have (TODO.md).
+    - The window is 760 by 710 points, tall enough for every page and
+      heading, as tide's card is, or the display's height, where the
+      sidebar scrolls.
+  - **Built: it looks as tide's panel does** (tide's
+    `shell/SettingsWindow.qml`, and its mock, `docs/mocks/settings.png`):
+    - **Colors:** tide's palette, light and dark. `make check-tide` checks
+      each against tide's `theme/palette.json`.
+    - **Sidebar:** a page is a 32-point row with its icon. The icons are
+      Material Symbols Rounded, as tide's mocks draw them (Apache 2.0),
+      inlined in the page, so it draws offline. There's no logo atop it,
+      as tide's has none; the window's title says tide.
+    - **A page:** its title, then what to know first, dimmer, under it.
+      A sub-heading is small capitals, dim, as tide's Heading.
+    - **Controls:** on and off is a round switch, the accent when on.
+      Up, down, remove, − and +, and ‹ and › are icons, lit on hover. A
+      field is filled, and edged in the accent while typed in.
+    - **Buttons to System Settings or a helper:** rows at the page's foot,
+      each with an open-in-a-window icon, as tide's advanced row.
+    - The page keeps each button's glyph as its text, and draws the icon
+      over it (`data-icon`), so its tests find it as before.
   - **Built: every page of tide's is a section, in tide's order,** so the
     window is laid out as tide's panel is. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,

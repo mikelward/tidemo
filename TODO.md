@@ -264,6 +264,11 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
   moving the chips to the right of the notch. Reversible: `NOTCH_ROOM` and
   `fitNotch` in `dashboard/bar.js`.
 
+- **The settings window has no logo atop its sidebar** (2026-11-03), so
+  it looks as tide's panel does, which has none; its title still says
+  tide. Its toggles keep their words, such as "History on", rather than
+  tide's bare On and Off. Reversible: the `brand` paragraph in
+  `dashboard/settings.html`.
 - **The Setup checklist is General's last page** in the settings window's
   sidebar (2026-11-02), since tide has no such page and General is "the
   rest". Reversible: its `group` in `launcher.SETTINGS_SECTIONS`.
