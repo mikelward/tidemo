@@ -99,6 +99,31 @@ t.test("a tide module copied unchanged finds another by tide's name for it", fun
     t.eq(js:find('modules["./clocks.mjs"]', 1, true) < js:find("const Y", 1, true), true, "registered before it's needed")
 end)
 
+t.test("every page in the sidebar, and every icon button, has its icon drawn", function()
+    local html = read("settings.html")
+    local js = read("settings-page.js")
+    local drawn = {}
+    for name in html:gmatch('%[data%-icon="([%w_-]+)"%]%s*{%s*%-%-icon:') do
+        drawn[name] = true
+    end
+    for _, sec in ipairs(require("tilemo.launcher").SETTINGS_SECTIONS) do
+        if not sec.page then
+            t.eq(drawn[sec.id], true, "the sidebar's " .. sec.id)
+        end
+    end
+    local glyphs = js:match("const ICONS = (%b{})")
+    t.eq(glyphs ~= nil, true, "settings-page.js's ICONS")
+    for name in glyphs:gmatch('"([%w_-]+)"') do
+        if not name:match("^%W") then
+            t.eq(drawn[name], true, "a button's " .. name)
+        end
+    end
+    for name in html:gmatch('<[^>]- data%-icon="([%w_-]+)"') do
+        t.eq(drawn[name], true, "the page's " .. name)
+    end
+    t.eq(drawn.open, true, "a section's buttons")
+end)
+
 t.test("the settings page builds, and changes the clocks as tide's page does", function()
     local sources = {}
     for _, name in ipairs(dashboard.SETTINGS_MODULES) do

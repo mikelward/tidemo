@@ -5,175 +5,317 @@
 <title>tide settings</title>
 <style>
 /*TILEMO_CSS*/
-/* The sidebar beside the page it shows, as tide's settings panel: each
-   scrolls on its own. */
+/* tide's palette (tide's theme/palette.json), light and dark, so the
+   window looks as tide's settings panel does. `make check-tide` checks
+   each against tide's. */
+:root {
+  --surface: #ffffff;
+  --surface-2: #ececf0;
+  --fg: #1f1f24;
+  --fg-dim: #62626e;
+  --fg-faint: #a8a8b3;
+  --line: rgba(0, 0, 0, 0.09);
+  --accent: #1c71d8;
+  --accent-bg: #3584e4;
+  --accent-fg: #ffffff;
+  --danger: #c01c28;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #2a2a2f;
+    --surface-2: #38383e;
+    --fg: #ededf1;
+    --fg-dim: #9a9aa6;
+    --fg-faint: #5d5d68;
+    --line: rgba(255, 255, 255, 0.09);
+    --accent: #78aeed;
+    --accent-bg: #3584e4;
+    --accent-fg: #ffffff;
+    --danger: #ff7b63;
+  }
+}
+/* The sidebar beside the page it shows, as tide's settings panel has them
+   (tide's shell/SettingsWindow.qml): each scrolls on its own. */
 body.settings {
   margin: 0;
   height: 100vh;
   display: grid;
-  grid-template-columns: 200px 1fr;
+  grid-template-columns: 192px 1fr;
   overflow: hidden;
-  font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--surface);
+  color: var(--fg);
+  font: 13px/1.35 Inter, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .settings .side {
   overflow-y: auto;
-  padding: 16px 8px;
-  border-right: 1px solid var(--raised);
+  padding: 6px;
+  border-right: 1px solid var(--line);
 }
 .settings main {
+  display: block;
   overflow-y: auto;
-  padding: 20px 24px;
+  padding: 6px;
+}
+/* A page: its title, what to know first, its settings, then its buttons
+   to where the rest are changed, at its foot, as tide's advanced row. */
+.settings .page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 .settings .page[hidden] {
   display: none;
 }
-/* tide's logo and name, atop the sidebar. */
-.settings .brand {
+/* A group's heading, which can't be chosen, then its pages, each with
+   its icon. */
+.settings #sidebar {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 10px 8px;
-  font-weight: 600;
+  flex-direction: column;
+  gap: 2px;
 }
-/* A group's heading, which can't be chosen, then its pages. */
-.settings #sidebar h3 {
+.settings #sidebar h3,
+.settings h2 {
+  margin: 0;
+  padding: 8px 10px 2px;
+  color: var(--fg-dim);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
-  margin: 10px 10px 2px;
 }
 .settings #sidebar button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  margin: 1px 0;
-  padding: 5px 10px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 400;
   text-align: left;
 }
-.settings #sidebar button:hover {
-  background: var(--hover);
+.settings #sidebar button::before {
+  color: var(--fg-dim);
 }
 .settings #sidebar button[aria-current="page"] {
-  background: var(--raised);
+  background: var(--surface-2);
 }
-.settings .brand svg {
-  color: var(--accent);
+.settings h1,
+.settings h1#clocks {
+  display: block;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: normal;
+  cursor: auto;
 }
-.settings h1 {
-  font-size: 17px;
-  margin: 0 0 4px;
-}
+/* What to know, as a page's about: dimmer, under its title. */
 .settings .source,
 .settings .note {
-  color: var(--muted);
-  margin: 0 0 12px;
+  margin: 0;
+  padding: 0 10px 6px;
+  border-radius: 0;
+  background: none;
+  color: var(--fg-dim);
 }
 .settings .error {
-  color: var(--urgent);
-  margin: 8px 0;
+  margin: 0;
+  padding: 4px 10px;
+  color: var(--danger);
+  font-size: 12px;
 }
 .settings .error:empty {
   display: none;
 }
+.settings code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
 .settings ul,
 .settings ol {
   list-style: none;
-  margin: 0 0 12px;
+  margin: 0;
   padding: 0;
 }
+/* A list's row, as tide's: its text, then its buttons. */
 .settings li {
   display: grid;
   grid-template-columns: 1fr 8em auto auto auto;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
-  padding: 4px 0;
+  min-height: 32px;
+  padding: 0 6px 0 10px;
 }
-.settings #muted-list li {
-  grid-template-columns: 1fr auto;
+.settings li.local {
+  color: var(--fg-dim);
+}
+/* A setting: its name, then what sets it. */
+.settings .row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin: 0;
+  padding: 0 6px 0 10px;
+}
+.settings .row .name {
+  flex: 1;
+}
+.settings .value {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#clipboard-max {
+  width: 92px;
+}
+/* A field, as tide's: filled, edged in the accent while typed in. */
+.settings input {
+  height: 26px;
+  margin: 3px 0;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--fg);
+  font: inherit;
+}
+.settings input::placeholder {
+  color: var(--fg-faint);
+}
+.settings input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+/* A field to add one, across the page. */
+.settings .add {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0 6px;
+}
+.settings .add input {
+  flex: 1;
+  min-width: 0;
+}
+/* A button with words, as tide's Add and Always float: edged, round. */
+.settings button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--surface-2);
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Lit on hover, but for a switch that's on, which keeps its accent. */
+.settings button:hover:not(:disabled):not([aria-pressed="true"]) {
+  background: var(--surface-2);
+}
+.settings button:disabled {
+  opacity: 0.4;
+}
+/* On or off, as tide's switch: filled, and the accent when on. */
+.settings button[aria-pressed] {
+  min-width: 56px;
+  box-shadow: none;
+  background: var(--surface-2);
+}
+.settings button[aria-pressed="true"] {
+  background: var(--accent-bg);
+  color: var(--accent-fg);
+}
+/* A symbolic icon, in the text's color: Material Symbols Rounded, as
+   tide's mocks draw its icons (Apache 2.0). */
+.settings [data-icon]::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / 16px 16px no-repeat;
+  mask: var(--icon) center / 16px 16px no-repeat;
+}
+/* An icon button (up, down, remove, − and +, ‹ and ›): the icon alone, as
+   tide's step buttons, lit on hover. */
+.settings main button[data-icon] {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  padding: 0;
+  border-radius: 7px;
+  box-shadow: none;
+  font-size: 0;
+}
+/* A page's buttons to System Settings or a helper's window, at its foot,
+   each a row with an icon, as tide's advanced row. */
+.settings .links {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding: 6px 0 0;
+}
+.settings .links:empty {
+  display: none;
+}
+.settings main .links button[data-icon] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 400;
+  text-align: left;
 }
 /* A choice: its name, then ‹, the value, and ›, as a Layouts row. */
 .settings .row.choice {
   display: grid;
   grid-template-columns: 1fr auto 10em auto;
-  padding: 2px 0 8px;
-}
-.settings .row.choice .value {
-  text-align: center;
 }
 /* A Karabiner rule, then its On or Off. */
 .settings #karabiner-rules li {
   grid-template-columns: 1fr auto;
 }
-/* A shortcut's keys, then what it does; a key that didn't register, what
-   it does, then why. */
+/* A shortcut's keys, then what it does, dimmer; a key that didn't
+   register, then why. */
 .settings #shortcut-list li {
-  grid-template-columns: 12em 1fr;
-  padding: 2px 0;
+  grid-template-columns: 170px 1fr;
+  gap: 10px;
+  min-height: 26px;
+  padding: 0 10px;
 }
 .settings #shortcut-list li span:first-child {
   font-weight: 600;
 }
-.settings #shortcut-list li.undescribed span:last-child {
-  color: var(--muted);
+.settings #shortcut-list li span:last-child {
+  color: var(--fg-dim);
 }
 .settings #shortcut-failed li {
-  grid-template-columns: 12em 1fr;
-  padding: 2px 0;
-  color: var(--urgent);
+  grid-template-columns: 170px 1fr;
+  gap: 10px;
+  min-height: 26px;
+  padding: 0 10px;
+  color: var(--danger);
 }
 /* A command, then its up, down and remove buttons. */
 .settings #startup-list li {
   grid-template-columns: 1fr auto auto auto;
 }
-.settings li.local {
-  color: var(--muted);
+.settings #muted-list li {
+  grid-template-columns: 1fr auto;
 }
-.settings input {
-  font: inherit;
-  color: var(--fg);
-  background: var(--surface);
-  border: 1px solid var(--raised);
-  border-radius: 4px;
-  padding: 3px 6px;
-}
-.settings input:focus {
-  outline: 2px solid var(--accent);
-}
-.settings button {
-  font: inherit;
-  color: var(--fg);
-  background: var(--raised);
-  border: 0;
-  border-radius: 4px;
-  padding: 3px 8px;
-}
-.settings button:disabled {
-  opacity: 0.4;
-}
-.settings .row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-/* A Layouts row: its name, then ‹ or −, the value, and › or +. */
-.settings #layout-rows .row, .settings #mouse-rows .row {
+/* A Layouts or Mouse row: its name, then ‹ or −, the value, and › or +. */
+.settings #layout-rows .row,
+.settings #mouse-rows .row {
   display: grid;
-  grid-template-columns: 1fr auto 8em auto;
-  padding: 2px 0;
-}
-.settings #layout-rows .value, .settings #mouse-rows .value {
-  text-align: center;
-}
-.settings #layout-rows h2 {
-  font-size: 11px;
-  color: var(--muted);
-  margin: 12px 0 4px;
+  grid-template-columns: 1fr auto 92px auto;
 }
 /* A standing workspace or pattern, its note, then up, down and remove;
    one of home's apps, then remove. */
@@ -187,7 +329,7 @@ body.settings {
   grid-template-columns: 1fr auto;
 }
 .settings #ws-list-standing li span:nth-child(2) {
-  color: var(--muted);
+  color: var(--fg-dim);
 }
 /* A rule's app and title, then its up, down and remove buttons. */
 .settings #floating-list li {
@@ -197,18 +339,35 @@ body.settings {
 .settings #floating-now li {
   grid-template-columns: 1fr 1fr auto;
 }
-.settings #floating-add input {
-  width: 14em;
+/* More about this window: a dim row that opens what macOS says of it. */
+.settings summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  color: var(--fg-dim);
+  font-size: 12px;
+  list-style: none;
+}
+.settings summary::-webkit-details-marker {
+  display: none;
 }
 .settings #floating-about dl {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 12px;
-  margin: 4px 0 0;
+  grid-template-columns: 130px 1fr;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 0 10px 6px 32px;
+  font-size: 12px;
+}
+.settings #floating-about dt {
+  color: var(--fg-dim);
 }
 .settings #floating-about dd {
   margin: 0;
   overflow-wrap: anywhere;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 /* A permission, its state, then Open; an item's tick, its title, then
    Open. What to do there goes under both, across the row. */
@@ -221,27 +380,46 @@ body.settings {
 .settings #setup-permissions li .note,
 .settings #setup-items li .note {
   grid-column: 1 / -1;
-  margin: 0;
+  padding: 0 0 6px;
 }
 .settings #setup-permissions .off {
-  color: var(--urgent);
+  color: var(--danger);
 }
 .settings #setup-permissions .unknown,
 .settings #setup-permissions .not_needed {
-  color: var(--muted);
+  color: var(--fg-dim);
 }
-.settings h2 {
-  font-size: 13px;
-  margin: 12px 0 4px;
-}
-.settings .add input {
-  width: 18em;
-}
+[data-icon="displays"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M400-200v-80H160q-33 0-56.5-23.5T80-360v-400q0-33 23.5-56.5T160-840h640q33 0 56.5 23.5T880-760v400q0 33-23.5 56.5T800-280H560v80h40q17 0 28.5 11.5T640-160q0 17-11.5 28.5T600-120H360q-17 0-28.5-11.5T320-160q0-17 11.5-28.5T360-200h40ZM160-360h640v-400H160v400Zm0 0v-400 400Z%22/%3E%3C/svg%3E"); }
+[data-icon="sound"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M760-481q0-83-44-151.5T598-735q-15-7-22-21.5t-2-29.5q6-16 21.5-23t31.5 0q97 43 155 131.5T840-481q0 108-58 196.5T627-153q-16 7-31.5 0T574-176q-5-15 2-29.5t22-21.5q74-34 118-102.5T760-481ZM280-360H160q-17 0-28.5-11.5T120-400v-160q0-17 11.5-28.5T160-600h120l132-132q19-19 43.5-8.5T480-703v446q0 27-24.5 37.5T412-228L280-360Zm380-120q0 42-19 79.5T591-339q-10 6-20.5.5T560-356v-250q0-12 10.5-17.5t20.5.5q31 25 50 63t19 80ZM400-606l-86 86H200v80h114l86 86v-252ZM300-480Z%22/%3E%3C/svg%3E"); }
+[data-icon="network"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M480-120q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29Zm0-440q75 0 142.5 24T745-470q20 15 20.5 39.5T748-388q-17 17-42 17.5T661-384q-38-26-84-41t-97-15q-51 0-97 15t-84 41q-20 14-45 13t-42-18q-17-18-17-42.5t20-39.5q55-42 122.5-65.5T480-560Zm0-240q125 0 235.5 41T914-643q20 17 21 42t-17 43q-17 17-42 17.5T831-556q-72-59-161.5-91.5T480-680q-100 0-189.5 32.5T129-556q-20 16-45 15.5T42-558q-18-18-17-43t21-42q88-75 198.5-116T480-800Z%22/%3E%3C/svg%3E"); }
+[data-icon="bluetooth"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M440-137v-247L284-228q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l156 156v-247q0-18 12-29.5t28-11.5q8 0 15 3t13 9l172 172q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L536-480l144 144q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L508-108q-6 6-13 9t-15 3q-16 0-28-11.5T440-137Zm80-439 76-76-76-74v150Zm0 342 76-74-76-76v150Z%22/%3E%3C/svg%3E"); }
+[data-icon="mouse"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M480-80q-116 0-198-82t-82-198v-240q0-116 82-198t198-82q116 0 198 82t82 198v240q0 116-82 198T480-80Zm40-520h160q0-72-45.5-127T520-796v196Zm-240 0h160v-196q-69 14-114.5 69T280-600Zm200 440q83 0 141.5-58.5T680-360v-160H280v160q0 83 58.5 141.5T480-160Zm0-360Zm40-80Zm-80 0Zm40 80Z%22/%3E%3C/svg%3E"); }
+[data-icon="trackpad"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M660-160q58 0 99-41t41-99v-60H520v60q0 58 41 99t99 41ZM521-440h99v-114q-38 11-65.5 42T521-440Zm179 0h99q-6-41-33.5-72T700-554v114ZM660-80q-92 0-156-64t-64-156v-120q0-92 64-156t156-64q92 0 156 64t64 156v120q0 92-64 156T660-80Zm-500-80q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h680q17 0 28.5 11.5T880-760q0 17-11.5 28.5T840-720H160v480h161q17 0 28.5 11.5T361-200q0 17-11.5 28.5T321-160H160Zm0-80v-480 480Z%22/%3E%3C/svg%3E"); }
+[data-icon="keyboard"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm0-80h640v-400H160v400Zm200-40h240q17 0 28.5-11.5T640-360q0-17-11.5-28.5T600-400H360q-17 0-28.5 11.5T320-360q0 17 11.5 28.5T360-320Zm-200 40v-400 400Zm80-280q17 0 28.5-11.5T280-600q0-17-11.5-28.5T240-640q-17 0-28.5 11.5T200-600q0 17 11.5 28.5T240-560Zm120 0q17 0 28.5-11.5T400-600q0-17-11.5-28.5T360-640q-17 0-28.5 11.5T320-600q0 17 11.5 28.5T360-560Zm120 0q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm120 0q17 0 28.5-11.5T640-600q0-17-11.5-28.5T600-640q-17 0-28.5 11.5T560-600q0 17 11.5 28.5T600-560Zm120 0q17 0 28.5-11.5T760-600q0-17-11.5-28.5T720-640q-17 0-28.5 11.5T680-600q0 17 11.5 28.5T720-560ZM240-440q17 0 28.5-11.5T280-480q0-17-11.5-28.5T240-520q-17 0-28.5 11.5T200-480q0 17 11.5 28.5T240-440Zm120 0q17 0 28.5-11.5T400-480q0-17-11.5-28.5T360-520q-17 0-28.5 11.5T320-480q0 17 11.5 28.5T360-440Zm120 0q17 0 28.5-11.5T520-480q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480q0 17 11.5 28.5T480-440Zm120 0q17 0 28.5-11.5T640-480q0-17-11.5-28.5T600-520q-17 0-28.5 11.5T560-480q0 17 11.5 28.5T600-440Zm120 0q17 0 28.5-11.5T760-480q0-17-11.5-28.5T720-520q-17 0-28.5 11.5T680-480q0 17 11.5 28.5T720-440Z%22/%3E%3C/svg%3E"); }
+[data-icon="power"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M320-80q-17 0-28.5-11.5T280-120v-640q0-17 11.5-28.5T320-800h80v-40q0-17 11.5-28.5T440-880h80q17 0 28.5 11.5T560-840v40h80q17 0 28.5 11.5T680-760v640q0 17-11.5 28.5T640-80H320Zm40-480h240v-160H360v160Z%22/%3E%3C/svg%3E"); }
+[data-icon="layouts"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M121-280v-400q0-33 23.5-56.5T201-760h559q33 0 56.5 23.5T840-680v400q0 33-23.5 56.5T760-200H201q-33 0-56.5-23.5T121-280Zm79 0h133v-400H200v400Zm213 0h133v-400H413v400Zm213 0h133v-400H626v400Z%22/%3E%3C/svg%3E"); }
+[data-icon="workspaces"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M200-520q-33 0-56.5-23.5T120-600v-160q0-33 23.5-56.5T200-840h160q33 0 56.5 23.5T440-760v160q0 33-23.5 56.5T360-520H200Zm0 400q-33 0-56.5-23.5T120-200v-160q0-33 23.5-56.5T200-440h160q33 0 56.5 23.5T440-360v160q0 33-23.5 56.5T360-120H200Zm400-400q-33 0-56.5-23.5T520-600v-160q0-33 23.5-56.5T600-840h160q33 0 56.5 23.5T840-760v160q0 33-23.5 56.5T760-520H600Zm0 400q-33 0-56.5-23.5T520-200v-160q0-33 23.5-56.5T600-440h160q33 0 56.5 23.5T840-360v160q0 33-23.5 56.5T760-120H600ZM200-600h160v-160H200v160Zm400 0h160v-160H600v160Zm0 400h160v-160H600v160Zm-400 0h160v-160H200v160Zm400-400Zm0 240Zm-240 0Zm0-240Z%22/%3E%3C/svg%3E"); }
+[data-icon="floating"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M320-240q-33 0-56.5-23.5T240-320v-480q0-33 23.5-56.5T320-880h480q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H320Zm0-80h480v-480H320v480ZM160-80q-33 0-56.5-23.5T80-160v-520q0-17 11.5-28.5T120-720q17 0 28.5 11.5T160-680v520h520q17 0 28.5 11.5T720-120q0 17-11.5 28.5T680-80H160Zm160-720v480-480Z%22/%3E%3C/svg%3E"); }
+[data-icon="appearance"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm40-83q119-15 199.5-104.5T800-480q0-123-80.5-212.5T520-797v634Z%22/%3E%3C/svg%3E"); }
+[data-icon="muted"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M200-200q-17 0-28.5-11.5T160-240q0-17 11.5-28.5T200-280h40v-280q0-83 50-147.5T420-792v-28q0-25 17.5-42.5T480-880q25 0 42.5 17.5T540-820v28q80 20 130 84.5T720-560v280h40q17 0 28.5 11.5T800-240q0 17-11.5 28.5T760-200H200Zm280-300Zm0 420q-33 0-56.5-23.5T400-160h160q0 33-23.5 56.5T480-80ZM320-280h320v-280q0-66-47-113t-113-47q-66 0-113 47t-47 113v280Z%22/%3E%3C/svg%3E"); }
+[data-icon="clipboard"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v80q0 17-11.5 28.5T640-640H320q-17 0-28.5-11.5T280-680v-80h-80v560Zm280-560q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z%22/%3E%3C/svg%3E"); }
+[data-icon="clocks"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M520-496v-144q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640v159q0 8 3 15.5t9 13.5l132 132q11 11 28 11t28-11q11-11 11-28t-11-28L520-496ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z%22/%3E%3C/svg%3E"); }
+[data-icon="idle"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M524-40q-84 0-157.5-32t-128-86.5Q184-213 152-286.5T120-444q0-128 72-232t193-146q22-8 41 5.5t18 36.5q-3 85 27 162t90 137q60 60 137 90t162 27q26-1 38.5 17.5T903-305q-44 120-147.5 192.5T524-40Zm0-80q88 0 163-44t118-121q-86-8-163-43.5T504-425q-61-61-97-138t-43-163q-77 43-120.5 118.5T200-444q0 135 94.5 229.5T524-120Zm-20-305Z%22/%3E%3C/svg%3E"); }
+[data-icon="startup"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Zm80-207Zm0 134 210-134-210-134v268Z%22/%3E%3C/svg%3E"); }
+[data-icon="setup"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22m221-313 142-142q12-12 28-11.5t28 12.5q11 12 11 28t-11 28L250-228q-12 12-28 12t-28-12l-86-86q-11-11-11-28t11-28q11-11 28-11t28 11l57 57Zm0-320 142-142q12-12 28-11.5t28 12.5q11 12 11 28t-11 28L250-548q-12 12-28 12t-28-12l-86-86q-11-11-11-28t11-28q11-11 28-11t28 11l57 57Zm339 353q-17 0-28.5-11.5T520-320q0-17 11.5-28.5T560-360h280q17 0 28.5 11.5T880-320q0 17-11.5 28.5T840-280H560Zm0-320q-17 0-28.5-11.5T520-640q0-17 11.5-28.5T560-680h280q17 0 28.5 11.5T880-640q0 17-11.5 28.5T840-600H560Z%22/%3E%3C/svg%3E"); }
+[data-icon="up"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q-12 12-28.5 12T715-452L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z%22/%3E%3C/svg%3E"); }
+[data-icon="down"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M440-313v-447q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v447l196-196q12-12 28-11.5t28 12.5q11 12 11.5 28T772-452L508-188q-6 6-13 8.5t-15 2.5q-8 0-15-2.5t-13-8.5L188-452q-11-11-11-27.5t11-28.5q12-12 28.5-12t28.5 12l195 195Z%22/%3E%3C/svg%3E"); }
+[data-icon="delete"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M280-120q-33 0-56.5-23.5T200-200v-520q-17 0-28.5-11.5T160-760q0-17 11.5-28.5T200-800h160q0-17 11.5-28.5T400-840h160q17 0 28.5 11.5T600-800h160q17 0 28.5 11.5T800-760q0 17-11.5 28.5T760-720v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM400-280q17 0 28.5-11.5T440-320v-280q0-17-11.5-28.5T400-640q-17 0-28.5 11.5T360-600v280q0 17 11.5 28.5T400-280Zm160 0q17 0 28.5-11.5T600-320v-280q0-17-11.5-28.5T560-640q-17 0-28.5 11.5T520-600v280q0 17 11.5 28.5T560-280ZM280-720v520-520Z%22/%3E%3C/svg%3E"); }
+[data-icon="less"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M240-440q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h480q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H240Z%22/%3E%3C/svg%3E"); }
+[data-icon="more"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M440-440H240q-17 0-28.5-11.5T200-480q0-17 11.5-28.5T240-520h200v-200q0-17 11.5-28.5T480-760q17 0 28.5 11.5T520-720v200h200q17 0 28.5 11.5T760-480q0 17-11.5 28.5T720-440H520v200q0 17-11.5 28.5T480-200q-17 0-28.5-11.5T440-240v-200Z%22/%3E%3C/svg%3E"); }
+[data-icon="prev"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22m432-480 156 156q11 11 11 28t-11 28q-11 11-28 11t-28-11L348-452q-6-6-8.5-13t-2.5-15q0-8 2.5-15t8.5-13l184-184q11-11 28-11t28 11q11 11 11 28t-11 28L432-480Z%22/%3E%3C/svg%3E"); }
+[data-icon="next"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M504-480 348-636q-11-11-11-28t11-28q11-11 28-11t28 11l184 184q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L404-268q-11 11-28 11t-28-11q-11-11-11-28t11-28l156-156Z%22/%3E%3C/svg%3E"); }
+[data-icon="open"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h240q17 0 28.5 11.5T480-800q0 17-11.5 28.5T440-760H200v560h560v-240q0-17 11.5-28.5T800-480q17 0 28.5 11.5T840-440v240q0 33-23.5 56.5T760-120H200Zm560-584L416-360q-11 11-28 11t-28-11q-11-11-11-28t11-28l344-344H600q-17 0-28.5-11.5T560-800q0-17 11.5-28.5T600-840h200q17 0 28.5 11.5T840-800v200q0 17-11.5 28.5T800-560q-17 0-28.5-11.5T760-600v-104Z%22/%3E%3C/svg%3E"); }
+[data-icon="expand"] { --icon: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 -960 960 960%22%3E%3Cpath d=%22M480-362q-8 0-15-2.5t-13-8.5L268-557q-11-11-11-28t11-28q11-11 28-11t28 11l156 156 156-156q11-11 28-11t28 11q11 11 11 28t-11 28L508-373q-6 6-13 8.5t-15 2.5Z%22/%3E%3C/svg%3E"); }
 </style>
 </head>
 <body class="settings">
 <div class="side">
-<p class="brand"><svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg><span>tide</span></p>
 <div id="sidebar" role="navigation" aria-label="Settings pages"></div>
 </div>
 <main id="content">
@@ -263,9 +441,9 @@ body.settings {
 </section>
 <section class="page" id="page-mouse" hidden>
 <h1 id="mouse">Mouse</h1>
+<p class="note">Every mouse's wheel, shared with tide's input.json, through LinearMouse. Natural scrolling here is the mouse's alone: Trackpad settings has the trackpad's.</p>
 <div id="mouse-rows"></div>
 <p class="error" id="mouse-error" role="alert"></p>
-<p class="note">Every mouse's wheel, shared with tide's input.json, through LinearMouse. Natural scrolling here is the mouse's alone: Trackpad settings has the trackpad's.</p>
 <p class="row links" id="mouse-links"></p>
 </section>
 <section class="page" id="page-trackpad" hidden>
@@ -277,12 +455,12 @@ body.settings {
 <div class="row choice" id="launcher-choice"></div>
 <ul id="karabiner-rules"></ul>
 <p class="error" id="keyboard-error" role="alert"></p>
-<p class="row links" id="keyboard-links"></p>
 <h2 id="shortcuts">Shortcuts</h2>
 <p class="note">The keys tide has now, from its keys.lua, in its order. Super is Win with conf's Karabiner rules, and Option without them.</p>
 <ul id="shortcut-list"></ul>
 <p class="error" id="shortcuts-error" role="alert"></p>
 <ul id="shortcut-failed"></ul>
+<p class="row links" id="keyboard-links"></p>
 </section>
 <section class="page" id="page-power" hidden>
 <h1 id="power">Power</h1>
@@ -290,13 +468,14 @@ body.settings {
 </section>
 <section class="page" id="page-layouts" hidden>
 <h1 id="layouts">Layouts</h1>
+<p class="note">How a workspace tiles, shared with tide's layouts.json. A change reaches every workspace at once: each keeps its layout, and takes the new widths and masters in place of any set with the keys.</p>
 <p class="source" id="layouts-source"></p>
 <div id="layout-rows"></div>
 <p class="error" id="layouts-error" role="alert"></p>
-<p class="note">How a workspace tiles, shared with tide's layouts.json. A change reaches every workspace at once: each keeps its layout, and takes the new widths and masters in place of any set with the keys.</p>
 </section>
 <section class="page" id="page-workspaces" hidden>
 <h1 id="workspaces">Workspaces</h1>
+<p class="note">Shared with tide's workspaces.json. A change applies at once. The muted apps and sites are under Notifications.</p>
 <p class="source" id="workspaces-source"></p>
 <h2>Standing workspaces</h2>
 <p class="note">Always on the bar, in this order. The first is home, whose apps open there and only theirs.</p>
@@ -311,7 +490,6 @@ body.settings {
 <ol id="ws-list-namePatterns"></ol>
 <p class="add"><input id="ws-add-namePatterns" aria-label="Add a name pattern" spellcheck="false"></p>
 <p class="error" id="workspaces-error" role="alert"></p>
-<p class="note">Shared with tide's workspaces.json. A change applies at once. The muted apps and sites are under Notifications.</p>
 </section>
 <section class="page" id="page-floating" hidden>
 <h1 id="floating">Floating</h1>
@@ -325,7 +503,7 @@ body.settings {
 </p>
 <p class="note" id="floating-covered"></p>
 <details id="floating-about" hidden>
-<summary>More about this window</summary>
+<summary data-icon="expand">More about this window</summary>
 <dl id="floating-about-rows"></dl>
 </details>
 <p class="error" id="floating-error" role="alert"></p>
@@ -335,45 +513,41 @@ body.settings {
 </section>
 <section class="page" id="page-appearance" hidden>
 <h1 id="appearance">Appearance</h1>
-<p class="row links" id="appearance-links"></p>
 <h2 id="menubar">Menu bar</h2>
-<p class="row"><button type="button" id="menubar-hidden" aria-pressed="true"></button></p>
 <p class="note">While it's kept hidden, the pointer stops one point short of the top edge over the bar, so macOS's menu bar doesn't slide over it; the Apple logo at the bar's left opens the Apple menu. Off, the menu bar shows at the top edge as usual, and top hot corners work again.</p>
+<p class="row"><button type="button" id="menubar-hidden" aria-pressed="true"></button></p>
+<p class="row links" id="appearance-links"></p>
 </section>
 <section class="page" id="page-muted" hidden>
 <h1 id="muted">Notifications</h1>
-<p class="row links" id="muted-links"></p>
 <p class="note">Apps and sites that are never marked for attention. Mute one with Cmd+M, or a right-click, on its row in the switcher's Windows or Attention tab, or type its bundle id, or site: and a host, below. macOS still shows their banners: turn those off in Notifications settings.</p>
 <ul id="muted-list"></ul>
 <p class="add">
 <input id="add-muted" placeholder="Mute an app's bundle id, or site:host" aria-label="Mute an app or site" spellcheck="false">
 </p>
 <p class="error" id="muted-error" role="alert"></p>
+<p class="row links" id="muted-links"></p>
 </section>
 <section class="page" id="page-clipboard" hidden>
 <h1 id="clipboard">Clipboard</h1>
-<p class="source" id="clipboard-summary"></p>
-<p class="row">
-<button type="button" id="clipboard-history"></button>
-<span>Keeps</span>
-<button type="button" id="clipboard-fewer" aria-label="Keep fewer copies">−</button>
-<span id="clipboard-max"></span>
-<button type="button" id="clipboard-more" aria-label="Keep more copies">+</button>
-<span>copies</span>
-<button type="button" id="clipboard-clear">Clear history</button>
-</p>
-<p class="error" id="clipboard-error" role="alert"></p>
 <p class="note">The picker's history, on Super+C, shared with tide's clipboard.json. It's kept in memory, so it starts empty at each login. Turning it off keeps what's there until it's cleared.</p>
+<p class="row"><span class="name" id="clipboard-summary"></span><button type="button" id="clipboard-history"></button></p>
+<p class="row"><span class="name">Copies to keep</span>
+<button type="button" id="clipboard-fewer" aria-label="Keep fewer copies" data-icon="less">−</button>
+<span class="value" id="clipboard-max"></span>
+<button type="button" id="clipboard-more" aria-label="Keep more copies" data-icon="more">+</button></p>
+<p class="row"><button type="button" id="clipboard-clear">Clear history</button></p>
+<p class="error" id="clipboard-error" role="alert"></p>
 </section>
 <section class="page" id="page-clocks" hidden>
 <h1 id="clocks">Clocks</h1>
+<p class="note">A label shows on the bar: any text, nothing for just the time, or <code>abbr</code> for the zone's abbreviation. Enter sets it. The bar shows local last, after these.</p>
 <p class="source" id="source"></p>
 <ol id="clock-list"></ol>
 <p class="add">
 <input id="add-zone" placeholder="Add a zone, such as Asia/Tokyo" aria-label="Add a zone" spellcheck="false">
 </p>
 <p class="error" id="error" role="alert"></p>
-<p class="note">A label shows on the bar: any text, nothing for just the time, or <code>abbr</code> for the zone's abbreviation. Enter sets it. The bar shows local last, after these.</p>
 <p class="row links" id="clocks-links"></p>
 </section>
 <section class="page" id="page-idle" hidden>
@@ -382,13 +556,13 @@ body.settings {
 </section>
 <section class="page" id="page-startup" hidden>
 <h1 id="startup">Start at login</h1>
+<p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
 <p class="source" id="startup-source"></p>
 <ol id="startup-list"></ol>
 <p class="add">
 <input id="add-command" placeholder="Add a command, such as google-calendar" aria-label="Add a command" spellcheck="false">
 </p>
 <p class="error" id="startup-error" role="alert"></p>
-<p class="note">tide runs these once a login, in order, as it starts, unless one's program is running already. Each is a program and its words, with no shell. A change takes effect at the next login.</p>
 <p class="row links" id="startup-links"></p>
 </section>
 <section class="page" id="page-setup" hidden>

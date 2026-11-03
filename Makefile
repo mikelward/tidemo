@@ -54,7 +54,8 @@ install:
 # geometry.lua is tide's, copied unchanged, so a workspace looks the same on
 # both desktops; so is its clocks module, so tilemo reads and writes tide's
 # clocks files as tide does, and its startup, clipboard and input modules, for startup.json, clipboard.json and input.json, and its Workspaces page's, for workspaces.json; so is the picker's character list, and
-# the logo, which `make icons` renders.
+# the logo, which `make icons` renders. The bar's chips and the settings
+# window take tide's palette's colors.
 check-tide:
 	cmp $(TIDE)/hypr/tide/geometry.lua hammerspoon/tilemo/geometry.lua
 	cmp $(TIDE)/hypr/tide/direction.lua hammerspoon/tilemo/direction.lua
@@ -70,6 +71,7 @@ check-tide:
 	cmp $(TIDE)/shell/chars/chars.tsv hammerspoon/tilemo/chars.tsv
 	cmp $(TIDE)/shell/icons/tide-symbolic.svg hammerspoon/tilemo/icons/tide-symbolic.svg
 	$(LUA) ci/check_chip_colors.lua $(TIDE)/theme/palette.json hammerspoon/tilemo/dashboard/bar.html
+	$(LUA) ci/check_settings_colors.lua $(TIDE)/theme/palette.json hammerspoon/tilemo/dashboard/settings.html
 
 check-geometry: check-tide
 

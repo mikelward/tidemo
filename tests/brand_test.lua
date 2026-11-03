@@ -168,15 +168,13 @@ local function paths(s)
     return out
 end
 
-t.test("the bar's and settings' logo is tide's SVG, which the PNGs are rendered from", function()
+t.test("the bar's logo is tide's SVG, which the PNGs are rendered from", function()
     local want = paths(read(DIR .. "icons/tide-symbolic.svg"))
     t.eq(#want, 2)
-    for _, page in ipairs({ "bar.html", "settings.html" }) do
-        local html = read(DIR .. "dashboard/" .. page)
-        local svg = html:match('id="logo"[^>]*>(<svg.-</svg>)') or html:match('class="brand">(<svg.-</svg>)')
-        t.eq(svg ~= nil, true, page)
-        t.eq(paths(svg), want, page)
-    end
+    local html = read(DIR .. "dashboard/bar.html")
+    local svg = html:match('id="logo"[^>]*>(<svg.-</svg>)')
+    t.eq(svg ~= nil, true, "bar.html")
+    t.eq(paths(svg), want, "bar.html")
 end)
 
 -- Width, height, bit depth and color type from a PNG's IHDR.

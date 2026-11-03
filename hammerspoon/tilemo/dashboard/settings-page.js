@@ -94,10 +94,15 @@ function el(tag, text) {
   return e;
 }
 
+// The icon a button's glyph stands for, drawn in its place as tide's
+// panel draws one (settings.html's [data-icon]); its label says what it does.
+const ICONS = { "↑": "up", "↓": "down", "✕": "delete", "−": "less", "+": "more", "‹": "prev", "›": "next" };
+
 function button(text, label, disabled, onClick) {
   const b = el("button", text);
   b.type = "button";
   b.setAttribute("aria-label", label);
+  if (ICONS[text]) b.setAttribute("data-icon", ICONS[text]);
   b.disabled = disabled;
   b.addEventListener("click", onClick);
   return b;
@@ -731,7 +736,9 @@ function renderLinks(links) {
       row.replaceChildren();
       drawn.add(row);
     }
-    row.append(button(l.label, l.label, false, () => send({ open: l.name })));
+    const b = button(l.label, l.label, false, () => send({ open: l.name }));
+    b.setAttribute("data-icon", "open");
+    row.append(b);
   }
 }
 
@@ -838,6 +845,8 @@ function renderSidebar(sidebar) {
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = String(row.label ?? row.page);
+      // Its icon, as on tide's sidebar.
+      b.setAttribute("data-icon", row.page);
       b.addEventListener("click", () => turnTo(row.page));
       sidebarButtons.set(row.page, b);
       nav.append(b);

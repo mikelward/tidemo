@@ -144,6 +144,9 @@ function M.switch_launcher(tilemo, value)
     return nil, why
 end
 
+-- The window's height, in points, on a display tall enough for it.
+M.HEIGHT = 710
+
 -- `tilemo` is the started tilemo module: its wm, adapter, shortcuts,
 -- clock_dir, clock_files, layout_files, workspace_files, workspace_base,
 -- startup_files, clipboard_files, input_files and picker.
@@ -473,8 +476,9 @@ function M.new(tilemo)
             return
         end
         -- Wide enough for the sidebar beside a page, and tall enough for
-        -- every page and heading in it, as tide's card is.
-        local w, h = 760, 700
+        -- every page and heading in it, as tide's card is: 703 points of
+        -- them, at tide's 32 a page. A shorter display's sidebar scrolls.
+        local w, h = 760, math.min(M.HEIGHT, s.area.h)
         local frame = { x = s.area.x + (s.area.w - w) / 2, y = s.area.y + (s.area.h - h) / 2, w = w, h = h }
         view = hs.webview.new(frame, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "titled", "closable" })
