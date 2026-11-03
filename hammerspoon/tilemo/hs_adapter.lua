@@ -15,6 +15,18 @@ local M = {}
 
 local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$")
 
+-- Hammerspoon's window filters never look at Hammerspoon's own windows, the
+-- bar, the launchers and the settings window among them: watching them,
+-- the filter asks Accessibility about each from Hammerspoon's own thread,
+-- which can't answer it, so each question waits out AX_TIMEOUT, a dozen a
+-- window, while nothing else runs (CI's Mac: 3 s as the launcher shows).
+-- tilemo leaves them alone anyway. Its console and preferences go
+-- untracked with them, so they stay where macOS puts them.
+local function ignore_own_windows()
+    hs.window.filter.ignoreAlways = hs.window.filter.ignoreAlways or {}
+    hs.window.filter.ignoreAlways["Hammerspoon"] = true
+end
+
 local function box(r)
     return { x = math.floor(r.x + 0.5), y = math.floor(r.y + 0.5), w = math.floor(r.w + 0.5), h = math.floor(r.h + 0.5) }
 end
@@ -72,6 +84,7 @@ function M.new()
     -- sits on a Space of its own, and hs.window.allWindows() would leave it
     -- out, so tilemo would forget its place in the layout. A window filter
     -- with no current-Space setting covers them all.
+    ignore_own_windows()
     local every = hs.window.filter.new(false)
     every:setDefaultFilter({ allowRoles = "*" })
 
@@ -879,6 +892,7 @@ end
 -- window manager sync and retile every window, and its focus made it list
 -- them all again, while Esc waited.
 function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
+    ignore_own_windows()
     local me = hs.processInfo.processID
     local function tilemos(w)
         local ok, pid = pcall(w.pid, w)

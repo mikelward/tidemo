@@ -40,6 +40,7 @@ local function watched()
         processInfo = { processID = 42 },
         window = {
             filter = {
+                ignoreAlways = {},
                 windowCreated = "created", windowDestroyed = "destroyed", windowHidden = "hidden",
                 windowUnhidden = "unhidden", windowFullscreened = "fullscreened",
                 windowUnfullscreened = "unfullscreened", windowFocused = "focused", windowMoved = "moved",
@@ -86,14 +87,17 @@ t.test("tilemo's own windows showing, hiding and taking focus are no news to the
     t.eq(s.focused, {})
 end)
 
-t.test("Hammerspoon's console and other apps' windows still are", function()
+t.test("the window filters never look at Hammerspoon's own windows at all", function()
+    watched()
+    t.eq(hs.window.filter.ignoreAlways.Hammerspoon, true)
+end)
+
+t.test("other apps' windows still are", function()
     local s = watched()
-    s.fire("created", 42, "Hammerspoon Console", 3)
-    s.fire("focused", 42, "Hammerspoon Console", 3)
     s.fire("created", 7, "tide launcher", 4)
     s.fire("focused", 7, "Notes", 5)
-    t.eq(s.changes, 2)
-    t.eq(s.focused, { 3, 5 })
+    t.eq(s.changes, 1)
+    t.eq(s.focused, { 5 })
 end)
 
 t.done("adapter")

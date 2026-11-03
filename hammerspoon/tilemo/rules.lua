@@ -28,7 +28,8 @@ M.defaults = {
     { title = "^Picture%-in%-Picture$", action = "ignore" },
     -- Hammerspoon's console and preferences float; the rest of its windows
     -- are tilemo's own (the launcher, the dashboard), placed by tilemo, so
-    -- they're left alone.
+    -- they're left alone. The window filters don't watch Hammerspoon now
+    -- (hs_adapter), so these only decide a window found some other way.
     { app = M.HAMMERSPOON, title = M.HAMMERSPOON_OWN[1], action = "float" },
     { app = M.HAMMERSPOON, title = M.HAMMERSPOON_OWN[2], action = "float" },
     { app = M.HAMMERSPOON, action = "ignore" },
