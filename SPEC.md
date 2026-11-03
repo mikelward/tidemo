@@ -1401,8 +1401,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     set to hide automatically (System Settings › Control Center ›
     "Automatically hide and show the menu bar": Always, or
     `defaults write NSGlobalDomain _HIHideMenuBar -bool true`). tilemo's bar
-    takes the top 36 px of each display, and draws the common status items
-    itself (below), so they don't need the menu bar revealed.
+    takes the top 36 px of each display, up over the notch on a MacBook's
+    own (below), and draws the common status items itself, so they don't
+    need the menu bar revealed.
   - **What still needs the menu bar:** the app's own menus, the Apple menu,
     and other apps' status items (a VPN, an IT agent, Zoom). They show when
     the pointer reaches the top edge, over the bar, which sits below the
@@ -1700,8 +1701,29 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   (there is no `hs.focus`). Its menu bar item shows when the menu bar is
   revealed.
 - **The notch,** on a MacBook's own display, sits where tide centers the
-  title. There, the title moves left of it *(unverified how wide it is per
-  model)*.
+  title.
+  - Even with the menu bar hidden, macOS keeps a strip as tall as the
+    notch at the top of that display: `hs.screen`'s frame starts below it.
+    A bar placed in the frame sat under the notch, wasting the strip.
+  - **So the bar goes up to the very top there,** over the notch's strip,
+    as tall as the strip or 36 px, whichever is taller, and windows tile
+    below it (`bar.place`). Its window is borderless, which macOS doesn't
+    push down out of the strip *(unverified on every model)*.
+  - A display counts as having a notch when the menu bar is set to hide
+    always (`_HIHideMenuBar`, read once with `defaults`) and its frame
+    still starts below its full frame: with the menu bar hidden, the notch
+    is the only thing that keeps room there. With the menu bar showing,
+    the bar stays below it, as on any display.
+  - **There's no title on that display,** since the notch sits where it
+    goes, and the bar keeps its middle 220 px clear, a little wider than
+    the notch *(unverified per model)*. The clocks already shrink to keep
+    200 px there (tide's rule).
+  - **Chips that would reach the notch hide behind a "+n" chip,** in bar
+    order, the current workspace's always showing in place of the last
+    that would. A click on "+n" opens the switcher's Workspaces tab, which
+    lists every workspace. Super+1…9 still count every workspace, hidden or
+    not. The right group isn't held back: its clocks shrink, and its icons
+    fit beside the notch on a MacBook's width.
 - **Status icons:** macOS's orange and green dots already show the
   microphone and camera in use, which covers tide's privacy pills
   (tide §7.4). The microphone-mute state from `Super+Shift+M` shows in the

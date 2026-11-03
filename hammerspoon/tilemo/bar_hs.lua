@@ -482,6 +482,10 @@ function M.new(tilemo)
                 good_clocks = tilemo.keep_good_clocks,
                 tip = show_tip,
                 session = show_session,
+                -- The "+n" chip over a notch: every workspace, in the switcher.
+                workspaces = function()
+                    tilemo.launcher.show("workspaces")
+                end,
                 sound = show_sound,
             })
         end)
@@ -604,7 +608,7 @@ function M.new(tilemo)
         local present = {}
         for _, s in ipairs(tilemo.adapter.screens()) do
             present[s.uuid] = true
-            local frame = bar.strip(s.area, bar.HEIGHT)
+            local frame = bar.place(s, bar.HEIGHT)
             local v = self.views[s.uuid]
             if not v then
                 self.views[s.uuid] = create(s.uuid, frame)

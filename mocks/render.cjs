@@ -123,6 +123,39 @@ const STATES = [
       },
     },
   },
+  {
+    // A 14-inch MacBook Pro's own display: the bar over the notch, its
+    // middle clear, no title, and the chips that would reach the notch
+    // behind "+n".
+    name: "bar-notch",
+    width: 1512,
+    state: {
+      uuid: "A",
+      notch: true,
+      workspaces: ws([
+        ["in", { occupied: true }],
+        ["mail", { occupied: true }],
+        ["design doc", { occupied: true }],
+        ["dotfiles", { occupied: true }],
+        ["quarterly planning", { occupied: true }],
+        ["standup", { occupied: true }],
+        ["recipes", { occupied: true }],
+        ["taxes", { occupied: true }],
+        ["music", { occupied: true }],
+        ["src", { current: true, occupied: true }],
+      ]),
+      title: "",
+      icons: {
+        awake: { on: false },
+        mic: { muted: false },
+        volume: { level: "mid", muted: false, text: "40%", tip: "Sound 40%" },
+        wifi: { on: true, bars: 3, name: "home" },
+        network: { kind: "wifi" },
+        battery: { percent: 64, charging: false, text: "64%" },
+        sysmon: { text: "12%", tone: "normal", tip: "CPU 12%" },
+      },
+    },
+  },
 ];
 
 // Hover, as tilemo tells the page where the pointer is: over an item's

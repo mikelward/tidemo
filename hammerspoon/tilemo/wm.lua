@@ -407,7 +407,12 @@ end
 function M:screens()
     local out = {}
     for i, s in ipairs(self.a.screens()) do
-        out[i] = self.top > 0 and { uuid = s.uuid, area = bar.below(s.area, self.top), full = s.full } or s
+        if self.top > 0 then
+            local _, area = bar.place(s, self.top)
+            out[i] = { uuid = s.uuid, area = area, full = s.full, notch = s.notch }
+        else
+            out[i] = s
+        end
     end
     return out
 end

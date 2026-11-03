@@ -32,6 +32,31 @@ export function crowded(width, left, right, gap = 24) {
   return titleRoom(width, left, right, gap) < MIN_TITLE;
 }
 
+// Over a notch (SPEC.md §8) the bar keeps this much of its middle clear, a
+// little more than the widest MacBook notch *(unverified per model)*.
+export const NOTCH_ROOM = 220;
+
+// Which workspace chips show left of a notch, as indexes in order: those
+// that fit before `limit` (the x no chip may pass), with room for a "+n"
+// chip `more` wide when not all do. The chips start at `start`, each
+// `widths[i]` wide with `gap` after it. Chip `keep` (the current one, or
+// -1) always shows, in place of the last ones that would.
+export function notchChips(start, widths, gap, limit, more, keep = -1) {
+  const end = (ids) => ids.reduce((x, i) => x + widths[i] + gap, start);
+  const all = widths.map((_, i) => i);
+  if (end(all) - gap <= limit) return all;
+  const shown = [];
+  for (const i of all) {
+    if (end([...shown, i]) + more > limit) break;
+    shown.push(i);
+  }
+  if (keep >= 0 && !shown.includes(keep)) {
+    while (shown.length > 0 && end([...shown, keep]) + more > limit) shown.pop();
+    shown.push(keep);
+  }
+  return shown;
+}
+
 // Each item's click target, as how far it reaches past its own box on each
 // side: to the bar's top and bottom, and halfway across the gap to each
 // neighbor, so a click between two items goes to the nearer one rather than
@@ -330,7 +355,44 @@ function reach(bar, items, opts) {
 // Every clock if the title keeps MIN_TITLE, else local time alone. Then the
 // title is held to the room left, so a long one ends in an ellipsis rather
 // than running over the chips or the clocks.
+// The "+n" chip for workspaces hidden by the notch; a click opens the
+// switcher's Workspaces tab, which lists them all.
+const moreChip = el("button", "more-ws");
+moreChip.type = "button";
+moreChip.addEventListener("click", () => send({ workspaces: true }));
+
+// Over a notch, hides the chips that would reach it (notchChips), behind
+// moreChip.
+function fitNotch() {
+  const nav = document.getElementById("workspaces");
+  if (moreChip.parentNode) moreChip.remove();
+  const chips = [...nav.children];
+  for (const c of chips) c.style.display = "";
+  if (!notch || chips.length === 0) return;
+  const bar = document.getElementById("bar").getBoundingClientRect();
+  const width = document.getElementById("bar").clientWidth;
+  const boxes = chips.map((c) => c.getBoundingClientRect());
+  // Unmeasured, as before the page lays out: nothing to hide yet.
+  if (!(width > 0) || boxes.some((b) => !(b.width > 0))) return;
+  const gap = boxes.length > 1 ? Math.max(0, boxes[1].left - boxes[0].right) : 4;
+  const limit = width / 2 - NOTCH_ROOM / 2;
+  // Room for "+99", measured as tide's chips are sized.
+  const more = 40;
+  const keep = chips.findIndex((c) => c.classList.contains("current"));
+  const shown = new Set(notchChips(boxes[0].left - bar.left, boxes.map((b) => b.width), gap, limit, more, keep));
+  if (shown.size === chips.length) return;
+  chips.forEach((c, i) => {
+    if (!shown.has(i)) c.style.display = "none";
+  });
+  const hidden = chips.length - shown.size;
+  moreChip.textContent = `+${hidden}`;
+  moreChip.setAttribute("aria-label", `${hidden} more workspaces`);
+  moreChip.setAttribute("data-tip", `${hidden} more: open the switcher's Workspaces`);
+  nav.append(moreChip);
+}
+
 function fit() {
+  fitNotch();
   const clocks = document.getElementById("clocks");
   const side = document.getElementById("right");
   clocks.classList.toggle("compact", false);
@@ -398,9 +460,13 @@ function tick() {
   fit();
 }
 
+// Whether this bar is over a notch (SPEC.md §8), from tilemo.
+let notch = false;
+
 window.tilemo = {
   update(state) {
     uuid = state.uuid;
+    notch = !!state.notch;
     renderWorkspaces(document.getElementById("workspaces"), state.workspaces, state.app_icons || {});
     document.getElementById("title-text").textContent = state.title;
     renderIcons(document.getElementById("icons"), state.icons);

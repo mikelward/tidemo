@@ -67,6 +67,13 @@ class Element {
   getBoundingClientRect() {
     return this.rect;
   }
+  get parentNode() {
+    return this.parent ?? null;
+  }
+  remove() {
+    if (this.parent) this.parent.children = this.parent.children.filter((c) => c !== this);
+    this.parent = undefined;
+  }
   replaceChildren() {
     this.children = [];
   }
@@ -404,6 +411,44 @@ assert.strictEqual(room, 1200 - 2 * 500 - 2 * 24);
 assert.ok(1200 / 2 - room / 2 >= 300, "clear of the chips");
 assert.ok(1200 / 2 + room / 2 <= 1200 - 500, "clear of the clocks and icons");
 assert.ok(ids.clocks.classList.contains("compact"), "and the clocks shrank");
+
+// Over a notch, chips that would reach the bar's clear middle hide behind a
+// "+n" chip, the current one always showing.
+const { notchChips, NOTCH_ROOM } = vm.runInContext('modules["./bar.js"]', sandbox);
+const list = (...a) => JSON.parse(JSON.stringify(notchChips(...a)));
+// Chips start at 40, each 60 wide with 4 after; the limit is 380, and the
+// "+n" chip takes 40.
+assert.deepStrictEqual(list(40, [60, 60, 60], 4, 380, 40), [0, 1, 2], "all fit");
+assert.deepStrictEqual(list(40, [60, 60, 60, 60, 60, 60], 4, 380, 40), [0, 1, 2, 3], "four, then +2");
+assert.deepStrictEqual(list(40, [60, 60, 60, 60, 60, 60], 4, 380, 40, 5), [0, 1, 2, 5], "the current one in place of the last");
+assert.deepStrictEqual(list(40, [60, 60, 60, 60, 60, 60], 4, 380, 40, 2), [0, 1, 2, 3], "already shown");
+assert.deepStrictEqual(list(40, [400, 60], 4, 380, 40, 1), [1], "a chip too wide for the room still leaves the current one");
+assert.ok(NOTCH_ROOM >= 200, "at least the title's 200 px");
+
+{
+  const many = Array.from({ length: 6 }, (_, i) => ({ n: `w${i}`, current: i === 5, occupied: true }));
+  Object.assign(ids.bar, { clientWidth: 1000 });
+  ids.bar.rect = { left: 0, right: 1000, top: 0, bottom: 36, width: 1000, height: 36 };
+  sandbox.tilemo.update({ uuid: "B", workspaces: many, title: "", icons: {}, notch: true });
+  const chips = ids.workspaces.children;
+  // limit = 1000/2 - NOTCH_ROOM/2 = 390: chips at 40, 104, 168, ... 60 wide.
+  chips.forEach((c, i) => (c.rect = { left: 40 + 64 * i, right: 100 + 64 * i, top: 5, bottom: 31, width: 60, height: 26 }));
+  sandbox.tick();
+  const shown = ids.workspaces.children.filter((c) => c.style.display !== "none" && c.className !== "more-ws").map((c) => c.children[0].textContent);
+  assert.deepStrictEqual(shown, ["w0", "w1", "w2", "w5"], "the current one stays");
+  const more = ids.workspaces.children.at(-1);
+  assert.strictEqual(more.className, "more-ws");
+  assert.strictEqual(more.textContent, "+2");
+  more.listeners.click();
+  assert.strictEqual(JSON.stringify(sent.at(-1)), JSON.stringify({ uuid: "B", workspaces: true }));
+  // Without a notch, every chip shows and there's no "+n".
+  sandbox.tilemo.update({ uuid: "B", workspaces: many, title: "", icons: {}, notch: false });
+  ids.workspaces.children.forEach((c, i) => (c.rect = { left: 40 + 64 * i, right: 100 + 64 * i, top: 5, bottom: 31, width: 60, height: 26 }));
+  sandbox.tick();
+  assert.ok(ids.workspaces.children.every((c) => c.style.display !== "none" && c.className !== "more-ws"));
+  sent.length = 0;
+  ids.bar.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+}
 
 // Click targets: each item reaches the bar's top and bottom and halfway to
 // each neighbor, a group's outer end reaches the bar's edge, and the room
