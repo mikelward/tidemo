@@ -580,7 +580,7 @@ t.test("the settings sidebar groups the pages under tide's headings", function()
         shown[#shown + 1] = row.heading and row.heading:upper() or row.label
     end
     t.eq(shown, {
-        "HARDWARE", "Displays", "Sound", "Network and Bluetooth", "Mouse", "Trackpad", "Keyboard", "Power",
+        "HARDWARE", "Displays", "Sound", "Network", "Bluetooth", "Mouse", "Trackpad", "Keyboard", "Power",
         "WINDOWS", "Layouts", "Workspaces", "Floating",
         "GENERAL", "Appearance", "Notifications", "Clipboard", "Clocks", "Idle", "Start at login", "Setup checklist",
     })
@@ -613,6 +613,14 @@ t.test("a settings section keeps the use remembered under its old title", functi
     end
     t.eq(keys["command:Settings: clocks"], "clocks")
     t.eq(keys["command:Settings: start at login"], "startup")
+    -- Network had Bluetooth with it.
+    t.eq(keys["command:Tide Settings: Network and Bluetooth"], "network")
+end)
+
+t.test("Network and Bluetooth are each found as their own page", function()
+    local items = launcher.items({}, {}, launcher.COMMANDS, {})
+    t.eq(launcher.rank("wi-fi", items, { scope = "launch" })[1].title, "Tide Settings: Network")
+    t.eq(launcher.rank("bluetooth", items, { scope = "launch" })[1].title, "Tide Settings: Bluetooth")
 end)
 
 t.test("Tide Settings is an app on Launch, with nothing typed, opening tide's settings window", function()
