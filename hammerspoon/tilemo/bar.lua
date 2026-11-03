@@ -743,6 +743,8 @@ function M.handle(wm, body, act)
         act.toggle(body.toggle)
     elseif body.volume then
         act.volume(tonumber(body.volume))
+    elseif body.menubar and act.menubar then
+        act.menubar(uuid)
     elseif body.workspaces and act.workspaces then
         act.workspaces(uuid)
     elseif type(body.session) == "table" and act.session then

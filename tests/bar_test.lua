@@ -621,6 +621,16 @@ t.test("the session menu locks, logs out, sleeps, restarts and shuts down, in th
     t.eq(ran, { "lock", "logout", "sleep", "restart", "shutdown" })
 end)
 
+t.test("the Apple logo opens the Apple menu, from its own bar", function()
+    local got
+    bar.handle(nil, { uuid = "B", menubar = true }, {
+        menubar = function(uuid)
+            got = uuid
+        end,
+    })
+    t.eq(got, "B")
+end)
+
 t.test("the session icon opens the menu under itself, on its own bar", function()
     local got
     bar.handle(nil, { uuid = "B", session = { x = 1880 } }, {

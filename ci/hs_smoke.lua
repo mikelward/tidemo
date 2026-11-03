@@ -224,8 +224,9 @@ local TARGETS_JS = [==[
     }
   }
   tilemo.pointer(null);
-  // The corner is tide's logo's, which opens the switcher.
-  if (!document.elementFromPoint(0, innerHeight / 2)?.closest("#logo")) dead.push("corner, not the logo");
+  // The corner is the Apple logo's, which opens the Apple menu, as on a
+  // Mac's own menu bar.
+  if (!document.elementFromPoint(0, innerHeight / 2)?.closest("#apple")) dead.push("corner, not the Apple logo");
   return dead.length ? dead.slice(0, 10).join(" ") : "ok";
 })()
 ]==]

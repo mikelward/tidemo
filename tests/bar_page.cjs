@@ -521,6 +521,23 @@ assert.strictEqual(reachOf(ids.logo), "5px 5px 10px 2px");
 assert.strictEqual(reachOf(inChip2), "5px 5px 2px 2px", "the first chip no longer reaches the edge");
 ids.logo.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
 
+// The Apple logo comes first of all, as on a Mac's menu bar: it reaches the
+// bar's left edge, and tide's logo then splits the gaps on both sides.
+ids.apple.rect = { ...box(6, 30), width: 24 };
+ids.logo.rect = { ...box(34, 60), width: 26 };
+inChip2.rect = { ...box(64, 94), width: 30 };
+webChip2.rect = { ...box(98, 134), width: 36 };
+sandbox.tick();
+assert.strictEqual(reachOf(ids.apple), "5px 5px 6px 2px");
+assert.strictEqual(reachOf(ids.logo), "5px 5px 2px 2px", "tide's logo no longer reaches the edge");
+sent.length = 0;
+ids.apple.listeners.click();
+assert.strictEqual(JSON.stringify(sent), JSON.stringify([{ uuid: "B", menubar: true }]), "a click opens the Apple menu");
+assert.strictEqual(ids.apple.attrs?.["data-tip"] ?? "Apple menu", "Apple menu");
+sent.length = 0;
+ids.apple.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+ids.logo.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+
 // Hover: tilemo says where the pointer is, and the target under it, its
 // innermost, is marked .hover, one at a time, until the pointer leaves.
 ids["title-text"].parent = ids.title;
@@ -534,7 +551,7 @@ sandbox.tilemo.update({
 const chip = ids.workspaces.children[0];
 const [, winIcon, plainIcon] = chip.children;
 const hoverOf = () =>
-  [ids.logo, chip, winIcon, plainIcon, ids.title, ids.clocks, ids.icons.children[0]].filter((e) => e.classList.contains("hover"));
+  [ids.apple, ids.logo, chip, winIcon, plainIcon, ids.title, ids.clocks, ids.icons.children[0]].filter((e) => e.classList.contains("hover"));
 const point = (e) => {
   under = e;
   sandbox.tilemo.pointer(1, 1);
@@ -554,6 +571,7 @@ assert.deepStrictEqual(point(ids.clocks), [ids.clocks]);
 assert.strictEqual(JSON.stringify(sent.filter((m) => m.tip).pop()), JSON.stringify({ uuid: "B", tip: { text: "" } }), "gone off the title");
 assert.deepStrictEqual(point(ids.icons.children[0]), [ids.icons.children[0]]);
 assert.deepStrictEqual(point(ids.logo), [ids.logo], "tide's logo");
+assert.deepStrictEqual(point(ids.apple), [ids.apple], "the Apple logo");
 assert.deepStrictEqual(point(ids.bar), [], "the bar itself is no target");
 point(chip);
 sandbox.tilemo.pointer(null);
