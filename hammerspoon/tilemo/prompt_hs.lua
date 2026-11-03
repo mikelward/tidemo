@@ -15,7 +15,7 @@ M.TITLE_POLL = 0.5
 -- `tilemo` is the started tilemo module: its wm, adapter and patterns.
 function M.new(tilemo)
     local self = {}
-    local chooser, done, typed, setting, poll, exclude
+    local chooser, done, typed, setting, poll
     -- Home and End, taken only while the prompt is open.
     local open_keys = {}
 
@@ -29,7 +29,7 @@ function M.new(tilemo)
         local exact = false
         for _, n in ipairs((wm:listed())) do
             local f = wm.fold(n)
-            if n ~= exclude and (want == "" or f:find(want, 1, true)) then
+            if (want == "" or f:find(want, 1, true)) then
                 out[#out + 1] = { text = n, name = n }
                 exact = exact or f == want
             end
@@ -104,11 +104,11 @@ function M.new(tilemo)
 
     -- Open the prompt, with `default` typed in, and `on_done(name or nil)`
     -- once it's answered. `follow()`, if given, gives the default again,
-    -- for a title that arrives after its window. The home workspace isn't
-    -- offered when `no_home` says so. wm.lua asks one question at a time,
+    -- for a title that arrives after its window. Every workspace is
+    -- offered, home included. wm.lua asks one question at a time,
     -- so the prompt is never open already: canceling an open one would
     -- answer it as Esc.
-    local function open(placeholder, default, on_done, follow, no_home)
+    local function open(placeholder, default, on_done, follow)
         if done then
             tilemo.adapter.log("name prompt: asked again while open; the earlier question was dropped")
             if poll then
@@ -118,7 +118,6 @@ function M.new(tilemo)
         end
         done = on_done
         typed = false
-        exclude = no_home and tilemo.wm.home or nil
         chooser:placeholderText(placeholder)
         set_query(default or "")
         if follow then
@@ -152,24 +151,23 @@ function M.new(tilemo)
             tilemo.wm:answer(id, name)
         end, function()
             return default_for(id)
-        end, true)
+        end)
     end
 
     -- A launch from home, or Cmd+Return: `on_done(name or nil)`.
     function self.launch(default, on_done)
-        open("Workspace to open it on", default, on_done, nil, true)
+        open("Workspace to open it on", default, on_done)
     end
 
-    -- Super+Shift+Return: any workspace, home included, which takes only
-    -- its own apps' windows.
+    -- Super+Shift+Return: any workspace, home included.
     function self.choose(on_done)
-        open("Move the window to", "", on_done, nil, false)
+        open("Move the window to", "", on_done)
     end
 
     -- Super+Return: any workspace to go to, home included, since nothing
     -- moves there.
     function self.go(on_done)
-        open("Go to the workspace", "", on_done, nil, false)
+        open("Go to the workspace", "", on_done)
     end
 
     -- For CI's smoke test: the rows shown, and Esc.

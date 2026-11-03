@@ -923,6 +923,7 @@ function M:add(id)
         return self.a.state(sid) ~= nil
     end)
     self.paired[id] = nil
+    local launched = false
     if saved and saved.ws then
         -- tilemo restarted, or the app relaunched: the window goes back where
         -- it was. One of home's apps from a numbered state goes home.
@@ -965,8 +966,9 @@ function M:add(id)
     elseif self:launched_to(w) then
         -- A launch tilemo made goes to the workspace it was for, even if
         -- you've moved on since, marked if that isn't showing (SPEC.md
-        -- §6.1, §14.2).
+        -- §6.1, §14.2). Its workspace was named, so it doesn't ask again.
         w.ws = self:ensure_ws(self:launched_to(w, true))
+        launched = true
         w.mine = f.minimized or false
         if not self:shown(w.ws) then
             self.attention:activated(id, w.app)
@@ -981,8 +983,9 @@ function M:add(id)
     w.screen = w.screen or self:screen_of_frame(f.frame)
     -- Any other app's new window on "in" asks for a name first. Dialogs and
     -- other floats go where their parent is, and a window coming back to
-    -- its place doesn't ask.
-    if self.ready and kind == "tile" and w.ws == self.home and not (saved and saved.ws) and not self:is_home_app(w) then
+    -- its place, or launched to the "in" you named, doesn't ask.
+    if self.ready and kind == "tile" and w.ws == self.home and not (saved and saved.ws) and not launched
+        and not self:is_home_app(w) then
         self.asking[#self.asking + 1] = { window = id }
     end
     if kind == "float" then
@@ -1607,21 +1610,14 @@ end
 
 -- Move window `id` to the end of workspace `name`'s stack on its display,
 -- making the
--- workspace, at the end of the list, if the name is new. Only home's apps
--- may be sent home (SPEC.md §6.2); another app's window is refused, with
--- a notice. Says whether the window moved. `defer` leaves the screen to
+-- workspace, at the end of the list, if the name is new. Any window may
+-- be sent home (SPEC.md §6.2). Says whether the window moved. `defer` leaves the screen to
 -- the caller's next reconcile, for a Send followed by a Show, so the window
 -- isn't minimized and restored between the two.
 function M:send(id, name, defer)
     local w = self.windows[id or false]
     local n = self:canonical(name)
     if not w or not w.ws or not n or w.ws == n then
-        return false
-    end
-    if n == self.home and not self:is_home_app(w) then
-        if self.a.notify then
-            self.a.notify("Only the home workspace's apps go on " .. self.home)
-        end
         return false
     end
     local from = w.ws
@@ -1888,8 +1884,8 @@ end
 
 -- The prompt's answer for window `id`: a name moves it there, making the
 -- workspace if it's new, and shows it, on the display home was on, with
--- focus; nil (Esc) closes the window, politely. Home itself is refused,
--- and asked again, as is a name with what a name can't hold.
+-- focus; nil (Esc) closes the window, politely. Home keeps it there. A
+-- blank name, or one with what a name can't hold, asks again.
 function M:answer(id, name)
     local q = self.prompting
     if not (q and q.window == id) then
@@ -1905,11 +1901,14 @@ function M:answer(id, name)
             self.a.close(id)
         else
             local n = self:canonical(name)
-            if n == self.home or not n then
-                if n then
-                    self.a.notify(self.home .. " is for its own apps: give this window another name")
-                end
+            if not n then
                 table.insert(self.asking, 1, q)
+            elseif n == self.home then
+                -- It stays, shown and focused, as a move would leave it.
+                self:show(self.home, self:screen_of(id))
+                self:reconcile()
+                self:retile()
+                self:focus_window(id)
             else
                 local uuid = self:screen_of(id)
                 if self:send(id, n, true) then
@@ -1934,9 +1933,7 @@ function M:launch_answer(q, name)
     end
     self:asked_done(q)
     local n = name and self:canonical(name)
-    if n == self.home and not q.launch.home_app then
-        self.a.notify(self.home .. " is for its own apps: nothing was opened")
-    elseif n then
+    if n then
         self:show(n, nil, true)
         n = self:find(n) or n
         self:launch_to(q.launch.app, n)
@@ -1947,7 +1944,7 @@ end
 
 -- The prompt's answer for Super+Return's question `q`: a name shows that
 -- workspace, making it if it's new, moving no window; nil (Esc) stays.
--- Home is a name like any other here, since nothing moves there. A new
+-- Home is a name like any other here, as everywhere. A new
 -- one left empty goes once you leave it, as any empty workspace does.
 function M:go_answer(q, name)
     if self.prompting ~= q or self:refuse_unsafe(q, name) then

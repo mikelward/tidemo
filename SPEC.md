@@ -844,7 +844,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 `workspaces` names another first.
 
 - **"in" holds the apps you keep open all day:** mail, chat, calendar and
-  music by default. Their windows always open there, and only theirs.
+  music by default. Their windows always open there. Any other window
+  goes there only when you send it or name it.
   - The list is a setting (§15), matched by app name, since Chrome's
     installed web apps each get a bundle ID of their own per install
     *(unverified)*. Which names stand for those four is a guess, to
@@ -872,8 +873,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
       `google-calendar` can go in Start at login's list (§15) instead.
   - A web app open in a plain Chrome tab isn't its app. Only the installed
     web app's own window counts.
-  - Sending another app's window to "in" is refused, with a short notice
-    *(a guess, to confirm)*.
+  - Any window can be sent to "in", and every prompt offers "in". So a
+    window or launch you name "in" stays there.
   - Moving one of "in"'s windows elsewhere by hand is allowed: the rule
     says where they open, not where they must stay *(a guess, to
     confirm)*.
@@ -891,7 +892,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
     - A Mac text field's Home and End only scroll, so while the prompt is
       open Home and End are hotkeys sending `Cmd+Left` and `Cmd+Right`.
   - **Enter** makes the workspace, or uses the existing one of that name,
-    moves the window there, and shows it. Focus follows.
+    moves the window there, and shows it. Focus follows. "in" keeps it
+    on "in".
   - **Esc closes the window,** politely, as the close-window key does
     (§7.2): Accessibility presses its close button, so the app can still
     ask to save.

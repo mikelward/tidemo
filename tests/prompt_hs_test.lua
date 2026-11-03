@@ -150,6 +150,23 @@ t.test("the default opens selected, so typing replaces it", function()
     t.eq(s.field().rows[1].name, "w", "the typed name is the top row")
 end)
 
+t.test('"in" is offered to a window opening there, and to a launch', function()
+    local s, prompt = setup("Mail")
+    local function offered()
+        local out = {}
+        for _, r in ipairs(s.field().rows) do
+            out[#out + 1] = r.name
+        end
+        return out
+    end
+    prompt.window(1)
+    s.type("")
+    t.eq(offered(), { "in", "re", "oc", "me" })
+    s.field().choose(nil)
+    prompt.launch("", function() end)
+    t.eq(offered(), { "in", "re", "oc", "me" })
+end)
+
 t.test("a launch's default opens selected too", function()
     local s, prompt = setup("Mail")
     local got
