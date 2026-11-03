@@ -315,9 +315,14 @@ can open before its page names it, and a title rule needs that name.
    Hammerspoon's own thread, which can't answer while it asks, so each
    question waits out the timeout, a dozen a window. On CI's Mac that held
    everything for 3 s as the launcher showed. And the window manager
-   synced and retiled every window as the switcher closed. Bitwarden's pop-outs in Chrome and Brave float: its extension
-   asks you to sign in, fill a login or use a passkey in a popup window
-   titled "Bitwarden". The vault's own tab is titled otherwise, and the
+   synced and retiled every window as the switcher closed. Nor is
+   Hammerspoon asked which of its windows has the focus. While one does,
+   tilemo takes it that none of the windows it manages has it, and a
+   close behind it leaves the focus there. The attention poll and the bar ask every 2 s,
+   half a dozen times, and on an older Mac that held Esc in the switcher
+   for 2 to 3 s. Bitwarden's pop-outs in Chrome and Brave float: its
+   extension asks you to sign in, fill a login or use a passkey in a popup
+   window titled "Bitwarden". The vault's own tab is titled otherwise, and the
    desktop app is another app.
 3. **A window with no close button, from an app that stays out of the
    Dock, is left alone.** It's part of that app's interface, not a window:
