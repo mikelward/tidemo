@@ -222,16 +222,37 @@ local function workspaces(tilemo)
     return out
 end
 
+-- scripts' list of its app scripts (launcher.parse_scripts), read afresh
+-- each time the switcher opens, so a pull shows at once. Without it the
+-- switcher lists none, and the log says so once, until it can read it.
+local scripts_unread
+local function read_scripts(tilemo, dir)
+    local path = dir .. launcher.SCRIPTS_FILE
+    local f, err = io.open(path)
+    if not f then
+        if scripts_unread ~= tostring(err) then
+            scripts_unread = tostring(err)
+            tilemo.adapter.log("launcher: can't read " .. path .. ", so the switcher lists no app scripts: " .. tostring(err))
+        end
+        return {}
+    end
+    scripts_unread = nil
+    local text = f:read("a")
+    f:close()
+    return launcher.parse_scripts(text)
+end
+
 -- What the switcher lists as it opens, read once: a function giving its
 -- rows (launcher.items) with the browser tabs `tabs` found so far, muted
 -- ones marked. Shared with the dashboard launcher (launcherpage_hs.lua).
 function M.collector(tilemo)
     local apps, settings = M.scan()
     local wins = windows(tilemo)
-    -- The app scripts in ~/scripts, as runenv finds them.
-    local scripts = (os.getenv("HOME") or "") .. "/scripts/"
-    local commands = launcher.with_scripts(launcher.COMMANDS, function(run)
-        return hs.fs.attributes(scripts .. run, "mode") == "file"
+    -- The app scripts in ~/scripts, as runenv finds them, by scripts' own
+    -- list of them.
+    local dir = (os.getenv("HOME") or "") .. "/scripts/"
+    local commands = launcher.with_scripts(launcher.COMMANDS, read_scripts(tilemo, dir), function(run)
+        return hs.fs.attributes(dir .. run, "mode") == "file"
     end)
     return function(tabs)
         local items = launcher.items(apps, tabs, commands, settings, attention(tilemo), workspaces(tilemo), wins)

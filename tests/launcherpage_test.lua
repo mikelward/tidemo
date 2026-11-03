@@ -96,7 +96,8 @@ t.test("apps and panes are the page's apps, most recently used first", function(
 end)
 
 t.test("the app scripts are the page's apps too", function()
-    local commands = launcher.with_scripts(launcher.COMMANDS, function(run)
+    local scripts = launcher.parse_scripts("google-meet|Google Meet|camera-web|com.google.Chrome\n")
+    local commands = launcher.with_scripts(launcher.COMMANDS, scripts, function(run)
         return run == "google-meet"
     end)
     local f = launcherpage.feed(launcher.items({}, {}, commands, {}))
