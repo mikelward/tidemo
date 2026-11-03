@@ -457,6 +457,54 @@ function M.new(tilemo)
         self.volume_popover.toggle(v.frame, at.right)
     end
 
+    -- The Apple logo opens the real Apple menu (SPEC.md §8), since the menu
+    -- bar is hidden for this bar. Through Accessibility it's a press on the
+    -- first item of the frontmost app's menu bar, which macOS shows the menu
+    -- bar for. Without it, the pointer goes to the top of that display,
+    -- which reveals the menu bar, and a click there opens the menu; a second
+    -- logo click inside 2 s is ignored, so a click that lands on the bar
+    -- again can't start it over.
+    local function open_apple_menu(uuid)
+        local now = hs.timer.secondsSinceEpoch()
+        if self.apple_at and now - self.apple_at < 2 then
+            return
+        end
+        self.apple_at = now
+        local ok, err = pcall(function()
+            local app = hs.application.frontmostApplication()
+            local el = app and hs.axuielement.applicationElement(app)
+            local menubar = el and el:attributeValue("AXMenuBar")
+            local items = menubar and menubar:attributeValue("AXChildren")
+            local apple = items and items[1]
+            if not apple then
+                error("the frontmost app has no menu bar")
+            end
+            local done, why = apple:performAction("AXPress")
+            if not done then
+                error(tostring(why))
+            end
+        end)
+        if ok then
+            return
+        end
+        log("bar: couldn't open the Apple menu through Accessibility (" .. tostring(err) .. "); clicking it")
+        local full
+        for _, s in ipairs(tilemo.adapter.screens()) do
+            if s.uuid == uuid then
+                full = s.full
+            end
+        end
+        if not full then
+            return
+        end
+        local point = { x = full.x + 18, y = full.y }
+        hs.mouse.absolutePosition(point)
+        hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.mouseMoved, point):post()
+        tilemo.adapter.after(0.6, function()
+            hs.eventtap.leftClick(point)
+        end)
+    end
+
     local function on_message(msg, from)
         local body = msg.body or {}
         if body.error then
@@ -482,6 +530,7 @@ function M.new(tilemo)
                 good_clocks = tilemo.keep_good_clocks,
                 tip = show_tip,
                 session = show_session,
+                menubar = open_apple_menu,
                 -- The "+n" chip over a notch: every workspace, in the switcher.
                 workspaces = function()
                     tilemo.launcher.show("workspaces")

@@ -208,6 +208,11 @@ STATES.push(
       });
       await tab.clock.setFixedTime(new Date("2026-10-26T09:30:00Z"));
       await tab.goto("file://" + path.resolve(page));
+      // The Apple logo is a glyph only Apple's fonts have; here a dot
+      // stands in for it, where a Mac draws the logo.
+      await tab.evaluate(() => {
+        document.getElementById("apple").textContent = "\u25cf";
+      });
       await tab.evaluate((s) => window.tilemo.update(s), state);
       if (pointer) {
         // At the item's middle, 1px from the bar's top: outside its own box.

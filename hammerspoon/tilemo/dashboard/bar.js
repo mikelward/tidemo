@@ -7,7 +7,7 @@
 // { toggle: "mic" | "volume" | "awake" | "presenter" | "source" },
 // { sound: { right } } from the speaker, its right edge,
 // { volume: 1 or -1 }, { session: { x } } from the session icon at x,
-// { dashboard: true }, { switcher: true } from the logo, { maximize: true }, { tip: { text, x } } while
+// { dashboard: true }, { switcher: true } from the logo, { menubar: true } from the Apple logo, { maximize: true }, { tip: { text, x } } while
 // an item with a tip is hovered and { tip: { text: "" } } once none is, { clockErrors } naming a clocks file that's wrong, or
 // { goodClocks }, the clocks to keep while one is.
 
@@ -92,7 +92,7 @@ export function titleInsets(bar, title, leftEnd, rightStart) {
 
 // What a click at an element reaches, innermost first: a chip's window
 // icon, then the logo, a chip, the title, the clocks or a status item.
-const TARGET = "nav > button .app.win, #logo, nav > button, #title, #clocks, #icons > button.icon";
+const TARGET = "nav > button .app.win, #apple, #logo, nav > button, #title, #clocks, #icons > button.icon";
 
 // A trackpad sends many small scrolls; one step is this much of them.
 const STEP = 50;
@@ -406,9 +406,9 @@ function fit() {
   // Unmeasured, as before the page lays out, leaves the title as it is.
   if (Number.isFinite(room)) document.getElementById("title-text").style.maxWidth = `${Math.max(0, room)}px`;
   const bar = document.getElementById("bar").getBoundingClientRect();
-  // The logo first, reaching the bar's left edge, so the corner opens the
-  // switcher, then the chips.
-  const lefts = reach(bar, [document.getElementById("logo"), ...document.getElementById("workspaces").children], { start: true });
+  // The Apple logo first, reaching the bar's left edge, so the corner opens
+  // the Apple menu as on a Mac, then tide's logo, then the chips.
+  const lefts = reach(bar, [document.getElementById("apple"), document.getElementById("logo"), ...document.getElementById("workspaces").children], { start: true });
   const rights = reach(bar, [document.getElementById("clocks"), ...document.getElementById("icons").children], { end: true });
   // An empty title has no target: there's no window there to maximize.
   const title = document.getElementById("title");
@@ -507,6 +507,8 @@ document.getElementById("bar").addEventListener("dblclick", (e) => {
 // tide's logo opens the switcher on Launch, or closes it, as Super+Space
 // does (SPEC.md §8).
 document.getElementById("logo").addEventListener("click", () => send({ switcher: true }));
+// The Apple menu, which tilemo opens for real (bar_hs.lua).
+document.getElementById("apple").addEventListener("click", () => send({ menubar: true }));
 
 // The clocks open the dashboard, with its clock panel.
 document.getElementById("clocks").addEventListener("click", () => send({ dashboard: true }));

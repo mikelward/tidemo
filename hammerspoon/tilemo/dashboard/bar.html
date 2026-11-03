@@ -29,6 +29,24 @@ body {
 #logo svg {
   display: block;
 }
+/* The Apple menu, first in the corner, as on a Mac's own menu bar: the
+   system font's Apple glyph in the text color. A click opens the real Apple
+   menu (bar_hs.lua), since the menu bar is hidden for this bar. */
+#apple {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 26px;
+  margin: 0 2px 0 -2px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font: 15px/1 -apple-system, BlinkMacSystemFont, sans-serif;
+  cursor: pointer;
+}
 /* The chips look as tide's do (tide's shell/Workspaces.qml and Theme.qml):
    26px tall with 7px corners, the name semibold, 7px either side of it
    inside the 1px border, and at least 28px wide. An occupied chip sits on
@@ -128,6 +146,7 @@ nav button .more {
    chip stays its own target) reaching as far as bar.js's --reach-* say, to
    the bar's top and bottom and halfway to each neighbor. ::before takes the
    clicks; ::after, the same box, shows it on hover (tileco's stylesheet). */
+#apple,
 #logo,
 nav > button,
 #clocks,
@@ -135,6 +154,8 @@ nav > button,
   position: relative;
   z-index: 0;
 }
+#apple::before,
+#apple::after,
 #logo::before,
 #logo::after,
 nav > button::before,
@@ -157,6 +178,7 @@ nav > button:first-child::after,
   left: calc(-1 * var(--reach-left, 0px));
   right: calc(-1 * var(--reach-right, 0px));
 }
+#apple::after,
 #logo::after,
 #icons > .icon::after,
 #title::after {
@@ -176,6 +198,7 @@ nav > button::after {
 /* Under the pointer the whole target shows, a rounded rect half pressed.
    bar.js marks it .hover: the bar's window is never key, and WebKit only
    follows the pointer in the key window, so :hover never fires here. */
+#apple.hover::after,
 #logo.hover::after,
 nav > button.hover::after,
 #clocks.hover::after,
@@ -295,7 +318,7 @@ nav button .app.none.win:hover {
 <body>
 <header class="bar" id="bar">
 <div id="left">
-<button type="button" id="logo" aria-label="Switcher"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg></button>
+<button type="button" id="apple" aria-label="Apple menu" data-tip="Apple menu"></button><button type="button" id="logo" aria-label="Switcher"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg></button>
 <nav id="workspaces" aria-label="Workspaces"></nav>
 </div>
 <span id="title"><span id="title-text"></span></span>

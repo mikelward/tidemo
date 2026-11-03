@@ -1419,7 +1419,18 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 - **If it's a bar, it's tide's** (tide §7.1–§7.4):
   - a flush 36 px strip, one per display, with the tiling area starting
     below it;
-  - **tide's logo first,** two waves in the accent color, as on tide
+  - **the Apple logo first of all,** in the corner as on a Mac's own
+    menu bar: the system font's Apple glyph in the text color. A click
+    opens the real Apple menu, since the menu bar is hidden for this bar:
+    an Accessibility press (`hs.axuielement`'s `AXPress`) on the first
+    item of the frontmost app's menu bar, which macOS shows the menu bar
+    for. Without Accessibility, the pointer goes to the top of that display,
+    which reveals the menu bar, and a click there 0.6 s later opens the
+    menu; a second click within 2 s is ignored, so a click landing on the
+    bar again can't start it over *(both unverified on a Mac)*. With the
+    menu bar's "Reduce transparency" on (Accessibility, Display), the
+    revealed menu bar is solid over the bar;
+  - **tide's logo next,** two waves in the accent color, as on tide
     (tide §7.1). A click opens the switcher on Launch, as `Super+Space`
     does, or closes it if it's open, on any tab. It opens where
     `Super+Space` opens it, on the display with the focused window, not
