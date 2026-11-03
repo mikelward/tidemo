@@ -1438,12 +1438,12 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - **the Apple logo first of all,** in the corner as on a Mac's own
     menu bar: the system font's Apple glyph in the text color. A click
     opens the real Apple menu, since the menu bar is hidden for this bar:
-    an Accessibility press (`hs.axuielement`'s `AXPress`) on the first
-    item of the frontmost app's menu bar, which macOS shows the menu bar
-    for. Without Accessibility, the pointer goes to the top of that display,
-    which reveals the menu bar, and a click there 0.6 s later opens the
-    menu; a second click within 2 s is ignored, so a click landing on the
-    bar again can't start it over *(both unverified on a Mac)*. With the
+    the pointer goes to the top of that display, which reveals the menu
+    bar, and a click there 0.6 s later opens the menu; a second click
+    within 2 s is ignored, so a click landing on the bar again can't start
+    it over *(unverified on a Mac)*. An Accessibility press (`AXPress`) on
+    the menu bar's first item isn't used: with the menu bar hidden it
+    reports success and shows nothing. With the
     menu bar's "Reduce transparency" on (Accessibility, Display), the
     revealed menu bar is solid over the bar;
   - **tide's logo next,** two waves in the accent color, as on tide
