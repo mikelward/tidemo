@@ -67,14 +67,25 @@ end
 -- `area` (hs.screen's frame) starts below the notch. There (`s.notch`, from
 -- the adapter) the bar goes up to the top of the screen, as tall as that
 -- strip or `h`, whichever is taller, and windows tile below it.
-function M.place(s, h)
+--
+-- `floor`, when given, is where the bar's window really ends: macOS may
+-- refuse the strip and move the window down (bar_hs.lua reads it back), and
+-- windows then tile below it rather than under it.
+function M.place(s, h, floor)
     local area = s.area
+    local strip, below
     if s.notch and s.full and s.full.y < area.y then
-        local strip = { x = area.x, y = s.full.y, w = area.w, h = math.max(h, area.y - s.full.y) }
+        strip = { x = area.x, y = s.full.y, w = area.w, h = math.max(h, area.y - s.full.y) }
         local top = strip.y + strip.h
-        return strip, { x = area.x, y = top, w = area.w, h = math.max(0, area.y + area.h - top) }
+        below = { x = area.x, y = top, w = area.w, h = math.max(0, area.y + area.h - top) }
+    else
+        strip, below = M.strip(area, h), M.below(area, h)
     end
-    return M.strip(area, h), M.below(area, h)
+    if floor and floor > below.y then
+        local bottom = below.y + below.h
+        below = { x = below.x, y = floor, w = below.w, h = math.max(0, bottom - floor) }
+    end
+    return strip, below
 end
 
 -- Which bar the pointer at x, y is over, and where on it: the uuid and the

@@ -62,6 +62,26 @@ t.test("without a notch, the bar sits at the top of the area as before", functio
     t.eq(strip.y, 0, "a notch flag with no room kept is just the top")
 end)
 
+t.test("windows tile below where the bar really is, when macOS moved it down", function()
+    local notched = { area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
+    local strip, below = bar.place(notched, 36, 68)
+    t.eq(strip, { x = 0, y = 0, w = 1512, h = 36 }, "still asked for at the top")
+    t.eq(below, { x = 0, y = 68, w = 1512, h = 914 }, "but windows start under the bar's real bottom")
+    _, below = bar.place(notched, 36, 30)
+    t.eq(below.y, 36, "a floor above the strip's bottom changes nothing")
+    local a = fake.new()
+    a.screens_[1] = notched
+    notched.uuid = "A"
+    a.add(1, { title = "Notes" })
+    local wm = wm_mod.new(a, { top = bar.HEIGHT, workspaces = { "in" } })
+    wm:sync()
+    wm:reconcile()
+    wm.bar_floor.A = 68
+    wm:retile()
+    t.eq(a.wins[1].frame.y, 68)
+    t.eq(a.wins[1].frame.h, 914)
+end)
+
 t.test("a display with a notch tiles under the raised bar, and shows no title", function()
     local a = fake.new()
     a.screens_[1] = { uuid = "A", area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }

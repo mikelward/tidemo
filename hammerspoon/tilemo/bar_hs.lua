@@ -604,6 +604,27 @@ function M.new(tilemo)
         end
     end
 
+    -- macOS can refuse the bar its strip and move the window down: over a
+    -- notch, it keeps the strip for the menu bar *(seen on a MacBook)*. Then
+    -- windows tile below where the bar really is, not under it, and the log
+    -- says so once per change. One frame read per display per redraw.
+    local function check_floor(uuid, v, frame)
+        local got = try("the bar's frame", function()
+            return v.view:frame()
+        end)
+        local floor
+        if got and got.y + got.h > frame.y + frame.h + 0.5 then
+            floor = got.y + got.h
+        end
+        if floor ~= tilemo.wm.bar_floor[uuid] then
+            tilemo.wm.bar_floor[uuid] = floor
+            if floor then
+                log(string.format("bar: macOS put display %s's bar at y=%g, not y=%g; windows tile below it", uuid, got.y, frame.y))
+            end
+            tilemo.wm:retile()
+        end
+    end
+
     local function sync_views()
         local present = {}
         for _, s in ipairs(tilemo.adapter.screens()) do
@@ -611,11 +632,13 @@ function M.new(tilemo)
             local frame = bar.place(s, bar.HEIGHT)
             local v = self.views[s.uuid]
             if not v then
-                self.views[s.uuid] = create(s.uuid, frame)
+                v = create(s.uuid, frame)
+                self.views[s.uuid] = v
             elseif not same(v.frame, frame) then
                 v.frame = frame
                 v.view:frame(frame)
             end
+            check_floor(s.uuid, v, frame)
         end
         for uuid, v in pairs(self.views) do
             if not present[uuid] then

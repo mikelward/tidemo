@@ -270,6 +270,9 @@ function M.new(adapter, config)
         -- The height tilemo's bar takes from the top of each display, or 0
         -- with the bar off (bar.lua).
         top = config.top or 0,
+        -- Where each display's bar window really ends, by uuid, when macOS
+        -- moved it lower than tilemo put it (bar.place).
+        bar_floor = {},
         -- start()'s rules, then the ones you made on the Floating page
         -- (floating.lua), together as `rules`, tried before tilemo's own.
         start_rules = rules.check(config.rules or {}, "rules"),
@@ -408,7 +411,7 @@ function M:screens()
     local out = {}
     for i, s in ipairs(self.a.screens()) do
         if self.top > 0 then
-            local _, area = bar.place(s, self.top)
+            local _, area = bar.place(s, self.top, self.bar_floor[s.uuid])
             out[i] = { uuid = s.uuid, area = area, full = s.full, notch = s.notch }
         else
             out[i] = s
