@@ -50,6 +50,15 @@ function M.say(kind, where)
     return text
 end
 
+-- What the Mouse section shows from `state` (M.new's), as one string: the
+-- problem and every mouse's pointer, so the page is redrawn when either
+-- changes, a pointer set in LinearMouse's own window included, and not
+-- every 30 s otherwise.
+function M.shown(state)
+    local p = state.pointer or {}
+    return table.concat({ state.problem or "", tostring(p.speed), tostring(p.acceleration) }, "\0")
+end
+
 -- The two places LinearMouse reads its config from, the first that exists
 -- (its ConfigurationState.swift); with neither, it makes the second.
 M.CONFIGS = {
@@ -159,7 +168,8 @@ function M.new(deps)
             .. "const want = L.mouseScrolling(loaded.input, " .. tostring(natural) .. ");\n"
             .. "const r = L.withMouseScrolling(" .. (config and js(config) or "null") .. ", want.lines, want.reverse);\n"
             .. "return JSON.stringify({ input: JSON.stringify(loaded.input), errors: loaded.errors,"
-            .. " lines: want.lines, reverse: want.reverse, text: r.text, error: r.error });})()"
+            .. " lines: want.lines, reverse: want.reverse, text: r.text, error: r.error,"
+            .. " pointer: L.mousePointer(r.text !== undefined ? r.text : " .. (config and js(config) or "null") .. ") });})()"
         local ok, out = deps.run_js(source)
         if not ok then
             return nil, "couldn't run the Mouse settings' JavaScript: " .. tostring(out)
@@ -227,6 +237,7 @@ function M.new(deps)
                             end
                         end
                         self.state.lines, self.state.reverse = v.lines, v.reverse
+                        self.state.pointer = type(v.pointer) == "table" and v.pointer or {}
                     end
                     self.state.problem = table.concat(problems, " ")
                     say_once("config", self.state.problem)
@@ -239,6 +250,45 @@ function M.new(deps)
                 done(self.state)
             end
         end)
+    end
+
+    -- The Mac's own Speed and Acceleration rows (dashboard/linearmouse.js's
+    -- withMousePointer): every mouse's pointer `key` set to `value` in
+    -- LinearMouse's config, which LinearMouse reads as it changes. Returns
+    -- true, or nil and why, with nothing written.
+    function self.set_pointer(key, value)
+        if not deps.installed() then
+            return nil, "LinearMouse isn't installed, so there's nothing to set the pointer in"
+        end
+        local path = config_path()
+        local config = deps.read(path)
+        local source = "(function(){" .. bundle
+            .. "const L = modules[\"./linearmouse.js\"];\n"
+            .. "const r = L.withMousePointer(" .. (config and js(config) or "null") .. ", " .. js(tostring(key)) .. ", "
+            .. (type(value) == "number" and string.format("%.17g", value) or "null") .. ");\n"
+            .. "return JSON.stringify({ text: r.text, error: r.error,"
+            .. " pointer: L.mousePointer(r.text !== undefined ? r.text : " .. (config and js(config) or "null") .. ") });})()"
+        local ok, out = deps.run_js(source)
+        if not ok then
+            return nil, "couldn't run the Mouse settings' JavaScript: " .. tostring(out)
+        end
+        local v = deps.decode(out)
+        if type(v) ~= "table" then
+            return nil, "the Mouse settings' JavaScript gave back " .. tostring(out)
+        end
+        if type(v.error) == "string" then
+            return nil, "Can't set LinearMouse's pointer: " .. v.error
+        end
+        if type(v.text) == "string" then
+            local wrote, werr = deps.write(deps.resolve(path), v.text)
+            if not wrote then
+                return nil, "Couldn't save LinearMouse's pointer to " .. path .. ": " .. tostring(werr)
+            end
+            -- The next apply reads the file afresh.
+            last_key = nil
+        end
+        self.state.pointer = type(v.pointer) == "table" and v.pointer or {}
+        return true
     end
 
     -- tilemo doctor's line, if anything's wrong with applying them.

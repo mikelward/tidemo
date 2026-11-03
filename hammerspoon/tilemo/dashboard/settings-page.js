@@ -35,6 +35,7 @@ import {
 import { LISTS, editedList, itemNote, movedItem, withItem, withoutItem } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings } from "./tide-workspacenames.js";
 import { isZone, localText, sharedText } from "./settings.js";
+import { steppedPointer } from "./linearmouse.js";
 
 const send = (msg) => window.webkit?.messageHandlers?.tilemo?.postMessage(msg);
 
@@ -46,6 +47,9 @@ let layoutFiles = null;
 let inputFiles = null;
 // What's wrong with LinearMouse, from tilemo, shown with the Mouse rows.
 let mouseProblem = "";
+// Every mouse's pointer as LinearMouse has it: speed and acceleration, each
+// missing while it's left to macOS.
+let mousePointer = {};
 // What the files lay over, in their names: start()'s layout, which may not
 // be tide's defaults. Empty for tide's defaults alone.
 let layoutBase = {};
@@ -331,10 +335,15 @@ function renderLayouts() {
   }
 }
 
-// The Mouse section, as tide's Mouse page's Scroll speed and Natural
-// scrolling rows (tide SPEC.md §16), with tide's own functions: a change
-// writes only input.local.json, keeping whatever else it says, and tilemo
-// applies it to LinearMouse (SPEC.md §10).
+// The Mouse section: the Mac's own Speed and Acceleration, which tilemo
+// writes straight to LinearMouse's config, then tide's Mouse page's Scroll
+// speed and Natural scrolling rows (tide SPEC.md §16), with tide's own
+// functions: a change writes only input.local.json, keeping whatever else
+// it says, and tilemo applies it to LinearMouse (SPEC.md §10).
+const POINTER_ROWS = [
+  { key: "speed", label: "Speed" },
+  { key: "acceleration", label: "Acceleration" },
+];
 const inputText = (which) => (typeof inputFiles?.[which] === "string" ? inputFiles[which] : null);
 const MOUSE_ROWS = [
   { key: "scrollSpeed", label: "Scroll speed", kind: "scroll" },
@@ -360,6 +369,14 @@ function renderMouse() {
   const problems = [mouseProblem];
   if (broken) problems.push(`${errors.join("; ")}. Fix the file to change these here.`);
   document.getElementById("mouse-error").textContent = problems.filter((p) => p !== "").join(" ");
+  for (const r of POINTER_ROWS) {
+    const value = typeof mousePointer[r.key] === "number" ? mousePointer[r.key] : undefined;
+    const less = steppedPointer(r.key, value, -1);
+    const more = steppedPointer(r.key, value, 1);
+    box.append(layoutRow(r.label, value === undefined ? "macOS's" : String(value),
+      button("−", `Less: ${r.label}`, less === value, () => send({ mousePointer: { key: r.key, value: less } })),
+      button("+", `More: ${r.label}`, more === value, () => send({ mousePointer: { key: r.key, value: more } }))));
+  }
   for (const r of MOUSE_ROWS) {
     const value = shownInput(input, "mouse", r.key);
     if (r.kind === "toggle") {
@@ -891,6 +908,7 @@ window.tilemo = {
     if (state.shortcuts && typeof state.shortcuts === "object") renderShortcuts(state.shortcuts);
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
+    mousePointer = state.mouse?.pointer && typeof state.mouse.pointer === "object" ? state.mouse.pointer : {};
     renderMouse();
     if (state.setup && typeof state.setup === "object") renderSetup(state.setup);
     if (state.floating && typeof state.floating === "object") {
