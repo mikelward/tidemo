@@ -318,12 +318,12 @@ can open before its page names it, and a title rule needs that name.
    synced and retiled every window as the switcher closed. Nor is
    Hammerspoon asked which of its windows has the focus. While one does,
    tilemo takes it that none of the windows it manages has it, and a
-   close behind it leaves the focus there. The attention poll and the bar ask every 2 s,
-   half a dozen times, and on an older Mac that held Esc in the switcher
-   for 2 to 3 s. Bitwarden's pop-outs in Chrome and Brave float: its
-   extension asks you to sign in, fill a login or use a passkey in a popup
-   window titled "Bitwarden". The vault's own tab is titled otherwise, and the
-   desktop app is another app.
+   close behind it leaves the focus there. The attention poll and the bar
+   ask every 2 s, half a dozen times, and on an older Mac that held Esc in
+   the switcher for 2 to 3 s. Bitwarden's pop-outs in Chrome and Brave
+   float: its extension asks you to sign in, fill a login or use a passkey
+   in a popup window titled "Bitwarden". The vault's own tab is titled
+   otherwise, and the desktop app is another app.
 3. **A window with no close button, from an app that stays out of the
    Dock, is left alone.** It's part of that app's interface, not a window:
    Control Center's and menu bar apps' panels, Spotlight, the input source
@@ -2379,6 +2379,11 @@ Each one names a workaround, or says there is none.
   `hs.application.get`, which walks every running app for a name: 334 ms a
   read on CI's Mac with a near-empty Dock, and seconds on an old Mac with a
   full one, every two seconds.
+- **The displays are read once a pass.** Each poll redraws the bar and the
+  tray, which asked for every display's ID and frames eight times, at
+  20 ms or more a read on CI's Mac. That was most of the poll. Now a read
+  is kept until Hammerspoon is next idle, or until macOS says a display
+  changed.
 - **A mark clears** when you focus the window or app, as on tide
   (tide §14.4).
 - **Where it shows:** the app icon of each marked window on its
