@@ -140,7 +140,7 @@ end
 -- dashboard has them (`clock_files`, `good_clocks`).
 --   - Windows and browser tabs are Chrome's tabs, windows most recent first,
 --     each its own window for its workspace.
---   - Apps and System Settings' panes are tileco's app keys, most recently
+--   - Apps, the app scripts and System Settings' panes are tileco's app keys, most recently
 --     used first; Tide Settings is tileco's own row.
 --   - Tide Settings' sections are tileco's settings sections.
 --   - The Actions tab's rows are its actions, in their order.
@@ -170,7 +170,9 @@ function M.feed(items, opts)
     end
     local found = {}
     for i, item in ipairs(items) do
-        if (item.kind == "app" and item.path) or item.kind == "setting" then
+        -- Apps on disk and the app scripts (launcher.with_scripts), not
+        -- Tide Settings, which is tileco's own row.
+        if (item.kind == "app" and (item.path or item.action == "app")) or item.kind == "setting" then
             found[#found + 1] = { item = item, i = i, seen = recency[item.key] or 0 }
         end
     end
