@@ -37,9 +37,14 @@ local function stub(screens)
                 return out
             end,
         },
-        -- The menu bar isn't set to hide.
+        -- The menu bar's setting, as `defaults read` answers: by default
+        -- it isn't set, so defaults fails.
         execute = function()
-            return "0\n", true
+            s.asked = (s.asked or 0) + 1
+            if s.hides == nil then
+                return "", nil
+            end
+            return s.hides and "1\n" or "0\n", true
         end,
         timer = {
             doAfter = function(_, fn)
@@ -106,6 +111,17 @@ t.test("a display coming or going is read at once, as macOS says so", function()
     s.screens = { LEFT, RIGHT }
     watch()
     t.eq(seen, 2)
+end)
+
+t.test("the menu bar's setting is read once, even when it was never set", function()
+    for _, hides in ipairs({ false, true }) do
+        local s = stub({ LEFT })
+        s.hides = hides or nil
+        t.eq(s.adapter.screens()[1].notch, hides)
+        s.settle()
+        t.eq(s.adapter.screens()[1].notch, hides)
+        t.eq(s.asked, 1, "asked once with it " .. (hides and "set" or "unset"))
+    end
 end)
 
 t.test("a caller changing its list changes no one else's", function()
