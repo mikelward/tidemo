@@ -263,6 +263,8 @@ function M.start(config)
     -- (SPEC.md §9.2): the one chosen under Keyboard in tide's settings, or
     -- else start()'s, where a bad value is an error now, not on the first
     -- key.
+    -- The Appearance page's Menu bar switch, on unless turned off there.
+    self.keep_menu_bar_hidden = hs.settings.get("tilemo.keep_menu_bar_hidden") ~= false
     self.launcher_choice = launcherpage.choose(hs.settings.get(launcherpage.SETTINGS_KEY), config.launcher,
         self.adapter.log)
     local launcher_module = launcherpage.MODULE[self.launcher_choice]

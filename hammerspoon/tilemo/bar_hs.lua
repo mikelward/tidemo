@@ -498,6 +498,9 @@ function M.new(tilemo)
             return
         end
         local point = { x = full.x + 18, y = full.y }
+        -- The pointer has to stay on the top row until the click, so the
+        -- guard that keeps it off (bar.off_top) stands aside till then.
+        self.reveal_until = now + 1.5
         hs.mouse.absolutePosition(point)
         hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.mouseMoved, point):post()
         tilemo.adapter.after(0.6, function()
@@ -591,8 +594,10 @@ function M.new(tilemo)
             frames[uuid] = { x = v.frame.x, y = v.frame.y, w = v.frame.w, h = v.frame.h, hidden = v.hidden }
         end
         -- Kept off the top row, so the hidden menu bar doesn't slide over
-        -- the bar; the Apple logo opens the Apple menu instead.
-        local down = bar.off_top(frames, x, y)
+        -- the bar; the Apple logo opens the Apple menu instead. The
+        -- Appearance page's Menu bar switch turns it off.
+        local revealing = self.reveal_until and hs.timer.secondsSinceEpoch() < self.reveal_until
+        local down = tilemo.keep_menu_bar_hidden ~= false and not revealing and bar.off_top(frames, x, y)
         if down then
             hs.mouse.absolutePosition({ x = x, y = down })
             y = down
