@@ -464,46 +464,23 @@ function M.new(tilemo)
     -- which reveals the menu bar, and a click there opens the menu; a second
     -- logo click inside 2 s is ignored, so a click that lands on the bar
     -- again can't start it over.
+    -- The Apple menu, as bar.apple_menu plans it.
     local function open_apple_menu(uuid)
         local now = hs.timer.secondsSinceEpoch()
-        if self.apple_at and now - self.apple_at < 2 then
+        local plan, why = bar.apple_menu(tilemo.adapter.screens(), uuid, now, self.apple_at)
+        if not plan then
+            if why ~= "again" then
+                log("bar: can't open the Apple menu: " .. why)
+            end
             return
         end
         self.apple_at = now
-        local ok, err = pcall(function()
-            local app = hs.application.frontmostApplication()
-            local el = app and hs.axuielement.applicationElement(app)
-            local menubar = el and el:attributeValue("AXMenuBar")
-            local items = menubar and menubar:attributeValue("AXChildren")
-            local apple = items and items[1]
-            if not apple then
-                error("the frontmost app has no menu bar")
-            end
-            local done, why = apple:performAction("AXPress")
-            if not done then
-                error(tostring(why))
-            end
-        end)
-        if ok then
-            return
-        end
-        log("bar: couldn't open the Apple menu through Accessibility (" .. tostring(err) .. "); clicking it")
-        local full
-        for _, s in ipairs(tilemo.adapter.screens()) do
-            if s.uuid == uuid then
-                full = s.full
-            end
-        end
-        if not full then
-            return
-        end
-        local point = { x = full.x + 18, y = full.y }
-        -- The pointer has to stay on the top row until the click, so the
-        -- guard that keeps it off (bar.off_top) stands aside till then.
-        self.reveal_until = now + 1.5
+        local point = plan.point
+        log("bar: opening the Apple menu by clicking the menu bar at " .. point.x .. ", " .. point.y)
+        self.reveal_until = plan.reveal_until
         hs.mouse.absolutePosition(point)
         hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.mouseMoved, point):post()
-        tilemo.adapter.after(0.6, function()
+        tilemo.adapter.after(plan.click_after, function()
             hs.eventtap.leftClick(point)
         end)
     end

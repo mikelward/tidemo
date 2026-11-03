@@ -113,6 +113,27 @@ function M.pointer_at(frames, x, y)
     return nil
 end
 
+-- How the Apple logo opens the Apple menu on display `uuid`, at time `now`
+-- (seconds), the last open at `last_at`: the pointer to `point`, the top
+-- of that display beside its corner, which shows the hidden menu bar, and
+-- a click there `click_after` seconds later, with off_top's guard standing
+-- aside until `reveal_until`. An Accessibility press on the menu bar's
+-- first item reports success with the menu bar hidden and shows nothing,
+-- so it isn't one of the steps. Nil and why: "again" within 2 s of the
+-- last, so a click landing on the bar can't start it over, or "no display
+-- <uuid>".
+function M.apple_menu(screens, uuid, now, last_at)
+    if last_at and now - last_at < 2 then
+        return nil, "again"
+    end
+    for _, s in ipairs(screens) do
+        if s.uuid == uuid then
+            return { point = { x = s.full.x + 18, y = s.full.y }, click_after = 0.6, reveal_until = now + 1.5 }
+        end
+    end
+    return nil, "no display " .. tostring(uuid)
+end
+
 -- Where to put a pointer at x, y back to, or nil to leave it: macOS shows
 -- the hidden menu bar when the pointer reaches the top row of a display, so
 -- over a shown bar's top row it goes one point down (SPEC.md §8). The Apple

@@ -632,6 +632,26 @@ t.test("the pointer is kept off a bar's top row, so the hidden menu bar stays hi
     t.eq(bar.off_top(frames, 2000, 500), nil)
 end)
 
+t.test("the Apple menu opens by revealing the menu bar on the clicked display and clicking its corner", function()
+    local screens = {
+        { uuid = "A", full = { x = 0, y = 0, w = 1512, h = 982 } },
+        { uuid = "B", full = { x = 1512, y = -200, w = 1920, h = 1080 } },
+    }
+    local plan = bar.apple_menu(screens, "B", 100, nil)
+    -- The pointer at the top of B, where the hidden menu bar shows, then a
+    -- click on its Apple menu: no Accessibility press, which reports success
+    -- with the menu bar hidden and shows nothing.
+    t.eq(plan, { point = { x = 1530, y = -200 }, click_after = 0.6, reveal_until = 101.5 })
+    local again, why = bar.apple_menu(screens, "B", 101, 100)
+    t.eq(again, nil, "a second click within 2 s, as a click landing on the bar again would be")
+    t.eq(why, "again")
+    t.eq(bar.apple_menu(screens, "B", 102.5, 100).point, { x = 1530, y = -200 }, "later, it opens again")
+    local none
+    none, why = bar.apple_menu(screens, "C", 100, nil)
+    t.eq(none, nil)
+    t.eq(why, "no display C")
+end)
+
 t.test("the Apple logo opens the Apple menu, from its own bar", function()
     local got
     bar.handle(nil, { uuid = "B", menubar = true }, {
