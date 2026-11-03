@@ -6,15 +6,25 @@
 local t = require("t")
 
 local function stub()
-    local s = { tabs = {} }
+    local s = { tabs = {}, builds = 0 }
     local methods = {}
     local visible = false
     local on_choice
     function methods:isVisible()
         return visible
     end
+    -- As HSChooser.m's: showing hands the query to the query callback.
     function methods:show()
         visible = true
+        if s.typed then
+            s.typed("")
+        end
+    end
+    function methods:queryChangedCallback(fn)
+        s.typed = fn
+    end
+    function methods:choices()
+        s.builds = s.builds + 1
     end
     function methods:cancel()
         visible = false
@@ -98,6 +108,28 @@ t.test("a browser's tabs that answer after the switcher is deleted are dropped",
     local ok, err = pcall(s.tabs[1], { { title = "Docs", url = "https://example.com/" } })
     t.eq(ok, true, tostring(err))
     t.eq(s.noted, nil, "the tabs aren't noted for a deleted switcher")
+end)
+
+t.test("an open builds the rows once, though showing asks for them again", function()
+    local s = stub()
+    local launcher = launcher_with(s)
+    launcher.show("launch")
+    t.eq(s.builds, 1)
+end)
+
+t.test("typing, another tab and a browser's tabs each build them again", function()
+    local s = stub()
+    local launcher = launcher_with(s)
+    launcher.show("launch")
+    s.typed("sa")
+    t.eq(s.builds, 2)
+    launcher.show("windows")
+    t.eq(s.builds, 3)
+    s.tabs[1]({ { title = "Docs", url = "https://example.com/" } })
+    t.eq(s.builds, 4)
+    launcher.cancel()
+    launcher.show("launch")
+    t.eq(s.builds, 5, "a new open, built afresh")
 end)
 
 t.test("a browser's tabs that answer while the switcher's open join it", function()

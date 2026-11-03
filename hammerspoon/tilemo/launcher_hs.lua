@@ -453,13 +453,22 @@ function M.new(tilemo)
 
     local chooser
     -- Show the rows for `query`, with the first real one selected, past
-    -- any header.
+    -- any header. Rows already shown for the same query, scope, items and
+    -- look aren't made again: showing the chooser hands its query to the
+    -- query callback (HSChooser.m's showWithHints), which made every row a
+    -- second time on each open.
+    local shown = {}
     local function show_rows(query)
+        query = query or ""
+        if shown.query == query and shown.scope == scope and shown.items == items and shown.look == look then
+            return
+        end
         local out, first = choices(query)
         chooser:choices(out)
         if first > 1 then
             chooser:selectedRow(first)
         end
+        shown = { query = query, scope = scope, items = items, look = look }
     end
 
     local by_id = {}
