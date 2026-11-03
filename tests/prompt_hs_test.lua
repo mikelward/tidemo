@@ -150,6 +150,27 @@ t.test("the default opens selected, so typing replaces it", function()
     t.eq(s.field().rows[1].name, "w", "the typed name is the top row")
 end)
 
+t.test("until you type, the default name comes first and every workspace follows", function()
+    local function names(rows)
+        local out = {}
+        for _, r in ipairs(rows) do
+            out[#out + 1] = r.name
+        end
+        return out
+    end
+    local s, prompt = setup("Mail")
+    prompt.window(1)
+    t.eq(names(s.field().rows), { "Mail", "in", "re", "oc", "me" })
+    t.eq(s.field().rows[1].subText, "New workspace")
+    -- Typed, it filters as before.
+    s.type("Mail")
+    t.eq(names(s.field().rows), { "Mail" })
+    -- A default that's a workspace's name puts that one first, once.
+    s, prompt = setup("oc")
+    prompt.window(1)
+    t.eq(names(s.field().rows), { "oc", "in", "re", "me" })
+end)
+
 t.test('"in" is offered to a window opening there, and to a launch', function()
     local s, prompt = setup("Mail")
     local function offered()

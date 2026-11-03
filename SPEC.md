@@ -889,7 +889,9 @@ the home workspace, the first standing one (§6.1), which is "in" unless
     picture-in-picture (§5.5), don't ask: they go where their parent is.
   - The prompt is an `hs.chooser` listing the existing names, with a
     default name typed in and selected, as tide's is (tide §6.5). Typing
-    replaces it or filters the list. Left, Right, Home and End keep it and
+    replaces it or filters the list. Until you type, the default filters
+    nothing: it comes first, and every workspace follows in the bar's
+    order. Left, Right, Home and End keep it and
     move the cursor; `Up` and `Down` pick a row.
     - `hs.chooser` has no call to select its text. Its `show()` makes the
       text field first responder, which in AppKit selects the field's
