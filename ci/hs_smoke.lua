@@ -648,6 +648,50 @@ local function check_launcher_keys(after)
         counts.sync, counts.retile = 0, 0
         return out
     end
+    -- Every call that held Hammerspoon 50 ms or more meanwhile, by name:
+    -- the adapter's, through which each Accessibility read goes, the window
+    -- manager's and focus follows mouse's. A stall none of them owns is
+    -- Hammerspoon's or WebKit's own.
+    local slow = {}
+    local function timed(name, fn)
+        return function(...)
+            local t0 = hs.timer.absoluteTime()
+            local r = table.pack(fn(...))
+            local ms = (hs.timer.absoluteTime() - t0) // 1000000
+            if ms >= 50 then
+                slow[#slow + 1] = { name = name, ms = ms }
+            end
+            return table.unpack(r, 1, r.n)
+        end
+    end
+    for name, fn in pairs(tilemo.adapter) do
+        if type(fn) == "function" then
+            tilemo.adapter[name] = timed("adapter." .. name, fn)
+        end
+    end
+    for _, name in ipairs({ "focused", "focused_window", "moved", "retitled", "minimized", "unminimized", "schedule",
+        "sync", "retile", "reconcile", "focus_window", "raise_floats", "changed", "ask_next", "hold", "own_window" }) do
+        if tilemo.wm[name] then
+            tilemo.wm[name] = timed("wm." .. name, tilemo.wm[name])
+        end
+    end
+    local ffm = tilemo.wm.ffm
+    for _, name in ipairs({ "move", "resync", "remember", "hit", "settled", "under_float", "prefer_dialog", "focus" }) do
+        if ffm and ffm[name] then
+            ffm[name] = timed("ffm." .. name, ffm[name])
+        end
+    end
+    local function slowest()
+        table.sort(slow, function(x, y)
+            return x.ms > y.ms
+        end)
+        local out = {}
+        for i = 1, math.min(#slow, 10) do
+            out[#out + 1] = slow[i].name .. " " .. slow[i].ms
+        end
+        slow = {}
+        return #out > 0 and table.concat(out, ", ") or "none"
+    end
     local function try(choice, next)
         local ok, why = tilemo.set_launcher(choice)
         if not ok then
@@ -699,6 +743,7 @@ local function check_launcher_keys(after)
                     -- What the window manager did after the close, once the
                     -- focus is back: a sync waits 50 ms for more changes.
                     local function report(painted, heard_esc)
+                        say("launcher keys: %s's calls of 50 ms or more, in ms: %s", choice, slowest())
                         results[#results + 1] = string.format(
                             "%s opens in %d ms (busy %s ms, %s%s) and Esc closes it in %d ms (busy %s ms, %s%s)",
                             choice, open_ms, tostring(open_lag), open_work,
