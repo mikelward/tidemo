@@ -27,6 +27,16 @@ local function node_runner()
 end
 
 -- Plain Lua: no node needed.
+t.test("what the Mouse section shows changes with the pointer as well as the problem", function()
+    local base = linearmouse.shown({ problem = "", pointer = { speed = 0.35, acceleration = 1.5 } })
+    t.eq(linearmouse.shown({ problem = "", pointer = { speed = 0.35, acceleration = 1.5 } }), base)
+    t.eq(linearmouse.shown({ problem = "", pointer = { speed = 0.4, acceleration = 1.5 } }) ~= base, true,
+        "a speed changed in LinearMouse's own window")
+    t.eq(linearmouse.shown({ problem = "", pointer = { speed = 0.35 } }) ~= base, true, "one left to macOS")
+    t.eq(linearmouse.shown({ problem = "LinearMouse isn't running.", pointer = { speed = 0.35, acceleration = 1.5 } }) ~= base, true)
+    t.eq(linearmouse.shown({ problem = "" }), linearmouse.shown({ problem = "", pointer = {} }))
+end)
+
 t.test("macOS's natural scrolling is on while it's unset", function()
     t.eq(linearmouse.natural_from(0, "1\n"), true)
     t.eq(linearmouse.natural_from(0, "0\n"), false)
@@ -416,6 +426,57 @@ t.test("natural scrolling that can't be read keeps the last, and is logged", fun
     m.lm.apply("check")
     t.eq(scrolling(m).reverse, false)
     t.eq(m.logs[#m.logs]:find("defaults exited 1", 1, true) ~= nil, true)
+end)
+
+-- setup-macos's config since it set the pointer: 1.5 and 0.35.
+local SETUP_POINTER = [[{
+    "schemes": [
+        {
+            "if": { "device": { "category": "mouse" } },
+            "scrolling": { "distance": { "vertical": 9 } },
+            "pointer": { "acceleration": 1.5, "speed": 0.35 }
+        }
+    ]
+}]]
+
+t.test("the state says every mouse's pointer as LinearMouse has it, or nothing left to macOS", function()
+    local m = machine({ [CONFIG] = SETUP_POINTER })
+    m.lm.apply("check")
+    t.eq(m.lm.state.pointer, { acceleration = 1.5, speed = 0.35 })
+    local bare = machine({})
+    bare.lm.apply("check")
+    t.eq(bare.lm.state.pointer, {})
+end)
+
+t.test("setting the pointer writes it in every mouse's last scheme, keeping the scrolling", function()
+    local m = machine({ [CONFIG] = SETUP_POINTER })
+    m.lm.apply("check")
+    local ok, why = m.lm.set_pointer("acceleration", 2)
+    t.eq(ok, true, why)
+    local config = json.decode(m.files[CONFIG])
+    t.eq(#config.schemes, 1)
+    t.eq(config.schemes[1].pointer, { acceleration = 2, speed = 0.35 })
+    t.eq(config.schemes[1].scrolling.distance.vertical, 9)
+    t.eq(m.lm.state.pointer, { acceleration = 2, speed = 0.35 })
+    local fresh = machine({})
+    t.eq((fresh.lm.set_pointer("speed", 0.5)), true)
+    t.eq(json.decode(fresh.files[CONFIG]).schemes[1].pointer, { speed = 0.5 })
+end)
+
+t.test("a pointer setting out of range, or a config that isn't JSON, is refused and nothing's written", function()
+    local m = machine({ [CONFIG] = SETUP_POINTER })
+    local ok, why = m.lm.set_pointer("acceleration", 9)
+    t.eq(ok, nil)
+    t.eq(why:find("from 0 to 4", 1, true) ~= nil, true, why)
+    local broken = machine({ [CONFIG] = "{" })
+    ok, why = broken.lm.set_pointer("speed", 0.5)
+    t.eq(ok, nil)
+    t.eq(why:find("isn't JSON", 1, true) ~= nil, true, why)
+    t.eq(broken.writes, {})
+    local gone = machine({}, { installed = false })
+    ok, why = gone.lm.set_pointer("speed", 0.5)
+    t.eq(ok, nil)
+    t.eq(why:find("isn't installed", 1, true) ~= nil, true, why)
 end)
 
 t.test("done hears the state once it's applied", function()

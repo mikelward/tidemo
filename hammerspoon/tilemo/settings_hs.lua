@@ -189,7 +189,12 @@ function M.new(tilemo)
             -- anything, for the Mouse section.
             links = links.page_list(),
             inputFiles = tilemo.input_files,
-            mouse = { problem = M.mouse_problem(tilemo) },
+            mouse = {
+                problem = M.mouse_problem(tilemo),
+                -- The Mac's own Speed and Acceleration, as LinearMouse
+                -- has them for every mouse.
+                pointer = tilemo.linearmouse_settings and tilemo.linearmouse_settings.state.pointer or nil,
+            },
             -- conf's Karabiner rules, each on or off, and what's wrong, if
             -- anything (karabiner.lua).
             -- The launcher the switcher's keys open, and the choices.
@@ -346,6 +351,20 @@ function M.new(tilemo)
                         view:evaluateJavaScript("tilemo.floatingError(" .. hs.json.encode({ tostring(why) }):sub(2, -2) .. ")")
                     end
                 end
+            elseif type(body.mousePointer) == "table" and type(body.mousePointer.key) == "string" then
+                -- The Mac's Speed and Acceleration rows: written straight to
+                -- LinearMouse's config, which says why when it can't be.
+                local ok, why
+                if tilemo.linearmouse_settings then
+                    ok, why = tilemo.linearmouse_settings.set_pointer(body.mousePointer.key, body.mousePointer.value)
+                else
+                    why = "the Mouse settings aren't running"
+                end
+                if not ok then
+                    tilemo.adapter.log("settings: " .. tostring(why))
+                    tilemo.adapter.notify(tostring(why))
+                end
+                push()
             elseif type(body.keepMenuBarHidden) == "boolean" then
                 -- The Menu bar switch: kept in hs.settings, as tilemo's own,
                 -- and followed at once by the bar.

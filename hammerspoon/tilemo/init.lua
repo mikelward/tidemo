@@ -855,10 +855,11 @@ function M.start(config)
             return
         end
         local ok, err = pcall(self.linearmouse_settings.apply, why, function(state)
-            -- Only when what the Mouse section says changed, so an open
-            -- window isn't redrawn every 30 s.
-            if state.problem ~= self.mouse_said then
-                self.mouse_said = state.problem
+            -- Only when what the Mouse section shows changed, its pointer
+            -- included, so an open window isn't redrawn every 30 s.
+            local shown = linearmouse.shown(state)
+            if shown ~= self.mouse_said then
+                self.mouse_said = shown
                 if self.settings then
                     self.settings.refresh()
                 end

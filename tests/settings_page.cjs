@@ -560,13 +560,34 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["shortcut-failed"].children.length, 0);
 }
 
-// The Mouse section: tide's Scroll speed and Natural scrolling rows, each
-// change written to input.local.json, keeping what else it says.
+// The Mouse section: the Mac's own Speed and Acceleration, sent for
+// LinearMouse's config; then tide's Scroll speed and Natural scrolling
+// rows, each change written to input.local.json, keeping what else it says.
 {
-  const rows = () => ids["mouse-rows"].children;
+  const all = () => ids["mouse-rows"].children;
+  // tide's rows, after the Mac's two.
+  const rows = () => all().slice(2);
   const lastInput = () => JSON.parse(sent[sent.length - 1].writeInput);
   sandbox.tilemo.update({ clockFiles: [], mouse: { problem: "" } });
-  assert.deepStrictEqual(rows().map((r) => r.children[0].textContent), ["Scroll speed", "Natural scrolling"]);
+  assert.deepStrictEqual(all().map((r) => r.children[0].textContent), ["Speed", "Acceleration", "Scroll speed", "Natural scrolling"]);
+  // Left to macOS: said so, and the first step lands on setup-macos's.
+  assert.strictEqual(all()[0].children[2].textContent, "macOS's");
+  sent.length = 0;
+  all()[0].children[3].listeners.click();
+  all()[1].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ mousePointer: { key: "speed", value: 0.35 } }, { mousePointer: { key: "acceleration", value: 1.5 } }]);
+  // As LinearMouse has them, stepped along the Mac's ladders.
+  sandbox.tilemo.update({ clockFiles: [], mouse: { problem: "", pointer: { speed: 0.35, acceleration: 1.5 } } });
+  assert.strictEqual(all()[0].children[2].textContent, "0.35");
+  assert.strictEqual(all()[1].children[2].textContent, "1.5");
+  sent.length = 0;
+  all()[0].children[3].listeners.click();
+  all()[1].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ mousePointer: { key: "speed", value: 0.4 } }, { mousePointer: { key: "acceleration", value: 1.25 } }]);
+  sandbox.tilemo.update({ clockFiles: [], mouse: { problem: "", pointer: { speed: 1, acceleration: 0 } } });
+  assert.strictEqual(all()[0].children[3].disabled, true, "the fastest");
+  assert.strictEqual(all()[1].children[1].disabled, true, "no acceleration");
+  sandbox.tilemo.update({ clockFiles: [], mouse: { problem: "" } });
   // tide's defaults for a mouse: 3x, natural scrolling off.
   assert.strictEqual(rows()[0].children[2].textContent, "3×");
   assert.strictEqual(rows()[1].children[2].textContent, "Off");

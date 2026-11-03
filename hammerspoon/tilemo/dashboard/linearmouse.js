@@ -97,3 +97,85 @@ export function withMouseScrolling(text, lines, reverse) {
   if (text !== null && text !== undefined && JSON.stringify(config) === JSON.stringify(out)) return {};
   return { text: JSON.stringify(out, null, 2) + "\n" };
 }
+
+// A mouse's pointer, as the Mac's Speed and Acceleration rows set it:
+// LinearMouse's own `pointer.speed` (0 to 1) and `pointer.acceleration`
+// (macOS's, 0 to 20), kept in linearmouse.json, not tide's input.json. A
+// curve tuned for macOS means nothing to libinput's, so the Mac keeps its
+// own (SPEC.md §10).
+export const POINTER_KEYS = Object.freeze(["speed", "acceleration"]);
+export const POINTER_LADDERS = Object.freeze({
+  speed: Object.freeze([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1]),
+  acceleration: Object.freeze([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4]),
+});
+// Where − and + start from while LinearMouse leaves one to macOS:
+// setup-macos's, tried by hand on a PC mouse.
+export const POINTER_START = Object.freeze({ speed: 0.35, acceleration: 1.5 });
+
+function parsed(text) {
+  if (text === null || text === undefined) return { config: {} };
+  try {
+    return { config: JSON.parse(text) };
+  } catch (e) {
+    return { error: "linearmouse.json isn't JSON" };
+  }
+}
+
+// What every mouse's pointer is set to: each of POINTER_KEYS that's set,
+// as the last every-mouse scheme that sets it has it, as LinearMouse
+// merges them. One that's missing is left to macOS. {} when the file
+// can't say.
+export function mousePointer(text) {
+  const { config, error } = parsed(text);
+  const out = {};
+  if (error || !isObject(config) || !Array.isArray(config.schemes)) return out;
+  for (const s of config.schemes) {
+    if (!everyMouse(s) || !isObject(s.pointer)) continue;
+    for (const k of POINTER_KEYS) {
+      if (typeof s.pointer[k] === "number") out[k] = s.pointer[k];
+    }
+  }
+  return out;
+}
+
+// The next rung of `key`'s ladder from `value` (undefined, left to macOS:
+// POINTER_START, which is where the first step lands), up (1) or down (-1), staying put
+// at either end.
+export function steppedPointer(key, value, step) {
+  const ladder = POINTER_LADDERS[key];
+  if (value === null || value === undefined) return POINTER_START[key];
+  if (step > 0) {
+    const up = ladder.find((v) => v > value);
+    return up === undefined ? value : up;
+  }
+  const down = ladder.filter((v) => v < value);
+  return down.length === 0 ? value : down[down.length - 1];
+}
+
+// linearmouse.json's text with every mouse's pointer `key` set to `value`,
+// in the same last every-mouse scheme the scrolling goes in, so it wins.
+// Returns { text } when that changes the file, {} when it doesn't, or
+// { error }.
+export function withMousePointer(text, key, value) {
+  if (!POINTER_KEYS.includes(key)) return { error: `"${key}" isn't a pointer setting; expected ${POINTER_KEYS.join(" or ")}` };
+  const ladder = POINTER_LADDERS[key];
+  if (typeof value !== "number" || !isFinite(value) || value < 0 || value > ladder[ladder.length - 1]) {
+    return { error: `pointer ${key} must be from 0 to ${ladder[ladder.length - 1]}` };
+  }
+  const { config, error } = parsed(text);
+  if (error) return { error };
+  if (!isObject(config)) return { error: "linearmouse.json isn't an object" };
+  const schemes = config.schemes === undefined ? [] : config.schemes;
+  if (!Array.isArray(schemes)) return { error: "linearmouse.json's schemes aren't a list" };
+  const lastAt = schemes.length - 1;
+  const last = lastAt >= 0 && everyMouse(schemes[lastAt]) ? schemes[lastAt] : null;
+  if (last && last.pointer !== undefined && !isObject(last.pointer)) {
+    return { error: `linearmouse.json's schemes[${lastAt}].pointer isn't an object` };
+  }
+  const next = last
+    ? { ...last, pointer: { ...(last.pointer || {}), [key]: value } }
+    : { if: { device: { category: "mouse" } }, pointer: { [key]: value } };
+  const out = { ...config, schemes: last ? schemes.slice(0, -1).concat([next]) : schemes.concat([next]) };
+  if (text !== null && text !== undefined && JSON.stringify(config) === JSON.stringify(out)) return {};
+  return { text: JSON.stringify(out, null, 2) + "\n" };
+}

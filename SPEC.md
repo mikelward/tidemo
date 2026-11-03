@@ -2165,7 +2165,8 @@ that isn't one is left out, and the log says so.
     only the acceleration, so a slow notch moves a line or so. It's the
     gap that tileco §19.2 fills on chromeOS. `setup-macos` installs
     LinearMouse (free, open source, Accessibility) and gives every mouse
-    ten lines a notch, with no acceleration (scripts `docs/MACOS.md`).
+    nine lines a notch, and a pointer acceleration of 1.5 at speed 0.35
+    (scripts `docs/MACOS.md`), which the Mouse section changes (§15).
   - **Built: tide's Scroll speed and Natural scrolling, through
     LinearMouse.** They're tide's Mouse settings, `mouse.scrollSpeed` and
     `mouse.naturalScroll` in `input.json` and `input.local.json` (tide
@@ -2670,7 +2671,7 @@ Each one names a workaround, or says there is none.
     | Sound | Sound settings |
     | Network | Network settings |
     | Bluetooth | Bluetooth settings |
-    | Mouse | Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
+    | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
     | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
@@ -2701,8 +2702,22 @@ Each one names a workaround, or says there is none.
     writes only `input.local.json`, with tide's `withSetting`, keeping
     whatever else it says, and tilemo applies it to LinearMouse when the
     folder changes (§10). A file that's wrong is named, and nothing
-    changes here until it's fixed. Speed and Left-handed stay in Mouse
-    settings for now (TODO.md).
+    changes here until it's fixed. Left-handed stays in Mouse settings
+    for now (TODO.md).
+  - **Built: the Mouse section's Speed and Acceleration,** the Mac's own,
+    above tide's rows, as tide's Mouse page has the same two (tide §16).
+    They're LinearMouse's `pointer.speed` and `pointer.acceleration` for
+    every mouse, in the same last every-mouse scheme as the scrolling,
+    not tide's `input.json`: a value tuned for macOS's curve means
+    nothing to libinput's, so the Mac keeps its own (§10).
+    - − and + step through 0.05 to 1 for the speed, and 0 to 4 for the
+      acceleration (macOS's own `com.apple.mouse.scaling`, which
+      LinearMouse sets). Left to macOS, a row says "macOS's", and its
+      first step lands on `setup-macos`'s 0.35 and 1.5.
+    - A change goes to tilemo, which writes it with `linearmouse.js`'s
+      `withMousePointer` and shows the result. One it can't make (out of
+      range, a config that isn't JSON, LinearMouse not installed) is a
+      notification, and nothing's written.
   - **Built: the Keyboard section switches Karabiner's rules,** each rule
     in the files conf links into Karabiner's assets folder
     (`~/.config/karabiner/assets/complex_modifications/`) with On or Off, so
