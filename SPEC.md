@@ -2347,6 +2347,15 @@ Each one names a workaround, or says there is none.
 
 ## 15. Settings and `tilemo doctor`
 
+- **A new copy reloads tilemo.** `make install`, and so `setup`, copies
+  tilemo into `~/.hammerspoon/tilemo`, which Hammerspoon runs. tilemo
+  watches the folder it runs from (`hs.pathwatcher`), and a second after
+  the last of a copy's files lands, it reloads Hammerspoon
+  (`selfreload.lua`), so an update takes effect without a reload by hand.
+  A hidden file, such as Finder's `.DS_Store`, changes nothing. Nothing
+  else writes there: tilemo's own files are in `~/.config/tide` and
+  `~/Library/Caches/tilemo`.
+
 - **`start()`'s `launcher`** picks the launcher: `"chooser"`, the
   `hs.chooser` switcher, by default, or `"dashboard"`, tileco's dashboard
   page (§9.2). Anything else is an error at load, naming the setting.
