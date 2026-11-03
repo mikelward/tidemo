@@ -242,6 +242,20 @@ hiding the system menu bar for good, so tilemo's bar is the only one:
   at the same level, or under it, which decides whether the bar must hide
   while the menu bar is out.
 
+## Super+Backspace can be taken before tilemo sees it
+
+On one Mac, Win+Backspace doesn't close the window. Karabiner-EventViewer shows
+the rule's output, Ctrl+Option+Command+Backspace, with or without Shift. Yet
+neither an `hs.hotkey` on it nor a keyDown `hs.eventtap` sees it, while plain
+Backspace reaches the tap. Something below Hammerspoon takes the chord. No
+menu bar app or System Settings shortcut uses it, which leaves a background
+agent or macOS itself. Win+\ gets through, as do the other typing keys.
+
+- **To decide:** a second close key that gets through, such as Super+Q (free
+  in tide and tilemo). Either add it everywhere (tide, tilemo, tileco) so one
+  key closes a window on all three, or on the Mac only. Either way,
+  Super+Backspace stays bound where it works.
+
 ## Decisions needing review
 
 - **Over a notch, overflowing workspace chips hide behind "+n"** (SPEC.md
