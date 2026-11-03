@@ -721,4 +721,21 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["launcher-choice"].children[2].textContent, "tileco's launcher");
 }
 
+// The Appearance page's Menu bar switch: on unless tilemo says it's off,
+// and a click asks for the other.
+{
+  sandbox.tilemo.update({ clockFiles: [], menuBar: { hidden: true } });
+  const toggle = ids["menubar-hidden"];
+  assert.strictEqual(toggle.textContent, "Menu bar kept hidden");
+  assert.strictEqual(toggle.attrs["aria-pressed"], "true");
+  sent.length = 0;
+  toggle.listeners.click();
+  assert.deepStrictEqual(sent, [{ keepMenuBarHidden: false }]);
+  sandbox.tilemo.update({ clockFiles: [], menuBar: { hidden: false } });
+  assert.strictEqual(toggle.textContent, "Menu bar shows at the top edge");
+  sent.length = 0;
+  toggle.listeners.click();
+  assert.deepStrictEqual(sent, [{ keepMenuBarHidden: true }]);
+}
+
 console.log("settings page: ok");

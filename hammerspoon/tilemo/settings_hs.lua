@@ -20,6 +20,10 @@ local checklist = require("tilemo.checklist")
 
 local M = {}
 
+-- Where the Appearance page's Menu bar switch is kept: true (or unset) keeps
+-- the hidden menu bar from sliding over tilemo's bar (bar_hs.lua).
+M.MENU_BAR_KEY = "tilemo.keep_menu_bar_hidden"
+
 -- `list` as a JSON array, each item by `encode`, so an empty one is [].
 function M.list(list, encode)
     local out = {}
@@ -196,6 +200,8 @@ function M.new(tilemo)
                     { value = "dashboard", label = launcherpage.LABELS.dashboard },
                 },
             } or nil,
+            -- The Appearance page's Menu bar switch (bar_hs.lua).
+            menuBar = { hidden = tilemo.keep_menu_bar_hidden ~= false },
             keyboard = {
                 rules = "__karabiner_rules__",
                 problem = tilemo.karabiner_rules and tilemo.karabiner_rules.state.problem or "",
@@ -340,6 +346,12 @@ function M.new(tilemo)
                         view:evaluateJavaScript("tilemo.floatingError(" .. hs.json.encode({ tostring(why) }):sub(2, -2) .. ")")
                     end
                 end
+            elseif type(body.keepMenuBarHidden) == "boolean" then
+                -- The Menu bar switch: kept in hs.settings, as tilemo's own,
+                -- and followed at once by the bar.
+                tilemo.keep_menu_bar_hidden = body.keepMenuBarHidden
+                hs.settings.set(M.MENU_BAR_KEY, body.keepMenuBarHidden)
+                push()
             elseif type(body.launcher) == "string" then
                 -- The Switcher row: tilemo switches at once, and the page
                 -- shows the one in use.

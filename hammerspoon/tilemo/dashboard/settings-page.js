@@ -644,6 +644,22 @@ function renderLauncher(launcher) {
   );
 }
 
+// The Appearance page's Menu bar switch: whether tilemo keeps the hidden
+// menu bar from sliding over its bar (SPEC.md §8). A click sends
+// { keepMenuBarHidden: on }, and tilemo answers with tilemo.update().
+let menuBarHidden = true;
+function renderMenuBar(menuBar) {
+  const toggle = document.getElementById("menubar-hidden");
+  const on = menuBar.hidden !== false;
+  menuBarHidden = on;
+  toggle.textContent = on ? "Menu bar kept hidden" : "Menu bar shows at the top edge";
+  toggle.setAttribute("aria-pressed", String(on));
+}
+
+document.getElementById("menubar-hidden").addEventListener("click", () => {
+  send({ keepMenuBarHidden: !menuBarHidden });
+});
+
 function renderKeyboard(keyboard) {
   const list = document.getElementById("karabiner-rules");
   list.replaceChildren();
@@ -871,6 +887,7 @@ window.tilemo = {
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
     if (state.launcher && typeof state.launcher === "object") renderLauncher(state.launcher);
+    if (state.menuBar && typeof state.menuBar === "object") renderMenuBar(state.menuBar);
     if (state.shortcuts && typeof state.shortcuts === "object") renderShortcuts(state.shortcuts);
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";

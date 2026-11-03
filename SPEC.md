@@ -1414,6 +1414,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     anything else that needs the very top edge are lost on displays with a
     shown bar; under a full-screen window, where the bar hides, the menu bar
     shows as usual *(unverified that one point is enough on every macOS)*.
+    Tide Settings' Appearance page has the switch, "Menu bar kept hidden",
+    on by default and kept in `hs.settings` as tilemo's own; off, the menu
+    bar shows at the top edge as on any Mac.
   - **Option 2 stays as the fallback,** with `bar = false` in `start()`: a
     menu bar item draws tide's logo, as a template image macOS tints for a
     light or dark menu bar, then the workspaces' names as text, current,
