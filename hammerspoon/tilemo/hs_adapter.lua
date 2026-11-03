@@ -330,11 +330,13 @@ function M.new()
     -- Whether the menu bar is set to hide always ("Automatically hide and
     -- show the menu bar": Always, which scripts' setup-macos sets). Read
     -- once: it changes only in System Settings, and tilemo reloads after.
+    -- Never set, defaults fails, and that's no: kept as nil, it ran
+    -- defaults, a process Hammerspoon waits on, at every display read.
     local menu_bar_hidden
     local function hides_menu_bar()
         if menu_bar_hidden == nil then
             local out, ok = hs.execute("/usr/bin/defaults read -g _HIHideMenuBar 2>/dev/null")
-            menu_bar_hidden = ok and (out or ""):match("^%s*1") ~= nil
+            menu_bar_hidden = (ok and (out or ""):match("^%s*1") ~= nil) or false
         end
         return menu_bar_hidden
     end
