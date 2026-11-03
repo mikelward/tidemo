@@ -939,8 +939,9 @@ function M.watch_folder(dir, on_change)
     if not hs.fs.attributes(dir) then
         hs.execute("/bin/mkdir -p '" .. dir:gsub("'", "'\\''") .. "'")
     end
-    local watcher = hs.pathwatcher.new(dir, function()
-        on_change()
+    -- The paths that changed, for a watcher that cares which.
+    local watcher = hs.pathwatcher.new(dir, function(paths)
+        on_change(paths)
     end)
     watcher:start()
     return watcher

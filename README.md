@@ -99,6 +99,10 @@ alone (§7.1). By hand:
    its place; the menu bar still shows when the pointer reaches the top.
 4. Reload Hammerspoon's config.
 
+To update, `git pull` and `make install` again (or run `setup`): tilemo
+reloads itself a second after the new copy lands in
+`~/.hammerspoon/tilemo`, so there's no reload to do by hand.
+
 `tilemo.start({ bar = false })` leaves the bar out and shows tide's logo and
 the workspaces in the menu bar instead.
 
