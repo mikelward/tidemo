@@ -616,6 +616,10 @@ end
 -- hs.eventtap.keyStroke waits between key down and up, holding Hammerspoon
 -- that long, so it's 1 ms here.
 local KEY_WAIT = 3
+-- The most an attention poll may take with a launcher open: a few windows'
+-- titles, the Dock's badges and a redraw of the bar, about 200 ms on CI's
+-- Mac, and nothing that waits out a timeout, 300 ms an ask.
+local POLL_LIMIT = 500
 
 local function check_launcher_keys(after)
     local key = require("tilemo.launcherpage").SETTINGS_KEY
@@ -654,16 +658,40 @@ local function check_launcher_keys(after)
     -- manager's and focus follows mouse's. A stall none of them owns is
     -- Hammerspoon's or WebKit's own.
     local slow = {}
+    -- And every call's time, by name, however short: many quick reads can
+    -- add up to a slow one.
+    local totals = {}
     local function timed(name, fn)
         return function(...)
             local t0 = hs.timer.absoluteTime()
             local r = table.pack(fn(...))
-            local ms = (hs.timer.absoluteTime() - t0) // 1000000
+            local ns = hs.timer.absoluteTime() - t0
+            local ms = ns // 1000000
             if ms >= 50 then
                 slow[#slow + 1] = { name = name, ms = ms }
             end
+            local total = totals[name] or { n = 0, ns = 0 }
+            total.n, total.ns = total.n + 1, total.ns + ns
+            totals[name] = total
             return table.unpack(r, 1, r.n)
         end
+    end
+    -- The names that took longest in all since last asked, with how many
+    -- calls.
+    local function busiest()
+        local list = {}
+        for name, total in pairs(totals) do
+            list[#list + 1] = { name = name, n = total.n, ms = total.ns / 1e6 }
+        end
+        totals = {}
+        table.sort(list, function(x, y)
+            return x.ms > y.ms
+        end)
+        local out = {}
+        for i = 1, math.min(#list, 12) do
+            out[#out + 1] = string.format("%s %d× %.1f", list[i].name, list[i].n, list[i].ms)
+        end
+        return #out > 0 and table.concat(out, ", ") or "none"
     end
     for name, fn in pairs(tilemo.adapter) do
         if type(fn) == "function" then
@@ -675,6 +703,18 @@ local function check_launcher_keys(after)
         if tilemo.wm[name] then
             tilemo.wm[name] = timed("wm." .. name, tilemo.wm[name])
         end
+    end
+    -- What a change redraws: the bar, the tray and the workspace's file.
+    for owner, names in pairs({ bar = { "update" }, tray = { "update" } }) do
+        for _, name in ipairs(names) do
+            local o = tilemo[owner]
+            if o and o[name] then
+                o[name] = timed(owner .. "." .. name, o[name])
+            end
+        end
+    end
+    if tilemo.publish_workspace then
+        tilemo.publish_workspace = timed("publish_workspace", tilemo.publish_workspace)
     end
     local ffm = tilemo.wm.ffm
     for _, name in ipairs({ "move", "resync", "remember", "hit", "settled", "under_float", "prefer_dialog", "focus" }) do
@@ -729,6 +769,21 @@ local function check_launcher_keys(after)
                 local open_lag = lag
                 lag = nil
                 local open_work = counted()
+                -- The attention poll, as its timer runs it every two
+                -- seconds while you look at the launcher: one that holds
+                -- Hammerspoon then holds Esc too.
+                slowest()
+                busiest()
+                local p0 = hs.timer.absoluteTime()
+                tilemo.wm:poll_attention()
+                local poll_ms = (hs.timer.absoluteTime() - p0) // 1000000
+                local poll_slow = slowest()
+                say("launcher keys: with %s open, the attention poll takes %d ms; its calls of 50 ms or more: %s",
+                    choice, poll_ms, poll_slow)
+                say("launcher keys: with %s open, the poll's busiest calls, in all, in ms: %s", choice, busiest())
+                if poll_ms >= POLL_LIMIT then
+                    fail("launcher keys: with %s open, the attention poll held Hammerspoon for %d ms", choice, poll_ms)
+                end
                 local t1 = hs.timer.secondsSinceEpoch()
                 hs.eventtap.keyStroke({}, "escape", 1000)
                 smoke_key_lag = hs.timer.doAfter(0, function()
