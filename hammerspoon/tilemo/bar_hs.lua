@@ -480,29 +480,27 @@ function M.new(tilemo)
         self.volume_popover.toggle(v.frame, at.right)
     end
 
-    -- The Apple logo opens the real Apple menu (SPEC.md §8), since the menu
-    -- bar is hidden for this bar. Through Accessibility it's a press on the
-    -- first item of the frontmost app's menu bar, which macOS shows the menu
-    -- bar for. Without it, the pointer goes to the top of that display,
-    -- which reveals the menu bar, and a click there opens the menu; a second
-    -- logo click inside 2 s is ignored, so a click that lands on the bar
-    -- again can't start it over.
-    -- The Apple menu, as bar.apple_menu plans it.
+    -- The Apple logo's menu (bar.lua's copy of the Apple menu), under the
+    -- logo at the left of display `uuid`'s bar.
     local function open_apple_menu(uuid)
-        local now = hs.timer.secondsSinceEpoch()
-        local plan, why = bar.apple_menu(tilemo.adapter.screens(), uuid, now, self.apple_at)
-        if not plan then
-            if why ~= "again" then
-                log("bar: can't open the Apple menu: " .. why)
-            end
+        local v = uuid and self.views[uuid]
+        if not v or v.hidden then
             return
         end
-        self.apple_at = now
-        log("bar: opening the Apple menu with Control+F2 (Move focus to the menu bar), then Down")
-        hs.eventtap.keyStroke(plan.focus.mods, plan.focus.key, 0)
-        tilemo.adapter.after(plan.open_after, function()
-            hs.eventtap.keyStroke(plan.open.mods, plan.open.key, 0)
-        end)
+        hide_tip()
+        self.apple_popup = self.apple_popup or hs.menubar.new(false)
+        if not self.apple_popup then
+            log("bar: couldn't make the Apple menu")
+            return
+        end
+        self.apple_popup:setMenu(bar.apple_menu(tilemo.adapter.open_url, function(id)
+            local ok, err = pcall(SESSION_RUN[id])
+            if not ok then
+                log("bar: session " .. id .. " failed: " .. tostring(err))
+                tilemo.adapter.notify("Couldn't " .. id .. ": " .. tostring(err))
+            end
+        end))
+        self.apple_popup:popupMenu({ x = v.frame.x + 4, y = v.frame.y + v.frame.h })
     end
 
     local function on_message(msg, from)
@@ -591,8 +589,8 @@ function M.new(tilemo)
             frames[uuid] = { x = v.frame.x, y = v.frame.y, w = v.frame.w, h = v.frame.h, hidden = v.hidden }
         end
         -- Kept off the top row, so the hidden menu bar doesn't slide over
-        -- the bar; the Apple logo opens the Apple menu instead. The
-        -- Appearance page's Menu bar switch turns it off.
+        -- the bar; the Apple logo opens its own copy of the Apple menu
+        -- instead. The Appearance page's Menu bar switch turns it off.
         local down = tilemo.keep_menu_bar_hidden ~= false and bar.off_top(frames, x, y)
         if down then
             hs.mouse.absolutePosition({ x = x, y = down })
