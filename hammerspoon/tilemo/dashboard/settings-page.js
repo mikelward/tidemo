@@ -442,6 +442,53 @@ function drawDisplays(st) {
   }
 }
 
+// The Bluetooth page, as tide's Bluetooth popover (tide SPEC.md §7.4):
+// Bluetooth On or Off, then, while it's on, the paired devices, connected
+// first, each lit while connected, with its status. A click connects one,
+// or disconnects one that's connected; one being either waits. tilemo reads
+// them through blueutil, and answers with tilemo.bluetooth().
+let bluetoothDrawn = "";
+
+function renderBluetooth(st) {
+  const s = isObject(st) ? st : {};
+  const drawn = JSON.stringify(s);
+  if (drawn === bluetoothDrawn) return;
+  bluetoothDrawn = drawn;
+  const devices = s.on === true && Array.isArray(s.devices) ? s.devices : [];
+  keepingFocus(() => {
+    const power = document.getElementById("bluetooth-power");
+    power.replaceChildren();
+    power.hidden = typeof s.on !== "boolean";
+    if (!power.hidden) {
+      const name = el("span", "Bluetooth");
+      name.className = "name";
+      // Waiting, it stays focusable, so the keyboard isn't dropped; a
+      // click then asks nothing.
+      const toggle = keyed(button(s.on ? "On" : "Off", `Bluetooth: ${s.on ? "on" : "off"}`, false,
+        () => s.switching !== true && send({ bluetoothPower: !s.on })), "bluetooth-power");
+      toggle.setAttribute("aria-pressed", String(s.on));
+      toggle.setAttribute("aria-disabled", String(s.switching === true));
+      power.append(name, toggle);
+    }
+    const list = document.getElementById("bluetooth-devices");
+    list.replaceChildren();
+    for (const d of devices) {
+      const li = el("li");
+      const label = d.status ? `${d.name} · ${d.status}` : d.name;
+      const b = keyed(button(label, d.connected ? `Disconnect ${d.name}` : `Connect ${d.name}`, false,
+        () => d.busy !== true && send(d.connected ? { bluetoothDisconnect: d.address } : { bluetoothConnect: d.address })),
+        `bluetooth-${d.address}`);
+      b.setAttribute("aria-disabled", String(d.busy === true));
+      b.setAttribute("data-icon", "bluetooth");
+      b.setAttribute("aria-current", String(d.connected === true));
+      li.append(b);
+      list.append(li);
+    }
+  });
+  document.getElementById("bluetooth-devices-heading").hidden = devices.length === 0;
+  document.getElementById("bluetooth-error").textContent = typeof s.problem === "string" ? s.problem : "";
+}
+
 // The Appearance page's wallpapers, light and dark, as tide's has them
 // (tide SPEC.md §15, §16): appearance.json and appearance.local.json, read
 // and changed with tide's own module, so the Mac's desktop shows the ones
@@ -1188,6 +1235,7 @@ window.tilemo = {
     renderAppearance();
     if (isObject(state.sound)) renderSound(state.sound);
     if (isObject(state.displays)) renderDisplays(state.displays);
+    if (isObject(state.bluetooth)) renderBluetooth(state.bluetooth);
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
@@ -1237,6 +1285,10 @@ window.tilemo = {
   // The Sound page alone, as macOS says it is now.
   sound(s) {
     renderSound(s);
+  },
+  // The Bluetooth page alone, as blueutil says it is now.
+  bluetooth(s) {
+    renderBluetooth(s);
   },
   // The file macOS's dialog chose for wallpaper `key`, as a setting.
   setWallpaper(key, value) {

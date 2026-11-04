@@ -131,4 +131,74 @@ t.test("the bar's Bluetooth item is on or off, and absent without a reading", fu
     t.eq(bar.icons({ bluetooth_audio = { "Buds" } }).headphones, { devices = { { name = "Buds" } } }, "headphones need no blueutil")
 end)
 
+local json = require("json")
+
+t.test("the Bluetooth page's paired devices, from blueutil's JSON, named or by address", function()
+    local out = json.encode({
+        { address = "aa-bb-cc-dd-ee-ff", name = "Buds", connected = true, paired = true },
+        { address = "11-22-33-44-55-66", connected = false, paired = true },
+        { address = "--help", name = "Not one", connected = false },
+        "not a device",
+    })
+    t.eq(bluetooth.parse_paired(0, out, "", json.decode), {
+        { address = "aa-bb-cc-dd-ee-ff", name = "Buds", connected = true },
+        { address = "11-22-33-44-55-66", name = "11-22-33-44-55-66", connected = false },
+    })
+    t.eq(bluetooth.parse_paired(0, "[]", "", json.decode), {})
+end)
+
+t.test("a blueutil --paired that fails or prints something else says what", function()
+    local d, why = bluetooth.parse_paired(1, "", "Error: Bluetooth not available\n", json.decode)
+    t.eq(d, nil)
+    t.eq(why, "blueutil --paired exited 1: Error: Bluetooth not available")
+    d, why = bluetooth.parse_paired(0, "Buds", "", json.decode)
+    t.eq(d, nil)
+    t.eq(why, "blueutil --paired printed something that isn't a JSON list")
+end)
+
+t.test("only an address reaches blueutil, never a name or an option", function()
+    t.eq(bluetooth.address("aa-bb-cc-dd-ee-ff"), "aa-bb-cc-dd-ee-ff")
+    t.eq(bluetooth.address("AA:BB:CC:DD:EE:FF"), "AA:BB:CC:DD:EE:FF")
+    t.eq(bluetooth.address("--power"), nil)
+    t.eq(bluetooth.address("Buds"), nil)
+    t.eq(bluetooth.address("aa-bb-cc-dd-ee-ff -p 0"), nil)
+    t.eq(bluetooth.address(12), nil)
+end)
+
+t.test("the page lists the devices while it's on, connected first, then by name", function()
+    local devices = {
+        { address = "33-33-33-33-33-33", name = "keyboard", connected = false },
+        { address = "11-11-11-11-11-11", name = "Mouse", connected = false },
+        { address = "22-22-22-22-22-22", name = "Buds", connected = true },
+    }
+    local s = bluetooth.page_state({ on = true, devices = devices, busy = { ["11-11-11-11-11-11"] = "connecting" } })
+    t.eq(s.on, true)
+    t.eq(s.switching, false)
+    t.eq(s.devices, {
+        { address = "22-22-22-22-22-22", name = "Buds", connected = true, busy = false, status = "Connected" },
+        { address = "33-33-33-33-33-33", name = "keyboard", connected = false, busy = false, status = "" },
+        { address = "11-11-11-11-11-11", name = "Mouse", connected = false, busy = true, status = "Connecting…" },
+    })
+    t.eq(bluetooth.page_state({ on = false, devices = devices }).devices, {}, "none while it's off")
+    local unread = bluetooth.page_state({ problem = bluetooth.MISSING })
+    t.eq(unread.on, nil)
+    t.eq(unread.problem, bluetooth.MISSING)
+end)
+
+t.test("the page's messages switch it, and connect or disconnect an address alone", function()
+    local did = {}
+    local act = {
+        set_power = function(on) did[#did + 1] = { "power", on } end,
+        connect = function(a) did[#did + 1] = { "connect", a } end,
+        disconnect = function(a) did[#did + 1] = { "disconnect", a } end,
+    }
+    t.eq(bluetooth.handle({ bluetoothPower = false }, act), true)
+    t.eq(bluetooth.handle({ bluetoothConnect = "aa-bb-cc-dd-ee-ff" }, act), true)
+    t.eq(bluetooth.handle({ bluetoothDisconnect = "aa-bb-cc-dd-ee-ff" }, act), true)
+    t.eq(bluetooth.handle({ bluetoothConnect = "--power" }, act), true, "the page's, but nothing done")
+    t.eq(bluetooth.handle({ soundMute = true }, act), false)
+    t.eq(bluetooth.handle("x", act), false)
+    t.eq(did, { { "power", false }, { "connect", "aa-bb-cc-dd-ee-ff" }, { "disconnect", "aa-bb-cc-dd-ee-ff" } })
+end)
+
 t.done("bluetooth")
