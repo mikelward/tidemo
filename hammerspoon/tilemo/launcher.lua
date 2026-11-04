@@ -13,13 +13,11 @@ local SEPARATORS = "[%s%-_%./:%(%)]"
 -- How well `query` matches `text`, or nil if it doesn't. Every query
 -- character must appear in order; matches at the start of a word, and runs
 -- of consecutive matches, score higher, so "gc" finds "Google Calendar"
--- first.
-function M.score(query, text)
-    local q, t = query:lower(), (text or ""):lower()
-    if q == "" then
-        return 0
-    end
-    local score, from, last = 0, 1, -1
+-- first. Each place the first character appears is tried as the start, and
+-- the best kept, so "settings" finds the run in "System Settings" rather
+-- than stopping at the S of System.
+local function score_from(q, t, start)
+    local score, from, last = 0, start, -1
     for ch in q:gmatch(".") do
         if ch ~= " " then
             local i = t:find(ch, from, true)
@@ -36,10 +34,37 @@ function M.score(query, text)
             last, from = i, i + 1
         end
     end
-    if t:sub(1, #q) == q then
-        score = score + 5
-    end
     return score
+end
+
+function M.score(query, text)
+    local q, t = query:lower(), (text or ""):lower()
+    if q == "" then
+        return 0
+    end
+    local first = q:match("[^ ]")
+    if not first then
+        return 0
+    end
+    local best
+    local at = t:find(first, 1, true)
+    while at do
+        local s = score_from(q, t, at)
+        if not s then
+            break
+        end
+        if not best or s > best then
+            best = s
+        end
+        at = t:find(first, at + 1, true)
+    end
+    if not best then
+        return nil
+    end
+    if t:sub(1, #q) == q then
+        best = best + 5
+    end
+    return best
 end
 
 -- The best score over an item's title and its other searchable text, such
@@ -138,7 +163,7 @@ local function rank_all(query, items, limit, recency)
             -- windows wanting attention do, newest first: as if used before
             -- anything else, so one key orders every kind alike.
             local seen = item.order and -item.order or recency[item.key] or 0
-            scored[#scored + 1] = { item = item, score = s, seen = seen }
+            scored[#scored + 1] = { item = item, score = s, seen = seen, tier = item.kind == "setting" and 1 or 0 }
         end
     end
     table.sort(scored, function(a, b)
@@ -148,8 +173,19 @@ local function rank_all(query, items, limit, recency)
         if q == "" and a.item.kind ~= b.item.kind then
             return KIND_ORDER[a.item.kind] < KIND_ORDER[b.item.kind]
         end
+        -- A System Settings pane after anything else that matches as well,
+        -- so "settings" finds System Settings ahead of its panes. A key of
+        -- its own, so the order stays one table.sort can rely on.
+        if q ~= "" and a.tier ~= b.tier then
+            return a.tier < b.tier
+        end
         if a.seen ~= b.seen then
             return a.seen > b.seen
+        end
+        -- A tighter match before one inside a longer title, as "clocks"
+        -- finds the Clocks section before the Dashboard's description.
+        if q ~= "" and #a.item.title ~= #b.item.title then
+            return #a.item.title < #b.item.title
         end
         return a.item.title < b.item.title
     end)
