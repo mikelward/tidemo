@@ -46,7 +46,7 @@ function M.new(tilemo)
         tilemo.wm:own_window("dashboard", nil)
         v:delete()
         if refocus and before then
-            tilemo.wm:focus_window(before)
+            tilemo.wm:focus_unburied(before)
         end
     end
 

@@ -76,6 +76,9 @@ local function stub()
         wm = {
             hold = function() end,
             focus_window = function() end,
+            focus_unburied = function(_, id)
+                s.refocused = id
+            end,
             note_tabs = function()
                 s.noted = true
             end,

@@ -679,6 +679,124 @@ t.test("closing a window passes over the one under the pointer if it would bury 
     t.eq(a.focus_ ~= nil, true, "something has focus")
 end)
 
+-- The report's layout with B, the tile under the float, the window you
+-- were in: focused by a click, then the float went back over it, as tilemo
+-- raises the floats after any focus.
+local function b_was_yours()
+    local a, wm, ffm, onb, onf = rule_float("later")
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(a.ordered()[1], 3, "the float went back in front")
+    t.eq(wm.mru[wm.current][1], 1, "B is the last used")
+    a.calls = {}
+    return a, wm, ffm, onb, onf
+end
+
+local function focused_b(a)
+    for _, c in ipairs(a.calls) do
+        if c == "focus 1" then
+            return true
+        end
+    end
+    return false
+end
+
+t.test("switching back to a workspace passes over a tile under another app's float", function()
+    local a, wm = b_was_yours()
+    local home = wm.current
+    wm:show("2", nil, true)
+    a.calls = {}
+    wm:show(home)
+    t.eq(focused_b(a), false, "B isn't focused")
+    t.eq(a.focus_ ~= nil, true, "something has focus")
+    t.eq(a.ordered()[1], 3, "the float stays in front")
+end)
+
+t.test("a window restored after a switch isn't focused if it would bury another app's float", function()
+    local a, wm = b_was_yours()
+    local home = wm.current
+    wm:show("2", nil, true)
+    local unmin = a.unminimize
+    a.unminimize = function(id)
+        a.calls[#a.calls + 1] = "unminimize " .. id
+    end
+    a.calls = {}
+    wm:show(home)
+    t.eq(wm.focus_after, 1, "B is waited for")
+    a.unminimize = unmin
+    for _, id in ipairs({ 1, 2, 3 }) do
+        a.wins[id].minimized = false
+    end
+    a.raise(3)
+    wm:unminimized(1)
+    t.eq(focused_b(a), false, "B isn't focused")
+    t.eq(a.focus_ ~= nil, true, "something has focus")
+end)
+
+t.test("minimizing a window passes over a tile under another app's float", function()
+    local a, wm = b_was_yours()
+    wm:focus_window(2) -- a key moves focus to C
+    wm:focused(2)
+    a.raise(3)
+    wm.mru[wm.current] = { 2, 1, 3 }
+    a.calls = {}
+    wm:act("minimize")
+    t.eq(focused_b(a), false, "B isn't focused")
+    t.eq(a.focus_, 3)
+end)
+
+t.test("focus handed back from a thief passes over a tile under another app's float", function()
+    local a, wm = b_was_yours()
+    a.add(4, { app = "com.example.d", pid = 4, frame = { x = 1500, y = 900, w = 100, h = 100 } })
+    wm:sync()
+    a.focus_ = 1
+    wm:focused(1)
+    a.raise(3)
+    a.clock = 100
+    a.calls = {}
+    a.focus_ = 4 -- an app activating itself
+    wm:focused(4)
+    t.eq(focused_b(a), false, "B isn't focused")
+    t.eq(a.focus_ ~= 4, true, "the thief doesn't keep it")
+    t.eq(a.ordered()[1], 3, "the float stays in front")
+end)
+
+-- The thief is on the same workspace, next in its last-used list after
+-- the tile under the float: focus mustn't go to it, or tilemo's own ask
+-- would let its next grab through the guard.
+t.test("focus handed back past a tile under a float never goes to the thief", function()
+    local a, wm = b_was_yours()
+    a.add(4, { app = "com.example.d", pid = 4, frame = { x = 1500, y = 900, w = 100, h = 100 } })
+    wm:sync()
+    a.focus_ = 1
+    wm:focused(1)
+    a.raise(3)
+    wm.mru[wm.current] = { 1, 4, 3, 2 }
+    a.clock = 100
+    a.calls = {}
+    a.focus_ = 4 -- an app activating itself
+    wm:focused(4)
+    t.eq(a.calls[1], "focus 3", "the float, the next that will do")
+    for _, q in ipairs(wm.asked) do
+        t.eq(q.id ~= 4 and q.app ~= "com.example.d", true, "the thief isn't asked for")
+    end
+end)
+
+t.test("going back to a window no float covers is unchanged", function()
+    local a, wm = b_was_yours()
+    a.wins[3].frame = { x = 1500, y = 900, w = 100, h = 100 } -- over C, clear of B
+    wm:focus_unburied(1)
+    t.eq(a.calls[1], "focus 1")
+end)
+
+t.test("with nothing else to go to, the tile under the float is focused after all", function()
+    local a, wm = b_was_yours()
+    a.wins[2].minimized = true -- C, in the tray
+    wm.mru[wm.current] = { 1, 2 } -- the float never had focus
+    wm:focus_unburied(1)
+    t.eq(a.calls[1], "focus 1")
+end)
+
 -- How many times Accessibility was asked what's under the pointer.
 local function counting(a)
     local real = a.window_at

@@ -1602,7 +1602,7 @@ function M:unminimized(id)
         -- A restore can finish after show() laid out and focused without it.
         if self.focus_after == id then
             self.focus_after = nil
-            self:focus_window(id)
+            self:focus_unburied(id)
         end
         self:schedule()
         return
@@ -1719,9 +1719,12 @@ end
 -- Focus workspace n's last used window, on display `uuid` if given, if it
 -- has one, and say whether it did. If that window is still being restored,
 -- it's focused when the restore lands; a later switch replaces the wait.
+-- A tile with another app's float in front of it is passed over while
+-- another will do (SPEC.md §5.1).
 function M:refocus_ws(n, uuid)
     self.focus_after = nil
     self.kbd = nil
+    local spare
     for _, id in ipairs(self.mru[n] or {}) do
         local w = self.windows[id]
         local st = w and w.ws == n and not w.mine and (uuid == nil or self:screen_of(id) == uuid)
@@ -1729,12 +1732,20 @@ function M:refocus_ws(n, uuid)
         -- An app you hid with Cmd+H stays hidden: pass over its windows.
         if st and not st.hidden then
             if st.minimized then
+                -- What's in front of it is known once it's back.
                 self.focus_after = id
+                return true
+            elseif self:buries(id) then
+                spare = spare or id
             else
                 self:focus_window(id)
+                return true
             end
-            return true
         end
+    end
+    if spare then
+        self:focus_window(spare)
+        return true
     end
     return false
 end
@@ -2631,7 +2642,8 @@ function M:refuse(id, w)
     self.a.log("handing focus back from " .. tostring(w.app))
     -- Not a focus you moved, so it doesn't end a launch's grant.
     local g = self.granted
-    self:focus_window(self.history[1])
+    -- Never to the thief itself.
+    self:focus_unburied(self.history[1], id)
     self.granted = g
 end
 
@@ -2868,7 +2880,7 @@ function M:refocus(n)
     end
     local spare
     local function take(id)
-        if self.ffm and self.ffm:under_float(id) then
+        if self:buries(id) then
             spare = spare or id
             return false
         end
@@ -2902,6 +2914,39 @@ function M:refocus(n)
     if spare then
         self:focus_window(spare)
     end
+end
+
+-- Whether focusing window `id` would bury another app's float: it's a
+-- tile with one in front of it, and macOS won't raise the float back over
+-- the app just focused (SPEC.md §5.1). Only a focus you didn't choose asks:
+-- a key or a click on the tile still focuses it.
+function M:buries(id)
+    return self.ffm ~= nil and id ~= nil and self.ffm:under_float(id)
+end
+
+-- The last used window you can see on workspace `n`, other than `except`
+-- and `avoid`, that focusing wouldn't bury another app's float under, if
+-- there is one.
+function M:unburied_on(n, except, avoid)
+    for _, id in ipairs(self.mru[n] or {}) do
+        local w = self.windows[id]
+        local st = id ~= except and id ~= avoid and w and w.ws == n and not w.mine and self.a.state(id)
+        if st and not st.minimized and not st.hidden and not st.fullscreen and not self:buries(id) then
+            return id
+        end
+    end
+end
+
+-- Focus window `id`, which tilemo picked for you, not you: back to the
+-- window you were in, or one that was being restored. If that's a tile
+-- with another app's float in front of it, the last used window on its
+-- workspace that isn't goes instead, so the float stays on top; with none,
+-- `id` does after all. `avoid` is never the one instead: a window that
+-- just took focus unasked, which focusing would count as asked for.
+function M:focus_unburied(id, avoid)
+    local w = self.windows[id or false]
+    local alt = w and self:buries(id) and self:unburied_on(w.ws, id, avoid)
+    self:focus_window(alt or id)
 end
 
 -- Actions, called by the keys -----------------------------------------------

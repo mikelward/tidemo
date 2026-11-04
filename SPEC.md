@@ -383,6 +383,14 @@ Placing and keeping floats:
     behind alone, as over tilemo's own windows. tilemo's own drawing, such
     as the dim and the drag outline, is click-through and stays out. A click or a key still focuses the
     tile, and the float goes behind it.
+  - **Nor does a focus tilemo picks for you.** A workspace switch, a
+    window going into the tray, a window closing, a restore finishing,
+    focus handed back from an app that took it (§14.1), and the launcher,
+    dashboard or volume popover closing each pass over a tile with
+    another app's float in front of it. The last used window on that
+    workspace that doesn't bury one goes instead, which may be the float
+    itself. With none, the tile is focused after all, so something always
+    has focus. A key, a click or an app key you choose is unchanged.
   - **The tile's own app's floats** come back with it: tilemo raises them
     after it focuses the tile, as before.
 - **A float's size** is what it asks for, capped at 80% of its display
@@ -2536,7 +2544,9 @@ Each one names a workaround, or says there is none.
   can't refuse it. It can notice (`NSWorkspace`'s activation
   notification), and hand focus straight back to the window you were in
   when no grant covers it *(unverified that it can act before a keystroke
-  lands)*. macOS 14 added cooperative activation, which already stops many
+  lands)*. If that window is a tile with another app's float in front of
+  it, the last used window on its workspace that isn't goes instead
+  (§5.1). macOS 14 added cooperative activation, which already stops many
   apps taking focus unasked *(unverified how many apps it covers)*.
 - **Pulled back to another workspace** (tide §14.2): an app launched on
   "work" whose window appears after you've moved to "home" opens on "work",

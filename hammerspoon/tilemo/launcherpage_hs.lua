@@ -81,7 +81,7 @@ function M.new(tilemo)
             view:hide()
         end
         if refocus and before then
-            tilemo.wm:focus_window(before)
+            tilemo.wm:focus_unburied(before)
         end
     end
 
