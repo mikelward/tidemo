@@ -1380,6 +1380,7 @@ local function check_settings_page(next)
         displays: document.querySelectorAll("#display-list h2").length,
         bluetooth: document.getElementById("bluetooth-error").textContent,
         bluetoothPower: !document.getElementById("bluetooth-power").hidden,
+        battery: document.getElementById("battery-status").textContent,
     })]], function(result, err)
         -- Out of the page's own callback.
         tilemo.adapter.after(0, function()
@@ -1408,6 +1409,13 @@ local function check_settings_page(next)
                 fail("settings: the Displays page lists %s displays; macOS has %d", tostring(got.displays), screens)
             elseif got then
                 say("settings: the Displays page lists the %d display(s) macOS has", screens)
+            end
+            -- The Power page has the battery, or says there's none.
+            local has_battery = hs.battery.percentage() ~= nil
+            if got and has_battery ~= (tostring(got.battery):match("^Battery %d+%%") ~= nil) then
+                fail("settings: the Power page says %q", tostring(got.battery))
+            elseif got then
+                say("settings: the Power page says %q", got.battery)
             end
             -- The Bluetooth page says blueutil's missing when it is; with
             -- it, a read may still be under way, so it's only reported.

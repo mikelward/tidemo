@@ -20,6 +20,7 @@ local checklist = require("tilemo.checklist")
 local sound_hs = require("tilemo.sound_hs")
 local displays_hs = require("tilemo.displays_hs")
 local bluetooth_hs = require("tilemo.bluetooth_hs")
+local netpower_hs = require("tilemo.netpower_hs")
 
 local M = {}
 
@@ -194,6 +195,20 @@ function M.new(tilemo)
         self.bluetooth_changed()
     end)
 
+    -- The Network and Power pages' Wi-Fi and battery (netpower_hs.lua),
+    -- read the same way.
+    local np = netpower_hs.new(tilemo, function()
+        self.netpower_changed()
+    end)
+    local function netpower_state()
+        local ok, s = pcall(np.state)
+        if ok then
+            return s
+        end
+        tilemo.adapter.log("settings: couldn't read Wi-Fi and the battery: " .. tostring(s))
+        return {}
+    end
+
     local function push()
         if not view then
             return
@@ -204,6 +219,8 @@ function M.new(tilemo)
             sound = sound_state(),
             -- The Displays page's displays.
             displays = displays_state(),
+            -- The Network and Power pages'.
+            netpower = netpower_state(),
             -- The Bluetooth page's, as last read.
             bluetooth = bt.state(),
             -- Light or dark now, and until when, on tide's schedule.
@@ -380,6 +397,18 @@ function M.new(tilemo)
         end)
     end
 
+    -- The Network and Power pages alone, as the bar sees them change.
+    function self.netpower_changed()
+        if not view then
+            return
+        end
+        view:evaluateJavaScript("tilemo.netpower(" .. hs.json.encode(netpower_state()) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
     -- The Bluetooth page alone.
     function self.bluetooth_changed()
         if not view then
@@ -426,6 +455,8 @@ function M.new(tilemo)
                 self.sound_changed()
             elseif screens.handle(body) then
                 self.displays_changed()
+            elseif np.handle(body) then
+                -- Drawn once it's had time to change.
             elseif bt.handle(body) then
                 -- Drawn as blueutil answers.
             elseif body.themeFlip == true and tilemo.theme then
@@ -608,6 +639,7 @@ function M.new(tilemo)
             if action == "didFinishNavigation" then
                 -- Read once there's a page to draw them on.
                 bt.watch(true)
+                np.watch(true)
                 push()
                 reveal(wanted)
                 fill_in(wanted_fill)
@@ -619,6 +651,7 @@ function M.new(tilemo)
                 tilemo.wm:own_window("settings", nil)
                 view = nil
                 bt.watch(false)
+                np.watch(false)
             end
         end)
         -- Focus follows mouse leaves it be, wherever it's dragged: asking
