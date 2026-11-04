@@ -94,11 +94,35 @@ local function stub(opts)
             end,
         },
     }
+    s.placed = {}
     local tilemo = {
         clock_dir = "/c/tide",
         adapter = {
             read = function(path)
                 return (opts.files or {})[path]
+            end,
+            -- The desktop picture's JavaScript (wallpaper.desktop_script),
+            -- as macOS would run it: each display not showing the picture
+            -- placed so is set, as Hammerspoon's own call can't place one.
+            javascript = function(source)
+                if opts.js_fails then
+                    return false, "JXA isn't there"
+                end
+                local q, scaling, clip = source:match('const URL = (".-"), SCALING = (%d+), CLIP = (%a+);')
+                local url = json.decode(q)
+                local placement = { scaling = tonumber(scaling), clip = clip == "true" }
+                if opts.refuse then
+                    return true, '["not allowed"]'
+                end
+                for i, scr in ipairs(s.screens) do
+                    local was = s.placed[i]
+                    if scr.url ~= url or not was or was.scaling ~= placement.scaling or was.clip ~= placement.clip then
+                        scr.url = url
+                        s.placed[i] = placement
+                        s.set[#s.set + 1] = { i, url }
+                    end
+                end
+                return true, "[]"
             end,
             log = function(text)
                 s.logged[#s.logged + 1] = text
@@ -157,6 +181,38 @@ t.test("a color that can't be drawn leaves the picture, said once", function()
     t.eq(s.set, {})
     t.eq(#s.logged, 1, "not at every display change")
     t.eq(s.logged[1]:match("^wallpaper: couldn't draw #1a1d2e") ~= nil, true, s.logged[1])
+end)
+
+t.test("each mode's picture is placed as its position says", function()
+    local files = { ["/c/tide/appearance.json"] = '{"lightWallpaper": "/srv/day one.jpg", "darkWallpaper": "/srv/night.png",'
+        .. ' "lightWallpaperPosition": "stretch", "darkWallpaperPosition": "fit"}' }
+    local s = stub({ files = files, pictures = PICTURES, screens = 2 })
+    t.eq(s.placed, { { scaling = 1, clip = false }, { scaling = 1, clip = false } }, "light's stretched")
+    s.dark = true
+    s.theme_changed()
+    t.eq(s.placed[1], { scaling = 3, clip = false }, "dark's fitted whole")
+    t.eq(s.screens[1].url, "file:///srv/night.png")
+end)
+
+t.test("a position changed alone places the same picture again", function()
+    local files = { ["/c/tide/appearance.json"] = '{"lightWallpaper": "/srv/day one.jpg"}' }
+    local s = stub({ files = files, pictures = PICTURES })
+    t.eq(s.placed[1], { scaling = 3, clip = true }, "filled, cropped, by default")
+    files["/c/tide/appearance.local.json"] = '{"lightWallpaperPosition": "fit"}'
+    s.set = {}
+    s.wall.apply()
+    t.eq(s.set, { { 1, "file:///srv/day%20one.jpg" } })
+    t.eq(s.placed[1], { scaling = 3, clip = false })
+    s.set = {}
+    s.wall.apply()
+    t.eq(s.set, {}, "placed so already: left alone")
+end)
+
+t.test("a display macOS won't set, or JXA not running, is said", function()
+    local refused = stub({ files = FILES, pictures = PICTURES, refuse = true })
+    t.eq(refused.logged, { "wallpaper: macOS didn't set /srv/day one.jpg on a display: not allowed" })
+    local broken = stub({ files = FILES, pictures = PICTURES, js_fails = true })
+    t.eq(broken.logged, { "wallpaper: couldn't set /srv/day one.jpg: JXA isn't there" })
 end)
 
 t.test("choosing opens macOS's dialog, offering images, where the wallpaper is", function()

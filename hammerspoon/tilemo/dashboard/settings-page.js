@@ -38,8 +38,9 @@ import {
 } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings, workspaceSetting } from "./tide-workspacenames.js";
 import {
-  MODE_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate, steppedDim,
-  steppedModeAt, steppedTimePast, wallpaperColor, withSetting as withAppearance,
+  MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate,
+  positionAt, steppedDim, steppedModeAt, steppedPositionAt, steppedTimePast, wallpaperColor,
+  withSetting as withAppearance,
 } from "./tide-appearance.js";
 import {
   DEFAULT_IDLE, STEPS as IDLE_STEPS, SWITCHES as IDLE_SWITCHES, formatDuration, loadIdle, stepped as steppedIdle,
@@ -962,7 +963,32 @@ function renderWallpapers(settings, bad) {
     li.append(el("span", w.label), input, swatchFor(w, shows, bad), choose);
     list.append(li);
     if (colorsOpen === w.key && !bad) list.append(colorsFor(w, shows));
+    // A color has nothing to place.
+    if (!shows) list.append(positionFor(w, settings, bad));
   }
+}
+
+// How a wallpaper's picture is placed, as tide's page has it (tide SPEC.md
+// §15, §16): its own mode's, ‹ and › stepping through tide's positions
+// into appearance.local.json; tilemo places the desktop picture so
+// (wallpaper_hs.lua).
+function positionFor(w, settings, bad) {
+  const dark = w.key === "darkWallpaper";
+  const key = dark ? "darkWallpaperPosition" : "lightWallpaperPosition";
+  const at = positionAt(settings, dark);
+  const step = (by) => {
+    const next = steppedPositionAt(at, by);
+    if (next !== at) setAppearance(key, POSITION_CHOICES[next].position);
+  };
+  const li = el("li");
+  li.className = "position";
+  const value = el("span", POSITION_CHOICES[at].label);
+  value.className = "value";
+  li.append(el("span", `${w.label} position`),
+    keyed(button("‹", `Previous position: ${w.label}`, bad || steppedPositionAt(at, -1) === at, () => step(-1)), `${key}-prev`),
+    value,
+    keyed(button("›", `Next position: ${w.label}`, bad || steppedPositionAt(at, 1) === at, () => step(1)), `${key}-next`));
+  return li;
 }
 
 const currentDim = () => dimStrength(loadAppearance(appearanceText("shared"), appearanceText("local")).settings);

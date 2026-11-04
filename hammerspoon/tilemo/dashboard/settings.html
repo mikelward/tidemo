@@ -461,6 +461,10 @@ body.settings {
 .settings #wallpapers li {
   grid-template-columns: 1fr 220px auto auto;
 }
+/* A wallpaper's position: its name, ‹, the position, and ›. */
+.settings #wallpapers li.position {
+  grid-template-columns: 1fr auto 140px auto;
+}
 /* A swatch, as tide's: the color, edged, in a button lit on hover; or the
    colors' icon, for a picture or none. */
 .settings main button.swatch:not([data-icon]) {

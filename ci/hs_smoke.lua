@@ -1308,6 +1308,42 @@ do
     end
 end
 
+-- tide's wallpaper positions reach the desktop picture through JXA's ObjC
+-- bridge, as Hammerspoon's own call can't place one: the picture shown
+-- now, set again stretched, reads back stretched from macOS, then filled.
+do
+    local wallpaper = require("tilemo.wallpaper")
+    local main = hs.screen.mainScreen()
+    local url = main and main:desktopImageURL()
+    local function placed()
+        local ok, out = tilemo.adapter.javascript([[ObjC.import('AppKit');
+(function () {
+  const o = $.NSWorkspace.sharedWorkspace.desktopImageOptionsForScreen($.NSScreen.mainScreen);
+  const s = o && o.objectForKey($.NSWorkspaceDesktopImageScalingKey);
+  const c = o && o.objectForKey($.NSWorkspaceDesktopImageAllowClippingKey);
+  return JSON.stringify([s ? s.intValue : null, c ? Boolean(c.boolValue) : null]);
+})()]])
+        return ok and out or ("couldn't read: " .. tostring(out))
+    end
+    if type(url) ~= "string" or not url:match("^file://.*[^/]$") then
+        say("wallpaper: the desktop picture is %s, not a file to place; skipped", tostring(url))
+    else
+        local ok, out = tilemo.adapter.javascript(wallpaper.desktop_script(url, wallpaper.placement("stretch")))
+        local stretched = placed()
+        local back_ok, back = tilemo.adapter.javascript(wallpaper.desktop_script(url, wallpaper.placement("fill")))
+        local filled = placed()
+        if not ok or out ~= "[]" then
+            fail("wallpaper: the desktop picture's JavaScript said %s", tostring(out))
+        elseif stretched ~= "[1,false]" then
+            fail("wallpaper: set stretched, macOS reads it back as %s", stretched)
+        elseif not back_ok or back ~= "[]" or filled ~= "[3,true]" then
+            fail("wallpaper: set filled again, macOS said %s and reads it back as %s", tostring(back), filled)
+        else
+            say("wallpaper: macOS places the desktop picture as asked, stretched then filled")
+        end
+    end
+end
+
 -- An init.lua from before the rename still gets tilemo, through the shim
 -- make install puts in ~/.hammerspoon/timo.
 ok, err = pcall(require, "timo")

@@ -15,17 +15,18 @@ function M.new(tilemo)
     local home = os.getenv("HOME") or ""
     local reported = ""
 
+    -- The wallpapers set, and each mode's position (wallpaper.load's).
     local function walls()
         local dir = tilemo.clock_dir
         local read = tilemo.adapter.read
-        local w, errors = wallpaper.load(read(dir .. "/" .. wallpaper.SHARED_FILE), read(dir .. "/" .. wallpaper.LOCAL_FILE),
-            hs.json.decode)
+        local w, errors, positions = wallpaper.load(read(dir .. "/" .. wallpaper.SHARED_FILE),
+            read(dir .. "/" .. wallpaper.LOCAL_FILE), hs.json.decode)
         local text = table.concat(errors, "; ")
         if text ~= "" and text ~= reported then
             tilemo.adapter.log("wallpaper: " .. text)
         end
         reported = text
-        return w
+        return w, positions
     end
 
     local function dark()
@@ -64,11 +65,16 @@ function M.new(tilemo)
         return path
     end
 
-    -- Set the mode's picture on every display that doesn't show it yet.
+    -- Set the mode's picture, placed as its position says, on every display
+    -- that doesn't show it so yet. A color's square is filled.
     function self.apply()
-        local path, hex = wallpaper.now(walls(), dark(), home)
+        local w, positions = walls()
+        local is_dark = dark()
+        local path, hex = wallpaper.now(w, is_dark, home)
+        local placement = wallpaper.placement(positions[is_dark and "dark" or "light"])
         if hex then
             path = drawn(hex)
+            placement = wallpaper.placement("fill")
         end
         if not path then
             return
@@ -77,16 +83,20 @@ function M.new(tilemo)
             tilemo.adapter.log("wallpaper: no file at " .. path .. "; the desktop picture stays as it is")
             return
         end
-        local url = wallpaper.file_url(path)
-        for _, s in ipairs(hs.screen.allScreens()) do
-            local ok, err = pcall(function()
-                if s:desktopImageURL() ~= url then
-                    s:desktopImageURL(url)
-                end
-            end)
-            if not ok then
-                tilemo.adapter.log("wallpaper: couldn't set " .. path .. ": " .. tostring(err))
-            end
+        -- Through JXA, as hs.screen:desktopImageURL can't say how to place
+        -- it (wallpaper.desktop_script).
+        local ok, out = tilemo.adapter.javascript(wallpaper.desktop_script(wallpaper.file_url(path), placement))
+        if not ok then
+            tilemo.adapter.log("wallpaper: couldn't set " .. path .. ": " .. tostring(out))
+            return
+        end
+        local decoded, refused = pcall(hs.json.decode, out)
+        if not decoded or type(refused) ~= "table" then
+            tilemo.adapter.log("wallpaper: setting " .. path .. " gave back " .. tostring(out))
+            return
+        end
+        for _, why in ipairs(refused) do
+            tilemo.adapter.log("wallpaper: macOS didn't set " .. path .. " on a display: " .. tostring(why))
         end
     end
 
@@ -95,7 +105,7 @@ function M.new(tilemo)
     -- the file chosen, or nil for a cancel.
     function self.pick(key)
         local mode = key == wallpaper.KEYS.dark and "dark" or "light"
-        local folder = wallpaper.folder(walls()[mode], home)
+        local folder = wallpaper.folder((walls())[mode], home)
         local chosen = hs.dialog.chooseFileOrFolder("Choose the " .. mode .. " wallpaper", folder, true, false, false,
             { "public.image" })
         local path = chosen and (chosen["1"] or chosen[1])
