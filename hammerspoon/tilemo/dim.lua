@@ -9,7 +9,7 @@
 local M = {}
 
 -- tide's strength when nothing sets one (tide-appearance.js's DIM_STRENGTH).
-M.STRENGTH = 0.07
+M.STRENGTH = 0.12
 M.KEY = "dimStrength"
 M.SHARED_FILE = "appearance.json"
 M.LOCAL_FILE = "appearance.local.json"

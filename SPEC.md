@@ -223,7 +223,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Pinned apps stay open on their workspace (tide §6.5) | the close key and the prompt's Esc leave them open; Cmd+W, Cmd+Shift+W and Cmd+Q are hotkeys while one has focus (§6.2) | **partial**: by app name; the close button still closes |
 | `TIDE_WORKSPACE` in launched apps (tide §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
 | One workspace per monitor from a shared pool (tide §6.5) | decided against: one workspace spans every display, each display with its own layout in it (§6.1) | **differs** |
-| Dim inactive, 0.07, not a lone window or video (tide §6.2) | one dark layer over the windows, a hole for the focused one (§5.6) | **partial**: dims the desktop too; drawn only in CI's smoke test, not yet checked by eye on a Mac |
+| Dim inactive, 0.12, not a lone window or video (tide §6.2) | one dark layer over the windows, a hole for the focused one (§5.6) | **partial**: dims the desktop too; drawn only in CI's smoke test, not yet checked by eye on a Mac |
 | No borders, no gaps | gaps 0; title bars stay | **partial** |
 | Maximize, fullscreen, restore (tide §6.3) | tilemo's own, on the same workspace (§5.4) | **yes**; native full screen is its own Space (§13) |
 | Picture-in-picture pinned bottom-right on every workspace (tide §6.4) | left alone and never minimized (§5.5) | **partial**: its place is the app's |
@@ -742,7 +742,7 @@ These work as on tide (tide §6.3), on the same workspace:
 
 ### 5.6 The dim
 
-- **Strength 0.07,** as on tide (tide §6.2). It's tide's `dimStrength`,
+- **Strength 0.12,** as on tide (tide §6.2). It's tide's `dimStrength`,
   in `appearance.json` and `appearance.local.json` (§15), and the
   Appearance page's − and + step it a point at a time, from none to 50%.
   A bad value is logged, and the one before it stands.

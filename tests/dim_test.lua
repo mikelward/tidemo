@@ -19,8 +19,8 @@ local function setup(n)
     return a, wm
 end
 
-t.test("the strength is tide's 0.07 until a file sets it, the local file's over the shared one's", function()
-    t.eq({ dim.load(nil, nil, json.decode) }, { 0.07, {} })
+t.test("the strength is tide's 0.12 until a file sets it, the local file's over the shared one's", function()
+    t.eq({ dim.load(nil, nil, json.decode) }, { 0.12, {} })
     t.eq({ dim.load('{"dimStrength": 0.2}', nil, json.decode) }, { 0.2, {} })
     t.eq({ dim.load('{"dimStrength": 0.2}', '{"dimStrength": 0}', json.decode) }, { 0, {} })
 end)
@@ -30,7 +30,7 @@ t.test("a bad strength is said, and the one before it stands", function()
     t.eq(s, 0.1)
     t.eq(errors, { "appearance.local.json: dimStrength must be a number from 0 to 1" })
     s, errors = dim.load("{", '{"dimStrength": "a lot"}', json.decode)
-    t.eq(s, 0.07)
+    t.eq(s, 0.12)
     t.eq(errors, { "appearance.json isn't a JSON object", "appearance.local.json: dimStrength must be a number from 0 to 1" })
 end)
 
