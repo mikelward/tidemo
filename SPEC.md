@@ -1301,6 +1301,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
 | `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
 | `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
+| `Super+Shift+V` | the picker, on its Fill tab: your snippets and each Bitwarden login's username, password and 2FA code; Return types it (§9.1) | hotkey |
 | `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey; Accessibility presses its close button |
 | `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2) | hotkeys, enabled only then |
 | `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
@@ -2068,7 +2069,7 @@ tab, the search field naming the tab you're in.
 ### 9.1 The picker
 
 **`Super+V` opens tide's picker** (tide §8.4): its own `hs.chooser`, with
-two tabs. V as in paste.
+three tabs. V as in paste. `Super+Shift+V` opens it on Fill.
 
 - **Clipboard:** what you've copied since tilemo started, newest first,
   one line each, searched with the switcher's fuzzy match.
@@ -2098,6 +2099,28 @@ two tabs. V as in paste.
   polls the pasteboard's change count, Hammerspoon's
   `hs.pasteboard.watcher.interval`, half a second by default. The list is
   about 130 KB, read the first time the Characters tab shows.
+
+- **Fill:** tide's Fill tab (tide §8.4), from `fill.lua`. Typing
+  "address" or "github" finds a snippet or a login's field, and Return
+  types it into the app that was in front.
+  - **Snippets** are tide's `snippets.json` and `snippets.local.json` in
+    `~/.config/tide`, each an object of name to text, the local file's
+    name winning.
+  - **Logins** come from `rbw`, the unofficial Bitwarden client, run
+    through `~/scripts/runenv` for the login environment's PATH: `rbw
+    list --fields id,name,user,folder,type` for the rows, one each for a
+    login's username, password and 2FA code, and `rbw get --field` or
+    `rbw code` for the value. Cards, notes and identities have no rows.
+    An rbw before 1.15 refuses `type`, so the listing goes again without
+    it, keeping every entry. Without rbw, just the snippets.
+  - **Locked,** the tab is one row, Unlock Bitwarden, since rbw's pinentry
+    can't take the keyboard while the chooser holds it. Return runs `rbw
+    unlock` and opens the tab again.
+  - **Typed, never pasted:** `hs.eventtap.keyStrokes` into the app, once
+    it's in front again, so the value never reaches the pasteboard or the
+    clipboard history.
+  - The rows are listed afresh each time the tab shows, without blocking:
+    the snippets at once, then the logins as rbw answers.
 
 ### 9.2 The dashboard launcher (switched off)
 

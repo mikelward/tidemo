@@ -978,7 +978,7 @@ the skipped types, the rows and the character search) and CI's smoke test
 (the `hs.*` names exist) cover Super+V. On a Mac, check that the chooser
 opens and Tab switches tabs; that a copy from Bitwarden, 1Password or
 Passwords never shows on the Clipboard tab; that Return pastes into the
-app you were in, a terminal too; that Shift+forward delete forgets an entry; and that emoji draw.
+app you were in, a terminal too; that Shift+forward delete forgets an entry; and that emoji draw. On the Fill tab (Super+Shift+V), check that rbw's rows list, that Unlock asks for the master password and comes back, and that Return types a password into Safari and a terminal.
 
 
 ## Brave's tabs in the Windows tab

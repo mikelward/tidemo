@@ -7,11 +7,12 @@ local launcher = require("tilemo.launcher")
 
 local M = {}
 
-M.TABS = { "clipboard", "characters" }
-M.TAB_NAMES = { clipboard = "Clipboard", characters = "Characters" }
+M.TABS = { "clipboard", "characters", "fill" }
+M.TAB_NAMES = { clipboard = "Clipboard", characters = "Characters", fill = "Fill" }
 M.PLACEHOLDERS = {
     clipboard = "Clipboard: what you've copied (Tab: Characters)",
-    characters = "Characters: by name, as arrow, e acute, shrug (Tab: Clipboard)",
+    characters = "Characters: by name, as arrow, e acute, shrug (Tab: Fill)",
+    fill = "Fill: snippets and logins, as address, github (Tab: Clipboard)",
 }
 
 -- The newest this many copies are kept, as tide keeps (SPEC.md §7.2),
@@ -53,7 +54,11 @@ end
 -- The tab after `tab`, or before it when `back`, round in a circle.
 function M.next_tab(tab, back)
     check_tab(tab)
-    return tab == "clipboard" and "characters" or "clipboard"
+    for i, t in ipairs(M.TABS) do
+        if t == tab then
+            return M.TABS[(i - 1 + (back and -1 or 1)) % #M.TABS + 1]
+        end
+    end
 end
 
 -- Whether to keep a copy whose pasteboard types are `types` (a list of
@@ -338,6 +343,9 @@ function M.empty_text(tab, query, err)
     end
     if (query or ""):find("%S") then
         return "Nothing matches"
+    end
+    if tab == "fill" then
+        return "No snippets or logins: add snippets to ~/.config/tide/snippets.json, or install rbw for Bitwarden"
     end
     return tab == "clipboard" and "Nothing copied since tide started" or "No characters"
 end
