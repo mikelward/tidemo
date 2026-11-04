@@ -109,6 +109,8 @@ function M.state(readings)
         end
         if type(r.brightness) == "number" then
             d.brightness = math.max(0, math.min(100, math.floor(r.brightness * 100 + 0.5)))
+            -- Set once the slider's let go, as a monitor's volume over DDC.
+            d.over_ddc = r.over_ddc == true or nil
         end
         d.x = r.frame and r.frame.x or 0
         out[#out + 1] = d

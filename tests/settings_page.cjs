@@ -437,6 +437,15 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   brightness().listeners.change();
   sandbox.tilemo.displays(JSON.parse(JSON.stringify(lit)));
   assert.strictEqual(brightness().value, "65", "back to macOS's level");
+  // A monitor's over DDC is set once let go.
+  sandbox.tilemo.displays({ ...state, displays: [state.displays[0], { ...state.displays[1], brightness: 30, over_ddc: true }] });
+  const ext = () => box().filter((r) => r.className === "row volume")[1].children[1];
+  sent.length = 0;
+  ext().value = "50";
+  ext().listeners.input();
+  assert.deepStrictEqual(sent, [], "not while it moves");
+  ext().listeners.change();
+  assert.deepStrictEqual(sent, [{ displayBrightness: { uuid: "ext", level: 50 } }]);
 }
 
 // Bluetooth, as tide's popover: On or Off, then the paired devices while

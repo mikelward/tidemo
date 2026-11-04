@@ -340,4 +340,22 @@ t.test("a DDC reading counts only for the output it was read for, without a volu
     t.eq(ddc.applies(nil, read), false)
 end)
 
+t.test("brightness over DDC: each tool's runs, and what they print", function()
+    local m1, ctl = { name = "m1ddc" }, { name = "ddcctl" }
+    t.eq(ddc.luminance_reads(m1, "U1"), { { "display", "U1", "get", "luminance" }, { "display", "U1", "max", "luminance" } })
+    t.eq(ddc.luminance_reads(ctl, 2), { { "-d", "2", "-b", "?" } })
+    t.eq(ddc.luminance_set(m1, "U1", 40), { "display", "U1", "set", "luminance", "40" })
+    t.eq(ddc.luminance_set(ctl, 2, 40), { "-d", "2", "-b", "40" })
+    t.eq(ddc.parse_luminance(m1, { { code = 0, out = "30\n" }, { code = 0, out = "100\n" } }), { cur = 30, max = 100 })
+    local l, why = ddc.parse_luminance(m1, { { code = 1, out = "", err = "no display" }, { code = 0, out = "100" } })
+    t.eq(l, nil)
+    t.eq(why, "m1ddc get luminance exited 1: no display")
+    t.eq(ddc.parse_luminance(ctl, { { code = 0, out = "I: VCP control #16 (0x10) = current: 55, max: 100\n" } }),
+        { cur = 55, max = 100 })
+    t.eq(select(2, ddc.parse_luminance(ctl, { { code = 0, out = "E: DDC read failed\n" } })),
+        "ddcctl read no brightness (exit 0)")
+    t.eq(ddc.id(m1, { uuid = "U1", index = 1 }), "U1")
+    t.eq(ddc.id(ctl, { uuid = "U1", index = 1 }), 1)
+end)
+
 t.done("ddc")
