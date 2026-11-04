@@ -2797,6 +2797,32 @@ Each one names a workaround, or says there is none.
       rest of the window going undrawn.
     - **Cost and reliability:** nothing to install; Core Audio through
       Hammerspoon, as the bar uses already.
+  - **Built: Idle runs tide's timeline** (`idle.lua`, `idle_hs.lua`), from
+    tide's `idle.json` and `idle.local.json`, read as tide's idle module
+    reads them (copied unchanged, `dashboard/tide-idle.js`). With nothing
+    set in either, macOS's own Lock Screen settings alone time it.
+    - With no input for each step's time: a dark veil over every display
+      for the dim (an `hs.canvas` at the screen saver's level), macOS's
+      lock, the displays off (`pmset displaysleepnow`), and sleep, on
+      battery or on AC too if set. Input lifts the dim, and the timeline
+      starts again.
+    - tilemo looks at the idle time (`hs.host.idleTime`) every 5 s, and
+      every second while dimmed. Each step happens once until the next
+      input; back from a long sleep, the steps due happen in order.
+    - An app keeping the display awake (a power assertion, as a video
+      playing holds) holds every step, as an idle inhibit does on tide;
+      one keeping the system awake holds the sleep alone. tilemo's own
+      keep awake holds the display, so it holds the timeline too.
+    - The page: tide's timeline On or Off, then each step's time, − and +
+      along tide's ladder, and Suspend on AC too. On writes tide's timings
+      as they stand to `idle.local.json`; Off empties it, and can't turn
+      off what the shared file sets.
+    - macOS's own timers still run, so the page says to set them later,
+      or to Never. None of this needs an administrator.
+    - **Cost and reliability:** nothing to install. One cheap reading every
+      5 s while it runs. *(Unverified on a Mac: that the veil covers the
+      menu bar and full-screen apps, and how `pmset displaysleepnow`
+      behaves with an external display.)*
   - **Built: Network and Power show what the bar reads** (`netpower.lua`,
     `netpower_hs.lua`), through the bar's own `bar.icons`, so the two
     agree.
@@ -2858,7 +2884,7 @@ Each one names a workaround, or says there is none.
     | Notifications | Notifications settings, above the muted list (below) |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
-    | Idle | Lock Screen settings |
+    | Idle | tide's timeline On or Off, each step's time, and Suspend on AC too (below); Lock Screen settings |
     | Start at login | Login Items settings, for macOS's own list |
 
     - A pane opens by its `x-apple.systempreferences:` ID, as the bar's

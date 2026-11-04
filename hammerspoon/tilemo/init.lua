@@ -35,6 +35,7 @@ local picker = require("tilemo.picker")
 local settings_hs = require("tilemo.settings_hs")
 local wallpaper_hs = require("tilemo.wallpaper_hs")
 local theme_hs = require("tilemo.theme_hs")
+local idle_hs = require("tilemo.idle_hs")
 local floating_hs = require("tilemo.floating_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
@@ -590,6 +591,10 @@ function M.start(config)
         if self.theme then
             self.theme.apply()
         end
+        self.idle_files = dashboard.idle_files(self.clock_dir, self.adapter.read)
+        if self.idle then
+            self.idle.reload()
+        end
         if self.set_mouse then
             self.set_mouse("folder")
         end
@@ -615,6 +620,9 @@ function M.start(config)
     self.settings = settings_hs.new(self)
     -- Light or dark on tide's schedule, once a mode's set in its files.
     self.theme = theme_hs.new(self)
+    -- tide's idle timeline, once its files set any of it.
+    self.idle_files = dashboard.idle_files(self.clock_dir, self.adapter.read)
+    self.idle = idle_hs.new(self)
     self.wm.open_settings = function(section)
         self.settings.show(section)
     end

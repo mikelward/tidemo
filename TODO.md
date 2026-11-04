@@ -265,6 +265,13 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
 
 ## Decisions needing review
 
+- **tide's idle timeline runs only once its files set some of it**
+  (SPEC.md §15, 2026-11-04), as light and dark does, rather than tide's
+  defaults locking every Mac after 5 minutes; the page's switch writes
+  them. The dim is a half-dark veil, not the displays' brightness, so it
+  covers every display alike. An app's power assertion holds the whole
+  timeline. Reversible: `chosen` in `idle.load`, `idle_hs.DIM_ALPHA`.
+
 - **Light or dark follows tide's schedule only once a mode is set**
   (SPEC.md §10, 2026-11-04): with none in tide's appearance files, macOS's
   own appearance stays, rather than tide's default of 07:00 and 19:00

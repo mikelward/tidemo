@@ -38,6 +38,10 @@ import {
   MODE_CHOICES, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate, steppedDim, steppedModeAt,
   steppedTimePast, withSetting as withAppearance,
 } from "./tide-appearance.js";
+import {
+  DEFAULT_IDLE, STEPS as IDLE_STEPS, SWITCHES as IDLE_SWITCHES, formatDuration, loadIdle, stepped as steppedIdle,
+  withSetting as withIdle,
+} from "./tide-idle.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { steppedPointer } from "./linearmouse.js";
 
@@ -443,6 +447,87 @@ function drawDisplays(st) {
       box.append(row);
     }
   }
+}
+
+// The Idle page, as tide's (tide SPEC.md §16): whether tide's timeline
+// runs, then each step's time with no input, − and + along tide's ladder,
+// and Suspend on AC too. Shared with tide's idle.json; a change goes to
+// idle.local.json ({ writeIdle: text }), and tilemo runs the timeline as it
+// says (idle_hs.lua). Off is macOS's own: no step set in either file.
+let idleFiles = null;
+const idleText = (which) => (typeof idleFiles?.[which] === "string" ? idleFiles[which] : null);
+
+// Whether a file's text sets any of the timeline.
+function setsIdle(text) {
+  try {
+    const v = JSON.parse(text);
+    return v !== null && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function writeIdle(text) {
+  idleFiles = { ...idleFiles, local: text };
+  send({ writeIdle: text });
+  renderIdle();
+}
+
+function setIdle(key, value) {
+  const r = withIdle(idleText("local"), key, value);
+  const error = document.getElementById("idle-error");
+  if (r.error) {
+    error.textContent = `${r.error}; not changing ${key}`;
+    return;
+  }
+  error.textContent = "";
+  writeIdle(r.text);
+}
+
+function renderIdle() {
+  const { idle, errors } = loadIdle(idleText("shared"), idleText("local"));
+  const bad = errors.length > 0;
+  const shared = idleText("shared");
+  const on = [shared, idleText("local")].some((t) => t !== null && setsIdle(t));
+  document.getElementById("idle-error").textContent = bad ? `${errors.join("; ")}. Fix the file to change these here.` : "";
+  keepingFocus(() => {
+    const row = document.getElementById("idle-timeline");
+    row.replaceChildren();
+    const name = el("span", "tide's timeline");
+    name.className = "name";
+    // On writes tide's timings as they stand; Off empties this Mac's file,
+    // which can't turn off what the shared one sets.
+    const toggle = keyed(button(on ? "On" : "Off", `tide's timeline: ${on ? "on" : "off"}`, bad || (on && setsIdle(shared ?? "")), () => {
+      if (on) return writeIdle("{}\n");
+      const all = Object.fromEntries(Object.keys(DEFAULT_IDLE).map((k) => [k, idle[k]]));
+      writeIdle(JSON.stringify(all, null, 2) + "\n");
+    }), "idle-timeline");
+    toggle.setAttribute("aria-pressed", String(on));
+    row.append(name, toggle);
+    const list = document.getElementById("idle-steps");
+    list.replaceChildren();
+    if (!on) return;
+    for (const s of IDLE_STEPS) {
+      const li = el("li");
+      const value = el("span", formatDuration(idle[s.key]));
+      value.className = "value";
+      li.append(el("span", s.label),
+        keyed(button("−", `Sooner: ${s.label}`, bad || steppedIdle(idle[s.key], -1) === idle[s.key],
+          () => setIdle(s.key, steppedIdle(idle[s.key], -1))), `idle-${s.key}-sooner`), value,
+        keyed(button("+", `Later: ${s.label}`, bad || steppedIdle(idle[s.key], 1) === idle[s.key],
+          () => setIdle(s.key, steppedIdle(idle[s.key], 1))), `idle-${s.key}-later`));
+      list.append(li);
+    }
+    for (const s of IDLE_SWITCHES) {
+      const li = el("li");
+      li.className = "switch";
+      const sw = keyed(button(idle[s.key] ? "On" : "Off", `${s.label}: ${idle[s.key] ? "on" : "off"}`, bad,
+        () => setIdle(s.key, !idle[s.key])), `idle-${s.key}`);
+      sw.setAttribute("aria-pressed", String(idle[s.key] === true));
+      li.append(el("span", s.label), sw);
+      list.append(li);
+    }
+  });
 }
 
 // The Network and Power pages: Wi-Fi On or Off, the network it's joined
@@ -1341,6 +1426,8 @@ window.tilemo = {
     startupFiles = state.startupFiles ?? null;
     clipboardFiles = state.clipboardFiles ?? null;
     appearanceFiles = state.appearanceFiles ?? null;
+    idleFiles = state.idleFiles ?? null;
+    renderIdle();
     if (isObject(state.theme)) themeState = state.theme;
     layoutFiles = state.layoutFiles ?? null;
     inputFiles = state.inputFiles ?? null;

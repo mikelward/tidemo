@@ -234,6 +234,8 @@ function M.new(tilemo)
             clipboardFiles = tilemo.clipboard_files,
             -- tide's Appearance files, for the wallpapers, light and dark.
             appearanceFiles = tilemo.appearance_files,
+            -- tide's idle files, for the Idle page's timings.
+            idleFiles = tilemo.idle_files,
             -- tide's workspaces files, and what they lay over: start()'s
             -- lists, or tilemo's defaults.
             workspaceFiles = tilemo.workspace_files,
@@ -462,6 +464,8 @@ function M.new(tilemo)
             elseif body.themeFlip == true and tilemo.theme then
                 -- Drawn as macOS's appearance changes.
                 tilemo.theme.flip()
+            elseif type(body.writeIdle) == "string" then
+                save(dashboard.IDLE_LOCAL_FILE, body.writeIdle, "the idle timings")
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
             elseif type(body.pickWallpaper) == "string" and tilemo.wallpaper then
