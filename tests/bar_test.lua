@@ -62,6 +62,52 @@ t.test("without a notch, the bar sits at the top of the area as before", functio
     t.eq(strip.y, 0, "a notch flag with no room kept is just the top")
 end)
 
+t.test("a bar over a menu bar macOS keeps showing covers it, from the top of the screen", function()
+    t.eq(bar.level({ menu_bar = true }), "status", "just above the menu bar's level")
+    local shown = { area = { x = 0, y = 24, w = 1920, h = 1056 }, full = { x = 0, y = 0, w = 1920, h = 1080 }, menu_bar = true }
+    local strip, below = bar.place(shown, 36)
+    t.eq(strip, { x = 0, y = 0, w = 1920, h = 36 }, "over the 24 px menu bar, and on past it")
+    t.eq(below, { x = 0, y = 36, w = 1920, h = 1044 })
+    local notch = { area = { x = 0, y = 38, w = 1512, h = 944 }, full = { x = 0, y = 0, w = 1512, h = 982 }, menu_bar = true }
+    strip, below = bar.place(notch, 36)
+    t.eq(strip, { x = 0, y = 0, w = 1512, h = 38 }, "as tall as a notched Mac's menu bar")
+    t.eq(below.y, 38)
+end)
+
+t.test("the room at the top is a notch, a menu bar that shows, or both", function()
+    local full = { x = 0, y = 0, w = 1512, h = 982 }
+    local function room(y, hidden)
+        local notch, menu_bar = bar.top_room({ x = 0, y = y, w = 1512, h = 982 - y }, full, hidden)
+        return { notch = notch, menu_bar = menu_bar }
+    end
+    t.eq(room(38, true), { notch = true, menu_bar = false }, "hidden: only a notch keeps room")
+    t.eq(room(0, true), { notch = false, menu_bar = false })
+    t.eq(room(38, false), { notch = true, menu_bar = true }, "a notched display's menu bar, shown, still keeps the title clear")
+    t.eq(room(25, false), { notch = false, menu_bar = true }, "a plain display's")
+    t.eq(room(0, false), { notch = false, menu_bar = false }, "a display with no menu bar")
+end)
+
+t.test("Show Menu Bar ends on Esc or a click below the bars, not on the menu bar", function()
+    local frames = { A = { x = 0, y = 0, w = 1920, h = 36 }, B = { x = 1920, y = 0, w = 1280, h = 36 } }
+    t.eq(bar.reveal_done(frames, "key", "escape", 0, 0), true)
+    t.eq(bar.reveal_done(frames, "key", "a", 0, 0), false, "typing in a menu keeps it")
+    t.eq(bar.reveal_done(frames, "mouse", nil, 100, 10), false, "a menu's title")
+    t.eq(bar.reveal_done(frames, "mouse", nil, 2000, 10), false, "on the other display's")
+    t.eq(bar.reveal_done(frames, "mouse", nil, 100, 200), true, "a menu item, or anywhere else")
+    t.eq(bar.reveal_done(frames, "key", "return", 0, 0), true, "choosing an item by key")
+end)
+
+t.test("Show Menu Bar ends when a menu's item is chosen by dragging from its title", function()
+    local frames = { A = { x = 0, y = 0, w = 1920, h = 36 } }
+    local watched = {}
+    for _, name in ipairs(bar.REVEAL_EVENTS) do
+        watched[name] = true
+    end
+    t.eq(watched.leftMouseUp and watched.rightMouseUp, true, "the release is watched")
+    t.eq(bar.reveal_done(frames, "mouse", nil, 100, 10), false, "the press on the title")
+    t.eq(bar.reveal_done(frames, "mouse", nil, 120, 140), true, "the release on the item")
+end)
+
 t.test("a bar over a notch sits at the main menu's level, the lowest macOS leaves there", function()
     t.eq(bar.level({ notch = true }), "mainMenu")
     t.eq(bar.level({}), "floating", "elsewhere, below the menu bar, which shows over it")
@@ -644,13 +690,13 @@ t.test("the Apple logo's menu is the Apple menu's entries, each opening or doing
             item.fn()
         end
     end
-    t.eq(titles, { "About This Mac", "-", "System Settings…", "App Store…", "-", "Sleep", "Restart…", "Shut Down…", "-", "Lock Screen", "Log Out…" })
+    t.eq(titles, { "Show Menu Bar", "-", "About This Mac", "-", "System Settings…", "App Store…", "-", "Sleep", "Restart…", "Shut Down…", "-", "Lock Screen", "Log Out…" })
     t.eq(opened, {
         "x-apple.systempreferences:com.apple.SystemProfiler.AboutExtension",
         "/System/Applications/System Settings.app",
         "/System/Applications/App Store.app",
     })
-    t.eq(ran, { "sleep", "restart", "shutdown", "lock", "logout" }, "the session menu's own actions")
+    t.eq(ran, { "menubar", "sleep", "restart", "shutdown", "lock", "logout" }, "Show Menu Bar, then the session menu's own actions")
 end)
 
 t.test("the Apple logo opens the Apple menu, from its own bar", function()

@@ -150,7 +150,9 @@ local function check_bar()
     local frames = tilemo.bar.frames()
     local n = 0
     for _, s in ipairs(tilemo.adapter.screens()) do
-        local want = bar.strip(s.area, bar.HEIGHT)
+        -- Where bar.place puts it: over a menu bar that shows (as on CI's
+        -- Mac), from the top of the screen; macOS must let it stay there.
+        local want, below = bar.place(s, bar.HEIGHT)
         local got = frames[s.uuid]
         local v = tilemo.bar.views[s.uuid]
         if not got then
@@ -171,8 +173,8 @@ local function check_bar()
             n = n + 1
         end
         local tiling = tilemo.wm:screen_by_uuid(s.uuid).area
-        if tiling.y ~= want.y + want.h then
-            fail("bar: tiling starts at y=%d, want %d", tiling.y, want.y + want.h)
+        if tiling.y ~= below.y then
+            fail("bar: tiling starts at y=%d, want %d", tiling.y, below.y)
         end
     end
     -- Which status items this Mac has; the network one is always drawn.

@@ -1519,13 +1519,27 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - **Option 2:** no bar. The workspaces and clocks go in the menu bar's
     right side as status items, plus a full-screen dashboard on a key, as
     tileco's is (tileco §8.1).
-  - **Decided: option 1, with tilemo's own status icons.** The menu bar is
-    set to hide automatically (System Settings › Control Center ›
+  - **Decided: option 1, with tilemo's own status icons.** At first the
+    menu bar was set to hide automatically (System Settings › Control Center ›
     "Automatically hide and show the menu bar": Always, or
     `defaults write NSGlobalDomain _HIHideMenuBar -bool true`). tilemo's bar
     takes the top 36 px of each display, up over the notch on a MacBook's
     own (below), and draws the common status items itself, so they don't
     need the menu bar revealed.
+  - **Now: the menu bar shown, and covered** (the hidden one slid
+    in too easily). With "Automatically hide and
+    show the menu bar" set to Never, the menu bar never slides in, so
+    reaching the top edge by accident does nothing. tilemo's bar covers it:
+    each display's bar starts at the top of the screen, at the status
+    window level just above the menu bar's (`bar.level`), as tall as the
+    menu bar or 36 px, whichever is taller (`bar.place`), and windows tile
+    below it. A shown menu bar taller than 30 px is taken as a notched display's (`bar.top_room`), so the title and chips still keep clear of the notch. The Apple logo's menu starts with **Show Menu Bar**, which
+    hides every bar so the real menu bar shows, with the app's menus and
+    other apps' status items, until Esc, Return, or a click or release below the bars
+    (`bar.reveal_done`): a click on the menu bar or a menu's title keeps
+    it, and choosing a menu item, by a click or a drag, brings the bars back *(unverified on a
+    Mac that macOS lets a window sit over a menu bar that shows; CI's
+    smoke test checks the bar's frame there)*.
   - **What still needs the menu bar:** the app's own menus, the Apple menu,
     and other apps' status items (a VPN, an IT agent, Zoom). The Apple
     logo opens tilemo's copy of the Apple menu (below); the app's menus

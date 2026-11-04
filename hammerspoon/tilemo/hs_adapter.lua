@@ -3,6 +3,7 @@
 -- Not runnable outside Hammerspoon.
 
 local atomic = require("tilemo.atomic")
+local bar = require("tilemo.bar")
 local brand = require("tilemo.brand")
 local kitty = require("tilemo.kitty")
 local rules = require("tilemo.rules")
@@ -373,7 +374,7 @@ function M.new()
     end
 
     -- Whether the menu bar is set to hide always ("Automatically hide and
-    -- show the menu bar": Always, which scripts' setup-macos sets). Read
+    -- show the menu bar": Always; scripts' setup-macos sets Never). Read
     -- once: it changes only in System Settings, and tilemo reloads after.
     -- Never set, defaults fails, and that's no: kept as nil, it ran
     -- defaults, a process Hammerspoon waits on, at every display read.
@@ -399,6 +400,7 @@ function M.new()
                 area = { x = s.area.x, y = s.area.y, w = s.area.w, h = s.area.h },
                 full = { x = s.full.x, y = s.full.y, w = s.full.w, h = s.full.h },
                 notch = s.notch,
+                menu_bar = s.menu_bar,
             }
         end
         return out
@@ -410,9 +412,8 @@ function M.new()
         local out = {}
         for _, s in ipairs(hs.screen.allScreens()) do
             local area, full = box(s:frame()), box(s:fullFrame())
-            -- With the menu bar hidden, the only room macOS still keeps at
-            -- the top is a notch's (bar.place).
-            out[#out + 1] = { uuid = s:getUUID(), area = area, full = full, notch = area.y > full.y and hides_menu_bar() }
+            local notch, menu_bar = bar.top_room(area, full, hides_menu_bar())
+            out[#out + 1] = { uuid = s:getUUID(), area = area, full = full, notch = notch, menu_bar = menu_bar }
         end
         -- Left to right, then top to bottom, so numbering is stable.
         table.sort(out, function(p, q)

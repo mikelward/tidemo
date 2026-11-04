@@ -84,7 +84,7 @@ With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
 `setup` (or `setup-macos`) does all of this: it installs Hammerspoon and
 tilemo, pulling an existing checkout first so each run keeps it current,
 writes the `init.lua` below if there isn't one, frees the keys tilemo needs
-(SPEC.md §7.3), and hides the menu bar. `--wm amethyst` sets up Amethyst
+(SPEC.md §7.3), and stops the menu bar hiding, so tilemo's bar covers it. `--wm amethyst` sets up Amethyst
 instead. Grant Hammerspoon Accessibility,
 and add conf's `tilemo:` Karabiner rule for a Super key that leaves Option
 alone (§7.1). By hand:
@@ -98,9 +98,11 @@ alone (§7.1). By hand:
    tilemo.start({})
    ```
 
-3. Set the menu bar to hide: System Settings › Control Center ›
-   "Automatically hide and show the menu bar": Always. tilemo's bar takes
-   its place; the menu bar still shows when the pointer reaches the top.
+3. Stop the menu bar hiding: System Settings › Control Center ›
+   "Automatically hide and show the menu bar": Never. tilemo's bar covers
+   it, so it no longer slides in when the pointer reaches the top; the
+   Apple logo's **Show Menu Bar** brings it back until Esc, Return, or a
+   click below it.
 4. Reload Hammerspoon's config.
 
 To update, `git pull` and `make install` again (or run `setup`): tilemo

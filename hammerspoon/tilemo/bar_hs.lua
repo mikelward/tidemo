@@ -480,6 +480,41 @@ function M.new(tilemo)
         self.volume_popover.toggle(v.frame, at.right)
     end
 
+    -- Show Menu Bar: every bar hidden, so the menu bar it covers shows, until
+    -- Esc, Return, or a click or release below it (bar.reveal_done), watched by
+    -- a tap of its own.
+    local function show_menu_bar()
+        local strips = {}
+        for uuid, v in pairs(self.views) do
+            if v.frame then
+                strips[uuid] = v.frame
+            end
+        end
+        self.revealed = true
+        self.update()
+        if self.reveal_tap then
+            self.reveal_tap:stop()
+        end
+        local t = hs.eventtap.event.types
+        local watch = {}
+        for _, name in ipairs(bar.REVEAL_EVENTS) do
+            watch[#watch + 1] = t[name]
+        end
+        self.reveal_tap = hs.eventtap.new(watch, function(e)
+            local kind = e:getType() == t.keyDown and "key" or "mouse"
+            local p = e:location()
+            if bar.reveal_done(strips, kind, hs.keycodes.map[e:getKeyCode()], p.x, p.y) then
+                self.reveal_tap:stop()
+                self.reveal_tap = nil
+                self.revealed = false
+                -- After this event's own handling, so a menu item's click lands.
+                tilemo.adapter.after(0.2, self.update)
+            end
+            return false
+        end)
+        self.reveal_tap:start()
+    end
+
     -- The Apple logo's menu (bar.lua's copy of the Apple menu), under the
     -- logo at the left of display `uuid`'s bar.
     local function open_apple_menu(uuid)
@@ -494,6 +529,10 @@ function M.new(tilemo)
             return
         end
         self.apple_popup:setMenu(bar.apple_menu(tilemo.adapter.open_url, function(id)
+            if id == "menubar" then
+                show_menu_bar()
+                return
+            end
             local ok, err = pcall(SESSION_RUN[id])
             if not ok then
                 log("bar: session " .. id .. " failed: " .. tostring(err))
@@ -732,7 +771,7 @@ function M.new(tilemo)
         local title = f and tilemo.wm.windows[f] and tilemo.adapter.title(f) or ""
         for _, v in pairs(self.views) do
             -- Out of a full-screen window's way, and back after.
-            local hide = bar.hidden(tilemo.wm, v.uuid)
+            local hide = bar.hidden(tilemo.wm, v.uuid) or self.revealed or false
             if hide ~= (v.hidden or false) then
                 v.hidden = hide
                 if hide then
