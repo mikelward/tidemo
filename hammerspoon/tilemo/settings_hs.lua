@@ -17,6 +17,7 @@ local launcher = require("tilemo.launcher")
 local launcherpage = require("tilemo.launcherpage")
 local linearmouse = require("tilemo.linearmouse")
 local checklist = require("tilemo.checklist")
+local sound_hs = require("tilemo.sound_hs")
 
 local M = {}
 
@@ -157,12 +158,27 @@ function M.new(tilemo)
     -- The section to show once the page has loaded, or nil.
     local wanted
 
+    -- The Sound page's devices (sound_hs.lua). A device that goes as it's
+    -- read is logged, and the page shows none, rather than the rest of the
+    -- window going undrawn.
+    local sound = sound_hs.new(tilemo)
+    local function sound_state()
+        local ok, s = pcall(sound.state)
+        if ok then
+            return s
+        end
+        tilemo.adapter.log("settings: couldn't read the sound devices: " .. tostring(s))
+        return {}
+    end
+
     local function push()
         if not view then
             return
         end
         -- An empty list must reach the page as one, not as an object.
         local json = hs.json.encode({
+            -- The Sound page's devices, volumes and mutes.
+            sound = sound_state(),
             clockFiles = tilemo.clock_files,
             startupFiles = tilemo.startup_files,
             layoutFiles = tilemo.layout_files,
@@ -298,6 +314,19 @@ function M.new(tilemo)
         -- The folder's watcher reloads the files, and then this page.
     end
 
+    -- The Sound page alone, as the bar sees a device, a volume or a mute
+    -- change, so it follows the volume keys while it's open.
+    function self.sound_changed()
+        if not view then
+            return
+        end
+        view:evaluateJavaScript("tilemo.sound(" .. hs.json.encode(sound_state()) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
     -- The checklist alone, so coming back to the window doesn't redraw the
     -- rest of it.
     local function setup_changed()
@@ -327,6 +356,9 @@ function M.new(tilemo)
                 save(dashboard.WORKSPACES_LOCAL_FILE, body.writeWorkspaces, "the workspaces")
             elseif type(body.writeClipboard) == "string" then
                 save(dashboard.CLIPBOARD_LOCAL_FILE, body.writeClipboard, "the clipboard settings")
+            elseif sound.handle(body) then
+                -- The page shows what macOS says now, not what it asked.
+                self.sound_changed()
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
             elseif type(body.pickWallpaper) == "string" and tilemo.wallpaper then

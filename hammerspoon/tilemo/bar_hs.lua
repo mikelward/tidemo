@@ -229,6 +229,10 @@ function M.new(tilemo)
         if self.volume_popover then
             self.volume_popover.refresh()
         end
+        -- The settings window's Sound page, if it's open, follows too.
+        if tilemo.settings and tilemo.settings.sound_changed then
+            tilemo.settings.sound_changed()
+        end
     end
 
     -- A watcher can fire many times in a burst (a volume slider, a device
@@ -321,7 +325,8 @@ function M.new(tilemo)
 
     -- The volume popover (volume.lua): the output in use, read as the bar
     -- reads it, the outputs to pick from, and what its controls change.
-    local function popover_state()
+    -- The settings window's Sound page (sound_hs.lua) uses them too.
+    local function output_reading()
         local dev = hs.audiodevice.defaultOutputDevice()
         local m = ddc_state(dev)
         local audio = dev and ddc.merge({ volume = dev:outputVolume(), muted = dev:outputMuted(), name = dev:name() }, m)
@@ -329,10 +334,15 @@ function M.new(tilemo)
         for _, o in ipairs(hs.audiodevice.allOutputDevices() or {}) do
             outputs[#outputs + 1] = { uid = o:uid(), name = o:name() }
         end
-        return volume.state(audio, outputs, dev and dev:uid(), m ~= nil)
+        return { audio = audio, devices = outputs, current = dev and dev:uid(), over_ddc = m ~= nil }
+    end
+    local function popover_state()
+        local r = output_reading()
+        return volume.state(r.audio, r.devices, r.current, r.over_ddc)
     end
     local popover_ops = {
         state = popover_state,
+        reading = output_reading,
         set_volume = function(v)
             local dev = hs.audiodevice.defaultOutputDevice()
             if ddc_state(dev) then
@@ -363,6 +373,7 @@ function M.new(tilemo)
             open_url(bar.PANES.volume)
         end,
     }
+    self.output_ops = popover_ops
 
     -- A bar item's tip, or the full title's, below a bar (SPEC.md §8),
     -- drawn as the tray's tips are: the page can't draw past its own strip.

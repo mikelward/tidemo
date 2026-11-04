@@ -1303,6 +1303,7 @@ local function check_settings_page(next)
         shown: Array.from(document.querySelectorAll(".page")).filter((p) => !p.hidden).map((p) => p.id),
         headings: Array.from(document.querySelectorAll("#sidebar h3")).map((h) => h.textContent),
         pages: document.querySelectorAll("#sidebar button").length,
+        outputs: document.querySelectorAll("#sound-outputs li").length,
     })]], function(result, err)
         -- Out of the page's own callback.
         tilemo.adapter.after(0, function()
@@ -1317,6 +1318,13 @@ local function check_settings_page(next)
             else
                 say("settings: Start at login shows alone, beside %d pages under %s", got.pages,
                     table.concat(got.headings, ", "))
+            end
+            -- The Sound page lists every output macOS has.
+            local outputs = #(hs.audiodevice.allOutputDevices() or {})
+            if got and got.outputs ~= outputs then
+                fail("settings: the Sound page lists %s outputs; macOS has %d", tostring(got.outputs), outputs)
+            elseif got then
+                say("settings: the Sound page lists the %d output(s) macOS has", outputs)
             end
             next()
         end)

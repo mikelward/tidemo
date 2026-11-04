@@ -243,6 +243,102 @@ function renderClipboard() {
   document.getElementById("clipboard-clear").disabled = clipboardCount === 0;
 }
 
+// The Sound page, as tide's (tide SPEC.md §16): for the output, then the
+// input, its mute, a slider and its level, then each device, the one in use
+// lit. A click on another uses it; the slider sets the volume as it moves,
+// or once it's let go for a monitor over DDC (`live`). tilemo answers each
+// change with tilemo.sound(), what macOS says now.
+const SOUND = {
+  output: { volume: "soundVolume", mute: "soundMute", use: "soundOutput", icon: "output", on: "speaker-on", off: "speaker-off" },
+  input: { volume: "inputVolume", mute: "inputMute", use: "soundInput", icon: "input", on: "mic", off: "mic-off" },
+};
+let soundState = {};
+// What the page shows now, so the same again draws nothing, and the
+// bar's refreshes don't take a control from under the keyboard.
+let soundDrawn = "";
+// The side whose slider is held: an update mustn't move it under you.
+let soundDragging = null;
+
+// Draws again with `draw()`, keeping the keyboard on the control it was
+// on, by its data-key, so arrow keys go on stepping a slider.
+function keepingFocus(draw) {
+  const key = document.activeElement?.getAttribute?.("data-key");
+  draw();
+  if (key) document.querySelector?.(`[data-key="${key}"]`)?.focus?.();
+}
+
+function renderVolume(kind, s) {
+  const k = SOUND[kind];
+  const row = document.getElementById(`sound-${kind}-volume`);
+  if (soundDragging === kind) return;
+  row.replaceChildren();
+  row.hidden = typeof s?.volume !== "number";
+  if (row.hidden) return;
+  const name = s.name || kind;
+  const mute = button(s.muted ? "Unmute" : "Mute", `${s.muted ? "Unmute" : "Mute"} ${name}`, !s.can_mute,
+    () => send({ [k.mute]: !s.muted }));
+  mute.setAttribute("data-icon", s.muted ? k.off : k.on);
+  mute.setAttribute("data-key", `${kind}-mute`);
+  const slider = el("input");
+  slider.type = "range";
+  slider.min = "0";
+  slider.max = "100";
+  slider.step = "1";
+  slider.value = String(s.volume);
+  slider.setAttribute("aria-label", `${name}'s volume`);
+  slider.setAttribute("data-key", `${kind}-volume`);
+  const level = el("span", `${s.muted ? 0 : s.volume}%`);
+  level.className = "value";
+  slider.addEventListener("input", () => {
+    soundDragging = kind;
+    // Moved here, the slider no longer shows what was drawn, so macOS's
+    // answer is drawn even if it's the same level, as a refusal is.
+    soundDrawn = "";
+    level.textContent = `${slider.value}%`;
+    if (s.live) send({ [k.volume]: Number(slider.value) });
+  });
+  slider.addEventListener("change", () => {
+    soundDragging = null;
+    send({ [k.volume]: Number(slider.value) });
+  });
+  row.append(mute, slider, level);
+}
+
+function renderDevices(kind, s) {
+  const k = SOUND[kind];
+  const list = document.getElementById(`sound-${kind}s`);
+  list.replaceChildren();
+  for (const d of Array.isArray(s?.devices) ? s.devices : []) {
+    const li = el("li");
+    const b = button(d.name, d.current ? `${d.name}, in use` : `Use ${d.name}`, false, () => {
+      if (!d.current) send({ [k.use]: d.uid });
+    });
+    b.setAttribute("data-icon", k.icon);
+    b.setAttribute("aria-current", String(d.current === true));
+    b.setAttribute("data-key", `${kind}-device-${d.uid}`);
+    li.append(b);
+    list.append(li);
+  }
+}
+
+function renderSound(s) {
+  soundState = isObject(s) ? s : {};
+  const drawn = JSON.stringify(soundState);
+  if (drawn === soundDrawn) return;
+  // A held slider's side isn't drawn, so nothing is taken as drawn until
+  // it's let go, and tilemo's answer to that draws it, even if it's the
+  // same state again.
+  soundDrawn = soundDragging === null ? drawn : "";
+  keepingFocus(() => {
+    for (const kind of ["output", "input"]) {
+      renderVolume(kind, soundState[kind]);
+      renderDevices(kind, soundState[kind]);
+    }
+  });
+  const inputs = soundState.input?.devices;
+  document.getElementById("sound-input-heading").hidden = !(Array.isArray(inputs) && inputs.length > 0);
+}
+
 // The Appearance page's wallpapers, light and dark, as tide's has them
 // (tide SPEC.md §15, §16): appearance.json and appearance.local.json, read
 // and changed with tide's own module, so the Mac's desktop shows the ones
@@ -972,6 +1068,7 @@ window.tilemo = {
     renderStartup();
     renderClipboard();
     renderAppearance();
+    if (isObject(state.sound)) renderSound(state.sound);
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
@@ -1013,6 +1110,10 @@ window.tilemo = {
   // A Keyboard switch that couldn't be made.
   keyboardError(why) {
     document.getElementById("keyboard-error").textContent = String(why ?? "");
+  },
+  // The Sound page alone, as macOS says it is now.
+  sound(s) {
+    renderSound(s);
   },
   // The file macOS's dialog chose for wallpaper `key`, as a setting.
   setWallpaper(key, value) {
