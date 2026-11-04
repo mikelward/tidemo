@@ -16,6 +16,37 @@ t.test("word starts and the prefix score higher", function()
     t.eq(launcher.score("saf", "Safari") > launcher.score("saf", "Mesafe"), true)
 end)
 
+t.test("a match is scored from its best start, not the first matching letter", function()
+    -- Greedy from the S of System, "settings" missed the run in Settings.
+    t.eq(launcher.score("settings", "System Settings"), launcher.score("settings", "Appearance settings"))
+end)
+
+t.test("System Settings comes first for \"settings\", ahead of its panes", function()
+    local panes = {}
+    for _, n in ipairs({ "Appearance", "Battery", "General", "Keyboard", "Privacy & Security" }) do
+        panes[#panes + 1] = { name = n, id = n }
+    end
+    local items = launcher.items({ { name = "System Settings", path = "/System/Applications/System Settings.app" } }, {}, {}, panes, {}, {}, {})
+    local first = launcher.rank("settings", items, { scope = "launch" })[1]
+    t.eq(first.title, "System Settings", "an app before panes that match as well")
+end)
+
+t.test("equal matches sort the same way whatever their recency, commands included", function()
+    -- An app, a pane and a command that "settings" matches equally, used in
+    -- an order that made the old pairwise rule go round in a circle.
+    local items = {
+        { kind = "app", title = "System Settings", key = "a" },
+        { kind = "setting", title = "Mouse settings", key = "p" },
+        { kind = "command", title = "Tide Settings: Clocks", key = "c" },
+    }
+    local recency = { a = 1, p = 3, c = 2 }
+    local order = {}
+    for _, r in ipairs(launcher.rank("settings", items, { scope = "launch", recency = recency })) do
+        order[#order + 1] = r.title
+    end
+    t.eq(order[#order], "Mouse settings", "the pane last, after both")
+end)
+
 t.test("an empty query matches everything with score 0", function()
     t.eq(launcher.score("", "anything"), 0)
 end)
