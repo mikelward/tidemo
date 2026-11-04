@@ -34,7 +34,7 @@ import {
 } from "./tide-input.js";
 import { LISTS, editedList, itemNote, movedItem, withItem, withoutItem } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings } from "./tide-workspacenames.js";
-import { loadAppearance, withSetting as withAppearance } from "./tide-appearance.js";
+import { dimStrength, formatDim, loadAppearance, steppedDim, withSetting as withAppearance } from "./tide-appearance.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { steppedPointer } from "./linearmouse.js";
 
@@ -463,6 +463,12 @@ function setWallpaper(key, value) {
     error.textContent = `A solid color is tide's only: on a Mac, ${key} must be an image's path; not changing ${key}`;
     return;
   }
+  setAppearance(key, value);
+}
+
+// Set one of appearance.local.json's settings, or say why not.
+function setAppearance(key, value) {
+  const error = document.getElementById("appearance-error");
   const r = withAppearance(appearanceText("local"), key, value, appearanceText("shared"));
   if (r.error) {
     error.textContent = `${r.error}; not changing ${key}`;
@@ -498,7 +504,16 @@ function renderAppearance() {
     li.append(el("span", w.label), input, choose);
     list.append(li);
   }
+  // The dim, as tide's page steps it: a point at a time, from none to half.
+  const dim = dimStrength(settings);
+  document.getElementById("dim-strength").textContent = formatDim(dim);
+  document.getElementById("dim-less").disabled = errors.length > 0 || steppedDim(dim, -1) === dim;
+  document.getElementById("dim-more").disabled = errors.length > 0 || steppedDim(dim, 1) === dim;
 }
+
+const currentDim = () => dimStrength(loadAppearance(appearanceText("shared"), appearanceText("local")).settings);
+document.getElementById("dim-less").addEventListener("click", () => setAppearance("dimStrength", steppedDim(currentDim(), -1)));
+document.getElementById("dim-more").addEventListener("click", () => setAppearance("dimStrength", steppedDim(currentDim(), 1)));
 
 document.getElementById("clipboard-history").addEventListener("click", () => {
   setClipboard("history", !clipboardSettings().settings.history);

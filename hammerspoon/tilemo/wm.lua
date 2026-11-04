@@ -1782,6 +1782,51 @@ function M:bar_state()
     return out
 end
 
+-- What the dim needs (dim.lua, SPEC.md §5.6): the focused window's frame
+-- and the frames of the windows in front of it, front to back, or nil when
+-- nothing's to be dimmed: no window of the workspace showing has focus, it's
+-- full screen, or it's the only window showing, which tide never dims
+-- (tide SPEC.md §6.2). While one of tilemo's own windows has the focus (the
+-- settings window, a launcher), they sit over the layer, and every window
+-- under it is dimmed: { above = {} }, with no focused frame.
+function M:dim_scene()
+    if self.a.own_front() then
+        return { above = {} }
+    end
+    local id = self.a.focused()
+    local w = id and self.windows[id]
+    if not w or not self:shown(w.ws) then
+        return nil
+    end
+    local st = self.a.state(id)
+    if not st or st.minimized or st.hidden or st.fullscreen then
+        return nil
+    end
+    local others = {}
+    for oid, o in pairs(self.windows) do
+        if oid ~= id and o.ws == w.ws and not o.mine then
+            local ost = self.a.state(oid)
+            -- One full screen is on a Space of its own, not showing here.
+            if ost and not ost.minimized and not ost.hidden and not ost.fullscreen then
+                others[oid] = ost.frame
+            end
+        end
+    end
+    if not next(others) then
+        return nil
+    end
+    local above = {}
+    for _, oid in ipairs(self.a.ordered()) do
+        if oid == id then
+            break
+        end
+        if others[oid] then
+            above[#above + 1] = others[oid]
+        end
+    end
+    return { focused = st.frame, above = above }
+end
+
 -- Coalesce a burst of events into one sync and retile.
 function M:schedule()
     if self.timer then

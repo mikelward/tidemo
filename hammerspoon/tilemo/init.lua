@@ -42,6 +42,7 @@ local bar = require("tilemo.bar")
 local selfreload = require("tilemo.selfreload")
 local bar_hs = require("tilemo.bar_hs")
 local tray_hs = require("tilemo.tray_hs")
+local dim_hs = require("tilemo.dim_hs")
 local names = require("tilemo.names")
 local mute = require("tilemo.mute")
 local standing = require("tilemo.standing")
@@ -325,8 +326,16 @@ function M.start(config)
         self.wm:schedule()
     end, function(id)
         self.wm:focused(id)
+        -- Focus may have gone to a window tilemo doesn't manage, which
+        -- changes nothing else.
+        if self.dim then
+            self.dim.update()
+        end
     end, function(id)
         self.wm:moved(id)
+        if self.dim then
+            self.dim.update()
+        end
     end, function(id)
         self.wm:minimized(id)
     end, function(id)
@@ -573,6 +582,10 @@ function M.start(config)
         if self.wallpaper then
             self.wallpaper.apply()
         end
+        if self.dim then
+            self.dim.load()
+            self.dim.update()
+        end
         if self.set_mouse then
             self.set_mouse("folder")
         end
@@ -592,6 +605,9 @@ function M.start(config)
     -- (SPEC.md §10), and the files the settings window sets them in.
     self.appearance_files = dashboard.appearance_files(self.clock_dir, self.adapter.read)
     self.wallpaper = wallpaper_hs.new(self)
+    -- The dim of every window but the focused one, at tide's strength
+    -- (SPEC.md §5.6).
+    self.dim = dim_hs.new(self)
     self.settings = settings_hs.new(self)
     self.wm.open_settings = function(section)
         self.settings.show(section)
@@ -732,6 +748,7 @@ function M.start(config)
         self.wm.on_change = function()
             self.bar.update()
             self.tray.update()
+            self.dim.update()
             self.publish_workspace()
         end
     else
@@ -748,6 +765,7 @@ function M.start(config)
                 self.menubar:setTitle(bar.title(self.wm:bar_state()))
             end
             self.tray.update()
+            self.dim.update()
             self.publish_workspace()
         end
         self.menubar:setMenu(function()

@@ -167,7 +167,8 @@ body.settings {
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-#clipboard-max {
+#clipboard-max,
+#dim-strength {
   width: 92px;
 }
 /* A field, as tide's: filled, edged in the accent while typed in. */
@@ -589,6 +590,12 @@ body.settings {
 <p class="note">The wallpapers, light and dark, shared with tide's appearance.json: the desktop shows the one for the mode macOS is in, as tide does. Empty leaves macOS's own picture.</p>
 <ul id="wallpapers"></ul>
 <p class="error" id="appearance-error" role="alert"></p>
+<h2 id="dim">Dim</h2>
+<p class="note">How dark every window but the focused one is, shared with tide's appearance.json. A lone window, or one full screen, is never dimmed.</p>
+<p class="row"><span class="name">Strength</span>
+<button type="button" id="dim-less" aria-label="Dim less" data-icon="less">−</button>
+<span class="value" id="dim-strength"></span>
+<button type="button" id="dim-more" aria-label="Dim more" data-icon="more">+</button></p>
 <h2 id="menubar">Menu bar</h2>
 <p class="note">While it's kept hidden, the pointer stops one point short of the top edge over the bar, so macOS's menu bar doesn't slide over it; the Apple logo at the bar's left opens the Apple menu. Off, the menu bar shows at the top edge as usual, and top hot corners work again.</p>
 <p class="row"><button type="button" id="menubar-hidden" aria-pressed="true"></button></p>
