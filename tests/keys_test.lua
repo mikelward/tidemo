@@ -191,7 +191,7 @@ t.test("each binding says its keys as they're printed on the keyboard, and what 
         ["Super+T"] = "Terminal",
         ["Super+Shift+G"] = "Browser, third profile",
         ["Super+Space"] = "The switcher, on Launch",
-        ["Tap Super"] = "The switcher, on Workspaces",
+        ["Tap Super"] = "The switcher, on Launch",
         ["Super+3"] = "Workspace 3 on the bar",
         ["Super+Shift+3"] = "Send the window to workspace 3 on the bar",
         ["Print"] = "Screenshot",
@@ -306,7 +306,7 @@ t.test("the switcher's keys open it on their own tabs, and Super+Tab, End and Re
         end
     end
     t.eq(by.space, { "launcher", "launch" })
-    t.eq(by.f20, { "launcher", "workspaces" }, "Karabiner's lone Super tap")
+    t.eq(by.f20, { "launcher", "launch" }, "Karabiner's lone Super tap opens the launcher, as on tide and tileco")
     t.eq(by.a, { "launcher", "attention" })
     t.eq(by.tab, { "flip" })
     t.eq(by["end"], { "last" })
@@ -387,9 +387,9 @@ end)
 t.test("a rule enabled before conf's update is missing Alt+Tab and the Super tap, and says how to fix it", function()
     local read = env({ [CONFIG] = profiles(profile(true, rule("spacebar", false))) }, {})
     local gaps = keys.rule_gaps(read, HOME, decode)
-    t.eq(gaps, { "Alt+Tab (swap with the master)", "the lone Super tap (the workspace list)" })
+    t.eq(gaps, { "Alt+Tab (swap with the master)", "the lone Super tap (the launcher)" })
     local notice = keys.gaps_notice(gaps)
-    t.eq(notice:find("Alt+Tab (swap with the master) and the lone Super tap (the workspace list) don't work", 1, true) ~= nil, true, notice)
+    t.eq(notice:find("Alt+Tab (swap with the master) and the lone Super tap (the launcher) don't work", 1, true) ~= nil, true, notice)
     t.eq(notice:find("git pull in your conf checkout and run confinst", 1, true) ~= nil, true, notice)
     t.eq(notice:find('brings Karabiner\'s copy of the "tilemo:" rule up to date', 1, true) ~= nil, true, notice)
     read = env({ [CONFIG] = profiles(profile(true, rule("f20", false))) }, {})

@@ -1268,7 +1268,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 
 | Keys | Action | How |
 |---|---|---|
-| tap `Super` | the switcher, on its Workspaces tab (§9) | Karabiner's tap rule, sending `Super+F20`; or tilemo's event tap (below) |
+| tap `Super` | the launcher: the switcher on Launch, as `Super+Space` and tide's and tileco's taps (§9) | Karabiner's tap rule, sending `Super+F20`; or tilemo's event tap (below) |
 | `Super+Space` | the switcher, on its Launch tab | hotkey |
 | `Super+Tab` | from any workspace, "in"; from "in", the workspace you used last. Pressed again, it flips back | hotkey |
 | `Super+End` | the workspace you used last other than "in" and this one: from "in" where `Super+Tab` goes, from another the one before it | hotkey |
@@ -1951,7 +1951,8 @@ tab, the search field naming the tab you're in.
 
   An empty tab says so, in a row that can't be chosen.
 - **Each key opens it on its own tab:** `Super+Space` on Launch, the
-  Super tap on Workspaces, `Super+A` on Attention (§7.2). `Super+Tab`
+  Super tap on Launch too, `Super+A` on Attention (§7.2); Workspaces is
+  a `Tab` away. `Super+Tab`
   doesn't open it: it flips between "in" and the last workspace. The Windows tab has no key of its own *(a guess, to confirm)*.
 - **`Tab` and `Shift+Tab` move between tabs,** forward and back, as the
   scopes do now.

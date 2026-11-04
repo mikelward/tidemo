@@ -21,7 +21,7 @@ It brings tide's desktop to macOS:
   workspaces is read once into ones named "1" to "9";
 - the switcher, with Tab moving between apps and commands, the workspaces,
   open tabs, and the windows wanting attention: Super+Space opens it on
-  apps, a lone Super tap on workspaces and Super+A on attention (§9);
+  apps, a lone Super tap on apps too and Super+A on attention (§9);
 - Super+Return to go to a workspace by name and Super+Shift+Return to move
   a window to one, Super+Tab to flip between "in" and the last workspace,
   Super+End to the last one other than "in", Super+1…9 to the Nth
