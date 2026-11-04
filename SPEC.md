@@ -1608,8 +1608,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
       `setup-macos --wm tilemo` installs), found at `/opt/homebrew/bin` or
       `/usr/local/bin`, since Hammerspoon's PATH has neither.
     - It runs through `hs.task`, never waiting on it, one run at a time:
-      as tilemo starts, on wake, and every 30 s. tilemo has no Bluetooth
-      switch of its own, so nothing else changes it from here.
+      as tilemo starts, on wake, and every 30 s, and again when the
+      settings window's Bluetooth page changes anything (§15).
     - Hidden with no `blueutil`, no adapter, or any failure, and the log
       says why once, until the reason changes or clears. The headphones
       icons don't need it.
@@ -2770,6 +2770,28 @@ Each one names a workaround, or says there is none.
       rest of the window going undrawn.
     - **Cost and reliability:** nothing to install; Core Audio through
       Hammerspoon, as the bar uses already.
+  - **Built: Bluetooth switches it and connects devices itself,** as
+    tide's Bluetooth popover does (tide §7.4), through the bar's blueutil
+    (§8; `bluetooth.lua`, `bluetooth_hs.lua`).
+    - Bluetooth On or Off, then, while it's on, the paired devices,
+      connected first, then by name, each lit while connected, with its
+      status: Connected, Connecting… or Disconnecting…. A click connects
+      one, or disconnects one that's connected; one being either waits.
+    - Pairing a new one stays in Bluetooth settings, as tide leaves it to
+      blueman-manager.
+    - `blueutil --power`, `--paired --format json`, `--connect` and
+      `--disconnect`, through `hs.task`, never waiting on them. The page
+      sends a device's address alone, which tilemo checks is one, so no
+      name or option reaches blueutil.
+    - It reads as the window opens, every 5 s while it's open, so a
+      device that connects by itself shows, and after each change, when
+      the bar reads too. One read at a time.
+    - With no `blueutil`, or when it fails, the page says why, and the log
+      says it once.
+    - **Cost and reliability:** blueutil, which the bar uses already. Two
+      short processes every 5 s while the window's open. *(Unverified on a
+      Mac: how long a connect takes, and what blueutil prints for a
+      device that won't.)*
   - **Built: every page of tide's is a section, in tide's order,** so the
     window is laid out as tide's panel is. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,
@@ -2780,7 +2802,7 @@ Each one names a workaround, or says there is none.
     | Displays | each display's resolution, place beside the main display, Make main, and brightness where macOS can set it (below); Displays settings |
     | Sound | the output and the input in use, each with its mute, volume and level, and the devices to pick from (below); Sound settings |
     | Network | Network settings |
-    | Bluetooth | Bluetooth settings |
+    | Bluetooth | On or Off, and the paired devices, each connected or disconnected (below); Bluetooth settings |
     | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
     | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |

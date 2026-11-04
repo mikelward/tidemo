@@ -31,9 +31,10 @@ class Element {
   getAttribute(k) {
     return this.attrs[k] ?? null;
   }
-  // The keyboard's on it, as the document's activeElement says.
+  // The keyboard's on it, as the document's activeElement says. A browser
+  // won't focus a disabled control.
   focus() {
-    sandbox.document.activeElement = this;
+    if (!this.disabled) sandbox.document.activeElement = this;
   }
 }
 
@@ -436,6 +437,55 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   brightness().listeners.change();
   sandbox.tilemo.displays(JSON.parse(JSON.stringify(lit)));
   assert.strictEqual(brightness().value, "65", "back to macOS's level");
+}
+
+// Bluetooth, as tide's popover: On or Off, then the paired devices while
+// it's on, each lit while connected, and what a click asks.
+{
+  const power = () => ids["bluetooth-power"].children;
+  const devices = () => ids["bluetooth-devices"].children.map((li) => li.children[0]);
+  const state = {
+    on: true, switching: false,
+    devices: [
+      { address: "aa-bb-cc-dd-ee-ff", name: "Buds", connected: true, busy: false, status: "Connected" },
+      { address: "11-22-33-44-55-66", name: "Mouse", connected: false, busy: false, status: "" },
+    ],
+  };
+  sandbox.tilemo.update({ clockFiles: [], bluetooth: state });
+  assert.strictEqual(ids["bluetooth-power"].hidden, false);
+  assert.deepStrictEqual(power().map((c) => c.textContent), ["Bluetooth", "On"]);
+  assert.strictEqual(power()[1].attrs["aria-pressed"], "true");
+  assert.deepStrictEqual(devices().map((b) => [b.textContent, b.attrs["aria-current"], b.attrs["data-icon"]]),
+    [["Buds · Connected", "true", "bluetooth"], ["Mouse", "false", "bluetooth"]]);
+  assert.strictEqual(ids["bluetooth-devices-heading"].hidden, false);
+  sent.length = 0;
+  devices()[0].listeners.click();
+  devices()[1].listeners.click();
+  power()[1].listeners.click();
+  assert.deepStrictEqual(sent, [
+    { bluetoothDisconnect: "aa-bb-cc-dd-ee-ff" }, { bluetoothConnect: "11-22-33-44-55-66" }, { bluetoothPower: false },
+  ]);
+  // One connecting waits, and keeps the keyboard across the redraw.
+  devices()[1].focus();
+  sandbox.tilemo.bluetooth({ ...state, devices: [state.devices[0], { ...state.devices[1], busy: true, status: "Connecting…" }] });
+  assert.strictEqual(devices()[1].textContent, "Mouse · Connecting…");
+  assert.strictEqual(devices()[1].attrs["aria-disabled"], "true", "waiting, but still focusable");
+  assert.strictEqual(sandbox.document.activeElement, devices()[1], "the keyboard stays on the device");
+  const before = sent.length;
+  devices()[1].listeners.click();
+  assert.strictEqual(sent.length, before, "a busy device asks nothing");
+  sandbox.document.activeElement = null;
+  // Off: no devices; unread: no switch, and why.
+  sandbox.tilemo.bluetooth({ on: false, switching: false, devices: [] });
+  assert.strictEqual(power()[1].textContent, "Off");
+  assert.strictEqual(devices().length, 0);
+  assert.strictEqual(ids["bluetooth-devices-heading"].hidden, true);
+  // A change that failed says why.
+  sandbox.tilemo.bluetooth({ ...state, problem: "Couldn't connect Mouse: Failed to connect" });
+  assert.strictEqual(ids["bluetooth-error"].textContent, "Couldn't connect Mouse: Failed to connect");
+  sandbox.tilemo.bluetooth({ switching: false, devices: [], problem: "blueutil isn't installed" });
+  assert.strictEqual(ids["bluetooth-power"].hidden, true);
+  assert.strictEqual(ids["bluetooth-error"].textContent, "blueutil isn't installed");
 }
 
 // Appearance's wallpapers, light and dark, in tide's appearance files: the

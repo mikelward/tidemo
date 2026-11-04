@@ -19,6 +19,7 @@ local linearmouse = require("tilemo.linearmouse")
 local checklist = require("tilemo.checklist")
 local sound_hs = require("tilemo.sound_hs")
 local displays_hs = require("tilemo.displays_hs")
+local bluetooth_hs = require("tilemo.bluetooth_hs")
 
 local M = {}
 
@@ -186,6 +187,13 @@ function M.new(tilemo)
         return {}
     end
 
+    -- The Bluetooth page's adapter and paired devices (bluetooth_hs.lua),
+    -- read through blueutil while the window's open, and drawn again as
+    -- what it says changes.
+    local bt = bluetooth_hs.new(tilemo, function()
+        self.bluetooth_changed()
+    end)
+
     local function push()
         if not view then
             return
@@ -196,6 +204,8 @@ function M.new(tilemo)
             sound = sound_state(),
             -- The Displays page's displays.
             displays = displays_state(),
+            -- The Bluetooth page's, as last read.
+            bluetooth = bt.state(),
             clockFiles = tilemo.clock_files,
             startupFiles = tilemo.startup_files,
             layoutFiles = tilemo.layout_files,
@@ -356,6 +366,18 @@ function M.new(tilemo)
         end)
     end
 
+    -- The Bluetooth page alone.
+    function self.bluetooth_changed()
+        if not view then
+            return
+        end
+        view:evaluateJavaScript("tilemo.bluetooth(" .. hs.json.encode(bt.state()) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
     -- The checklist alone, so coming back to the window doesn't redraw the
     -- rest of it.
     local function setup_changed()
@@ -390,6 +412,8 @@ function M.new(tilemo)
                 self.sound_changed()
             elseif screens.handle(body) then
                 self.displays_changed()
+            elseif bt.handle(body) then
+                -- Drawn as blueutil answers.
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
             elseif type(body.pickWallpaper) == "string" and tilemo.wallpaper then
@@ -565,6 +589,8 @@ function M.new(tilemo)
         view:allowTextEntry(true)
         view:navigationCallback(function(action)
             if action == "didFinishNavigation" then
+                -- Read once there's a page to draw them on.
+                bt.watch(true)
                 push()
                 reveal(wanted)
                 fill_in(wanted_fill)
@@ -575,6 +601,7 @@ function M.new(tilemo)
             if action == "closing" then
                 tilemo.wm:own_window("settings", nil)
                 view = nil
+                bt.watch(false)
             end
         end)
         -- Focus follows mouse leaves it be, wherever it's dragged: asking

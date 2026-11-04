@@ -249,6 +249,10 @@ t.test("showing an open settings window again redraws Floating now", function()
     tilemo.wm.current_screen = function()
         return "s"
     end
+    -- The Bluetooth page reads through blueutil, which isn't here.
+    tilemo.adapter.exists = function()
+        return false
+    end
     package.loaded["tilemo.settings_hs"] = nil
     local settings = require("tilemo.settings_hs").new(tilemo)
     settings.show("floating")

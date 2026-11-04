@@ -214,10 +214,11 @@ body.settings {
   font-weight: 600;
 }
 /* Lit on hover, but for a switch that's on, which keeps its accent. */
-.settings button:hover:not(:disabled):not([aria-pressed="true"]) {
+.settings button:hover:not(:disabled):not([aria-disabled="true"]):not([aria-pressed="true"]) {
   background: var(--surface-2);
 }
-.settings button:disabled {
+.settings button:disabled,
+.settings button[aria-disabled="true"] {
   opacity: 0.4;
 }
 /* On or off, as tide's switch: filled, and the accent when on. */
@@ -374,6 +375,7 @@ body.settings {
 .settings .row.volume {
   gap: 10px;
 }
+.settings .row[hidden],
 .settings .row.volume[hidden],
 .settings .devices:empty {
   display: none;
@@ -511,6 +513,11 @@ body.settings {
 </section>
 <section class="page" id="page-bluetooth" hidden>
 <h1 id="bluetooth">Bluetooth</h1>
+<p class="note">Bluetooth, and the devices paired with it, through blueutil. A click on one connects or disconnects it; Bluetooth settings pairs a new one.</p>
+<p class="row" id="bluetooth-power" hidden></p>
+<h2 id="bluetooth-devices-heading" hidden>Devices</h2>
+<ul class="devices" id="bluetooth-devices"></ul>
+<p class="error" id="bluetooth-error" role="alert"></p>
 <p class="row links" id="bluetooth-links"></p>
 </section>
 <section class="page" id="page-mouse" hidden>

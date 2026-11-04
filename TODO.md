@@ -265,6 +265,12 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
 
 ## Decisions needing review
 
+- **The Bluetooth page** (SPEC.md §15, 2026-11-04) lists the paired
+  devices as tide's popover does, connected first, then by name, and a
+  click connects or disconnects one; pairing stays in Bluetooth settings.
+  It reads blueutil every 5 s while the window's open, rather than only
+  as it opens. Reversible: `bluetooth.page_state`, `bluetooth_hs.EVERY`.
+
 - **Over a notch, overflowing workspace chips hide behind "+n"** (SPEC.md
   §8, 2026-11-03), which opens the switcher's Workspaces tab; the middle 220 px stays
   clear. The alternatives were shrinking every chip's name further, or

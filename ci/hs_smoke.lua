@@ -1352,6 +1352,8 @@ local function check_settings_page(next)
         pages: document.querySelectorAll("#sidebar button").length,
         outputs: document.querySelectorAll("#sound-outputs li").length,
         displays: document.querySelectorAll("#display-list h2").length,
+        bluetooth: document.getElementById("bluetooth-error").textContent,
+        bluetoothPower: !document.getElementById("bluetooth-power").hidden,
     })]], function(result, err)
         -- Out of the page's own callback.
         tilemo.adapter.after(0, function()
@@ -1380,6 +1382,17 @@ local function check_settings_page(next)
                 fail("settings: the Displays page lists %s displays; macOS has %d", tostring(got.displays), screens)
             elseif got then
                 say("settings: the Displays page lists the %d display(s) macOS has", screens)
+            end
+            -- The Bluetooth page says blueutil's missing when it is; with
+            -- it, a read may still be under way, so it's only reported.
+            local bluetooth = require("tilemo.bluetooth")
+            local have = bluetooth.find(tilemo.adapter.exists) ~= nil
+            if got and not have and got.bluetooth ~= bluetooth.MISSING then
+                fail("settings: with no blueutil, the Bluetooth page says %q", tostring(got.bluetooth))
+            elseif got then
+                say("settings: the Bluetooth page shows %s", have
+                    and (got.bluetoothPower and "its switch" or string.format("%q", tostring(got.bluetooth)))
+                    or "that blueutil's missing")
             end
             next()
         end)

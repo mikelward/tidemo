@@ -93,4 +93,119 @@ function M.poller(opts)
     return self
 end
 
+-- The settings window's Bluetooth page (SPEC.md §15), as tide's Bluetooth
+-- popover (tide SPEC.md §7.4): Bluetooth on or off, then the paired
+-- devices, connected first, each connected or disconnected with a click.
+-- Pairing a new one is Bluetooth settings' job. bluetooth_hs.lua runs
+-- blueutil for these.
+M.PAIRED_ARGS = { "--paired", "--format", "json" }
+
+-- A device's address as blueutil prints it, `xx-xx-xx-xx-xx-xx`, or nil.
+-- The page can send only one of these, so nothing else reaches
+-- blueutil's arguments: not a name, which it would search for, nor an
+-- option.
+function M.address(a)
+    if type(a) ~= "string" then
+        return nil
+    end
+    local hex = "%x%x"
+    local dashes = "^" .. hex .. string.rep("%-" .. hex, 5) .. "$"
+    local colons = "^" .. hex .. string.rep(":" .. hex, 5) .. "$"
+    if a:match(dashes) or a:match(colons) then
+        return a
+    end
+    return nil
+end
+
+-- `blueutil --paired --format json`'s exit code and output as a list of
+-- { address, name, connected }, or nil and why. `decode` is hs.json's. A
+-- device with no name is called by its address, as tide's are.
+function M.parse_paired(code, out, err, decode)
+    if code ~= 0 then
+        local why = (err or ""):match("^%s*(.-)%s*$")
+        return nil, "blueutil --paired exited " .. tostring(code) .. (why ~= "" and ": " .. why or "")
+    end
+    local ok, list = pcall(decode, out or "")
+    if not ok or type(list) ~= "table" then
+        return nil, "blueutil --paired printed something that isn't a JSON list"
+    end
+    local devices = {}
+    for _, d in ipairs(list) do
+        local address = type(d) == "table" and M.address(d.address)
+        if address then
+            local name = type(d.name) == "string" and d.name ~= "" and d.name or address
+            devices[#devices + 1] = { address = address, name = name, connected = d.connected == true }
+        end
+    end
+    return devices
+end
+
+local STATUS = { connecting = "Connecting…", disconnecting = "Disconnecting…" }
+
+-- What the page shows, from blueutil's readings: `on` (nil when it can't
+-- be read), the paired `devices`, `busy` (each address being connected or
+-- disconnected, as "connecting" or "disconnecting"), whether the power's
+-- being `switching`, and the `problem`, if any. The devices are listed
+-- only while it's on, connected first, then by name, as tide's popover
+-- has them, each with its status line.
+function M.page_state(r)
+    r = r or {}
+    local busy = r.busy or {}
+    local devices = {}
+    if r.on == true then
+        for _, d in ipairs(r.devices or {}) do
+            local doing = busy[d.address]
+            devices[#devices + 1] = {
+                address = d.address,
+                name = d.name,
+                connected = d.connected,
+                busy = doing ~= nil,
+                status = STATUS[doing] or (d.connected and "Connected" or ""),
+            }
+        end
+    end
+    table.sort(devices, function(a, b)
+        if a.connected ~= b.connected then
+            return a.connected
+        end
+        local x, y = a.name:lower(), b.name:lower()
+        if x ~= y then
+            return x < y
+        end
+        return a.address < b.address
+    end)
+    return {
+        on = r.on,
+        switching = r.switching == true,
+        devices = devices,
+        problem = r.problem,
+    }
+end
+
+-- Does what a message from the page asks, through `act`: set_power(on),
+-- connect(address) and disconnect(address). A message naming anything but
+-- an address is the page's, and does nothing. Returns whether it was one
+-- of the Bluetooth page's.
+function M.handle(body, act)
+    if type(body) ~= "table" then
+        return false
+    end
+    if body.bluetoothPower ~= nil then
+        act.set_power(body.bluetoothPower == true)
+    elseif body.bluetoothConnect ~= nil then
+        local a = M.address(body.bluetoothConnect)
+        if a then
+            act.connect(a)
+        end
+    elseif body.bluetoothDisconnect ~= nil then
+        local a = M.address(body.bluetoothDisconnect)
+        if a then
+            act.disconnect(a)
+        end
+    else
+        return false
+    end
+    return true
+end
+
 return M
