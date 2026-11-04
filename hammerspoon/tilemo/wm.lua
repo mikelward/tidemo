@@ -980,13 +980,28 @@ end
 -- launch opens goes to the workspace it was for (`ws`), whatever's showing
 -- when it arrives. `app` is the bundle ID, or nil for a helper script,
 -- whose window may be any app's. Each is used once, within M.GRANT.
-function M:launch_to(app, ws)
+-- A launch you made, of `app` (a bundle ID, or nil for any) for workspace
+-- `ws`: its window goes to that workspace, on the display keys act on as
+-- you launch it, wherever macOS opens it (SPEC.md §6.1). `screen` is that
+-- display, read as the key was pressed, before a prompt or a switch moved
+-- focus; nil reads it now.
+function M:launch_to(app, ws, screen)
     self.launches = self.launches or {}
-    self.launches[#self.launches + 1] = { app = app, ws = ws, at = self.a.now() }
+    self.launches[#self.launches + 1] = { app = app, ws = ws, at = self.a.now(), screen = screen or self:current_screen() }
 end
 
 -- The workspace the oldest launch that window `w` may be from was for, if
 -- any; `take` uses that launch up.
+-- A tile from launch `l` goes to the display keys acted on as it was made:
+-- macOS opens it where the app last had a window, not where you are.
+function M:launched_on(w, l, kind)
+    if kind ~= "float" and l.screen and self:screen_by_uuid(l.screen) then
+        w.screen = l.screen
+        w.launched_on = l.screen
+    end
+end
+
+-- The launch window `w` is from, if any: { ws, screen }. `take` uses it up.
 function M:launched_to(w, take)
     local now = self.a.now()
     local list = self.launches or {}
@@ -1000,7 +1015,7 @@ function M:launched_to(w, take)
             if take then
                 table.remove(list, i)
             end
-            return l.ws
+            return l
         end
     end
 end
@@ -1068,14 +1083,21 @@ function M:add(id)
         w.ws = self:parent_ws(id, f)
         w.mine = f.minimized or false
     elseif self:is_home_app(w) then
-        -- Home's apps always open there (SPEC.md §6.2).
+        -- Home's apps always open there (SPEC.md §6.2), on the display a
+        -- launch of one was made from.
         w.ws = self.home
         w.mine = f.minimized or false
+        local l = self:launched_to(w, true)
+        if l then
+            self:launched_on(w, l, kind)
+        end
     elseif self:launched_to(w) then
         -- A launch tilemo made goes to the workspace it was for, even if
         -- you've moved on since, marked if that isn't showing (SPEC.md
         -- §6.1, §14.2). Its workspace was named, so it doesn't ask again.
-        w.ws = self:ensure_ws(self:launched_to(w, true))
+        local l = self:launched_to(w, true)
+        w.ws = self:ensure_ws(l.ws)
+        self:launched_on(w, l, kind)
         launched = true
         w.mine = f.minimized or false
         if not self:shown(w.ws) then
@@ -2094,7 +2116,7 @@ function M:launch_answer(q, name)
     if n then
         self:show(n, nil, true)
         n = self:find(n) or n
-        self:launch_to(q.launch.app, n)
+        self:launch_to(q.launch.app, n, q.launch.screen)
         q.go(self:env(n))
     end
     self:ask_next()
@@ -2164,10 +2186,13 @@ end
 -- then `go(env)` launches with its TIDE_WORKSPACE; Esc launches nothing.
 -- Elsewhere it launches straight away, on the workspace you're on.
 function M:before_launch(opts, go)
+    -- The display you launched from, before the prompt takes focus and a
+    -- switch to the workspace named focuses one of its windows.
+    opts.screen = opts.screen or self:current_screen()
     local cur = self:current_ws()
     local ask = opts.fresh or (self:asks_for_name(cur) and not opts.home_app)
     if not ask or not self.ask_launch then
-        self:launch_to(opts.app, cur)
+        self:launch_to(opts.app, cur, opts.screen)
         go(self:env(cur))
         return
     end
@@ -2210,8 +2235,10 @@ function M:request(id, box)
     local cx, cy = center(box)
     local s = self:screen_for(box)
     -- Another display first: macOS may resize a window it moves onto a
-    -- smaller display, and that's still a move.
-    if s and s.uuid ~= w.screen then
+    -- smaller display, and that's still a move. A launched window that
+    -- hasn't been placed yet is only where macOS opened it, or where the app
+    -- put it next, not somewhere you moved it.
+    if s and s.uuid ~= w.screen and (old or not w.launched_on) then
         self:to_screen(id, s.uuid)
         layout.insert(self:part_of(w), id, nil, self.layout)
         -- Focused already, so no focus event will put it first in its
