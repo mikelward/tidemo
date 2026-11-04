@@ -10,11 +10,25 @@ M.KEYS = { light = "lightWallpaper", dark = "darkWallpaper" }
 M.SHARED_FILE = "appearance.json"
 M.LOCAL_FILE = "appearance.local.json"
 
+-- A wallpaper that's a solid color, #rrggbb or #rgb, as tide's
+-- wallpaperColor takes one (tide SPEC.md §15). tide shows it; a Mac can't
+-- set a color through Hammerspoon, so it leaves macOS's own picture.
+function M.is_color(v)
+    return type(v) == "string" and (v:match("^#%x%x%x$") or v:match("^#%x%x%x%x%x%x$")) ~= nil
+end
+
 -- Why `v` can't be a wallpaper, as tide's wallpaperError says, or nil: a
--- file's path, absolute or from ~/, on one line, or "" for macOS's own.
+-- file's path, absolute or from ~/, on one line, a color, or "" for
+-- macOS's own.
 local function problem(key, v)
+    if type(v) == "string" and v:sub(1, 1) == "#" then
+        if not M.is_color(v) then
+            return key .. ' must be a color as #rrggbb or #rgb, such as "#1a1d2e"'
+        end
+        return nil
+    end
     if type(v) ~= "string" or v:find("[\n\r]") or (v ~= "" and v:sub(1, 1) ~= "/" and v:sub(1, 2) ~= "~/") then
-        return key .. ' must be a file\'s path, such as "~/Pictures/day.jpg", or "" for the default'
+        return key .. ' must be a file\'s path, such as "~/Pictures/day.jpg", a color such as "#1a1d2e", or "" for the default'
     end
 end
 
@@ -70,10 +84,10 @@ function M.setting(path, home)
 end
 
 -- The picture to show for the mode, `dark` or light, from `walls`
--- (M.load's), as a path, or nil to leave macOS's own.
+-- (M.load's), as a path, or nil to leave macOS's own, as for a color.
 function M.now(walls, dark, home)
     local set = walls[dark and "dark" or "light"]
-    if set == nil or set == "" then
+    if set == nil or set == "" or M.is_color(set) then
         return nil
     end
     return M.expand(set, home)

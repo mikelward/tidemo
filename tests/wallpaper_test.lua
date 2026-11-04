@@ -26,9 +26,18 @@ t.test("what's wrong with a file is said, and its good settings still count", fu
     local walls, errors = wallpaper.load('{"lightWallpaper": "day.jpg", "darkWallpaper": "~/n.png"}', "{", json.decode)
     t.eq(walls, { light = "", dark = "~/n.png" })
     t.eq(errors, {
-        "appearance.json: lightWallpaper must be a file's path, such as \"~/Pictures/day.jpg\", or \"\" for the default",
+        "appearance.json: lightWallpaper must be a file's path, such as \"~/Pictures/day.jpg\", a color such as \"#1a1d2e\", or \"\" for the default",
         "appearance.local.json isn't a JSON object",
     })
+end)
+
+t.test("a color set on tide is a setting, not an error, and leaves macOS's own picture", function()
+    local walls, errors = wallpaper.load('{"lightWallpaper": "#1A1D2E", "darkWallpaper": "#abc"}', nil, json.decode)
+    t.eq(errors, {})
+    t.eq(wallpaper.now(walls, false, HOME), nil)
+    t.eq(wallpaper.now(walls, true, HOME), nil)
+    local _, bad = wallpaper.load('{"lightWallpaper": "#12"}', nil, json.decode)
+    t.eq(bad, { 'appearance.json: lightWallpaper must be a color as #rrggbb or #rgb, such as "#1a1d2e"' })
 end)
 
 t.test("the picture shown is the mode's, from ~/ as home", function()

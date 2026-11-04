@@ -2153,6 +2153,11 @@ that isn't one is left out, and the log says so.
     - **With none set** for the mode, or no such file, macOS's own picture
       stays, and System Settings' Wallpaper pane sets it. A missing file is
       logged. Taking a setting out leaves the last picture tilemo set.
+    - **A color** (`#rrggbb` or `#rgb`), which tide shows as a solid
+      wallpaper, is a setting here too, not an error, but a Mac's picture
+      stays: Hammerspoon sets only an image. It's logged once. The
+      Appearance page refuses one typed, saying why, rather than save
+      one that does nothing on this Mac.
     - **Choosing one:** each wallpaper's field has a choose button, which
       opens macOS's own file dialog (`hs.dialog.chooseFileOrFolder`),
       offering images, where the wallpaper is now, or in Pictures. The file

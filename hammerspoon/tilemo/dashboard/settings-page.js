@@ -257,8 +257,14 @@ const WALLPAPERS = [
 const appearanceText = (which) => (typeof appearanceFiles?.[which] === "string" ? appearanceFiles[which] : null);
 
 function setWallpaper(key, value) {
-  const r = withAppearance(appearanceText("local"), key, value, appearanceText("shared"));
   const error = document.getElementById("appearance-error");
+  // tide takes a color too, but a Mac's desktop can't be set to one here
+  // (wallpaper.lua), so it's refused rather than saved to do nothing.
+  if (value.startsWith("#")) {
+    error.textContent = `A solid color is tide's only: on a Mac, ${key} must be an image's path; not changing ${key}`;
+    return;
+  }
+  const r = withAppearance(appearanceText("local"), key, value, appearanceText("shared"));
   if (r.error) {
     error.textContent = `${r.error}; not changing ${key}`;
     return;
