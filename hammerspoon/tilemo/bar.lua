@@ -797,7 +797,7 @@ function M.handle(wm, body, act)
 end
 
 -- Scrolling over the workspaces steps from the one showing, in bar order,
--- stopping at the first and last, as Super+PgUp and PgDn do.
+-- stopping at the first and last, where Super+PgUp and PgDn wrap round.
 function M.step(wm, uuid, d)
     return wm:step_from(wm:current_ws(), d)
 end

@@ -3123,18 +3123,22 @@ function M:send_keeping_focus(id, n)
     end
 end
 
--- The workspace `d` steps from `cur` in bar order, stopping at the first
--- and last.
-function M:step_from(cur, d)
+-- The workspace `d` steps from `cur` in bar order: with `wrap`, from the
+-- last round to the first and back, as the keys do; without, stopping at
+-- the first and last, as the bar's scroll does.
+function M:step_from(cur, d, wrap)
     local list = self:listed()
     local i = self:index_of_ws(cur) or 1
+    if wrap then
+        return list[(i - 1 + d) % #list + 1]
+    end
     return list[math.max(1, math.min(#list, i + d))]
 end
 
--- Super+PgUp/PgDn: the previous or next workspace in bar
--- order, stopping at the first and last.
+-- Super+PgUp/PgDn: the previous or next workspace in bar order, wrapping
+-- from the last to home and back, as on tide.
 function A.step(self, d)
-    self:show(self:step_from(self:current_ws(), d))
+    self:show(self:step_from(self:current_ws(), d, true))
 end
 
 -- Super+1…9 (SPEC.md §7.2): the Nth workspace in bar order, home first, so
@@ -3234,7 +3238,7 @@ function A.move_ws(self, d)
     -- The display it moves from, noted before the window moves.
     local uuid = self:current_screen()
     local cur = self:current_ws()
-    local n = self:step_from(cur, d)
+    local n = self:step_from(cur, d, true)
     if id and n ~= cur and self:send(id, n) then
         self:show(n, uuid)
         self:choose(id)
