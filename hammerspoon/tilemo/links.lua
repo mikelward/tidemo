@@ -75,7 +75,7 @@ M.SECTIONS = {
     { id = "appearance", links = { { "appearance", "Appearance settings" } } },
     { id = "muted", links = { { "notifications", "Notifications settings" } } },
     { id = "clocks", links = { { "date_time", "Date & Time settings" } } },
-    { id = "idle", links = { { "lock_screen", "Lock Screen settings" } } },
+    { id = "idle", links = { { "lock_screen", "Lock settings" } } },
     { id = "startup", links = { { "login_items", "Login Items settings" } } },
 }
 

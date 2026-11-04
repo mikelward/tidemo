@@ -571,7 +571,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   const timeline = () => ids["idle-timeline"].children;
   const steps = () => ids["idle-steps"].children;
   sandbox.tilemo.update({ clockFiles: [], idleFiles: {} });
-  assert.deepStrictEqual(timeline().map((c) => c.textContent), ["tide's timeline", "Off"]);
+  assert.deepStrictEqual(timeline().map((c) => c.textContent), ["Use tide's idle settings", "Off"]);
   assert.strictEqual(steps().length, 0, "macOS's own has no steps");
   timeline()[1].listeners.click();
   assert.deepStrictEqual(lastIdle(), { dim: 150, lock: 300, displaysOff: 330, suspend: 1800, suspendOnAC: false });
@@ -1058,12 +1058,12 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   const links = [
     { section: "mouse", name: "mouse", label: "Mouse settings" },
     { section: "mouse", name: "linearmouse", label: "LinearMouse settings" },
-    { section: "idle", name: "lock_screen", label: "Lock Screen settings" },
+    { section: "idle", name: "lock_screen", label: "Lock settings" },
   ];
   sandbox.tilemo.update({ clockFiles: [], links, mouse: { problem: "" } });
   const mouse = ids["mouse-links"].children;
   assert.deepStrictEqual(mouse.map((b) => b.textContent), ["Mouse settings", "LinearMouse settings"]);
-  assert.deepStrictEqual(ids["idle-links"].children.map((b) => b.textContent), ["Lock Screen settings"]);
+  assert.deepStrictEqual(ids["idle-links"].children.map((b) => b.textContent), ["Lock settings"]);
   // Each a row that opens another window, as tide's advanced row.
   assert.deepStrictEqual(mouse.map((b) => b.attrs["data-icon"]), ["open", "open"]);
   sent.length = 0;
