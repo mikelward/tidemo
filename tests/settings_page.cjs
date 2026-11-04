@@ -28,6 +28,32 @@ class Element {
   addEventListener(type, fn) {
     this.listeners[type] = fn;
   }
+  getAttribute(k) {
+    return this.attrs[k] ?? null;
+  }
+  // The keyboard's on it, as the document's activeElement says.
+  focus() {
+    sandbox.document.activeElement = this;
+  }
+}
+
+// The first element under any of the page's ids whose `name` attribute is
+// `value`, as querySelector('[name="value"]') finds it.
+function find(name, value) {
+  const walk = (e) => {
+    if (!e || typeof e !== "object") return null;
+    if (e.attrs?.[name] === value) return e;
+    for (const c of e.children ?? []) {
+      const got = walk(c);
+      if (got) return got;
+    }
+    return null;
+  };
+  for (const root of Object.values(ids)) {
+    const got = walk(root);
+    if (got) return got;
+  }
+  return null;
 }
 
 const ids = {};
@@ -40,6 +66,11 @@ const sandbox = {
     getElementById: (id) => (ids[id] ??= new Element(id)),
     addEventListener: (type, fn) => {
       docListeners[type] = fn;
+    },
+    activeElement: null,
+    querySelector: (sel) => {
+      const m = sel.match(/^\[([\w-]+)="([^"]*)"\]$/);
+      return m ? find(m[1], m[2]) : null;
     },
   },
   Intl,
@@ -253,6 +284,92 @@ assert.strictEqual(rows()[0], editing, "the clocks aren't redrawn");
 assert.strictEqual(rows()[0].children[1].value, "Tok");
 sandbox.tilemo.count(0);
 assert.strictEqual(clip("clipboard-clear").disabled, true);
+
+// Sound, as tide's page: the output's mute, slider and level, then each
+// output, the one in use lit; then the input's; and what each control asks.
+{
+  const out = () => ids["sound-output-volume"].children;
+  const outputs = () => ids["sound-outputs"].children.map((li) => li.children[0]);
+  const state = {
+    output: {
+      name: "MacBook Speakers", volume: 40, muted: false, can_mute: true, live: true,
+      devices: [{ uid: "a", name: "MacBook Speakers", current: true }, { uid: "b", name: "Studio Display", current: false }],
+    },
+    input: { name: "MacBook Microphone", volume: 70, muted: true, can_mute: true, live: true, devices: [] },
+  };
+  sandbox.tilemo.update({ clockFiles: [], sound: state });
+  assert.deepStrictEqual(out().map((c) => c.tag), ["button", "input", "span"]);
+  assert.strictEqual(out()[0].attrs["data-icon"], "speaker-on");
+  assert.strictEqual(out()[1].value, "40");
+  assert.strictEqual(out()[2].textContent, "40%");
+  assert.deepStrictEqual(outputs().map((b) => [b.textContent, b.attrs["aria-current"], b.attrs["data-icon"]]),
+    [["MacBook Speakers", "true", "output"], ["Studio Display", "false", "output"]]);
+  // The input's muted, and with no inputs listed, its heading goes.
+  assert.strictEqual(ids["sound-input-volume"].children[0].attrs["data-icon"], "mic-off");
+  assert.strictEqual(ids["sound-input-volume"].children[2].textContent, "0%");
+  assert.strictEqual(ids["sound-input-heading"].hidden, true);
+  sent.length = 0;
+  outputs()[1].listeners.click();
+  outputs()[0].listeners.click();
+  out()[0].listeners.click();
+  assert.deepStrictEqual(sent, [{ soundOutput: "b" }, { soundMute: true }], "the device in use isn't asked for again");
+  // The slider sets it as it moves, and once more as it's let go; an
+  // update meanwhile doesn't move it under you.
+  sent.length = 0;
+  const slider = out()[1];
+  slider.value = "55";
+  slider.listeners.input();
+  assert.strictEqual(out()[2].textContent, "55%");
+  sandbox.tilemo.sound({ ...state, output: { ...state.output, volume: 41 } });
+  assert.strictEqual(out()[1], slider, "not redrawn while it's held");
+  slider.listeners.change();
+  assert.deepStrictEqual(sent, [{ soundVolume: 55 }, { soundVolume: 55 }]);
+  sandbox.tilemo.sound({ ...state, output: { ...state.output, volume: 55 } });
+  assert.strictEqual(out()[1].value, "55");
+  // A monitor over DDC is set only once it's let go.
+  sent.length = 0;
+  sandbox.tilemo.sound({ ...state, output: { ...state.output, live: false } });
+  out()[1].value = "20";
+  out()[1].listeners.input();
+  out()[1].listeners.change();
+  assert.deepStrictEqual(sent, [{ soundVolume: 20 }]);
+  // The same again draws nothing; a change draws again, keeping the
+  // keyboard on the slider it was on, so arrow keys go on stepping it.
+  const now = { ...state, output: { ...state.output, volume: 20, live: false } };
+  sandbox.tilemo.sound(now);
+  const before = out()[1];
+  sandbox.tilemo.sound(JSON.parse(JSON.stringify(now)));
+  assert.strictEqual(out()[1], before, "nothing new, nothing drawn");
+  before.focus();
+  sandbox.tilemo.sound({ ...now, output: { ...now.output, volume: 25 } });
+  assert.notStrictEqual(out()[1], before);
+  assert.strictEqual(sandbox.document.activeElement, out()[1], "the keyboard stays on the slider");
+  outputs()[1].focus();
+  sandbox.tilemo.sound({ ...now, output: { ...now.output, volume: 30 } });
+  assert.strictEqual(sandbox.document.activeElement, outputs()[1], "and on a device");
+  sandbox.document.activeElement = null;
+  // A change while the slider's held is drawn once it's let go, even when
+  // tilemo's answer is that same change: muted by a key mid-drag.
+  out()[1].listeners.input();
+  sandbox.tilemo.sound({ ...now, output: { ...now.output, volume: 30, muted: true } });
+  assert.strictEqual(out()[0].textContent, "Mute", "held: not redrawn yet");
+  out()[1].listeners.change();
+  sandbox.tilemo.sound({ ...now, output: { ...now.output, volume: 30, muted: true } });
+  assert.strictEqual(out()[0].textContent, "Unmute", "let go: the mute shows");
+  // A level macOS refuses goes back to what it says, though that's what
+  // was drawn before.
+  const settled = { ...now, output: { ...now.output, volume: 40, muted: false, live: true } };
+  sandbox.tilemo.sound(settled);
+  out()[1].value = "41";
+  out()[1].listeners.input();
+  out()[1].listeners.change();
+  sandbox.tilemo.sound(JSON.parse(JSON.stringify(settled)));
+  assert.strictEqual(out()[1].value, "40", "back to macOS's level");
+  assert.strictEqual(out()[2].textContent, "40%");
+  // No volume control: no slider.
+  sandbox.tilemo.sound({ output: { name: "HDMI", can_mute: false, devices: [] }, input: { devices: [] } });
+  assert.strictEqual(ids["sound-output-volume"].hidden, true);
+}
 
 // Appearance's wallpapers, light and dark, in tide's appearance files: the
 // one set shows, Enter sets a typed path, the choose button asks tilemo for

@@ -104,6 +104,8 @@ t.test("every page in the sidebar, and every icon button, has its icon drawn", f
     local js = read("settings-page.js")
     local drawn = {}
     for name in html:gmatch('%[data%-icon="([%w_-]+)"%]%s*{%s*%-%-icon:') do
+        -- One rule each: a second would draw over a page's own.
+        t.eq(drawn[name], nil, "a second icon named " .. name)
         drawn[name] = true
     end
     for _, sec in ipairs(require("tilemo.launcher").SETTINGS_SECTIONS) do

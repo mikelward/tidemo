@@ -2712,6 +2712,23 @@ Each one names a workaround, or says there is none.
       each with an open-in-a-window icon, as tide's advanced row.
     - The page keeps each button's glyph as its text, and draws the icon
       over it (`data-icon`), so its tests find it as before.
+  - **Built: Sound sets the devices itself,** as tide's Sound page does
+    (tide §16), through `hs.audiodevice` (`sound.lua`, `sound_hs.lua`).
+    - Under Output, then Input: the device in use's mute, a slider and its
+      level, then a row for each device, the one in use lit. A click on
+      another uses it.
+    - The output goes through the bar's volume popover's operations when
+      the bar is on, so a monitor's volume over DDC is the one set, once
+      the slider is let go, as the popover does. macOS's own volume follows
+      the slider as it moves.
+    - The page shows what macOS says after each change, and follows the
+      volume keys and devices coming and going while it's open, as the
+      bar sees them.
+    - A device with no volume control has no slider. A device that goes
+      while it's read is logged, and the page shows none, rather than the
+      rest of the window going undrawn.
+    - **Cost and reliability:** nothing to install; Core Audio through
+      Hammerspoon, as the bar uses already.
   - **Built: every page of tide's is a section, in tide's order,** so the
     window is laid out as tide's panel is. Where a page's settings are
     macOS's or a helper's, it has a button for each place they're changed,
@@ -2720,7 +2737,7 @@ Each one names a workaround, or says there is none.
     | Section | Buttons |
     |---|---|
     | Displays | Displays settings |
-    | Sound | Sound settings |
+    | Sound | the output and the input in use, each with its mute, volume and level, and the devices to pick from (below); Sound settings |
     | Network | Network settings |
     | Bluetooth | Bluetooth settings |
     | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
