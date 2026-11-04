@@ -31,6 +31,7 @@
 local keys = require("tilemo.keys")
 local mouse = require("tilemo.mouse")
 local wm_mod = require("tilemo.wm")
+local namealert = require("tilemo.namealert")
 local adapter_mod = require("tilemo.hs_adapter")
 local ffm_mod = require("tilemo.ffm")
 local dashboard_hs = require("tilemo.dashboard_hs")
@@ -839,8 +840,7 @@ function M.start(config)
         end
     end
     self.wm.on_show = function(n, uuid)
-        hs.alert.closeAll(0)
-        hs.alert.show(n, { textSize = 96, radius = 24 }, hs.screen.find(uuid) or hs.screen.mainScreen(), 0.5)
+        namealert.show(hs, n, uuid)
     end
     self.wm:changed()
     self.attention_timer = hs.timer.doEvery(M.ATTENTION_POLL, function()
