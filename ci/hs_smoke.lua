@@ -1396,6 +1396,7 @@ local function check_settings_page(next)
         bluetooth: document.getElementById("bluetooth-error").textContent,
         bluetoothPower: !document.getElementById("bluetooth-power").hidden,
         battery: document.getElementById("battery-status").textContent,
+        sources: document.querySelectorAll("#input-sources li").length,
     })]], function(result, err)
         -- Out of the page's own callback.
         tilemo.adapter.after(0, function()
@@ -1424,6 +1425,13 @@ local function check_settings_page(next)
                 fail("settings: the Displays page lists %s displays; macOS has %d", tostring(got.displays), screens)
             elseif got then
                 say("settings: the Displays page lists the %d display(s) macOS has", screens)
+            end
+            -- The Keyboard page lists every input source macOS has on.
+            local sources = #(hs.keycodes.layouts() or {}) + #(hs.keycodes.methods() or {})
+            if got and got.sources ~= sources then
+                fail("settings: the Keyboard page lists %s input sources; macOS has %d", tostring(got.sources), sources)
+            elseif got then
+                say("settings: the Keyboard page lists the %d input source(s) macOS has", sources)
             end
             -- The Power page has the battery, or says there's none.
             local has_battery = hs.battery.percentage() ~= nil

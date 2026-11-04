@@ -22,6 +22,7 @@ local sound_hs = require("tilemo.sound_hs")
 local displays_hs = require("tilemo.displays_hs")
 local bluetooth_hs = require("tilemo.bluetooth_hs")
 local netpower_hs = require("tilemo.netpower_hs")
+local inputsrc = require("tilemo.inputsrc")
 
 local M = {}
 
@@ -210,6 +211,19 @@ function M.new(tilemo)
         return {}
     end
 
+    -- The Keyboard page's input sources (inputsrc.lua), from hs.keycodes.
+    local function sources_state()
+        local ok, s = pcall(function()
+            return inputsrc.state(hs.keycodes.layouts(), hs.keycodes.methods(),
+                hs.keycodes.currentMethod() or hs.keycodes.currentLayout())
+        end)
+        if ok then
+            return s
+        end
+        tilemo.adapter.log("settings: couldn't read the input sources: " .. tostring(s))
+        return { sources = {} }
+    end
+
     local function push()
         if not view then
             return
@@ -222,6 +236,8 @@ function M.new(tilemo)
             displays = displays_state(),
             -- The Network and Power pages'.
             netpower = netpower_state(),
+            -- The Keyboard page's input sources.
+            inputSources = sources_state(),
             -- The Bluetooth page's, as last read.
             bluetooth = bt.state(),
             -- Light or dark now, and until when, on tide's schedule.
@@ -406,6 +422,24 @@ function M.new(tilemo)
         end)
     end
 
+    -- The Keyboard page's input sources alone.
+    function self.sources_changed()
+        if not view then
+            return
+        end
+        view:evaluateJavaScript("tilemo.inputSources(" .. hs.json.encode(sources_state()) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
+    -- Switched anywhere, from the menu bar or a shortcut as well as the
+    -- page, the Keyboard page follows.
+    if tilemo.on_input_source then
+        tilemo.on_input_source(self.sources_changed)
+    end
+
     -- The Network and Power pages alone, as the bar sees them change.
     function self.netpower_changed()
         if not view then
@@ -464,6 +498,13 @@ function M.new(tilemo)
                 self.sound_changed()
             elseif screens.handle(body) then
                 self.displays_changed()
+            elseif inputsrc.handle(body, sources_state().sources, function(name, method)
+                local ok = method and hs.keycodes.setMethod(name) or (not method and hs.keycodes.setLayout(name))
+                if not ok then
+                    tilemo.adapter.log("settings: macOS didn't switch to " .. name)
+                end
+            end) then
+                self.sources_changed()
             elseif np.handle(body) then
                 -- Drawn once it's had time to change.
             elseif bt.handle(body) then

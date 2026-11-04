@@ -2876,6 +2876,16 @@ Each one names a workaround, or says there is none.
       rest of the window going undrawn.
     - **Cost and reliability:** nothing to install; Core Audio through
       Hammerspoon, as the bar uses already.
+  - **Built: Keyboard's input sources,** as tide's Keyboard page has its
+    layouts (`inputsrc.lua`): the keyboard layouts and input methods
+    macOS has on (`hs.keycodes`), layouts first as the bar lists them, the
+    one in use lit, and a click to use another. Switched anywhere else,
+    from the menu bar or a shortcut, the page follows, as the bar does:
+    macOS calls one function as it changes, which the two share
+    (`inputsrc.watch`). Adding or taking one out stays in Keyboard
+    settings. Key repeat isn't here: macOS applies a
+    change only at the next login *(unverified)*, so a live control
+    would mislead.
   - **Built: Do not disturb on a schedule, as tide's** (`dndsched.lua`,
     `dndsched_hs.lua`), from tide's `notifications.json` and
     `notifications.local.json`, read with tide's own module (copied
@@ -2977,7 +2987,7 @@ Each one names a workaround, or says there is none.
     | Bluetooth | On or Off, and the paired devices, each connected or disconnected (below); Bluetooth settings |
     | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
-    | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
+    | Keyboard | the input sources, each a click to use (below), the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
     | Appearance | light or dark on tide's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog, and the Menu bar switch; Appearance settings |

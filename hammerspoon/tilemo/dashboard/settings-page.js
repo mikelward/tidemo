@@ -604,6 +604,34 @@ function renderIdle() {
   });
 }
 
+// Keyboard's input sources, as tide's Keyboard page has its layouts: the
+// ones macOS has on, the one in use lit, and a click to use another
+// ({ inputSource: name }). tilemo answers with tilemo.inputSources().
+let sourcesDrawn = "";
+
+function renderInputSources(st) {
+  const s = isObject(st) ? st : {};
+  const drawn = JSON.stringify(s);
+  if (drawn === sourcesDrawn) return;
+  sourcesDrawn = drawn;
+  const sources = Array.isArray(s.sources) ? s.sources : [];
+  keepingFocus(() => {
+    const list = document.getElementById("input-sources");
+    list.replaceChildren();
+    for (const src of sources) {
+      const li = el("li");
+      const b = keyed(button(src.name, src.current ? `${src.name}, in use` : `Use ${src.name}`, false, () => {
+        if (!src.current) send({ inputSource: src.name });
+      }), `source-${src.name}`);
+      b.setAttribute("data-icon", "keyboard");
+      b.setAttribute("aria-current", String(src.current === true));
+      li.append(b);
+      list.append(li);
+    }
+  });
+  document.getElementById("input-sources-heading").hidden = sources.length === 0;
+}
+
 // The Network and Power pages: Wi-Fi On or Off, the network it's joined
 // to and how the Mac's online; and the battery, as the bar's hover says
 // it. tilemo answers a switch with tilemo.netpower(), once Wi-Fi's had
@@ -1603,6 +1631,7 @@ window.tilemo = {
     if (isObject(state.displays)) renderDisplays(state.displays);
     if (isObject(state.bluetooth)) renderBluetooth(state.bluetooth);
     if (isObject(state.netpower)) renderNetpower(state.netpower);
+    if (isObject(state.inputSources)) renderInputSources(state.inputSources);
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
@@ -1657,6 +1686,10 @@ window.tilemo = {
   theme(s) {
     themeState = isObject(s) ? s : {};
     renderAppearance();
+  },
+  // Keyboard's input sources alone, as macOS has them now.
+  inputSources(s) {
+    renderInputSources(s);
   },
   // The Network and Power pages alone, as macOS says they are now.
   netpower(s) {
