@@ -35,6 +35,22 @@ t.test("Screen Recording is never needed, and Automation can't be read", functio
     t.eq(checklist.permission_state("automation", { accessibility = true, karabiner = true }), "unknown")
 end)
 
+t.test("Location Services is on or off as macOS says, off until it's asked", function()
+    t.eq(checklist.permission_state("location", { location = "authorized" }), "on")
+    t.eq(checklist.permission_state("location", { location = "denied" }), "off")
+    t.eq(checklist.permission_state("location", { location = "undefined" }), "off", "not asked yet")
+    t.eq(checklist.permission_state("location", {}), "unknown")
+end)
+
+t.test("Location Services' button asks macOS the first time, then opens the list", function()
+    -- Hammerspoon is in Privacy & Security's list only once it's asked.
+    t.eq(checklist.ask_first("privacy_location", { location = "undefined" }), true)
+    t.eq(checklist.ask_first("privacy_location", { location = "denied" }), false)
+    t.eq(checklist.ask_first("privacy_location", { location = "authorized" }), false)
+    t.eq(checklist.ask_first("privacy_location", {}), false, "can't tell: the list")
+    t.eq(checklist.ask_first("privacy_accessibility", { location = "undefined" }), false)
+end)
+
 t.test("the page gives each permission its state's label, and each item its tick", function()
     local page = checklist.page({ accessibility = false, karabiner = true }, { "lock", "minimize" })
     local perms = by_id(page.permissions)

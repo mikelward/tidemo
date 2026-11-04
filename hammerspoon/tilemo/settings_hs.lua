@@ -96,6 +96,7 @@ function M.encode_setup(tilemo)
     if tilemo.adapter.accessibility then
         facts.accessibility = tilemo.adapter.accessibility()
     end
+    facts.location = M.location_status(tilemo.adapter.log)
     local page = checklist.page(facts, hs.settings.get(checklist.SETTINGS_KEY))
     return '{"permissions":' .. M.list(page.permissions, hs.json.encode)
         .. ',"items":' .. M.list(page.items, hs.json.encode)
@@ -130,6 +131,36 @@ function M.float_edit(floats, body)
     local m = body.floatRemove
     return floats.edit(function(list)
         return floating.without(list, int(m.index), str(m.app), str(m.title))
+    end)
+end
+
+-- Location Services for Hammerspoon, as hs.location.authorizationStatus()
+-- says, or nil, logged, if it can't be read.
+function M.location_status(log)
+    local ok, status = pcall(function()
+        return hs.location.authorizationStatus()
+    end)
+    if ok then
+        return status
+    end
+    log("settings: couldn't read Location Services: " .. tostring(status))
+    return nil
+end
+
+-- Has macOS ask for Location Services: it asks as Hammerspoon first
+-- looks for where it is, and adds it to Privacy & Security's list. Looking
+-- stops a minute later, answered or not, as only the asking was wanted.
+local function ask_location(tilemo)
+    local ok, err = pcall(hs.location.start)
+    if not ok then
+        tilemo.adapter.log("settings: couldn't ask for Location Services: " .. tostring(err))
+        return
+    end
+    tilemo.adapter.after(60, function()
+        local stopped, why = pcall(hs.location.stop)
+        if not stopped then
+            tilemo.adapter.log("settings: couldn't stop looking for where the Mac is: " .. tostring(why))
+        end
     end)
 end
 
@@ -615,7 +646,9 @@ function M.new(tilemo)
             elseif type(body.open) == "string" then
                 -- A section's button: what its name stands for, and nothing
                 -- the page can name otherwise.
-                if not links.open(body.open, tilemo.adapter) then
+                if checklist.ask_first(body.open, { location = M.location_status(tilemo.adapter.log) }) then
+                    ask_location(tilemo)
+                elseif not links.open(body.open, tilemo.adapter) then
                     tilemo.adapter.log("settings: no button named " .. body.open)
                 end
             elseif body.close and view then
