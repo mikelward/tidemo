@@ -70,6 +70,36 @@ function M.toggle_mic(log)
 end
 
 -- `tilemo` is the started tilemo module: its wm, adapter and dashboard.
+-- The interfaces macOS's network services are up on, each { interface,
+-- type, subtype }, by interface, for telling a VPN (bar.lua's
+-- is_vpn_service). `holder` keeps the configuration store open between
+-- readings. The settings window's Network page reads them too.
+function M.services(holder)
+    local store = holder.net_store
+    if not store then
+        store = hs.network.configuration.open()
+        holder.net_store = store
+    end
+    local up = {}
+    for key, v in pairs(store:contents("State:/Network/Service/[^/]+/IPv[46]", true) or {}) do
+        local id = key:match("^State:/Network/Service/([^/]+)/")
+        if id and type(v) == "table" and type(v.InterfaceName) == "string" then
+            up[id] = v.InterfaceName
+        end
+    end
+    local out = {}
+    for id, interface in pairs(up) do
+        local key = "Setup:/Network/Service/" .. id .. "/Interface"
+        local setup = store:contents(key)
+        setup = setup and setup[key] or {}
+        out[#out + 1] = { interface = interface, type = setup.Type, subtype = setup.SubType }
+    end
+    table.sort(out, function(a, b)
+        return a.interface < b.interface
+    end)
+    return out
+end
+
 function M.new(tilemo)
     -- `errors` keeps what the pages reported going wrong, for the log and
     -- the smoke test.
@@ -97,29 +127,7 @@ function M.new(tilemo)
     -- VPN's service counts even when it carries only some traffic, and a
     -- tunnel with no VPN service doesn't.
     local function services()
-        local store = self.net_store
-        if not store then
-            store = hs.network.configuration.open()
-            self.net_store = store
-        end
-        local up = {}
-        for key, v in pairs(store:contents("State:/Network/Service/[^/]+/IPv[46]", true) or {}) do
-            local id = key:match("^State:/Network/Service/([^/]+)/")
-            if id and type(v) == "table" and type(v.InterfaceName) == "string" then
-                up[id] = v.InterfaceName
-            end
-        end
-        local out = {}
-        for id, interface in pairs(up) do
-            local key = "Setup:/Network/Service/" .. id .. "/Interface"
-            local setup = store:contents(key)
-            setup = setup and setup[key] or {}
-            out[#out + 1] = { interface = interface, type = setup.Type, subtype = setup.SubType }
-        end
-        table.sort(out, function(a, b)
-            return a.interface < b.interface
-        end)
-        return out
+        return M.services(self)
     end
 
     local function read_icons()
@@ -232,6 +240,10 @@ function M.new(tilemo)
         -- The settings window's Sound page, if it's open, follows too.
         if tilemo.settings and tilemo.settings.sound_changed then
             tilemo.settings.sound_changed()
+        end
+        -- And the Network and Power pages.
+        if tilemo.settings and tilemo.settings.netpower_changed then
+            tilemo.settings.netpower_changed()
         end
     end
 

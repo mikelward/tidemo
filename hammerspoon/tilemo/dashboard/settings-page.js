@@ -445,6 +445,37 @@ function drawDisplays(st) {
   }
 }
 
+// The Network and Power pages: Wi-Fi On or Off, the network it's joined
+// to and how the Mac's online; and the battery, as the bar's hover says
+// it. tilemo answers a switch with tilemo.netpower(), once Wi-Fi's had
+// time to change, and follows the bar as it reads them again.
+let netpowerDrawn = "";
+
+function renderNetpower(st) {
+  const s = isObject(st) ? st : {};
+  const drawn = JSON.stringify(s);
+  if (drawn === netpowerDrawn) return;
+  netpowerDrawn = drawn;
+  const wifi = isObject(s.network?.wifi) ? s.network.wifi : null;
+  keepingFocus(() => {
+    const power = document.getElementById("wifi-power");
+    power.replaceChildren();
+    power.hidden = wifi === null;
+    if (wifi) {
+      const name = el("span", "Wi-Fi");
+      name.className = "name";
+      const toggle = keyed(button(wifi.on ? "On" : "Off", `Wi-Fi: ${wifi.on ? "on" : "off"}`, false,
+        () => send({ wifiPower: !wifi.on })), "wifi-power");
+      toggle.setAttribute("aria-pressed", String(wifi.on === true));
+      power.append(name, toggle);
+    }
+  });
+  const lines = [wifi?.on ? wifi.line : null, s.network?.online].filter((l) => typeof l === "string" && l !== "");
+  document.getElementById("network-status").textContent = lines.length ? `${lines.join(". ")}.` : "";
+  const battery = typeof s.power?.battery === "string" ? s.power.battery : "This Mac has no battery";
+  document.getElementById("battery-status").textContent = battery;
+}
+
 // The Bluetooth page, as tide's Bluetooth popover (tide SPEC.md §7.4):
 // Bluetooth On or Off, then, while it's on, the paired devices, connected
 // first, each lit while connected, with its status. A click connects one,
@@ -1336,6 +1367,7 @@ window.tilemo = {
     if (isObject(state.sound)) renderSound(state.sound);
     if (isObject(state.displays)) renderDisplays(state.displays);
     if (isObject(state.bluetooth)) renderBluetooth(state.bluetooth);
+    if (isObject(state.netpower)) renderNetpower(state.netpower);
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
@@ -1390,6 +1422,10 @@ window.tilemo = {
   theme(s) {
     themeState = isObject(s) ? s : {};
     renderAppearance();
+  },
+  // The Network and Power pages alone, as macOS says they are now.
+  netpower(s) {
+    renderNetpower(s);
   },
   // The Bluetooth page alone, as blueutil says it is now.
   bluetooth(s) {

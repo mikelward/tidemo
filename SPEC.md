@@ -2797,6 +2797,25 @@ Each one names a workaround, or says there is none.
       rest of the window going undrawn.
     - **Cost and reliability:** nothing to install; Core Audio through
       Hammerspoon, as the bar uses already.
+  - **Built: Network and Power show what the bar reads** (`netpower.lua`,
+    `netpower_hs.lua`), through the bar's own `bar.icons`, so the two
+    agree.
+    - Network: Wi-Fi On or Off (`hs.wifi.setPower`), then the network
+      it's joined to, and whether the Mac's online over Wi-Fi or a wire,
+      through a VPN or not. Without Location Services for Hammerspoon,
+      macOS gives no network's name, and the page says so. Picking a
+      network stays in Network settings.
+    - Power: the battery's level and what it's doing, as the bar's hover
+      says it, or that the Mac has none. Low Power Mode needs an
+      administrator's `pmset`, so it stays in Battery settings.
+    - The pages read every 5 s while the window's open, so they follow
+      the battery and the network with the bar off too, and again two
+      seconds after the switch, as Wi-Fi takes a moment. A VPN is told as
+      the bar tells it, by the tunnel or by its network service, so one
+      that carries only some traffic counts.
+    - **Cost and reliability:** nothing to install; what the bar reads
+      already. *(Unverified on a Mac: whether `hs.wifi.setPower` needs an
+      administrator on macOS 26.)*
   - **Built: Bluetooth switches it and connects devices itself,** as
     tide's Bluetooth popover does (tide §7.4), through the bar's blueutil
     (§8; `bluetooth.lua`, `bluetooth_hs.lua`).
@@ -2828,12 +2847,12 @@ Each one names a workaround, or says there is none.
     |---|---|
     | Displays | each display's resolution, place beside the main display, Make main, and brightness where macOS can set it (below); Displays settings |
     | Sound | the output and the input in use, each with its mute, volume and level, and the devices to pick from (below); Sound settings |
-    | Network | Network settings |
+    | Network | Wi-Fi On or Off, the network it's joined to, and how the Mac's online (below); Network settings |
     | Bluetooth | On or Off, and the paired devices, each connected or disconnected (below); Bluetooth settings |
     | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
     | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
-    | Power | Battery settings |
+    | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
     | Appearance | light or dark on tide's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog, and the Menu bar switch; Appearance settings |
     | Notifications | Notifications settings, above the muted list (below) |

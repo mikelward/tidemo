@@ -488,6 +488,32 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["bluetooth-error"].textContent, "blueutil isn't installed");
 }
 
+// Network and Power: Wi-Fi's switch and where it's joined, how the Mac's
+// online, and the battery.
+{
+  const power = () => ids["wifi-power"].children;
+  const state = {
+    network: { wifi: { on: true, line: "Joined to Home" }, online: "Online over Wi-Fi" },
+    power: { battery: "Battery 84%, 2:15 left" },
+  };
+  sandbox.tilemo.update({ clockFiles: [], netpower: state });
+  assert.deepStrictEqual(power().map((c) => c.textContent), ["Wi-Fi", "On"]);
+  assert.strictEqual(ids["network-status"].textContent, "Joined to Home. Online over Wi-Fi.");
+  assert.strictEqual(ids["battery-status"].textContent, "Battery 84%, 2:15 left");
+  sent.length = 0;
+  power()[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ wifiPower: false }]);
+  power()[1].focus();
+  sandbox.tilemo.netpower({ network: { wifi: { on: false, line: "Off" }, online: "Online over a wire" }, power: {} });
+  assert.strictEqual(power()[1].textContent, "Off");
+  assert.strictEqual(sandbox.document.activeElement, power()[1], "the keyboard stays on the switch");
+  sandbox.document.activeElement = null;
+  assert.strictEqual(ids["network-status"].textContent, "Online over a wire.", "no line for Wi-Fi that's off");
+  assert.strictEqual(ids["battery-status"].textContent, "This Mac has no battery");
+  sandbox.tilemo.netpower({ network: { online: "Offline" }, power: {} });
+  assert.strictEqual(ids["wifi-power"].hidden, true, "no Wi-Fi, no switch");
+}
+
 // Appearance's wallpapers, light and dark, in tide's appearance files: the
 // one set shows, Enter sets a typed path, the choose button asks tilemo for
 // macOS's file dialog, and its answer is set as a typed one.
