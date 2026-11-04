@@ -757,10 +757,10 @@ function M.start(config)
     end
     load_clipboard()
     -- Without Karabiner's tap rule, tilemo watches for a lone Super tap
-    -- itself: the switcher, on its Workspaces tab (SPEC.md §7.2).
+    -- itself: the launcher, as Super+Space opens it (SPEC.md §7.2).
     self.tap = tap_mod.new(function()
         if not self.karabiner then
-            self.launcher.show("workspaces")
+            self.launcher.show("launch")
         end
     end)
     self.tap_watch = adapter_mod.taps(function(flags)

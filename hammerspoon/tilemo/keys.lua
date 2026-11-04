@@ -91,9 +91,10 @@ M.map[#M.map + 1] = { key = "l", action = "lock" }
 M.map[#M.map + 1] = { key = "e", shift = true, action = "logout" }
 
 -- The switcher, each key on its own tab (SPEC.md §9). Karabiner's rule
--- sends a lone Super tap as Super+F20, for the Workspaces tab.
+-- sends a lone Super tap as Super+F20, which opens the launcher, as
+-- Super+Space does and tide's and tileco's taps do.
 M.map[#M.map + 1] = { key = "space", action = "launcher", arg = "launch" }
-M.map[#M.map + 1] = { key = "f20", action = "launcher", arg = "workspaces" }
+M.map[#M.map + 1] = { key = "f20", action = "launcher", arg = "launch" }
 M.map[#M.map + 1] = { key = "a", action = "launcher", arg = "attention" }
 M.map[#M.map + 1] = { key = "space", shift = true, action = "dashboard" }
 -- Super+V: the picker, on its Clipboard tab (SPEC.md §7.2), V as in
@@ -462,7 +463,7 @@ M.RULE_FEATURES = {
         end,
     },
     {
-        what = "the lone Super tap (the workspace list)",
+        what = "the lone Super tap (the launcher)",
         -- The tap, sent as Super+F20.
         has = function(m)
             local a = (m.to_if_alone or {})[1] or {}
