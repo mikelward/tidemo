@@ -822,11 +822,10 @@ function M.new(tilemo)
         hs.camera.startWatcher()
     end)
     watch_cameras()
-    try("the input source watcher", function()
-        hs.keycodes.inputSourceChanged(function()
-            refresh_soon()
-        end)
-    end)
+    -- Shared with the settings window's Keyboard page (inputsrc.watch).
+    if tilemo.on_input_source then
+        tilemo.on_input_source(refresh_soon)
+    end
 
     -- Runs a helper without waiting, calling done(code, out, err).
     local function run_task(path, args, done)

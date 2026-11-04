@@ -497,6 +497,23 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["bluetooth-error"].textContent, "blueutil isn't installed");
 }
 
+// Keyboard's input sources: each one macOS has on, the one in use lit, and
+// a click on another asking for it.
+{
+  const sources = () => ids["input-sources"].children.map((li) => li.children[0]);
+  sandbox.tilemo.update({ clockFiles: [], inputSources: { sources: [
+    { name: "U.S.", method: false, current: true }, { name: "Irish", method: false, current: false },
+  ] } });
+  assert.deepStrictEqual(sources().map((b) => [b.textContent, b.attrs["aria-current"]]), [["U.S.", "true"], ["Irish", "false"]]);
+  assert.strictEqual(ids["input-sources-heading"].hidden, false);
+  sent.length = 0;
+  sources()[0].listeners.click();
+  sources()[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ inputSource: "Irish" }], "the one in use isn't asked for again");
+  sandbox.tilemo.inputSources({ sources: [] });
+  assert.strictEqual(ids["input-sources-heading"].hidden, true);
+}
+
 // Network and Power: Wi-Fi's switch and where it's joined, how the Mac's
 // online, and the battery.
 {

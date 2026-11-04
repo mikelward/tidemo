@@ -60,6 +60,7 @@ local links = require("tilemo.links")
 local linearmouse = require("tilemo.linearmouse")
 local karabiner = require("tilemo.karabiner")
 local checklist = require("tilemo.checklist")
+local inputsrc = require("tilemo.inputsrc")
 
 local M = {}
 
@@ -622,6 +623,14 @@ function M.start(config)
     -- The dim of every window but the focused one, at tide's strength
     -- (SPEC.md §5.6).
     self.dim = dim_hs.new(self)
+    -- The input source macOS uses, switched anywhere, for the bar and the
+    -- settings window's Keyboard page each to follow.
+    local ok_watch, on_input_source = pcall(inputsrc.watch, hs.keycodes, self.adapter.log)
+    if ok_watch then
+        self.on_input_source = on_input_source
+    else
+        self.adapter.log("couldn't watch the input source: " .. tostring(on_input_source))
+    end
     self.settings = settings_hs.new(self)
     -- Light or dark on tide's schedule, once a mode's set in its files.
     self.theme = theme_hs.new(self)
