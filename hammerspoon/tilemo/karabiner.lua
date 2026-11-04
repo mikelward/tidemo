@@ -19,6 +19,9 @@ M.ASSETS = "/.config/karabiner/assets/complex_modifications"
 -- above the arrow rule, which wants the same keys (conf's
 -- config/karabiner/README.md). A rule not here goes at the top.
 M.ORDER = {
+    -- Above tilemo's, which would take a Mac keyboard's Command+U as
+    -- Super+U at the lock screen too.
+    "Ctrl+U clears the password at the lock screen",
     "tilemo:",
     "timo:",
     "Ctrl is Control and Alt is Meta",
@@ -27,7 +30,13 @@ M.ORDER = {
     "Ctrl+Left/Right moves by word",
 }
 -- conf's rule files: one of their rules off is a doctor line.
-M.CONF_FILES = { ["pc-alt-tab.json"] = true, ["pc-arrows.json"] = true, ["pc-terminal.json"] = true, ["tilemo.json"] = true }
+M.CONF_FILES = {
+    ["pc-alt-tab.json"] = true,
+    ["pc-arrows.json"] = true,
+    ["pc-lock.json"] = true,
+    ["pc-terminal.json"] = true,
+    ["tilemo.json"] = true,
+}
 -- The rules tilemo has seen, by description, in hs.settings: one it hasn't
 -- is turned on once, and one you turn off stays off.
 M.SEEN_KEY = "tilemo.karabiner_seen"

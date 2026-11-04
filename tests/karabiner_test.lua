@@ -325,4 +325,25 @@ t.test("the doctor names conf's rules that are off, not other rules", function()
         .. " Turn them on under Keyboard in tide's settings.")
 end)
 
+-- conf's lock screen rule (pc-lock.json): turned on at the top, above
+-- tilemo's, which would take a Mac keyboard's Command+U there as Super+U,
+-- and named in the doctor when it's off, as conf's others are.
+local LOCK = "Ctrl+U clears the password at the lock screen, as on Linux (PC muscle memory)"
+
+t.test("conf's lock screen rule goes on above tilemo's, and the doctor names it when it's off", function()
+    local assets = conf_assets()
+    assets["pc-lock.json"] = rule_file("PC keyboard lock screen", LOCK, "u")
+    local m = machine(with_assets(EMPTY_CONFIG, assets))
+    m.k.check()
+    t.eq(enabled(m), { LOCK, TILEMO, TERMINAL, TAB, ARROWS })
+    m.k.set(LOCK, false)
+    m.k.set(LOCK, true)
+    t.eq(enabled(m), { LOCK, TILEMO, TERMINAL, TAB, ARROWS }, "turned back on in its place")
+    m.k.set(LOCK, false)
+    local lines = m.k.doctor()
+    t.eq(#lines, 1)
+    t.eq(lines[1]:match("^conf's Karabiner rules that are off: Ctrl%+U clears the password at the lock screen") ~= nil, true,
+        lines[1])
+end)
+
 t.done("karabiner")

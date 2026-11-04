@@ -3081,8 +3081,10 @@ Each one names a workaround, or says there is none.
       watches that file and reloads it (its `configuration_monitor`), its
       settings window included.
     - Each goes in its place: Karabiner uses the first rule that matches a
-      key, so tilemo's and the terminal rule go above the arrow rule, and a
-      rule tilemo doesn't know goes at the top, as Karabiner puts it.
+      key, so tilemo's and the terminal rule go above the arrow rule, conf's
+      lock screen rule (Ctrl+U clears the password) above tilemo's, which
+      would take a Mac keyboard's Command+U there as Super+U, and a rule
+      tilemo doesn't know goes at the top, as Karabiner puts it.
     - The edit is JavaScript (`dashboard/karabiner.js`), run in
       JavaScriptCore, as the name patterns are (§6.2), since only
       `JSON.parse` and `JSON.stringify` keep the rest of the file as it was;
