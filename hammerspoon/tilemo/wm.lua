@@ -3180,10 +3180,30 @@ function M:step_from(cur, d, wrap)
     return list[math.max(1, math.min(#list, i + d))]
 end
 
--- Super+PgUp/PgDn: the previous or next workspace in bar order, wrapping
--- from the last to home and back, as on tide.
+-- Whether workspace `n` has a window you haven't minimized: what
+-- Super+PgUp and PgDn stop at.
+function M:has_windows(n)
+    for _, w in pairs(self.windows) do
+        if w.ws == n and not w.mine then
+            return true
+        end
+    end
+    return false
+end
+
+-- Super+PgUp/PgDn: the previous or next workspace in bar order that has a
+-- window, wrapping from the last to home and back, as on tide, so an empty
+-- one is never a stop; with none, it stays.
 function A.step(self, d)
-    self:show(self:step_from(self:current_ws(), d, true))
+    local list = self:listed()
+    local i = self:index_of_ws(self:current_ws()) or 1
+    for k = 1, #list - 1 do
+        local n = list[(i - 1 + d * k) % #list + 1]
+        if self:has_windows(n) then
+            self:show(n)
+            return
+        end
+    end
 end
 
 -- Super+1…9 (SPEC.md §7.2): the Nth workspace in bar order, home first, so

@@ -878,7 +878,7 @@ then minimizes the rest, so the screen is never empty in between.
 |---|---|---|
 | **Show** a workspace (the switcher's Workspaces tab, `Super+Return`'s prompt, `Super+Home` for "in", a bar click) | Every display shows it, each its own part. | its last focused window; with none, the keys stay on the display they were on |
 | **Move** a window to a workspace (`Super+Shift+Return`'s prompt, §7.2) | It moves to the end of that workspace's stack on the same display. A new name makes the workspace first, at the end of the list. Then that workspace shows. | that window, as on tide |
-| **Next or previous** (`Super+PgUp`, `PgDn`) | Show the one after or before, in bar order, wrapping from the last to home and back, as on tide. Scrolling over the bar's workspaces still stops at the first and last. | as Show |
+| **Next or previous** (`Super+PgUp`, `PgDn`) | Show the one after or before that has a window, in bar order, wrapping from the last to home and back, as on tide: an empty one, standing or made, or one whose only windows you minimized, is passed over, and with none other it stays. Scrolling over the bar's workspaces still stops at each, first and last. | as Show |
 | **Move a window to the next or previous** (`Super+Shift+PgUp`, `PgDn`) | Move, to the one after or before, wrapping as Next does. | that window |
 | **Move a window left or right** (`Super+Shift+Left`, `Right`, §7.2) | On its display, it swaps with the window that way. At the display's edge, it goes to the next display that way, as Moved to another display. | that window |
 | **Activate**: an app key, the switcher, Cmd+Tab, a Dock click, a notification click | If the window's workspace isn't showing, show it. | that window |
@@ -1408,9 +1408,10 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     display.
   - The work area is the display's area below the menu bar and tilemo's
     bar, where a new float is placed (§5.1).
-- **`Super+PgUp` and `PgDn` step through workspaces,** wrapping from the
-  last to home and back; with Shift they move the window there and follow
-  it. These took the jobs tide gives
+- **`Super+PgUp` and `PgDn` step through workspaces with windows,**
+  wrapping from the last to home and back, and passing over empty ones;
+  with Shift they move the window to the very next, empty or not, and
+  follow it. These took the jobs tide gives
   `Super+Left` / `Right` and `Super+Shift+Left` / `Right` (tide §6.6).
 - **`Super+Tab` and `Super+End` remember the workspaces you've shown,**
   most recent first. Like every workspace key, they switch every display

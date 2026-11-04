@@ -76,7 +76,7 @@ t.test("showing a workspace focuses its last used window", function()
 end)
 
 t.test("Super+PgUp and PgDn step through workspaces in bar order, wrapping at the first and last", function()
-    local a, wm = setup(2, nil, { workspaces = { "in" } })
+    local a, wm = setup(3, nil, { workspaces = { "in" } })
     a.focus_ = 2
     wm:act("send", "web")
     a.focus_ = 1
@@ -1084,16 +1084,49 @@ t.test("standing workspaces are listed from the start, made on demand, and never
     t.eq(wm.names, { "in", "oc", "me" }, "web goes")
 end)
 
-t.test("Next and Previous step through the standing workspaces, made or not", function()
+t.test("Next and Previous skip the workspaces with no windows, standing or made", function()
+    local a, wm = setup(4)
+    -- in, re, oc, me standing; windows on in, oc and docs, and one you
+    -- minimized on me, which doesn't count.
+    a.focus_ = 2
+    wm:act("send", "oc")
+    a.focus_ = 3
+    wm:act("send", "docs")
+    a.focus_ = 4
+    wm:act("send", "me")
+    wm:act("show", "me")
+    a.focus_ = 4
+    wm:act("minimize")
+    wm:act("show", "in")
+    wm:ensure_ws("empty")
+    -- in, re, oc, me, docs, empty
+    wm:act("step", 1)
+    t.eq(wm.current, "oc", "past re, standing and empty")
+    wm:act("step", 1)
+    t.eq(wm.current, "docs", "past me, its only window minimized")
+    wm:act("step", 1)
+    t.eq(wm.current, "in", "past empty, round to home")
+    wm:act("step", -1)
+    t.eq(wm.current, "docs", "before home, the last with a window")
+    wm:act("show", "re")
+    wm:act("step", -1)
+    t.eq(wm.current, "in", "from an empty one, the one before with a window")
+end)
+
+t.test("Next with no other workspace that has a window stays", function()
     local _, wm = setup(1)
     wm:act("step", 1)
+    t.eq(wm.current, "in")
+    wm:act("step", -1)
+    t.eq(wm.current, "in")
+end)
+
+t.test("Super+Shift+PgDn still moves the window to the very next, empty or not", function()
+    local a, wm = setup(1)
+    a.focus_ = 1
+    wm:act("move_ws", 1)
     t.eq(wm.current, "re")
-    t.eq(wm.names, { "in", "re" })
-    wm:act("step", 1)
-    wm:act("step", 1)
-    t.eq(wm.current, "me", "the last")
-    wm:act("step", 1)
-    t.eq(wm.current, "in", "then round to home")
+    t.eq(wm.windows[1].ws, "re")
 end)
 
 t.test("the standing workspaces are a setting, checked at start, the first being home", function()
