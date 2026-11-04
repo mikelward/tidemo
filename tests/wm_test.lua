@@ -464,15 +464,83 @@ t.test("resizing the master by its edge sets the split", function()
     t.eq(frame(a, 2), { x = 1152, y = 25, w = 768, h = 1055 })
 end)
 
-t.test("a drag waits for the button to come up", function()
+t.test("a resize drag sets the split as it goes, the other tiles following, and leaves the dragged one alone", function()
     local a, wm = setup(2)
     a.buttons = true
     a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 1055 }
+    a.calls = {}
     wm:moved(1)
-    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6, "while the button is held")
+    t.eq(frame(a, 2), { x = 1152, y = 25, w = 768, h = 1055 }, "the neighbor follows at once")
+    for _, c in ipairs(a.calls) do
+        t.eq(c ~= "frame 1", true, "the dragged window isn't moved under the pointer")
+    end
+    -- Further along the same drag.
+    a.wins[1].frame = { x = 0, y = 25, w = 960, h = 1055 }
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.5)
+    t.eq(frame(a, 2).x, 960)
     a.buttons = false
     a.tick()
-    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.5, "the drop keeps it")
+    t.eq(frame(a, 1), { x = 0, y = 25, w = 960, h = 1055 })
+end)
+
+t.test("a lone window narrows on both sides as its edge is dragged, staying centered", function()
+    local a, wm = setup(1)
+    a.buttons = true
+    -- The right edge dragged in to x = 1536, the left still at 0.
+    a.wins[1].frame = { x = 0, y = 25, w = 1536, h = 1055 }
+    wm:moved(1)
+    t.eq(a.wins[1].frame, { x = 384, y = 25, w = 1152, h = 1055 }, "the left edge follows, mid-drag")
+    -- Further: the right edge, still under the pointer, at 1344.
+    a.wins[1].frame = { x = 384, y = 25, w = 960, h = 1055 }
+    a.tick()
+    t.eq(a.wins[1].frame, { x = 576, y = 25, w = 768, h = 1055 })
+    a.buttons = false
+    a.tick()
+    t.eq(a.wins[1].frame, { x = 576, y = 25, w = 768, h = 1055 }, "the drop keeps it")
+end)
+
+t.test("a lone window's left edge keeps hold of its width as tilemo mirrors the right", function()
+    local a, wm = setup(1)
+    a.buttons = true
+    a.wins[1].frame = { x = 384, y = 25, w = 1536, h = 1055 } -- the left edge in to 384
+    wm:moved(1)
+    t.eq(a.wins[1].frame, { x = 384, y = 25, w = 1152, h = 1055 })
+    a.wins[1].frame = { x = 576, y = 25, w = 960, h = 1055 } -- further, to 576
+    a.tick()
+    t.eq(a.wins[1].frame, { x = 576, y = 25, w = 768, h = 1055 }, "the left edge still leads")
+    a.buttons = false
+    a.tick()
+    t.eq(a.wins[1].frame, { x = 576, y = 25, w = 768, h = 1055 }, "and the drop keeps it")
+end)
+
+t.test("a corner drag that starts with the height still finds the side you hold", function()
+    local a, wm = setup(1)
+    a.buttons = true
+    a.wins[1].frame = { x = 0, y = 25, w = 1920, h = 1054 } -- the height first
+    wm:moved(1)
+    a.wins[1].frame = { x = 384, y = 25, w = 1536, h = 1055 } -- then the left edge
+    a.tick()
+    t.eq(a.wins[1].frame, { x = 384, y = 25, w = 1152, h = 1055 })
+    a.wins[1].frame = { x = 576, y = 25, w = 960, h = 1055 }
+    a.tick()
+    t.eq(a.wins[1].frame, { x = 576, y = 25, w = 768, h = 1055 }, "the left edge leads")
+    a.buttons = false
+    a.tick()
+    t.eq(a.wins[1].frame.x, 576)
+end)
+
+t.test("a move drag still waits for the button to come up", function()
+    local a, wm = setup(3)
+    a.buttons = true
+    a.wins[1].frame = { x = 1000, y = 500, w = 1056, h = 1055 }
+    wm:moved(1)
+    t.eq(wm:part("in", "A").order, { 1, 2, 3 }, "nothing swaps mid-drag")
+    a.buttons = false
+    a.tick()
+    t.eq(wm:part("in", "A").order, { 3, 2, 1 })
 end)
 
 t.test("dropping a tile on another swaps them", function()
@@ -566,6 +634,85 @@ t.test("a tile dropped on another display moves there even if macOS resized it",
     t.eq(wm.windows[2].screen, "B")
     t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
     t.eq(a.wins[2].frame, { x = 1920, y = 25, w = 1280, h = 775 })
+end)
+
+t.test("a tile dragged onto another display and resized there mid-drag leaves its display's split alone", function()
+    local a = fake.new()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1280, h = 775 }, full = { x = 1920, y = 0, w = 1280, h = 800 } }
+    a.add(1, {})
+    a.add(2, {})
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:retile()
+    a.buttons = true
+    a.wins[2].frame = { x = 2000, y = 25, w = 864, h = 775 }
+    wm:moved(2)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55, "mid-drag")
+    a.buttons = false
+    a.tick()
+    t.eq(wm.windows[2].screen, "B")
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55, "after the drop")
+end)
+
+t.test("a corner drag leaves the dragged tile where the pointer has it, the neighbors following", function()
+    local a, wm = setup(2)
+    a.buttons = true
+    -- The master's bottom-right corner dragged: wider, and shorter.
+    a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 800 }
+    a.calls = {}
+    wm:moved(1)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
+    t.eq(a.wins[1].frame, { x = 0, y = 25, w = 1152, h = 800 }, "its bottom stays under the pointer")
+    t.eq(frame(a, 2).x, 1152)
+end)
+
+t.test("a corner drag taken back to where it started puts the split back", function()
+    local a, wm = setup(2)
+    local start = frame(a, 1)
+    a.buttons = true
+    a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 800 }
+    wm:moved(1)
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
+    a.wins[1].frame = start
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55, "mid-drag, back to the start")
+    t.eq(frame(a, 2).x, start.x + start.w, "the neighbor back beside it")
+    a.buttons = false
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55, "after the drop")
+    t.eq(frame(a, 2).x, start.x + start.w)
+end)
+
+t.test("an edge taken back and out again in one drag sets the split again", function()
+    local a, wm = setup(2)
+    local start = frame(a, 1)
+    a.buttons = true
+    a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 1055 }
+    wm:moved(1)
+    a.wins[1].frame = start
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55)
+    a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 1055 }
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6, "out again")
+    a.buttons = false
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.6)
+    t.eq(frame(a, 2).x, 1152, "no overlap")
+end)
+
+t.test("a corner drag whose width goes back puts the split back, whatever its height", function()
+    local a, wm = setup(2)
+    a.buttons = true
+    a.wins[1].frame = { x = 0, y = 25, w = 1152, h = 800 }
+    wm:moved(1)
+    a.wins[1].frame = { x = 0, y = 25, w = 1056, h = 800 }
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55, "mid-drag")
+    a.buttons = false
+    a.tick()
+    t.eq(wm:part("in", "A").opts.tile.mfact, 0.55, "after the drop")
+    t.eq(frame(a, 1).w, 1056)
 end)
 
 t.test("a lone window keeps the width you drag it to, until a second window opens", function()

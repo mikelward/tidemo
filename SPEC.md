@@ -671,11 +671,19 @@ handling (tileco §5.3):
   sees the result through Accessibility's `kAXMovedNotification` and
   `kAXResizedNotification`, and treats it as a request:
   - **Resizing a tile** sets the workspace's split (`mfact`), and its
-    neighbors follow.
+    neighbors follow as you drag, not only when you let go: tilemo looks
+    every 0.1 s while the button is held, and on each resize notification.
   - **Resizing a lone tile** sets that workspace's lone-window width in place
-    of the single-window rule. It stays centered, so the other edge follows,
-    and the width comes back whenever the workspace is down to one window.
-    With several windows and no stack, a drag changes nothing.
+    of the single-window rule. It stays centered, so the other edge follows
+    as you drag, and the width comes back whenever the workspace is down to
+    one window. With several windows and no stack, a drag changes nothing.
+  - **Mid-drag, the dragged tile is placed too** when the layout keeps the
+    edge you hold under the pointer: a centered tile, such as a lone window
+    or threecol's middle master, narrows on both sides. When the layout
+    wouldn't (a split at its 0.1 or 0.9 limit), the dragged tile is left as
+    the pointer has it until the drop *(unverified on a Mac that an app's
+    own resize takes a move mid-drag without jitter)*.
+  - **A move** still waits for the drop, which may swap it.
   - **Dropping a moved tile** puts it in the tile nearest its center,
     swapping with that tile's window. If the center is on another display,
     the window first moves to that display, in the same workspace.

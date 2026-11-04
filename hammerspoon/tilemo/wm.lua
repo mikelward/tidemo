@@ -1868,12 +1868,17 @@ function M:arranged(s)
     return ids, boxes
 end
 
-function M:retile()
+-- Put every tile where its layout says; `skip`, the tile being resized by
+-- hand, stays where the pointer has it, its placed frame the drag's start.
+function M:retile(skip)
     self:follow_floats()
     for _, s in ipairs(self:screens()) do
         local ids, boxes = self:arranged(s)
         for _, id in ipairs(ids) do
             local box = boxes[id]
+            if id == skip then
+                goto continue
+            end
             local f = self.a.state(id)
             local cur = f and f.frame
             if not cur or cur.x ~= box.x or cur.y ~= box.y or cur.w ~= box.w or cur.h ~= box.h then
@@ -1884,6 +1889,7 @@ function M:retile()
                 cur = after and after.frame or box
             end
             self.placed[id] = cur
+            ::continue::
         end
     end
     -- Windows may have moved under a still pointer; that isn't a crossing.
@@ -2236,6 +2242,71 @@ function M:window_at(x, y)
     end
 end
 
+-- The split a resize of tile `id` from `from` (its placed frame unless
+-- given) to `box` sets, on its part: true when it changed it. A lone
+-- tile's sets its width.
+function M:resize_split(id, box, from)
+    local w = self.windows[id]
+    local old = from or self.placed[id]
+    local s = self:screen_for(box)
+    local ws = self:part_of(w)
+    local ids = self:tiled(w.ws, w.screen)
+    local i = layout.index_of(ids, id)
+    if s and i and #ids == 1 then
+        -- A lone window stays centered: the other edge follows.
+        local width = mouse.single_width_for(s.area, old, box)
+        if not width or width == ws.single_width then
+            return false
+        end
+        ws.single_width = width
+        return true
+    end
+    local f = s and i and mouse.mfact_for(ws.mode, ws.opts[ws.mode] or {}, i, #ids, s.area, old, box)
+    if not f then
+        return false
+    end
+    f = layout.geometry.clamp(f, 0.1, 0.9)
+    local opts = ws.opts[ws.mode]
+    if opts.mfact == f then
+        return false
+    end
+    opts.mfact = f
+    return true
+end
+
+-- Whether putting tile `id` where its layout now says would move an edge
+-- being dragged (from `old` to `box`) away from the pointer, as clamping
+-- the split, or a corner drag's height, can. If not, it's placed too, so a centered tile (a lone
+-- window, threecol's middle master) narrows on both sides as you drag.
+function M:fights_drag(id, old, box)
+    local s = self:screen_for(box)
+    if not s then
+        return true
+    end
+    local _, boxes = self:arranged(s)
+    local b = boxes and boxes[id]
+    if not b then
+        return true
+    end
+    -- Every edge the drag moved must stay where the pointer put it.
+    local function off(a1, a2)
+        return math.abs(a1 - a2) > 2
+    end
+    if box.x ~= old.x and off(b.x, box.x) then
+        return true
+    end
+    if box.x + box.w ~= old.x + old.w and off(b.x + b.w, box.x + box.w) then
+        return true
+    end
+    if box.y ~= old.y and off(b.y, box.y) then
+        return true
+    end
+    if box.y + box.h ~= old.y + old.h and off(b.y + b.h, box.y + box.h) then
+        return true
+    end
+    return false
+end
+
 -- A tile the user moved or resized to `box`, by its own edges or with
 -- Super+drag. A resize sets the split; a move puts the window in the tile
 -- nearest where its center landed, swapping with that tile's window, or on
@@ -2261,18 +2332,7 @@ function M:request(id, box)
         table.insert(self.mru[w.ws], 1, id)
         self:save()
     elseif old and (old.w ~= box.w or old.h ~= box.h) then
-        local ws = self:part_of(w)
-        local ids = self:tiled(w.ws, w.screen)
-        local i = layout.index_of(ids, id)
-        if s and i and #ids == 1 then
-            -- A lone window: the drag sets its width on this workspace.
-            ws.single_width = mouse.single_width_for(s.area, old, box) or ws.single_width
-        else
-            local f = s and i and mouse.mfact_for(ws.mode, ws.opts[ws.mode] or {}, i, #ids, s.area, old, box)
-            if f then
-                ws.opts[ws.mode].mfact = layout.geometry.clamp(f, 0.1, 0.9)
-            end
-        end
+        self:resize_split(id, box)
     elseif s then
         local ws = self:part_of(w)
         local ids = self:tiled(w.ws, w.screen)
@@ -2335,10 +2395,89 @@ function M:moved(id)
         return
     end
     local st = self.a.state(id)
-    if not st or same(st.frame, self.placed[id]) then
+    if not st then
         return
     end
-    if self.a.buttons_down() then
+    local down = self.a.buttons_down()
+    local s = self:screen_for(st.frame)
+    local here = s and s.uuid == w.screen
+    local live = self.live_resize
+    if live and live.id ~= id then
+        live = nil
+    end
+    -- A resize by the tile's own edge moves its neighbors as it goes. Each
+    -- step is worked out afresh from where the drag started and the split
+    -- as the drag found it, so an edge taken back puts the split back, and
+    -- one taken out again moves it again. Over another display, where macOS
+    -- may resize a window it moves, it's a move, which the drop takes.
+    if not live and down and here then
+        local start = self.placed[id]
+        if start and (start.w ~= st.frame.w or start.h ~= st.frame.h) then
+            local part = self:part_of(w)
+            -- The edge you took hold of: a centered tile's other edge moves
+            -- too, by tilemo's hand, and mustn't take over the split.
+            local edge
+            if st.frame.x + st.frame.w ~= start.x + start.w then
+                edge = "right"
+            elseif st.frame.x ~= start.x then
+                edge = "left"
+            end
+            live = {
+                id = id, start = start, part = part, mode = part.mode, edge = edge,
+                mfact = (part.opts[part.mode] or {}).mfact, single_width = part.single_width,
+            }
+            self.live_resize = live
+        end
+    end
+    if live and not live.edge then
+        -- A corner drag may change only the height at first: the edge you
+        -- hold is the first side to move.
+        local st0 = live.start
+        if st.frame.x + st.frame.w ~= st0.x + st0.w then
+            live.edge = "right"
+        elseif st.frame.x ~= st0.x then
+            live.edge = "left"
+        end
+    end
+    if live then
+        local part, opts = live.part, live.part.opts[live.mode]
+        local mfact, width = opts.mfact, part.single_width
+        opts.mfact, part.single_width = live.mfact, live.single_width
+        if here then
+            -- Only the edge you hold moves the split: the other is the start's.
+            local box, st0 = st.frame, live.start
+            if live.edge == "right" then
+                box = { x = st0.x, y = box.y, w = box.x + box.w - st0.x, h = box.h }
+            elseif live.edge == "left" then
+                box = { x = box.x, y = box.y, w = st0.x + st0.w - box.x, h = box.h }
+            end
+            self:resize_split(id, box, live.start)
+        end
+        if not down then
+            self.live_resize = nil
+            if not here then
+                -- Dropped on another display: a move, with the split as it was.
+                self:request(id, st.frame)
+                return
+            end
+            self:retile()
+            return
+        end
+        if opts.mfact ~= mfact or part.single_width ~= width then
+            -- The edges you moved are the ones that differ from where tilemo
+            -- last put the tile, which mid-drag may not be where it started.
+            self:retile(self:fights_drag(id, self.placed[id], st.frame) and id or nil)
+        end
+        self.a.after(0.1, function()
+            self:moved(id)
+        end)
+        return
+    end
+    if same(st.frame, self.placed[id]) then
+        return
+    end
+    if down then
+        -- A move waits for the drop, which may swap it.
         self.a.after(0.1, function()
             self:moved(id)
         end)
