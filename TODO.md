@@ -280,6 +280,11 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
   2026-11-04); tide's web addresses pin nothing here, and a pinned app
   that isn't one of home's still asks for a name as it opens on a
   workspace that asks, as on tide.
+- **Trackpad, key repeat and left-handed stay in System Settings**
+  (2026-11-04): tide's pages set them live, but macOS's `defaults` for tap
+  to click, natural scrolling, tracking speed, key repeat and swapping the
+  buttons take effect only at the next login *(unverified)*, so controls
+  here would seem not to work. Revisit if a live way turns up.
 
 - **tide's idle timeline runs only once its files set some of it**
   (SPEC.md §15, 2026-11-04), as light and dark does, rather than tide's
