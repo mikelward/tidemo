@@ -214,6 +214,12 @@ t.test("showing an open settings window again redraws Floating now", function()
         view.level_ = l
     end
     _G.hs.drawing = { windowLevels = { floating = 3 } }
+    -- The Displays page watches the displays.
+    _G.hs.screen = {
+        watcher = { new = function() return { start = function() end } end },
+        allScreens = function() return {} end,
+        primaryScreen = function() end,
+    }
     function view.navigationCallback(_, fn)
         view.nav = fn
     end

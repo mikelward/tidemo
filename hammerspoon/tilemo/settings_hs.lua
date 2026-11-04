@@ -18,6 +18,7 @@ local launcherpage = require("tilemo.launcherpage")
 local linearmouse = require("tilemo.linearmouse")
 local checklist = require("tilemo.checklist")
 local sound_hs = require("tilemo.sound_hs")
+local displays_hs = require("tilemo.displays_hs")
 
 local M = {}
 
@@ -171,6 +172,20 @@ function M.new(tilemo)
         return {}
     end
 
+    -- The Displays page's displays (displays_hs.lua), read the same way,
+    -- and drawn again as one comes, goes or changes.
+    local screens = displays_hs.new(tilemo, function()
+        self.displays_changed()
+    end)
+    local function displays_state()
+        local ok, s = pcall(screens.state)
+        if ok then
+            return s
+        end
+        tilemo.adapter.log("settings: couldn't read the displays: " .. tostring(s))
+        return {}
+    end
+
     local function push()
         if not view then
             return
@@ -179,6 +194,8 @@ function M.new(tilemo)
         local json = hs.json.encode({
             -- The Sound page's devices, volumes and mutes.
             sound = sound_state(),
+            -- The Displays page's displays.
+            displays = displays_state(),
             clockFiles = tilemo.clock_files,
             startupFiles = tilemo.startup_files,
             layoutFiles = tilemo.layout_files,
@@ -327,6 +344,18 @@ function M.new(tilemo)
         end)
     end
 
+    -- The Displays page alone.
+    function self.displays_changed()
+        if not view then
+            return
+        end
+        view:evaluateJavaScript("tilemo.displays(" .. hs.json.encode(displays_state()) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
     -- The checklist alone, so coming back to the window doesn't redraw the
     -- rest of it.
     local function setup_changed()
@@ -359,6 +388,8 @@ function M.new(tilemo)
             elseif sound.handle(body) then
                 -- The page shows what macOS says now, not what it asked.
                 self.sound_changed()
+            elseif screens.handle(body) then
+                self.displays_changed()
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
             elseif type(body.pickWallpaper) == "string" and tilemo.wallpaper then

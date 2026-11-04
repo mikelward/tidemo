@@ -2712,6 +2712,27 @@ Each one names a workaround, or says there is none.
       each with an open-in-a-window icon, as tide's advanced row.
     - The page keeps each button's glyph as its text, and draws the icon
       over it (`data-icon`), so its tests find it as before.
+  - **Built: Displays sets each display itself,** as tide's Displays page
+    does (tide §16), through `hs.screen` (`displays.lua`,
+    `displays_hs.lua`).
+    - Under each display's name, the main one first: its resolution, ‹ and
+      ›, through the sizes macOS lists for it at the scale it's at, as
+      System Settings' Looks like has them, each at its highest refresh
+      rate. Only a size macOS lists is ever set.
+    - For the others: where it goes beside the main display, ‹ and ›
+      through To the right, To the left, Above and Below, as tide's Place
+      has them, set edge to edge with the top or left edges lined up; and
+      Make main. One overlapping the main display, as a mirror does, is
+      Elsewhere.
+    - Its brightness, where macOS can set it (`hs.screen:getBrightness`
+      gives one): a slider, set as it moves. An external display's over
+      DDC isn't here yet.
+    - The page shows what macOS says after each change, and again as a
+      display comes, goes or changes. tide tiles each display again as it
+      changes, as it does for one plugged in.
+    - **Cost and reliability:** nothing to install. *(Unverified on a Mac:
+      whether every display's modes come back at their scale, and how long
+      macOS takes to apply a size.)*
   - **Built: Sound sets the devices itself,** as tide's Sound page does
     (tide §16), through `hs.audiodevice` (`sound.lua`, `sound_hs.lua`).
     - Under Output, then Input: the device in use's mute, a slider and its
@@ -2736,7 +2757,7 @@ Each one names a workaround, or says there is none.
 
     | Section | Buttons |
     |---|---|
-    | Displays | Displays settings |
+    | Displays | each display's resolution, place beside the main display, Make main, and brightness where macOS can set it (below); Displays settings |
     | Sound | the output and the input in use, each with its mute, volume and level, and the devices to pick from (below); Sound settings |
     | Network | Network settings |
     | Bluetooth | Bluetooth settings |
