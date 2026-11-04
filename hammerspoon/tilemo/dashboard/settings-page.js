@@ -42,6 +42,9 @@ import {
   DEFAULT_IDLE, STEPS as IDLE_STEPS, SWITCHES as IDLE_SWITCHES, formatDuration, loadIdle, stepped as steppedIdle,
   withSetting as withIdle,
 } from "./tide-idle.js";
+import {
+  DAYS, DAY_LABELS, loadNotificationSettings, steppedDndTime, withDayToggled, withSetting as withNotification,
+} from "./tide-dnd.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { steppedPointer } from "./linearmouse.js";
 
@@ -448,6 +451,73 @@ function drawDisplays(st) {
       box.append(row);
     }
   }
+}
+
+// Notifications' Do Not Disturb on a schedule, as tide's page (tide SPEC.md
+// §16): On or Off, its times, − and + a quarter hour past the other, and
+// the days a window starts on. Shared with tide's notifications.json; a
+// change goes to notifications.local.json ({ writeNotifications: text }),
+// and tilemo runs it (dndsched_hs.lua). Critical alerts breaking through
+// is tide's server's alone, so it isn't here.
+let notificationFiles = null;
+const notificationText = (which) => (typeof notificationFiles?.[which] === "string" ? notificationFiles[which] : null);
+const DND_TIMES = [{ key: "dndFrom", label: "From", other: "dndTo" }, { key: "dndTo", label: "To", other: "dndFrom" }];
+
+function writeNotifications(r) {
+  const error = document.getElementById("dnd-error");
+  if (r.error) {
+    error.textContent = r.error;
+    return;
+  }
+  error.textContent = "";
+  notificationFiles = { ...notificationFiles, local: r.text };
+  send({ writeNotifications: r.text });
+  renderDnd();
+}
+
+function renderDnd() {
+  const shared = notificationText("shared");
+  const own = notificationText("local");
+  const { settings: s, errors } = loadNotificationSettings(shared, own);
+  const bad = errors.length > 0;
+  if (bad) document.getElementById("dnd-error").textContent = `${errors.join("; ")}. Fix the file to change these here.`;
+  const set = (key, value) => writeNotifications(withNotification(shared, own, key, value));
+  keepingFocus(() => {
+    const row = document.getElementById("dnd-scheduled");
+    row.replaceChildren();
+    const name = el("span", "Do not disturb on a schedule");
+    name.className = "name";
+    const toggle = keyed(button(s.dndScheduled ? "On" : "Off", `Do not disturb on a schedule: ${s.dndScheduled ? "on" : "off"}`,
+      bad, () => set("dndScheduled", !s.dndScheduled)), "dnd-scheduled");
+    toggle.setAttribute("aria-pressed", String(s.dndScheduled === true));
+    row.append(name, toggle);
+    const times = document.getElementById("dnd-times");
+    times.replaceChildren();
+    const days = document.getElementById("dnd-days");
+    days.replaceChildren();
+    days.hidden = !s.dndScheduled;
+    if (!s.dndScheduled) return;
+    for (const t of DND_TIMES) {
+      const li = el("li");
+      const value = el("span", s[t.key]);
+      value.className = "value";
+      li.append(el("span", t.label),
+        keyed(button("−", `Earlier: ${t.label}`, bad, () => set(t.key, steppedDndTime(s[t.key], -1, s[t.other]))), `${t.key}-earlier`),
+        value,
+        keyed(button("+", `Later: ${t.label}`, bad, () => set(t.key, steppedDndTime(s[t.key], 1, s[t.other]))), `${t.key}-later`));
+      times.append(li);
+    }
+    const label = el("span", "Days");
+    label.className = "name";
+    days.append(label);
+    DAYS.forEach((d, i) => {
+      const on = s.dndDays.includes(d);
+      const b = keyed(button(DAY_LABELS[i], `${d}: ${on ? "on" : "off"}`, bad,
+        () => writeNotifications(withDayToggled(shared, own, d))), `dnd-day-${d}`);
+      b.setAttribute("aria-pressed", String(on));
+      days.append(b);
+    });
+  });
 }
 
 // The Idle page, as tide's (tide SPEC.md §16): whether tide's timeline
@@ -1429,6 +1499,8 @@ window.tilemo = {
     appearanceFiles = state.appearanceFiles ?? null;
     idleFiles = state.idleFiles ?? null;
     renderIdle();
+    notificationFiles = state.notificationFiles ?? null;
+    renderDnd();
     if (isObject(state.theme)) themeState = state.theme;
     layoutFiles = state.layoutFiles ?? null;
     inputFiles = state.inputFiles ?? null;

@@ -2803,6 +2803,27 @@ Each one names a workaround, or says there is none.
       rest of the window going undrawn.
     - **Cost and reliability:** nothing to install; Core Audio through
       Hammerspoon, as the bar uses already.
+  - **Built: Do not disturb on a schedule, as tide's** (`dndsched.lua`,
+    `dndsched_hs.lua`), from tide's `notifications.json` and
+    `notifications.local.json`, read with tide's own module (copied
+    unchanged, `dashboard/tide-dnd.js`), run in JavaScriptCore.
+    - As a window opens (`dndFrom` on a listed day), tilemo turns Do Not
+      Disturb on, through presenter mode's Do Not Disturb On and Off
+      shortcuts (§10); as it closes (`dndTo`), off, if the schedule turned
+      it on. Turned on or off by hand meanwhile (the launcher, presenter
+      mode), the close leaves it.
+    - macOS doesn't say whether Do Not Disturb is on, so unlike tide's, a
+      window opening turns it on even when it's on already, and one
+      closing turns off what you turned on before it opened.
+    - It looks every minute and on a wake. Off by default, as tide's is.
+      A file gone wrong is logged, and the last good schedule stays in
+      effect, as tide's does, so a slip in an edit doesn't end a window.
+    - The page: On or Off, From and To, − and + a quarter hour past the
+      other, and the days a window starts on. Critical alerts breaking
+      through is tide's notification server's alone, so it isn't here.
+    - **Cost and reliability:** the two shortcuts the Setup checklist asks
+      for. A short JavaScript run a minute. Focus settings' own schedules
+      run too.
   - **Built: Idle runs tide's timeline** (`idle.lua`, `idle_hs.lua`), from
     tide's `idle.json` and `idle.local.json`, read as tide's idle module
     reads them (copied unchanged, `dashboard/tide-idle.js`). With nothing
@@ -2887,7 +2908,7 @@ Each one names a workaround, or says there is none.
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
     | Appearance | light or dark on tide's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog, and the Menu bar switch; Appearance settings |
-    | Notifications | Notifications settings, above the muted list (below) |
+    | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
     | Idle | tide's timeline On or Off, each step's time, and Suspend on AC too (below); Lock Screen settings |
