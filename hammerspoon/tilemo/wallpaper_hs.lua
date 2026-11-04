@@ -32,20 +32,44 @@ function M.new(tilemo)
         return hs.host.interfaceStyle() == "Dark"
     end
 
-    -- Set the mode's picture on every display that doesn't show it yet.
-    local said_color = ""
-    function self.apply()
-        local w = walls()
-        local set = w[dark() and "dark" or "light"]
-        if wallpaper.is_color(set) then
-            -- Said once for each color, not at every display or mode change.
-            if set ~= said_color then
-                tilemo.adapter.log("wallpaper: " .. set .. " is a color, which tide shows but a Mac can't set; the desktop picture stays as it is")
-                said_color = set
-            end
-            return
+    -- Where a color's picture is drawn: a folder of tide's own, kept
+    -- across restarts, since macOS shows the file itself.
+    local colors = home .. "/Library/Application Support/tide"
+
+    -- The picture for color `hex`, drawn once: a small square of it, which
+    -- macOS stretches to fill each display. Nil, logged, if it can't be:
+    -- tried again at each change, but said once for each color.
+    local said = {}
+    local function drawn(hex)
+        local path = wallpaper.color_file(colors, hex)
+        if hs.fs.attributes(path, "mode") == "file" then
+            return path
         end
-        local path = wallpaper.now(w, dark(), home)
+        hs.fs.mkdir(colors)
+        local ok, saved = pcall(function()
+            local c = hs.canvas.new({ x = 0, y = 0, w = 64, h = 64 })
+            c:appendElements({ type = "rectangle", action = "fill", fillColor = { hex = "#" .. hex, alpha = 1 } })
+            local image = c:imageFromCanvas()
+            c:delete()
+            return image and image:saveToFile(path)
+        end)
+        if not ok or not saved then
+            if not said[hex] then
+                said[hex] = true
+                tilemo.adapter.log("wallpaper: couldn't draw #" .. hex .. " to " .. path .. ": " .. tostring(saved)
+                    .. "; the desktop picture stays as it is")
+            end
+            return nil
+        end
+        return path
+    end
+
+    -- Set the mode's picture on every display that doesn't show it yet.
+    function self.apply()
+        local path, hex = wallpaper.now(walls(), dark(), home)
+        if hex then
+            path = drawn(hex)
+        end
         if not path then
             return
         end

@@ -723,14 +723,9 @@ const WALLPAPERS = [
 ];
 const appearanceText = (which) => (typeof appearanceFiles?.[which] === "string" ? appearanceFiles[which] : null);
 
+// A path, or a color as tide takes one, which tilemo draws into a picture
+// (wallpaper_hs.lua).
 function setWallpaper(key, value) {
-  // tide takes a color too, but a Mac's desktop can't be set to one here
-  // (wallpaper.lua), so it's refused rather than saved to do nothing.
-  if (value.startsWith("#")) {
-    document.getElementById("appearance-error").textContent =
-      `A solid color is tide's only: on a Mac, ${key} must be an image's path; not changing ${key}`;
-    return;
-  }
   setAppearance(key, value);
 }
 
