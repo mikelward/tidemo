@@ -3177,12 +3177,13 @@ Each one names a workaround, or says there is none.
       playing holds) holds every step, as an idle inhibit does on tide;
       one keeping the system awake holds the sleep alone. tilemo's own
       keep awake holds the display, so it holds the timeline too.
-    - The page: tide's timeline On or Off, then each step's time, − and +
+    - The page: Use tide's idle settings, On or Off, then each step's time, − and +
       along tide's ladder, and Sleep when plugged in. On writes tide's timings
       as they stand to `idle.local.json`; Off empties it, and can't turn
       off what the shared file sets.
-    - macOS's own timers still run, so the page says to set them later,
-      or to Never. None of this needs an administrator.
+    - macOS's own timers still run, so the page says to disable its lock
+      timer, above a Lock settings button. None of this needs an
+      administrator.
     - **Cost and reliability:** nothing to install. One cheap reading every
       5 s while it runs. *(Unverified on a Mac: that the veil covers the
       menu bar and full-screen apps, and how `pmset displaysleepnow`
@@ -3248,7 +3249,7 @@ Each one names a workaround, or says there is none.
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
-    | Idle | tide's timeline On or Off, each step's time, and Sleep when plugged in (below); Lock Screen settings |
+    | Idle | Use tide's idle settings On or Off, each step's time, and Sleep when plugged in (below); Lock settings |
     | Start at login | Login Items settings, for macOS's own list |
 
     - A pane opens by its `x-apple.systempreferences:` ID, as the bar's

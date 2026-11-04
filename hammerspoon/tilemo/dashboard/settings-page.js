@@ -568,11 +568,11 @@ function renderIdle() {
   keepingFocus(() => {
     const row = document.getElementById("idle-timeline");
     row.replaceChildren();
-    const name = el("span", "tide's timeline");
+    const name = el("span", "Use tide's idle settings");
     name.className = "name";
     // On writes tide's timings as they stand; Off empties this Mac's file,
     // which can't turn off what the shared one sets.
-    const toggle = keyed(button(on ? "On" : "Off", `tide's timeline: ${on ? "on" : "off"}`, bad || (on && setsIdle(shared ?? "")), () => {
+    const toggle = keyed(button(on ? "On" : "Off", `Use tide's idle settings: ${on ? "on" : "off"}`, bad || (on && setsIdle(shared ?? "")), () => {
       if (on) return writeIdle("{}\n");
       const all = Object.fromEntries(Object.keys(DEFAULT_IDLE).map((k) => [k, idle[k]]));
       writeIdle(JSON.stringify(all, null, 2) + "\n");
