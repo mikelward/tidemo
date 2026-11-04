@@ -58,10 +58,35 @@ end
 -- alike, on the owner's MacBook), so that bar is at the main menu's level,
 -- the lowest that stays there.
 function M.level(s)
+    -- Over a menu bar macOS keeps showing (Automatically hide: Never), the
+    -- bar covers it, at the status level, just above the menu bar's.
+    if s.menu_bar then
+        return "status"
+    end
     if s.notch then
         return "mainMenu"
     end
     return "floating"
+end
+
+-- What the room macOS keeps at the top of a display is, from its `area`
+-- (hs.screen's frame) and `full` frame: whether it has a notch, and whether
+-- it is a menu bar that shows (`hidden`: the menu bar hides itself). With
+-- the menu bar hidden, the only room kept is a notch's. With it shown, the
+-- room is the menu bar, and a notched display's is taller: 37 px or more,
+-- where a plain one's is 24 or 25 *(heights seen on Sonoma and later;
+-- unverified per model)*, so the title and chips still keep clear of it.
+M.NOTCH_MENU_BAR = 30
+
+function M.top_room(area, full, hidden)
+    local room = area.y - full.y
+    if room <= 0 then
+        return false, false
+    end
+    if hidden then
+        return true, false
+    end
+    return room > M.NOTCH_MENU_BAR, true
 end
 
 -- The strip along the top of a display's area, and the tiling area left
@@ -81,13 +106,17 @@ end
 -- the adapter) the bar goes up to the top of the screen, as tall as that
 -- strip or `h`, whichever is taller, and windows tile below it.
 --
+-- With the menu bar showing (`s.menu_bar`, from the adapter), the bar covers
+-- it the same way: from the top of the screen, as tall as the menu bar or
+-- `h`, so the menu bar never slides in over the bar (SPEC.md §8).
+--
 -- `floor`, when given, is where the bar's window really ends: macOS may
 -- refuse the strip and move the window down (bar_hs.lua reads it back), and
 -- windows then tile below it rather than under it.
 function M.place(s, h, floor)
     local area = s.area
     local strip, below
-    if s.notch and s.full and s.full.y < area.y then
+    if (s.notch or s.menu_bar) and s.full and s.full.y < area.y then
         strip = { x = area.x, y = s.full.y, w = area.w, h = math.max(h, area.y - s.full.y) }
         local top = strip.y + strip.h
         below = { x = area.x, y = top, w = area.w, h = math.max(0, area.y + area.h - top) }
@@ -111,6 +140,32 @@ function M.pointer_at(frames, x, y)
         end
     end
     return nil
+end
+
+-- The events Show Menu Bar's tap watches, as hs.eventtap.event.types
+-- names. Releases count too: pressing a menu's title, dragging onto an item
+-- and letting go chooses it with only the press on the menu bar.
+M.REVEAL_EVENTS = { "leftMouseDown", "leftMouseUp", "rightMouseDown", "rightMouseUp", "keyDown" }
+
+-- Whether an event ends Show Menu Bar: Esc or Return, which closes a menu or
+-- chooses its item (`kind` "key", `key` as hs.keycodes.map names it), or a
+-- press or release (`kind` "mouse") below every bar's strip at x, y. So a
+-- click on the menu bar or a menu's title keeps it, and choosing a menu's
+-- item, by a click or a drag, or a click anywhere else, brings the bars
+-- back. `frames` as for pointer_at.
+function M.reveal_done(frames, kind, key, x, y)
+    if kind == "key" then
+        return key == "escape" or key == "return"
+    end
+    if kind ~= "mouse" then
+        return false
+    end
+    for _, f in pairs(frames) do
+        if x >= f.x and x < f.x + f.w and y >= f.y and y < f.y + f.h then
+            return false
+        end
+    end
+    return true
 end
 
 -- Where to put a pointer at x, y back to, or nil to leave it: macOS shows
@@ -703,6 +758,10 @@ end
 -- id. Not here: Recent Items, Force Quit, whose key is the system's own,
 -- and anything a profile adds to the real one.
 M.APPLE = {
+    -- tilemo's bar covering the menu bar, hidden until a click below it or
+    -- Esc, so the real one, with the app's menus and status items, shows.
+    { id = "menubar", label = "Show Menu Bar" },
+    "-",
     { id = "about", label = "About This Mac", open = "x-apple.systempreferences:com.apple.SystemProfiler.AboutExtension" },
     "-",
     { id = "settings", label = "System Settings…", open = "/System/Applications/System Settings.app" },

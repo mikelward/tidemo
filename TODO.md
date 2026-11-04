@@ -21,7 +21,7 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 8. **Done:** conf's Karabiner rule turns Win+key into
    Ctrl+Option+Command+key (description starting `tilemo:`), and
    `setup-macos --wm tilemo` in scripts installs Hammerspoon and tilemo, frees
-   the keys in SPEC.md §7.3, and hides the menu bar for tilemo's bar.
+   the keys in SPEC.md §7.3, and stops the menu bar hiding, for tilemo's bar to cover.
 
 ## Settings pages, for parity with tide
 
