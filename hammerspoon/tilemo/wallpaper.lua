@@ -2,6 +2,8 @@
 -- appearance.local.json (tide SPEC.md §15, §16), as the Mac's desktop
 -- picture (SPEC.md §10). Pure Lua.
 
+local names = require("tilemo.names")
+
 local M = {}
 
 -- Each mode's setting, as tide names them.
@@ -49,12 +51,31 @@ local function problem(key, v)
     end
 end
 
+-- How each mode's picture is placed (tide SPEC.md §15): its own, else
+-- wallpaperPosition's, for both, else fill.
+M.POSITION_KEYS = { light = "lightWallpaperPosition", dark = "darkWallpaperPosition", both = "wallpaperPosition" }
+M.POSITIONS = { "fill", "fill-top", "fill-bottom", "fit", "stretch" }
+
+local function position_problem(key, v)
+    for _, p in ipairs(M.POSITIONS) do
+        if v == p then
+            return nil
+        end
+    end
+    local quoted = {}
+    for i, p in ipairs(M.POSITIONS) do
+        quoted[i] = '"' .. p .. '"'
+    end
+    return key .. " must be one of " .. table.concat(quoted, ", ")
+end
+
 -- The wallpapers set, { light, dark }, each a path or "" for none, from
 -- the two files' texts (nil for a file that isn't there), the local one's
--- over the shared one's, as tide reads them; and what's wrong with either.
--- `decode` is hs.json.decode.
+-- over the shared one's, as tide reads them; what's wrong with either; and
+-- each mode's position, { light, dark }. `decode` is hs.json.decode.
 function M.load(shared, own, decode)
     local out, errors = { light = "", dark = "" }, {}
+    local placed = {}
     for _, f in ipairs({ { M.SHARED_FILE, shared }, { M.LOCAL_FILE, own } }) do
         local name, text = f[1], f[2]
         if text then
@@ -72,11 +93,76 @@ function M.load(shared, own, decode)
                         end
                     end
                 end
+                for which, key in pairs(M.POSITION_KEYS) do
+                    if t[key] ~= nil then
+                        local why = position_problem(key, t[key])
+                        if why then
+                            errors[#errors + 1] = name .. ": " .. why
+                        else
+                            placed[which] = t[key]
+                        end
+                    end
+                end
             end
         end
     end
     table.sort(errors)
-    return out, errors
+    local positions = {
+        light = placed.light or placed.both or "fill",
+        dark = placed.dark or placed.both or "fill",
+    }
+    return out, errors, positions
+end
+
+-- How macOS places a desktop picture for `position`: NSWorkspace's
+-- scaling (NSImageScaling: 3 proportionally up or down, 1 axes
+-- independently) and whether it may crop. macOS centers what it crops, so
+-- fill-top and fill-bottom are drawn as fill.
+function M.placement(position)
+    if position == "fit" then
+        return { scaling = 3, clip = false }
+    elseif position == "stretch" then
+        return { scaling = 1, clip = false }
+    end
+    return { scaling = 3, clip = true }
+end
+
+-- JavaScript for JXA (hs.osascript.javascript), through its ObjC bridge,
+-- since hs.screen:desktopImageURL gives macOS no placement: sets the
+-- picture at file URL `url` on every display not showing it placed as
+-- `placement` (M.placement's) already. Gives, as JSON, what macOS said
+-- for each display it wouldn't set.
+function M.desktop_script(url, placement)
+    return "ObjC.import('AppKit');\n(function () {"
+        .. "const URL = " .. names.js_string(url) .. ", SCALING = " .. string.format("%d", placement.scaling)
+        .. ", CLIP = " .. tostring(placement.clip) .. ";"
+        .. [[
+  const ws = $.NSWorkspace.sharedWorkspace;
+  const scalingKey = $.NSWorkspaceDesktopImageScalingKey;
+  const clipKey = $.NSWorkspaceDesktopImageAllowClippingKey;
+  const options = $.NSMutableDictionary.dictionary;
+  options.setObjectForKey($.NSNumber.numberWithInteger(SCALING), scalingKey);
+  options.setObjectForKey($.NSNumber.numberWithBool(CLIP), clipKey);
+  const picture = $.NSURL.URLWithString(URL);
+  const screens = $.NSScreen.screens;
+  const refused = [];
+  for (let i = 0; i < screens.count; i++) {
+    const screen = screens.objectAtIndex(i);
+    const now = ws.desktopImageURLForScreen(screen);
+    const placed = ws.desktopImageOptionsForScreen(screen);
+    const scaling = placed && placed.objectForKey(scalingKey);
+    const clip = placed && placed.objectForKey(clipKey);
+    if (now && now.absoluteString.js === URL && scaling && scaling.intValue === SCALING
+        && clip && Boolean(clip.boolValue) === CLIP) {
+      continue;
+    }
+    const error = Ref();
+    if (!ws.setDesktopImageURLForScreenOptionsError(picture, screen, options, error)) {
+      refused.push(error[0] ? String(error[0].localizedDescription.js) : "macOS didn't say why");
+    }
+  }
+  return JSON.stringify(refused);
+})()]]
 end
 
 -- `path` with a leading ~/ as `home`.

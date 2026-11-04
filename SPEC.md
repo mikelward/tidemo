@@ -2272,17 +2272,38 @@ that isn't one is left out, and the log says so.
       appearance module, copied unchanged (`dashboard/tide-appearance.js`;
       `make check-tide`), and saves a change to `appearance.local.json`.
     - **The picture:** tilemo sets it on every display for the mode macOS
-      is in (`hs.screen:desktopImageURL`). It sets it again as the mode
-      changes (`AppleInterfaceThemeChangedNotification`), as a display
-      comes, and as the files change. A display showing it already is left
-      alone.
+      is in, placed as that mode's position says. It sets it again as the
+      mode changes (`AppleInterfaceThemeChangedNotification`), as a display
+      comes, and as the files change. A display showing it already, placed
+      so, is left alone.
+    - **Its position:** tide's, `lightWallpaperPosition` and
+      `darkWallpaperPosition`, else `wallpaperPosition` for both, else
+      `fill` (tide §15). macOS places a desktop picture with NSWorkspace's
+      options, which `hs.screen:desktopImageURL` doesn't pass, so tilemo
+      sets it through JXA's ObjC bridge (`hs.osascript.javascript`;
+      `wallpaper.desktop_script`):
+      - `fill` is Fill Screen: scaled to cover, the rest cropped
+        (proportionally up or down, clipping allowed);
+      - `fit` is Fit to Screen: all of it, with macOS's fill color beside
+        it, not tide's bar color;
+      - `stretch` is Stretch to Fill Screen (axes independently);
+      - `fill-top` and `fill-bottom` are drawn as `fill`: macOS centers what
+        it crops, and keeps no edge.
+      - A display macOS won't set is logged with its reason. CI's
+        Hammerspoon sets the picture stretched, then filled, and reads each
+        back from macOS.
+    - **The Appearance page** has tide's position row under each picture's
+      wallpaper, Light wallpaper position and Dark wallpaper position, ‹ and
+      › stepping through Fill, centered; Fill, keep top; Fill, keep bottom;
+      Fit whole picture; and Stretch to fill, into `appearance.local.json`.
+      A color has none.
     - **With none set** for the mode, or no such file, macOS's own picture
       stays, and System Settings' Wallpaper pane sets it. A missing file is
       logged. Taking a setting out leaves the last picture tilemo set.
     - **A color** (`#rrggbb` or `#rgb`), which tide shows as a solid
       wallpaper, is shown here too. macOS's desktop takes only a picture, so
       tilemo draws the color into a small square once (`hs.canvas`), kept in
-      `~/Library/Application Support/tide`, and macOS stretches it to fill
+      `~/Library/Application Support/tide`, and sets it filled, so it covers
       each display. The Appearance page takes one typed, as tide's does,
       or chosen from its swatch, as tide's: the color set, or a palette
       icon for a picture or none, opening tide's eight colors
@@ -3027,7 +3048,7 @@ Each one names a workaround, or says there is none.
     | Keyboard | the input sources, each a click to use (below), the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
-    | Appearance | light or dark on tide's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog, and the Menu bar switch; Appearance settings |
+    | Appearance | light or dark on tide's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, and the Menu bar switch; Appearance settings |
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |

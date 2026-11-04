@@ -601,7 +601,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
 // macOS's file dialog, and its answer is set as a typed one.
 {
   const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
-  const walls = () => ids.wallpapers.children;
+  const walls = () => ids.wallpapers.children.filter((li) => li.className !== "position");
   sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { shared: '{"darkWallpaper": "~/night.png"}' } });
   assert.deepStrictEqual(walls().map((li) => li.children[0].textContent), ["Light wallpaper", "Dark wallpaper"]);
   assert.deepStrictEqual(walls().map((li) => li.children[1].value), ["", "~/night.png"]);
@@ -641,7 +641,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
 // anywhere else, closes them with nothing set.
 {
   const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
-  const walls = () => ids.wallpapers.children;
+  const walls = () => ids.wallpapers.children.filter((li) => li.className !== "position");
   const swatch = (i) => walls()[i].children[2];
   sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"darkWallpaper": "#ABC"}' } });
   assert.strictEqual(swatch(0).attrs["data-icon"], "color", "a picture or none: the colors' icon");
@@ -721,6 +721,33 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   swatch(0).listeners.click();
   assert.strictEqual(colors().children[2].value, "#ff00ff", "opened afresh: the color set");
   docListeners.keydown({ key: "Escape" });
+}
+
+// Each wallpaper's position, as tide's page has it: a row under its
+// wallpaper, ‹ and › stepping through tide's positions into
+// appearance.local.json, each mode its own; wallpaperPosition is both
+// modes' where a mode sets none, and a color has no position.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  const positions = () => ids.wallpapers.children.filter((li) => li.className === "position");
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { shared: '{"wallpaperPosition": "fit", "darkWallpaper": "#abc"}' } });
+  assert.deepStrictEqual(ids.wallpapers.children.map((li) => li.className || li.children[0].textContent),
+    ["Light wallpaper", "position", "Dark wallpaper"], "under its wallpaper; dark's a color, so none");
+  assert.deepStrictEqual(positions().map((li) => [li.children[0].textContent, li.children[2].textContent]),
+    [["Light wallpaper position", "Fit whole picture"]], "wallpaperPosition's, as light sets none");
+  positions()[0].children[3].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { lightWallpaperPosition: "stretch" }, "only light's, in this Mac's own file");
+  assert.strictEqual(positions()[0].children[2].textContent, "Stretch to fill", "shown at once");
+  assert.strictEqual(positions()[0].children[3].disabled, true, "the last");
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"darkWallpaper": "~/n.png", "darkWallpaperPosition": "fill-top"}' } });
+  assert.deepStrictEqual(positions().map((li) => li.children[2].textContent), ["Fill, centered", "Fill, keep top"]);
+  positions()[1].children[1].listeners.click();
+  assert.strictEqual(lastAppearance().darkWallpaperPosition, "fill", "dark's own");
+  assert.strictEqual(lastAppearance().lightWallpaperPosition, undefined);
+  assert.strictEqual(positions()[1].children[1].disabled, true, "the first");
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: "{" } });
+  assert.strictEqual(positions()[0].children[1].disabled, true, "a file that's wrong: nothing changes");
+  assert.strictEqual(positions()[0].children[3].disabled, true);
 }
 
 // Appearance's dim, as tide's page has it: tide's 7% until a file sets it,
