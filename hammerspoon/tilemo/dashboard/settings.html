@@ -424,6 +424,13 @@ body.settings {
 .settings .devices button[aria-current="true"] {
   background: var(--surface-2);
 }
+/* An idle step: its name, −, how long, and +; a switch: its name and On. */
+.settings #idle-steps li {
+  grid-template-columns: 1fr auto 10em auto;
+}
+.settings #idle-steps li.switch {
+  grid-template-columns: 1fr auto;
+}
 /* A time: its name, −, the time, and +; a place: its name and degrees. */
 .settings #theme-times li {
   grid-template-columns: 1fr auto 10em auto;
@@ -656,6 +663,10 @@ body.settings {
 </section>
 <section class="page" id="page-idle" hidden>
 <h1 id="idle">Idle</h1>
+<p class="note">tide's idle timeline, shared with its idle.json: with no input for each time below, tide dims the screens, locks, turns the displays off, and sleeps on battery. An app keeping the screen awake, such as a video playing, holds it off. macOS's own Lock Screen timers still run too, so set them later, or to Never.</p>
+<p class="row" id="idle-timeline"></p>
+<ul id="idle-steps"></ul>
+<p class="error" id="idle-error" role="alert"></p>
 <p class="row links" id="idle-links"></p>
 </section>
 <section class="page" id="page-startup" hidden>

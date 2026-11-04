@@ -514,6 +514,38 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["wifi-power"].hidden, true, "no Wi-Fi, no switch");
 }
 
+// Idle, as tide's page: tide's timeline Off with nothing set; On writes
+// its timings, each stepped along tide's ladder, and Suspend on AC too.
+{
+  const lastIdle = () => JSON.parse(sent.filter((m) => m.writeIdle).at(-1).writeIdle);
+  const timeline = () => ids["idle-timeline"].children;
+  const steps = () => ids["idle-steps"].children;
+  sandbox.tilemo.update({ clockFiles: [], idleFiles: {} });
+  assert.deepStrictEqual(timeline().map((c) => c.textContent), ["tide's timeline", "Off"]);
+  assert.strictEqual(steps().length, 0, "macOS's own has no steps");
+  timeline()[1].listeners.click();
+  assert.deepStrictEqual(lastIdle(), { dim: 150, lock: 300, displaysOff: 330, suspend: 1800, suspendOnAC: false });
+  assert.deepStrictEqual(steps().map((li) => [li.children[0].textContent, li.children[2]?.textContent ?? li.children[1].textContent]), [
+    ["Dim the screen", "2 min 30 s"], ["Lock", "5 min"], ["Turn off displays", "5 min 30 s"], ["Suspend, on battery", "30 min"],
+    ["Suspend on AC too", "Off"],
+  ]);
+  steps()[1].children[3].listeners.click();
+  assert.strictEqual(lastIdle().lock, 330);
+  steps()[4].children[1].listeners.click();
+  assert.strictEqual(lastIdle().suspendOnAC, true);
+  timeline()[1].listeners.click();
+  assert.deepStrictEqual(lastIdle(), {}, "Off empties this Mac's file");
+  // What the shared file sets can't be turned off here.
+  sandbox.tilemo.update({ clockFiles: [], idleFiles: { shared: '{"lock": 600}' } });
+  assert.strictEqual(timeline()[1].textContent, "On");
+  assert.strictEqual(timeline()[1].disabled, true);
+  assert.strictEqual(steps()[1].children[2].textContent, "10 min");
+  // A file that's wrong is said, and nothing changes until it's fixed.
+  sandbox.tilemo.update({ clockFiles: [], idleFiles: { local: '{"lock": 0}' } });
+  assert.match(ids["idle-error"].textContent, /lock must be a whole number/);
+  sandbox.tilemo.update({ clockFiles: [], idleFiles: {} });
+}
+
 // Appearance's wallpapers, light and dark, in tide's appearance files: the
 // one set shows, Enter sets a typed path, the choose button asks tilemo for
 // macOS's file dialog, and its answer is set as a typed one.

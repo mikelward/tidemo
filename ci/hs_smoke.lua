@@ -1293,6 +1293,21 @@ do
     end
 end
 
+-- tide's idle timeline reads macOS's power assertions as they come: held
+-- display while keep awake holds it, and not once it lets go.
+do
+    local before = hs.caffeinate.get("displayIdle")
+    hs.caffeinate.set("displayIdle", true)
+    local on = tilemo.idle.held()
+    hs.caffeinate.set("displayIdle", before == true)
+    if not on.display then
+        fail("idle: keep awake's assertion isn't seen as holding the display: %s",
+            hs.inspect(hs.caffeinate.currentAssertions()))
+    else
+        say("idle: keep awake's assertion holds the timeline")
+    end
+end
+
 -- An init.lua from before the rename still gets tilemo, through the shim
 -- make install puts in ~/.hammerspoon/timo.
 ok, err = pcall(require, "timo")
