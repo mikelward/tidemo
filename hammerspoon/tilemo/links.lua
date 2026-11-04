@@ -38,6 +38,7 @@ M.PRIVACY_ANCHORS = {
     input_monitoring = "Privacy_ListenEvent",
     screen_recording = "Privacy_ScreenCapture",
     automation = "Privacy_Automation",
+    location = "Privacy_LocationServices",
 }
 
 M.PANES = {}

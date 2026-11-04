@@ -37,10 +37,17 @@ M.PERMISSIONS = {
     },
     {
         id = "automation",
-        title = "Automation, for each browser",
+        title = "Automation, for each browser and System Events",
         link = "privacy_automation",
-        how = "macOS asks the first time the switcher lists a browser's tabs. Allow it under Hammerspoon for each browser whose tabs you want.",
-        ref = "§9",
+        how = "macOS asks the first time the switcher lists a browser's tabs, and the first time tide's light and dark schedule switches the Mac. Allow Hammerspoon for each browser whose tabs you want, and for System Events.",
+        ref = "§9, §10",
+    },
+    {
+        id = "location",
+        title = "Location Services for Hammerspoon",
+        link = "privacy_location",
+        how = "Only for the Wi-Fi network's name, on the bar and the Network page: macOS gives it only with this on. Everything else works without it. The first time, the button has macOS ask you; after that, it opens the list.",
+        ref = "§8, §15",
     },
 }
 
@@ -106,8 +113,24 @@ function M.permission_state(id, facts)
         return facts.karabiner and "not_needed" or "unknown"
     elseif id == "screen_recording" then
         return "not_needed"
+    elseif id == "location" then
+        -- hs.location.authorizationStatus()'s answer: "undefined" until
+        -- macOS has asked, which leaves it off.
+        if facts.location == "authorized" then
+            return "on"
+        elseif facts.location == "denied" or facts.location == "restricted" or facts.location == "undefined" then
+            return "off"
+        end
+        return "unknown"
     end
     return "unknown"
+end
+
+-- Whether a permission's button, `link`, should have macOS ask for it
+-- rather than open its list: Location Services', until macOS has asked,
+-- as Hammerspoon isn't in the list before.
+function M.ask_first(link, facts)
+    return link == "privacy_location" and (facts or {}).location == "undefined"
 end
 
 local known = {}

@@ -2387,6 +2387,8 @@ that isn't one is left out, and the log says so.
 | Input Monitoring | only for the lone Super tap, if done by an event tap (§7) *(unverified that Accessibility alone isn't enough)* | seeing Option go down and up |
 | Screen Recording | never: titles come through Accessibility (§2.5), and screenshots use macOS's own keys (§10) | nothing tilemo needs |
 | Automation, per browser | the first time the switcher's Windows tab lists tabs (§9) | tab titles and addresses |
+| Automation, for System Events | the first time tide's light and dark schedule switches the Mac (§10) | setting macOS's appearance |
+| Location Services | when you press its Setup checklist button, the first time: tilemo looks for where the Mac is for a minute, so macOS asks and lists Hammerspoon in Privacy & Security *(unverified)*; after that the button opens the list | the Wi-Fi network's name, on the bar and the Network page (§8, §15) |
 | none | — | global keys, the bar, clocks, the switcher's apps, workspaces and windows |
 
 Ask for each only when a feature needs it, as tileco does with its extras
