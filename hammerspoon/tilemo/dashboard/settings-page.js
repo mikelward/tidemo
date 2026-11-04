@@ -32,8 +32,11 @@ import {
 import {
   formatValue, loadInput, shown as shownInput, stepped as steppedInput, withSetting as withInputSetting,
 } from "./tide-input.js";
-import { LISTS, editedList, itemNote, movedItem, withItem, withoutItem } from "./tide-workspacepage.js";
-import { loadWorkspaceSettings } from "./tide-workspacenames.js";
+import {
+  ASK_LABEL, LISTS, PINNED_HINT, PINNED_LABEL, editedList, editedWorkspace, itemNote, movedItem, withAskForName,
+  withItem, withPinned, withoutItem, withoutPinned, workspaceHeading,
+} from "./tide-workspacepage.js";
+import { loadWorkspaceSettings, workspaceSetting } from "./tide-workspacenames.js";
 import {
   MODE_CHOICES, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate, steppedDim, steppedModeAt,
   steppedTimePast, withSetting as withAppearance,
@@ -1010,13 +1013,13 @@ function renderMouse() {
 }
 
 // The Workspaces section, as tide's Workspaces page (tide SPEC.md §16): the
-// standing workspaces, home's apps and the name patterns, with tide's own
-// functions, writing only workspaces.local.json and keeping its other
-// settings, `muted` included. The muted list is the Notifications
+// standing workspaces, home's apps, the name patterns and each standing
+// workspace's own settings, with tide's own functions, writing only
+// workspaces.local.json and keeping its other settings, `muted` included. The muted list is the Notifications
 // section's, as on tide.
 const workspaceText = (which) => (typeof workspaceFiles?.[which] === "string" ? workspaceFiles[which] : null);
 
-// workspaces.json as the page reads it: over start()'s lists or tilemo's
+// workspaces.json as the page reads it: over start()'s settings or tilemo's
 // defaults, which stand in for a key it doesn't set, so the page shows what's
 // in effect and a first change copies that. A file that isn't an object goes
 // as it is, for tide's functions to name what's wrong with it.
@@ -1025,6 +1028,7 @@ function workspaceShared() {
   for (const key of ["standing", "inApps"]) {
     if (Array.isArray(workspaceBase[key])) base[key] = workspaceBase[key];
   }
+  if (isObject(workspaceBase.workspaceSettings)) base.workspaceSettings = workspaceBase.workspaceSettings;
   const shared = workspaceText("shared");
   if (shared === null) return Object.keys(base).length > 0 ? JSON.stringify(base) : null;
   let value;
@@ -1051,6 +1055,76 @@ function changeWorkspaces(key, fn) {
   workspaceFiles = { ...workspaceFiles, local: r.text };
   renderWorkspaces();
   return true;
+}
+
+// A change to standing workspace `name`'s own settings, as tide's page makes
+// it: the first copies the workspaceSettings in effect, home asking by
+// default, into workspaces.local.json.
+function changeWorkspace(name, fn) {
+  const r = editedWorkspace(workspaceShared(), workspaceText("local"), name, fn);
+  if (r.error) {
+    showWorkspacesError(r.error);
+    return false;
+  }
+  showWorkspacesError("");
+  send({ writeWorkspaces: r.text });
+  workspaceFiles = { ...workspaceFiles, local: r.text };
+  renderWorkspaces();
+  return true;
+}
+
+// What's typed in each workspace's Pinned apps box, kept across a redraw.
+const pinnedDrafts = {};
+
+// Each standing workspace's section, home's marked: its "Open new windows
+// on a new workspace" switch (askForName) and its pinned apps.
+function renderWorkspaceSettings(loaded, broken) {
+  const box = document.getElementById("ws-settings");
+  box.replaceChildren();
+  if (broken) return;
+  loaded.settings.standing.forEach((name, i) => {
+    const setting = workspaceSetting(loaded.settings, name);
+    const section = el("div");
+    section.className = "ws-setting";
+    section.append(el("h3", workspaceHeading(name, i)));
+    const row = el("div");
+    row.className = "row";
+    const on = setting.askForName;
+    const toggle = keyed(button(on ? "On" : "Off", `${ASK_LABEL}: ${name}: ${on ? "on" : "off"}`, false,
+      () => changeWorkspace(name, (s) => withAskForName(s, !on))), `ws-ask-${i}`);
+    toggle.setAttribute("aria-pressed", String(on));
+    row.append(el("span", ASK_LABEL), toggle);
+    section.append(row, el("p", PINNED_LABEL));
+    const list = el("ol");
+    list.className = "ws-pinned";
+    if (setting.pinnedApps.length === 0) list.append(el("li", "None yet."));
+    setting.pinnedApps.forEach((item, j) => {
+      const li = el("li");
+      li.append(el("span", item),
+        button("✕", `Unpin ${item} from ${name}`, false, () => changeWorkspace(name, (s) => withoutPinned(s, j, item))));
+      list.append(li);
+    });
+    const add = el("p");
+    add.className = "add";
+    const input = keyed(el("input"), `ws-pin-${i}`);
+    input.placeholder = PINNED_HINT;
+    input.setAttribute("aria-label", `Pin an app on ${name}`);
+    input.setAttribute("spellcheck", "false");
+    input.value = pinnedDrafts[name] ?? "";
+    input.addEventListener("input", () => {
+      pinnedDrafts[name] = input.value;
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const typed = input.value;
+      // Pinned, the box redrawn is empty; refused, it keeps what's typed.
+      delete pinnedDrafts[name];
+      if (!changeWorkspace(name, (s) => withPinned(s, typed))) pinnedDrafts[name] = typed;
+    });
+    add.append(input);
+    section.append(list, add);
+    box.append(section);
+  });
 }
 
 function renderWorkspaces() {
@@ -1083,6 +1157,7 @@ function renderWorkspaces() {
       list.append(li);
     });
   }
+  keepingFocus(() => renderWorkspaceSettings(loaded, broken));
 }
 
 for (const l of LISTS) {

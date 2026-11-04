@@ -1127,6 +1127,64 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.match(ids["workspaces-error"].textContent, /workspaces\.local\.json: standing must name/);
   assert.strictEqual(ids["ws-add-standing"].disabled, true);
   assert.deepStrictEqual(items("standing"), []);
+  assert.deepStrictEqual(ids["ws-settings"].children, [], "nor each workspace's settings");
+}
+
+// Each standing workspace's own settings, as tide's Workspaces page has
+// them: its switch, askForName, and its pinned apps, each change written
+// to workspaces.local.json's workspaceSettings with the file's other
+// settings kept.
+{
+  const lastWs = () => JSON.parse(sent.filter((m) => m.writeWorkspaces).at(-1).writeWorkspaces);
+  const sections = () => ids["ws-settings"].children;
+  // A section's heading, its switch, its pinned apps and its box.
+  const part = (i) => {
+    const [heading, row, , list, add] = sections()[i].children;
+    return { heading: heading.textContent, toggle: row.children[1], label: row.children[0].textContent, list, input: add.children[0] };
+  };
+  const pinned = (i) => part(i).list.children.map((li) => li.children.length > 0 ? li.children[0].textContent : li.textContent);
+  const base = { standing: ["in", "re", "oc", "me"], inApps: ["Mail"] };
+  // No file sets it: home asks, as tide's default has it, and nothing's pinned.
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"muted": ["com.example.chat"]}' } });
+  assert.strictEqual(sections().length, 4);
+  assert.deepStrictEqual([part(0).heading, part(1).heading], ["in · home", "re"]);
+  assert.strictEqual(part(0).label, "Open new windows on a new workspace");
+  assert.deepStrictEqual([part(0).toggle.textContent, part(0).toggle.getAttribute("aria-pressed")], ["On", "true"]);
+  assert.deepStrictEqual([part(1).toggle.textContent, part(1).toggle.getAttribute("aria-pressed")], ["Off", "false"]);
+  assert.deepStrictEqual(pinned(0), ["None yet."]);
+  assert.strictEqual(part(0).input.placeholder, "Pin a program or web address, such as gmail");
+
+  // Turning on another's copies what's in effect, so home's stays on.
+  sent.length = 0;
+  part(1).toggle.listeners.click();
+  assert.deepStrictEqual(lastWs(), {
+    muted: ["com.example.chat"],
+    workspaceSettings: { in: { askForName: true }, re: { askForName: true, pinnedApps: [] } },
+  });
+  assert.strictEqual(part(1).toggle.textContent, "On");
+
+  // Pinning adds to the workspace's list; one listed already is refused.
+  const input = part(0).input;
+  input.value = "Gmail";
+  press(input, "Enter");
+  assert.deepStrictEqual(lastWs().workspaceSettings.in, { askForName: true, pinnedApps: ["Gmail"] });
+  assert.deepStrictEqual(pinned(0), ["Gmail"]);
+  assert.strictEqual(part(0).input.value, "", "the box empties once it's pinned");
+  const before = sent.length;
+  part(0).input.value = "gmail";
+  press(part(0).input, "Enter");
+  assert.match(ids["workspaces-error"].textContent, /listed already/);
+  assert.strictEqual(sent.length, before);
+  // ✕ unpins it; Off turns home's question off.
+  part(0).list.children[0].children[1].listeners.click();
+  assert.deepStrictEqual(lastWs().workspaceSettings.in.pinnedApps, []);
+  part(0).toggle.listeners.click();
+  assert.deepStrictEqual(lastWs().workspaceSettings.in, { askForName: false, pinnedApps: [] });
+
+  // start()'s workspace_settings stands in where no file sets it.
+  sandbox.tilemo.update({ clockFiles: [], workspaceBase: { ...base, workspaceSettings: { re: { askForName: true, pinnedApps: ["Notes"] } } } });
+  assert.deepStrictEqual([part(0).toggle.textContent, part(1).toggle.textContent], ["Off", "On"]);
+  assert.deepStrictEqual(pinned(1), ["Notes"]);
 }
 
 // The Setup checklist: each permission's state and an Open for its pane;

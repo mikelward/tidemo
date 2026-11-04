@@ -10,6 +10,7 @@ local brand = require("tilemo.brand")
 local dashboard = require("tilemo.dashboard")
 local layout = require("tilemo.layout")
 local mute = require("tilemo.mute")
+local standing = require("tilemo.standing")
 local picker = require("tilemo.picker")
 local floating = require("tilemo.floating")
 local links = require("tilemo.links")
@@ -244,6 +245,7 @@ function M.new(tilemo)
             workspaceBase = tilemo.workspace_base and {
                 standing = "__ws_standing__",
                 inApps = "__ws_in_apps__",
+                workspaceSettings = tilemo.workspace_base.workspaceSettings and "__ws_settings__" or nil,
             } or nil,
             clipboardCount = tilemo.picker and #tilemo.picker.history.items or 0,
             -- The settings in effect, which a file gone wrong since leaves
@@ -311,6 +313,9 @@ function M.new(tilemo)
         end)
         json = json:gsub('"__ws_in_apps__"', function()
             return mute.encode_list(tilemo.workspace_base.inApps)
+        end)
+        json = json:gsub('"__ws_settings__"', function()
+            return standing.encode_settings(tilemo.workspace_base.workspaceSettings, mute.quote)
         end)
         json = json:gsub('"__karabiner_rules__"', function()
             return M.list(tilemo.karabiner_rules and tilemo.karabiner_rules.state.rules or {}, function(r)

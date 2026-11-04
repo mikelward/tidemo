@@ -187,6 +187,20 @@ function M.check_home_apps(list)
     return set
 end
 
+-- `workspace_settings` is checked when tilemo starts, as tide checks
+-- workspaceSettings, so a typo is an error naming the setting. Nil is
+-- tide's default: home asks for a name and nothing is pinned.
+function M.check_workspace_settings(value)
+    if value == nil then
+        return nil
+    end
+    local why = standing_mod.settings_problem(value, "workspace_settings")
+    if why then
+        error(why, 3)
+    end
+    return value
+end
+
 -- A saved state from before named workspaces names each workspace by its
 -- number (SPEC.md §6.5). It's read once: each number with windows becomes
 -- the workspace named by it, "1" to "9" in that order after the standing
@@ -278,6 +292,9 @@ function M.new(adapter, config)
         start_rules = rules.check(config.rules or {}, "rules"),
         float_rules = {},
         home_apps = M.check_home_apps(config.home_apps or M.HOME_APPS),
+        -- Each workspace's own settings (SPEC.md §6.2): tide's
+        -- workspaceSettings, or nil for its default, home asking.
+        workspace_settings = M.check_workspace_settings(config.workspace_settings),
         standing = standing,
         -- The home workspace: the first standing one, "in" by default.
         home = standing[1],
@@ -541,6 +558,97 @@ end
 -- Whether window `w` is one of home's apps, by its app's name.
 function M:is_home_app(w)
     return w ~= nil and self:home_app_named(w.name)
+end
+
+-- Workspace `name`'s own settings, { askForName, pinnedApps } (SPEC.md
+-- §6.2): tide's workspaceSettings, matched ignoring case.
+function M:ws_setting(name)
+    return standing_mod.setting(self.workspace_settings, self.home, name)
+end
+
+-- Whether a new window on workspace `name`, or a launch from it, asks for a
+-- workspace's name.
+function M:asks_for_name(name)
+    return name ~= nil and self:ws_setting(name).askForName
+end
+
+-- The workspace window `w` is pinned on, or nil: the one it's on, when its
+-- app is one of that workspace's pinnedApps, matched by app name as home's
+-- apps are (standing.app_key). tilemo's close actions leave it open.
+function M:pinned_on(w)
+    if not (w and w.ws and w.name) then
+        return nil
+    end
+    local key = standing_mod.app_key(w.name)
+    for _, entry in ipairs(self:ws_setting(w.ws).pinnedApps) do
+        if standing_mod.app_key(entry) == key then
+            return w.ws
+        end
+    end
+    return nil
+end
+
+-- What a close refused for a window pinned on `ws` says, as tide's does.
+function M.pinned_notice(ws)
+    return "Pinned window: it's pinned on " .. ws .. ", so it stays open."
+end
+
+-- If window `id` is pinned where it is, say so and return true: a close
+-- action leaves it open.
+function M:keeps_pinned(id)
+    local ws = self:pinned_on(self.windows[id])
+    if not ws then
+        return false
+    end
+    self.a.log("left " .. tostring(self.windows[id].name) .. " open: it's pinned on " .. ws)
+    if self.a.notify then
+        self.a.notify(M.pinned_notice(ws))
+    end
+    return true
+end
+
+-- The workspace the focused window is pinned on, or nil.
+function M:pinned_focus()
+    local id = self.a.focused()
+    return id and self:pinned_on(self.windows[id]) or nil
+end
+
+-- Tell `on_pinned_focus(ws)` when the focused window becomes pinned, or
+-- stops being: init.lua holds an app's own close and quit keys while it is
+-- (pinned_hs.lua).
+function M:check_pinned_focus()
+    -- With nothing pinned anywhere, as by default, there's nothing to ask
+    -- macOS.
+    local any = false
+    for _, v in pairs(self.workspace_settings or {}) do
+        any = any or (type(v.pinnedApps) == "table" and #v.pinnedApps > 0)
+    end
+    local ws = any and self:pinned_focus() or nil
+    if ws ~= self.pinned_focus_ws then
+        self.pinned_focus_ws = ws
+        if self.on_pinned_focus then
+            self.on_pinned_focus(ws)
+        end
+    end
+end
+
+-- An app's own close or quit key, held while a pinned window was focused:
+-- true if the window's still pinned, and the key kept from it, said so;
+-- false if not, for the caller to pass the key on.
+function M:pinned_key()
+    local id = self.a.focused()
+    if id and self:keeps_pinned(id) then
+        return true
+    end
+    self:check_pinned_focus()
+    return false
+end
+
+-- New workspace settings, from tide's files as they change (SPEC.md §15),
+-- checked as start()'s are; nil for tide's default.
+function M:set_workspace_settings(value)
+    self.workspace_settings = M.check_workspace_settings(value)
+    self:check_pinned_focus()
 end
 
 -- New standing workspaces and home's apps, from tide's files as they change
@@ -981,12 +1089,13 @@ function M:add(id)
     -- Every window is on the display it opened on, in its workspace,
     -- unless it's going back to one.
     w.screen = w.screen or self:screen_of_frame(f.frame)
-    -- Any other app's new window on "in" asks for a name first. Dialogs and
-    -- other floats go where their parent is, and a window coming back to
-    -- its place, or launched to the "in" you named, doesn't ask.
-    if self.ready and kind == "tile" and w.ws == self.home and not (saved and saved.ws) and not launched
+    -- Any other app's new window on a workspace whose askForName is on,
+    -- home by default, asks for a name first. Dialogs and other floats go
+    -- where their parent is, and a window coming back to its place, or
+    -- launched to the workspace you named, doesn't ask.
+    if self.ready and kind == "tile" and self:asks_for_name(w.ws) and not (saved and saved.ws) and not launched
         and not self:is_home_app(w) then
-        self.asking[#self.asking + 1] = { window = id }
+        self.asking[#self.asking + 1] = { window = id, ws = w.ws }
     end
     if kind == "float" then
         w.floating = true
@@ -1756,6 +1865,8 @@ function M:changed()
     if self.on_change then
         self.on_change()
     end
+    -- A window moved on or off a workspace that pins it.
+    self:check_pinned_focus()
 end
 
 -- What the bar shows (bar.lua): for each workspace, whether it's the one
@@ -1847,7 +1958,8 @@ end
 -- The name prompt (SPEC.md §6.2) ---------------------------------------------
 
 -- Every question for the prompt waits its turn in `asking`, oldest first:
--- { window = id } for a window opening on home, { launch = opts, go = fn }
+-- { window = id, ws = name } for a window opening on workspace `ws`, one
+-- that asks, { launch = opts, go = fn }
 -- for a launch, { move = id } for Super+Shift+Return, { go_to = true } for
 -- Super+Return. There's one prompt, so asking a second question while one
 -- is open would replace it, and the replaced one would read as Esc,
@@ -1864,7 +1976,7 @@ function M:ask_next()
         local q = table.remove(self.asking, 1)
         if q.window then
             local w = self.windows[q.window]
-            if w and w.ws == self.home and self.ask_name then
+            if w and w.ws == q.ws and self.ask_name then
                 self.prompting = q
                 self:hold("prompt", true)
                 self.ask_name(q.window)
@@ -1928,9 +2040,10 @@ function M:refuse_unsafe(q, name)
 end
 
 -- The prompt's answer for window `id`: a name moves it there, making the
--- workspace if it's new, and shows it, on the display home was on, with
--- focus; nil (Esc) closes the window, politely. Home keeps it there. A
--- blank name, or one with what a name can't hold, asks again.
+-- workspace if it's new, and shows it, on the display it was on, with
+-- focus; nil (Esc) closes the window, politely, unless it's pinned there,
+-- which says so. The workspace it's on keeps it there. A blank name, or
+-- one with what a name can't hold, asks again.
 function M:answer(id, name)
     local q = self.prompting
     if not (q and q.window == id) then
@@ -1941,16 +2054,16 @@ function M:answer(id, name)
     end
     self:asked_done(q)
     local w = self.windows[id]
-    if w and w.ws == self.home then
-        if name == nil then
+    if w and w.ws == q.ws then
+        local n = name and self:canonical(name)
+        if name == nil and not self:keeps_pinned(id) then
             self.a.close(id)
+        elseif name ~= nil and not n then
+            table.insert(self.asking, 1, q)
         else
-            local n = self:canonical(name)
-            if not n then
-                table.insert(self.asking, 1, q)
-            elseif n == self.home then
+            if name == nil or M.fold(n) == M.fold(w.ws) then
                 -- It stays, shown and focused, as a move would leave it.
-                self:show(self.home, self:screen_of(id))
+                self:show(w.ws, self:screen_of(id))
                 self:reconcile()
                 self:retile()
                 self:focus_window(id)
@@ -2041,8 +2154,9 @@ function M:env(n)
 end
 
 -- Before a launch tilemo makes (the switcher's Launch tab, an app key,
--- Cmd+Return), the workspace it's for (SPEC.md §6.2, §9): from home, or
--- for Cmd+Return (`opts.fresh`) from anywhere, it asks for a name first,
+-- Cmd+Return), the workspace it's for (SPEC.md §6.2, §9): from a
+-- workspace whose askForName is on (home by default), or for Cmd+Return
+-- (`opts.fresh`) from anywhere, it asks for a name first,
 -- with `opts.default` typed in, unless the app is one of home's
 -- (`opts.home_app`, and never for Cmd+Return). `opts.app` is the bundle
 -- ID, if known, which the launch's window is matched by (launch_to). The question waits its turn
@@ -2051,7 +2165,7 @@ end
 -- Elsewhere it launches straight away, on the workspace you're on.
 function M:before_launch(opts, go)
     local cur = self:current_ws()
-    local ask = opts.fresh or (cur == self.home and not opts.home_app)
+    local ask = opts.fresh or (self:asks_for_name(cur) and not opts.home_app)
     if not ask or not self.ask_launch then
         self:launch_to(opts.app, cur)
         go(self:env(cur))
@@ -2496,6 +2610,7 @@ end
 -- focus isn't lost.
 function M:focused(id)
     self:focused_window(id)
+    self:check_pinned_focus()
     self:ask_next()
 end
 
@@ -2906,10 +3021,11 @@ function A.minimize(self)
     self:changed()
 end
 
--- The window's going away is seen by the next sync, which refocuses.
+-- The window's going away is seen by the next sync, which refocuses. One
+-- pinned on its workspace stays open, and a notification says so.
 function A.close(self)
     local id = self.a.focused()
-    if id then
+    if id and not self:keeps_pinned(id) then
         self.a.close(id)
     end
 end
