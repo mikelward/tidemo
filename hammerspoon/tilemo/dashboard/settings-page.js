@@ -34,7 +34,10 @@ import {
 } from "./tide-input.js";
 import { LISTS, editedList, itemNote, movedItem, withItem, withoutItem } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings } from "./tide-workspacenames.js";
-import { dimStrength, formatDim, loadAppearance, steppedDim, withSetting as withAppearance } from "./tide-appearance.js";
+import {
+  MODE_CHOICES, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate, steppedDim, steppedModeAt,
+  steppedTimePast, withSetting as withAppearance,
+} from "./tide-appearance.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { steppedPointer } from "./linearmouse.js";
 
@@ -503,17 +506,18 @@ const WALLPAPERS = [
 const appearanceText = (which) => (typeof appearanceFiles?.[which] === "string" ? appearanceFiles[which] : null);
 
 function setWallpaper(key, value) {
-  const error = document.getElementById("appearance-error");
   // tide takes a color too, but a Mac's desktop can't be set to one here
   // (wallpaper.lua), so it's refused rather than saved to do nothing.
   if (value.startsWith("#")) {
-    error.textContent = `A solid color is tide's only: on a Mac, ${key} must be an image's path; not changing ${key}`;
+    document.getElementById("appearance-error").textContent =
+      `A solid color is tide's only: on a Mac, ${key} must be an image's path; not changing ${key}`;
     return;
   }
   setAppearance(key, value);
 }
 
-// Set one of appearance.local.json's settings, or say why not.
+// Set one of appearance.local.json's settings to `value`, or take it out
+// for undefined, or say why not.
 function setAppearance(key, value) {
   const error = document.getElementById("appearance-error");
   const r = withAppearance(appearanceText("local"), key, value, appearanceText("shared"));
@@ -528,6 +532,100 @@ function setAppearance(key, value) {
   renderAppearance();
 }
 
+// Appearance's light or dark, as tide's page has it (tide SPEC.md §16):
+// what shows now and until when, with Light now or Dark now; the mode, ‹
+// and › through macOS's own, then tide's; By the clock's times, − and + a
+// quarter hour; and the place Sunrise and sunset needs, typed and set with
+// Enter. A change goes to appearance.local.json, as a wallpaper's does, and
+// tilemo sets macOS's appearance as it says (theme_hs.lua), answering
+// with tilemo.theme().
+let themeState = {};
+const OWN_MODE = { mode: undefined, label: "macOS's own" };
+const THEME_TIMES = [{ key: "light", label: "Light from", other: "dark" }, { key: "dark", label: "Dark from", other: "light" }];
+const THEME_PLACE = [{ key: "latitude", label: "Latitude" }, { key: "longitude", label: "Longitude" }];
+
+// Whether a file's text sets a mode.
+function setsMode(text) {
+  try {
+    const v = JSON.parse(text);
+    return v !== null && typeof v === "object" && "mode" in v;
+  } catch {
+    return false;
+  }
+}
+
+function renderTheme(settings, bad) {
+  const shared = appearanceText("shared");
+  const chosen = [shared, appearanceText("local")].some((t) => t !== null && setsMode(t));
+  keepingFocus(() => {
+    const now = document.getElementById("theme-now");
+    now.replaceChildren();
+    if (typeof themeState.dark === "boolean") {
+      const until = Number.isFinite(themeState.next) ? ` until ${clockTime(themeState.next)}` : "";
+      const name = el("span", `${themeState.dark ? "Dark" : "Light"}${until}`);
+      name.className = "name";
+      const flip = themeState.dark ? "Light now" : "Dark now";
+      now.append(name, keyed(button(flip, flip, false, () => send({ themeFlip: true })), "theme-flip"));
+    }
+    // macOS's own, then tide's; macOS's own only while the shared file
+    // sets no mode, as only the local one can be changed here.
+    const tide = Math.max(0, MODE_CHOICES.findIndex((c) => c.mode === settings.mode));
+    const at = chosen ? tide + 1 : 0;
+    const stepped = (by) => {
+      if (at === 0) return by > 0 ? 1 : null;
+      if (at === 1 && by < 0) return setsMode(shared ?? "") ? null : 0;
+      const next = steppedModeAt(settings, tide, by) + 1;
+      return next === at ? null : next;
+    };
+    const choose = (i) => setAppearance("mode", i === 0 ? undefined : MODE_CHOICES[i - 1].mode);
+    const mode = document.getElementById("theme-mode");
+    mode.replaceChildren();
+    const value = el("span", at === 0 ? OWN_MODE.label : MODE_CHOICES[tide].label);
+    value.className = "value";
+    const prev = stepped(-1);
+    const next = stepped(1);
+    mode.append(el("span", "Mode"),
+      keyed(button("‹", "Previous mode", bad || prev === null, () => choose(prev)), "theme-mode-prev"), value,
+      keyed(button("›", "Next mode", bad || next === null, () => choose(next)), "theme-mode-next"));
+    const times = document.getElementById("theme-times");
+    times.replaceChildren();
+    for (const t of chosen && settings.mode === "schedule" ? THEME_TIMES : []) {
+      const li = el("li");
+      const time = el("span", settings[t.key]);
+      time.className = "value";
+      // Past the other time, as the same for both isn't a schedule.
+      const step = (by) => setAppearance(t.key, steppedTimePast(settings[t.key], by, settings[t.other]));
+      li.append(el("span", t.label),
+        keyed(button("−", `Earlier: ${t.label}`, bad, () => step(-1)), `theme-${t.key}-earlier`), time,
+        keyed(button("+", `Later: ${t.label}`, bad, () => step(1)), `theme-${t.key}-later`));
+      times.append(li);
+    }
+    const place = document.getElementById("theme-place");
+    place.replaceChildren();
+    for (const c of chosen ? THEME_PLACE : []) {
+      const li = el("li");
+      const input = el("input");
+      input.value = settings[c.key] === undefined ? "" : String(settings[c.key]);
+      input.placeholder = "none";
+      input.spellcheck = false;
+      input.disabled = bad;
+      input.setAttribute("aria-label", c.label);
+      input.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        if (input.value.trim() === "") return setAppearance(c.key, undefined);
+        const got = parseCoordinate(c.key, input.value);
+        if (got.error) {
+          document.getElementById("appearance-error").textContent = `${got.error}; not changing ${c.key}`;
+          return;
+        }
+        setAppearance(c.key, got.value);
+      });
+      li.append(el("span", c.label), keyed(input, `theme-${c.key}`));
+      place.append(li);
+    }
+  });
+}
+
 function renderAppearance() {
   const list = document.getElementById("wallpapers");
   list.replaceChildren();
@@ -535,6 +633,7 @@ function renderAppearance() {
   if (errors.length) {
     document.getElementById("appearance-error").textContent = `${errors.join("; ")}. Fix the file to change these here.`;
   }
+  renderTheme(settings, errors.length > 0);
   for (const w of WALLPAPERS) {
     const li = el("li");
     const input = el("input");
@@ -1211,6 +1310,7 @@ window.tilemo = {
     startupFiles = state.startupFiles ?? null;
     clipboardFiles = state.clipboardFiles ?? null;
     appearanceFiles = state.appearanceFiles ?? null;
+    if (isObject(state.theme)) themeState = state.theme;
     layoutFiles = state.layoutFiles ?? null;
     inputFiles = state.inputFiles ?? null;
     layoutBase = isObject(state.layoutBase) ? state.layoutBase : {};
@@ -1285,6 +1385,11 @@ window.tilemo = {
   // The Sound page alone, as macOS says it is now.
   sound(s) {
     renderSound(s);
+  },
+  // Appearance's light or dark, as macOS has it now.
+  theme(s) {
+    themeState = isObject(s) ? s : {};
+    renderAppearance();
   },
   // The Bluetooth page alone, as blueutil says it is now.
   bluetooth(s) {

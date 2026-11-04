@@ -1267,6 +1267,32 @@ do
     say("name patterns run in JavaScriptCore")
 end
 
+-- tide's appearance module runs in JavaScriptCore too, and works out light
+-- or dark by the clock (theme.lua); with no mode in tide's files, tilemo
+-- leaves the runner's appearance alone.
+do
+    local theme = require("tilemo.theme")
+    local dashboard = require("tilemo.dashboard")
+    local dir = debug.getinfo(require("tilemo.theme_hs").new, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
+    local sources = {}
+    for _, name in ipairs(theme.MODULES) do
+        sources[name] = tilemo.adapter.read(dir .. name)
+    end
+    local noon = os.time({ year = 2026, month = 11, day = 4, hour = 12 }) * 1000
+    local okjs, result = tilemo.adapter.javascript(theme.script(dashboard.bundle(sources, theme.MODULES),
+        '{"mode": "schedule", "light": "07:00", "dark": "19:00"}', nil, noon, nil, hs.json.encode))
+    local plan, why = theme.read(okjs, result, hs.json.decode)
+    if not plan then
+        fail("appearance: %s", why)
+    elseif plan.dark ~= false or plan.next ~= os.time({ year = 2026, month = 11, day = 4, hour = 19 }) * 1000 then
+        fail("appearance: at noon by the clock it says %s", tostring(result))
+    elseif tilemo.theme.state().chosen ~= false then
+        fail("appearance: with no mode set, tilemo says one's chosen")
+    else
+        say("appearance: tide's module says light until 19:00 at noon, in JavaScriptCore")
+    end
+end
+
 -- An init.lua from before the rename still gets tilemo, through the shim
 -- make install puts in ~/.hammerspoon/timo.
 ok, err = pcall(require, "timo")

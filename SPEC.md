@@ -2153,10 +2153,37 @@ that isn't one is left out, and the log says so.
     shows who's holding it (tide §17) *(unverified that it happens on a
     Mac)*.
 - **Theme** (tide §15):
-  - Appearance › Auto follows sunrise and sunset.
-  - tide's fixed 07:00 and 19:00 need a scheduled job that sets
-    the appearance through System Events *(unverified on macOS 26)*.
-  - A switch by hand lasts until the next scheduled change.
+  - **Built: light or dark on tide's schedule** (`theme.lua`,
+    `theme_hs.lua`), once tide's `appearance.json` or
+    `appearance.local.json` sets a `mode`. With none, macOS's own
+    appearance stays, Auto and all, so nothing changes for a Mac that
+    hasn't chosen.
+    - tide's own appearance module works out which, and until when: By the
+      clock (07:00 and 19:00 unless set), Sunrise and sunset at the
+      latitude and longitude set, Always light or Always dark. It runs in
+      JavaScriptCore (`hs.osascript.javascript`), with the clocks, steps
+      and palette modules it imports, so the Mac changes when tide does.
+    - tilemo sets it through System Events (`set dark mode`), as it
+      starts, at each change, on a wake, as the files change, and within
+      the hour regardless. The first time, macOS asks to let Hammerspoon
+      control System Events; refused, the log says why.
+    - A switch by hand, in Control Center or the settings window's Light
+      now or Dark now, holds until the next change, or until the settings
+      change, as tide's flip does. tilemo's own changes aren't taken for
+      one.
+    - macOS's Auto can't be turned on from here: no AppleScript sets it,
+      and System Settings ignores its `defaults` key. Sunrise and sunset is
+      tide's instead.
+    - **Cost and reliability:** nothing to install. A short JavaScript run
+      at each look. *(Unverified on a Mac: that System Events' dark mode
+      turns macOS's Auto off rather than fighting it, and how long the
+      Automation prompt holds tilemo up the first time.)*
+  - The settings window's Appearance page has tide's rows (tide §16):
+    light or dark now and until when, with its switch; the mode, ‹ and ›
+    through macOS's own and then tide's four; By the clock's times, − and
+    + a quarter hour; and the latitude and longitude, typed and set with
+    Enter. A change goes to `appearance.local.json`; macOS's own takes the
+    mode out of it, and can't be chosen while the shared file sets one.
   - macOS's dynamic wallpapers already change with the appearance, and
     kitty can follow it with its automatic themes *(unverified version)*.
   - **Built: tide's wallpapers, light and dark, are the desktop picture.**
@@ -2808,7 +2835,7 @@ Each one names a workaround, or says there is none.
     | Keyboard | the Switcher, tide's or tileco's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | Battery settings |
     | Layouts, Workspaces, Floating | none: tilemo's own (below) |
-    | Appearance | the wallpapers, light and dark, each chosen in macOS's file dialog (§10), and the Menu bar switch; Appearance settings |
+    | Appearance | light or dark on tide's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog, and the Menu bar switch; Appearance settings |
     | Notifications | Notifications settings, above the muted list (below) |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |

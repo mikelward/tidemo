@@ -548,6 +548,66 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["dim-more"].disabled, true);
 }
 
+// Appearance's light or dark, as tide's page: what shows now and until
+// when, with its switch; the mode, macOS's own first, then tide's; By the
+// clock's times; and the place Sunrise and sunset needs.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  const mode = () => ids["theme-mode"].children;
+  const times = () => ids["theme-times"].children;
+  const place = () => ids["theme-place"].children;
+  ids["appearance-error"].textContent = "";
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: {}, theme: { chosen: false, dark: true } });
+  assert.deepStrictEqual(ids["theme-now"].children.map((c) => c.textContent), ["Dark", "Light now"]);
+  assert.deepStrictEqual(mode().map((c) => c.textContent), ["Mode", "‹", "macOS's own", "›"]);
+  assert.strictEqual(mode()[1].disabled, true, "nothing before macOS's own");
+  assert.strictEqual(times().length + place().length, 0, "macOS's own has no times or place");
+  sent.length = 0;
+  ids["theme-now"].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ themeFlip: true }]);
+  // › chooses tide's first, By the clock, with its times.
+  mode()[3].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { mode: "schedule" });
+  assert.strictEqual(mode()[2].textContent, "By the clock");
+  assert.deepStrictEqual(times().map((li) => [li.children[0].textContent, li.children[2].textContent]),
+    [["Light from", "07:00"], ["Dark from", "19:00"]]);
+  times()[0].children[1].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { mode: "schedule", light: "06:45" });
+  // A time steps past the other one, as the same time isn't a schedule.
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"mode": "schedule", "light": "18:45", "dark": "19:00"}' } });
+  times()[0].children[3].listeners.click();
+  assert.strictEqual(lastAppearance().light, "19:15");
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"mode": "schedule", "light": "06:45"}' } });
+  // Sunrise and sunset is stepped past until there's a place.
+  mode()[3].listeners.click();
+  assert.strictEqual(lastAppearance().mode, "light");
+  assert.deepStrictEqual(place().map((li) => li.children[0].textContent), ["Latitude", "Longitude"]);
+  for (const [i, v] of [[0, "53.35"], [1, "-6.26"]]) {
+    place()[i].children[1].value = v;
+    place()[i].children[1].listeners.keydown({ key: "Enter" });
+  }
+  assert.deepStrictEqual(lastAppearance(), { mode: "light", light: "06:45", latitude: 53.35, longitude: -6.26 });
+  mode()[1].listeners.click();
+  assert.strictEqual(lastAppearance().mode, "sun");
+  place()[0].children[1].value = "north";
+  const before = sent.length;
+  place()[0].children[1].listeners.keydown({ key: "Enter" });
+  assert.strictEqual(sent.length, before);
+  assert.match(ids["appearance-error"].textContent, /latitude must be a number/);
+  // Back to macOS's own takes the mode out of appearance.local.json.
+  mode()[1].listeners.click();
+  mode()[1].listeners.click();
+  assert.strictEqual("mode" in lastAppearance(), false);
+  assert.strictEqual(mode()[2].textContent, "macOS's own");
+  // A mode in the shared file can't be taken out here.
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { shared: '{"mode": "schedule"}' } });
+  assert.strictEqual(mode()[1].disabled, true);
+  // Until a change, from tilemo.
+  sandbox.tilemo.theme({ chosen: true, dark: false, next: Date.UTC(2026, 10, 4, 18, 0) });
+  assert.match(ids["theme-now"].children[0].textContent, /^Light until \d\d:\d\d$/);
+  assert.strictEqual(ids["theme-now"].children[1].textContent, "Dark now");
+}
+
 // The sidebar, as tide's settings panel's: each group's heading, then its
 // pages, with one page showing at a time.
 {
