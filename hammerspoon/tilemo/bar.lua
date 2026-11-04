@@ -113,27 +113,6 @@ function M.pointer_at(frames, x, y)
     return nil
 end
 
--- How the Apple logo opens the Apple menu from display `uuid`'s bar, at
--- time `now` (seconds), the last open at `last_at`: `focus`, macOS's "Move
--- focus to the menu bar" (Control+F2, on by default in Keyboard
--- Shortcuts), which shows the hidden menu bar with the Apple menu
--- highlighted, then `open`, Down, `open_after` seconds later, which opens
--- it. Neither a pointer moved to the top edge by software, which doesn't
--- reveal the hidden menu bar, nor an Accessibility press on its first item,
--- which reports success and shows nothing (both seen on a Mac). Nil and
--- why: "again" within 2 s of the last, or "no display <uuid>".
-function M.apple_menu(screens, uuid, now, last_at)
-    if last_at and now - last_at < 2 then
-        return nil, "again"
-    end
-    for _, s in ipairs(screens) do
-        if s.uuid == uuid then
-            return { focus = { mods = { "ctrl" }, key = "f2" }, open = { mods = {}, key = "down" }, open_after = 0.2 }
-        end
-    end
-    return nil, "no display " .. tostring(uuid)
-end
-
 -- Where to put a pointer at x, y back to, or nil to leave it: macOS shows
 -- the hidden menu bar when the pointer reaches the top row of a display, so
 -- over a shown bar's top row it goes one point down (SPEC.md §8). The Apple
@@ -708,6 +687,51 @@ function M.session_menu(run)
                 title = e.label,
                 fn = function()
                     run(e.id)
+                end,
+            }
+        end
+    end
+    return menu
+end
+
+-- The Apple logo's menu (SPEC.md §8): tilemo's own copy of the Apple menu,
+-- since the real one can't be opened while the menu bar stays hidden. A
+-- pointer moved to the top edge by software doesn't reveal it, an
+-- Accessibility press on it reports success and shows nothing, and on one
+-- Mac "Move focus to the menu bar" doesn't either (all seen on a Mac). An
+-- entry with `open` opens that, the rest run the session action of their
+-- id. Not here: Recent Items, Force Quit, whose key is the system's own,
+-- and anything a profile adds to the real one.
+M.APPLE = {
+    { id = "about", label = "About This Mac", open = "x-apple.systempreferences:com.apple.SystemProfiler.AboutExtension" },
+    "-",
+    { id = "settings", label = "System Settings…", open = "/System/Applications/System Settings.app" },
+    { id = "appstore", label = "App Store…", open = "/System/Applications/App Store.app" },
+    "-",
+    { id = "sleep", label = "Sleep" },
+    { id = "restart", label = "Restart…" },
+    { id = "shutdown", label = "Shut Down…" },
+    "-",
+    { id = "lock", label = "Lock Screen" },
+    { id = "logout", label = "Log Out…" },
+}
+
+-- The Apple logo's menu as hs.menubar's menu table: `open(target)` for an
+-- entry that opens something, else `run(id)`, the session's.
+function M.apple_menu(open, run)
+    local menu = {}
+    for _, e in ipairs(M.APPLE) do
+        if e == "-" then
+            menu[#menu + 1] = { title = "-" }
+        else
+            menu[#menu + 1] = {
+                title = e.label,
+                fn = function()
+                    if e.open then
+                        open(e.open)
+                    else
+                        run(e.id)
+                    end
                 end,
             }
         end

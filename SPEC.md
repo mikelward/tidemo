@@ -1509,7 +1509,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     need the menu bar revealed.
   - **What still needs the menu bar:** the app's own menus, the Apple menu,
     and other apps' status items (a VPN, an IT agent, Zoom). The Apple
-    logo opens the Apple menu (below), which shows the menu bar with it.
+    logo opens tilemo's copy of the Apple menu (below); the app's menus
+    and status items still need the pointer at the top edge.
   - **The pointer is kept off the bar's top row,** one point down
     (`bar.off_top`), so the hidden menu bar no longer slides over the bar
     each time the pointer reaches the top edge. macOS shows it only for the
@@ -1533,16 +1534,16 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     below it;
   - **the Apple logo first of all,** in the corner as on a Mac's own
     menu bar: the system font's Apple glyph in the text color. A click
-    opens the real Apple menu, since the menu bar is hidden for this bar.
-    tilemo sends macOS's "Move focus to the menu bar", `Control+F2` (on by
-    default under Keyboard Shortcuts, Keyboard), which shows the hidden
-    menu bar with the Apple menu highlighted, then `Down` 0.2 s later,
-    which opens it *(unverified on a Mac)*. It opens on the display macOS
-    gives the keyboard, the focused window's. A second click within 2 s is
-    ignored. Two ways that don't work, both seen on a Mac: moving the
-    pointer to the top edge, which macOS doesn't take as a reveal when
-    software moves it, and an Accessibility press (`AXPress`) on the menu
-    bar's first item, which reports success and shows nothing. With the
+    opens tilemo's own copy of the Apple menu under it, drawn as the
+    session menu is (`hs.menubar`'s `popupMenu`): About This Mac, System
+    Settings…, App Store…, Sleep, Restart…, Shut Down…, Lock Screen and Log
+    Out…. Each opens the real thing or runs the session menu's action. It
+    has no Recent Items or Force Quit, nor what a profile adds to the real
+    menu. The real Apple menu can't be opened while the menu bar stays
+    hidden, all seen on a Mac: a pointer moved to the top edge by software
+    doesn't reveal it, an Accessibility press (`AXPress`) on its first item
+    reports success and shows nothing, and on one Mac "Move focus to the
+    menu bar" (Control+F2) didn't show it either, pressed or sent. With the
     menu bar's "Reduce transparency" on (Accessibility, Display), the
     revealed menu bar is solid over the bar;
   - **tide's logo next,** two waves in the accent color, as on tide
