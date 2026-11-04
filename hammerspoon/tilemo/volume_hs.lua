@@ -50,7 +50,7 @@ function M.new(tilemo, ops)
         tilemo.wm:own_window("volume", nil)
         v:delete()
         if refocus and before then
-            tilemo.wm:focus_window(before)
+            tilemo.wm:focus_unburied(before)
         end
     end
 

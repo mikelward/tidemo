@@ -116,6 +116,9 @@ local function stub()
                 s.own[owner] = frame
             end,
             focus_window = function() end,
+            focus_unburied = function(_, id)
+                s.refocused = id
+            end,
         },
     }
     return s
@@ -148,6 +151,19 @@ t.test("the page is made hidden as the launcher starts, and a key shows it", fun
     t.eq(s.views[1].shown, false)
     t.eq(s.views[1].deleted, false, "kept for the next key")
     t.eq(s.holds.launcher, false)
+end)
+
+-- Back to the window you were in, unless that would bury another app's
+-- float (wm.focus_unburied, SPEC.md §5.1).
+t.test("closing the launcher goes back to the window you were in, keeping floats on top", function()
+    local s = stub()
+    s.tilemo.adapter.focused = function()
+        return 7
+    end
+    local page = launcher_with(s)
+    page.show("launch")
+    page.cancel()
+    t.eq(s.refocused, 7)
 end)
 
 t.test("a page that fails to load while open closes, and the next key makes it again", function()

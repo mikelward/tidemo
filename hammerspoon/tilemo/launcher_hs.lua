@@ -520,7 +520,7 @@ function M.new(tilemo)
         if not choice then
             -- Dismissed: back to the window you were in.
             if before then
-                tilemo.wm:focus_window(before)
+                tilemo.wm:focus_unburied(before)
             end
             return
         end
