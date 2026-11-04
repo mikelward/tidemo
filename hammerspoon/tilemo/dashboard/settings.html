@@ -424,6 +424,13 @@ body.settings {
 .settings .devices button[aria-current="true"] {
   background: var(--surface-2);
 }
+/* A time: its name, −, the time, and +; a place: its name and degrees. */
+.settings #theme-times li {
+  grid-template-columns: 1fr auto 10em auto;
+}
+.settings #theme-place li {
+  grid-template-columns: 1fr 220px;
+}
 /* A wallpaper: its name, its file, then the button that chooses one. */
 .settings #wallpapers li {
   grid-template-columns: 1fr 220px auto;
@@ -594,7 +601,11 @@ body.settings {
 </section>
 <section class="page" id="page-appearance" hidden>
 <h1 id="appearance">Appearance</h1>
-<p class="note">The wallpapers, light and dark, shared with tide's appearance.json: the desktop shows the one for the mode macOS is in, as tide does. Empty leaves macOS's own picture.</p>
+<p class="note">Light or dark, and the wallpapers for each, shared with tide's appearance.json, so the Mac changes when tide does. macOS's own leaves its appearance to System Settings, Auto and all; an empty wallpaper leaves its picture.</p>
+<p class="row" id="theme-now"></p>
+<div class="row choice" id="theme-mode"></div>
+<ul id="theme-times"></ul>
+<ul id="theme-place"></ul>
 <ul id="wallpapers"></ul>
 <p class="error" id="appearance-error" role="alert"></p>
 <h2 id="dim">Dim</h2>

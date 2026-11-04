@@ -34,6 +34,7 @@ local picker_hs = require("tilemo.picker_hs")
 local picker = require("tilemo.picker")
 local settings_hs = require("tilemo.settings_hs")
 local wallpaper_hs = require("tilemo.wallpaper_hs")
+local theme_hs = require("tilemo.theme_hs")
 local floating_hs = require("tilemo.floating_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
@@ -586,6 +587,9 @@ function M.start(config)
             self.dim.load()
             self.dim.update()
         end
+        if self.theme then
+            self.theme.apply()
+        end
         if self.set_mouse then
             self.set_mouse("folder")
         end
@@ -609,6 +613,8 @@ function M.start(config)
     -- (SPEC.md §5.6).
     self.dim = dim_hs.new(self)
     self.settings = settings_hs.new(self)
+    -- Light or dark on tide's schedule, once a mode's set in its files.
+    self.theme = theme_hs.new(self)
     self.wm.open_settings = function(section)
         self.settings.show(section)
     end

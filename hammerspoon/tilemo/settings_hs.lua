@@ -206,6 +206,8 @@ function M.new(tilemo)
             displays = displays_state(),
             -- The Bluetooth page's, as last read.
             bluetooth = bt.state(),
+            -- Light or dark now, and until when, on tide's schedule.
+            theme = tilemo.theme and tilemo.theme.state() or nil,
             clockFiles = tilemo.clock_files,
             startupFiles = tilemo.startup_files,
             layoutFiles = tilemo.layout_files,
@@ -366,6 +368,18 @@ function M.new(tilemo)
         end)
     end
 
+    -- Appearance's light or dark alone, as it changes.
+    function self.theme_changed()
+        if not view or not tilemo.theme then
+            return
+        end
+        view:evaluateJavaScript("tilemo.theme(" .. hs.json.encode(tilemo.theme.state()) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tilemo.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
     -- The Bluetooth page alone.
     function self.bluetooth_changed()
         if not view then
@@ -414,6 +428,9 @@ function M.new(tilemo)
                 self.displays_changed()
             elseif bt.handle(body) then
                 -- Drawn as blueutil answers.
+            elseif body.themeFlip == true and tilemo.theme then
+                -- Drawn as macOS's appearance changes.
+                tilemo.theme.flip()
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
             elseif type(body.pickWallpaper) == "string" and tilemo.wallpaper then

@@ -265,6 +265,13 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
 
 ## Decisions needing review
 
+- **Light or dark follows tide's schedule only once a mode is set**
+  (SPEC.md §10, 2026-11-04): with none in tide's appearance files, macOS's
+  own appearance stays, rather than tide's default of 07:00 and 19:00
+  taking over every Mac. The page's first mode is "macOS's own". macOS's
+  Auto can't be set from here, so Sunrise and sunset is tide's
+  computation, not macOS's. Reversible: `chosen` in `theme.script`.
+
 - **The Bluetooth page** (SPEC.md §15, 2026-11-04) lists the paired
   devices as tide's popover does, connected first, then by name, and a
   click connects or disconnects one; pairing stays in Bluetooth settings.
