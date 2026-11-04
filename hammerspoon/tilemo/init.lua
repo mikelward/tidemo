@@ -36,6 +36,7 @@ local settings_hs = require("tilemo.settings_hs")
 local wallpaper_hs = require("tilemo.wallpaper_hs")
 local theme_hs = require("tilemo.theme_hs")
 local idle_hs = require("tilemo.idle_hs")
+local dndsched_hs = require("tilemo.dndsched_hs")
 local floating_hs = require("tilemo.floating_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
@@ -595,6 +596,10 @@ function M.start(config)
         if self.idle then
             self.idle.reload()
         end
+        self.notification_files = dashboard.notification_files(self.clock_dir, self.adapter.read)
+        if self.dnd_schedule then
+            self.dnd_schedule.look()
+        end
         if self.set_mouse then
             self.set_mouse("folder")
         end
@@ -623,6 +628,7 @@ function M.start(config)
     -- tide's idle timeline, once its files set any of it.
     self.idle_files = dashboard.idle_files(self.clock_dir, self.adapter.read)
     self.idle = idle_hs.new(self)
+    self.notification_files = dashboard.notification_files(self.clock_dir, self.adapter.read)
     self.wm.open_settings = function(section)
         self.settings.show(section)
     end
@@ -659,6 +665,12 @@ function M.start(config)
             self.bar.refresh()
         end
     end)
+    -- Do Not Disturb on tide's schedule, through presenter mode's shortcuts;
+    -- one you set yourself, it leaves.
+    self.dnd_schedule = dndsched_hs.new(self)
+    self.presenter.on_own_dnd = function()
+        self.dnd_schedule.own_changed()
+    end
     self.presenter.check()
     self.wm.toggle_keep_awake = self.presenter.toggle_keep_awake
     self.wm.toggle_presenter = self.presenter.toggle_presenter

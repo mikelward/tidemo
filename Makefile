@@ -67,6 +67,7 @@ check-tide:
 	cmp $(TIDE)/shell/lib/input.mjs hammerspoon/tilemo/dashboard/tide-input.js
 	cmp $(TIDE)/shell/lib/appearance.mjs hammerspoon/tilemo/dashboard/tide-appearance.js
 	cmp $(TIDE)/shell/lib/idle.mjs hammerspoon/tilemo/dashboard/tide-idle.js
+	cmp $(TIDE)/shell/lib/dnd.mjs hammerspoon/tilemo/dashboard/tide-dnd.js
 	cmp $(TIDE)/shell/lib/palette.mjs hammerspoon/tilemo/dashboard/tide-palette.js
 	cmp $(TIDE)/shell/lib/fuzzy.mjs hammerspoon/tilemo/dashboard/tide-fuzzy.js
 	cmp $(TIDE)/shell/lib/span.mjs hammerspoon/tilemo/dashboard/tide-span.js

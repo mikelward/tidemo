@@ -35,8 +35,17 @@ function M.new(run, log, notify, changed)
         end
         if step.dnd then
             driver.request(step.dnd)
+            -- Yours now: the schedule's window ending leaves it.
+            if self.on_own_dnd then
+                self.on_own_dnd()
+            end
         end
         changed()
+    end
+
+    -- Do Not Disturb on or off, for its schedule (dndsched_hs.lua).
+    function self.set_dnd(on)
+        driver.request(on and presenter.DND_ON or presenter.DND_OFF)
     end
 
     function self.presenting()

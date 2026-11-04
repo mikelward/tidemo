@@ -424,6 +424,13 @@ body.settings {
 .settings .devices button[aria-current="true"] {
   background: var(--surface-2);
 }
+/* Do Not Disturb's times: a name, −, the time, and +; then its days. */
+.settings #dnd-times li {
+  grid-template-columns: 1fr auto 10em auto;
+}
+.settings #dnd-days button {
+  min-width: 32px;
+}
 /* An idle step: its name, −, how long, and +; a switch: its name and On. */
 .settings #idle-steps li {
   grid-template-columns: 1fr auto 10em auto;
@@ -631,6 +638,12 @@ body.settings {
 </section>
 <section class="page" id="page-muted" hidden>
 <h1 id="muted">Notifications</h1>
+<p class="note">Do Not Disturb on a schedule, shared with tide's notifications.json, turned on and off through the Do Not Disturb On and Off shortcuts (Setup checklist). Focus settings' own schedules run too.</p>
+<p class="row" id="dnd-scheduled"></p>
+<ul id="dnd-times"></ul>
+<p class="row" id="dnd-days"></p>
+<p class="error" id="dnd-error" role="alert"></p>
+<h2 id="muted-heading">Muted</h2>
 <p class="note">Apps and sites that are never marked for attention. Mute one with Cmd+M, or a right-click, on its row in the switcher's Windows or Attention tab, or type its bundle id, or site: and a host, below. macOS still shows their banners: turn those off in Notifications settings.</p>
 <ul id="muted-list"></ul>
 <p class="add">

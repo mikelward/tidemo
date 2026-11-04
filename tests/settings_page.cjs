@@ -523,6 +523,30 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["wifi-power"].hidden, true, "no Wi-Fi, no switch");
 }
 
+// Notifications' Do Not Disturb on a schedule, as tide's page: Off by
+// default; On shows its times and days, each change to the local file.
+{
+  const last = () => JSON.parse(sent.filter((m) => m.writeNotifications).at(-1).writeNotifications);
+  const row = () => ids["dnd-scheduled"].children;
+  const times = () => ids["dnd-times"].children;
+  const days = () => ids["dnd-days"].children.slice(1);
+  sandbox.tilemo.update({ clockFiles: [], notificationFiles: {} });
+  assert.deepStrictEqual(row().map((c) => c.textContent), ["Do not disturb on a schedule", "Off"]);
+  assert.strictEqual(times().length, 0);
+  row()[1].listeners.click();
+  assert.deepStrictEqual(last(), { dndScheduled: true });
+  assert.deepStrictEqual(times().map((li) => [li.children[0].textContent, li.children[2].textContent]), [["From", "22:00"], ["To", "07:00"]]);
+  times()[0].children[3].listeners.click();
+  assert.strictEqual(last().dndFrom, "22:15");
+  assert.deepStrictEqual(days().map((b) => [b.textContent, b.attrs["aria-pressed"]]),
+    [["M", "true"], ["T", "true"], ["W", "true"], ["T", "true"], ["F", "true"], ["S", "true"], ["S", "true"]]);
+  days()[6].listeners.click();
+  assert.deepStrictEqual(last().dndDays, ["mon", "tue", "wed", "thu", "fri", "sat"]);
+  sandbox.tilemo.update({ clockFiles: [], notificationFiles: { local: '{"dndFrom": "noon"}' } });
+  assert.match(ids["dnd-error"].textContent, /notifications\.local\.json/);
+  sandbox.tilemo.update({ clockFiles: [], notificationFiles: {} });
+}
+
 // Idle, as tide's page: tide's timeline Off with nothing set; On writes
 // its timings, each stepped along tide's ladder, and Suspend on AC too.
 {
