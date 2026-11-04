@@ -30,8 +30,8 @@ It brings tide's desktop to macOS:
   rule (§7.2);
 - Super+Left and Right to select the window that way, going on to the next
   display at the edge, and Super+Shift+Left and Right to move it there;
-  Super+PgUp and PgDn for the previous and next workspace, with Shift to
-  move the window there (§7.2);
+  Super+PgUp and PgDn for the previous and next workspace with windows,
+  with Shift to move the window there (§7.2);
 - tide's bar along the top: tide's logo, opening the switcher, the
   workspaces, the window's title, the clocks
   and tilemo's own status items (input source, keep awake, camera,
