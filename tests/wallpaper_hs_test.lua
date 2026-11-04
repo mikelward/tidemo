@@ -41,6 +41,33 @@ local function stub(opts)
                 t.eq(what, "mode")
                 return (opts.pictures or {})[path] and "file" or nil
             end,
+            mkdir = function(dir)
+                s.made_dir = dir
+            end,
+        },
+        -- A color's picture, drawn: saved as a file that then exists.
+        canvas = {
+            new = function()
+                local c = {}
+                function c.appendElements(_, e)
+                    s.drawn = e.fillColor.hex
+                end
+                function c.imageFromCanvas()
+                    return {
+                        saveToFile = function(_, path)
+                            if opts.cant_save then
+                                return false
+                            end
+                            opts.pictures = opts.pictures or {}
+                            opts.pictures[path] = true
+                            s.saved = (s.saved or 0) + 1
+                            return true
+                        end,
+                    }
+                end
+                function c.delete() end
+                return c
+            end,
         },
         screen = {
             allScreens = function()
@@ -110,11 +137,26 @@ t.test("with none set, or no such file, macOS's own picture stays", function()
     t.eq(gone.logged, { "wallpaper: no file at /srv/day one.jpg; the desktop picture stays as it is" })
 end)
 
-t.test("a color from tide leaves the picture, said once", function()
-    local s = stub({ files = { ["/c/tide/appearance.json"] = '{"lightWallpaper": "#1a1d2e"}' }, pictures = PICTURES, screens = 2 })
+t.test("a color from tide is drawn once into a picture, and shown on every display", function()
+    local s = stub({ files = { ["/c/tide/appearance.json"] = '{"lightWallpaper": "#1A1D2E"}' }, pictures = {}, screens = 2 })
+    local file = HOME .. "/Library/Application Support/tide/wallpaper-1a1d2e.png"
+    t.eq(s.drawn, "#1a1d2e")
+    t.eq(s.made_dir, HOME .. "/Library/Application Support/tide")
+    t.eq(#s.set, 2)
+    t.eq(s.screens[1].url, "file://" .. HOME:gsub("[^%w%-%._~/]", function(c) return string.format("%%%02X", c:byte()) end)
+        .. "/Library/Application%20Support/tide/wallpaper-1a1d2e.png")
+    s.screen_changed()
+    t.eq(s.saved, 1, "drawn once: " .. file)
+    t.eq(s.logged, {})
+end)
+
+t.test("a color that can't be drawn leaves the picture, said once", function()
+    local s = stub({ files = { ["/c/tide/appearance.json"] = '{"lightWallpaper": "#1a1d2e"}' }, pictures = {}, screens = 2,
+        cant_save = true })
     s.screen_changed()
     t.eq(s.set, {})
-    t.eq(s.logged, { "wallpaper: #1a1d2e is a color, which tide shows but a Mac can't set; the desktop picture stays as it is" })
+    t.eq(#s.logged, 1, "not at every display change")
+    t.eq(s.logged[1]:match("^wallpaper: couldn't draw #1a1d2e") ~= nil, true, s.logged[1])
 end)
 
 t.test("choosing opens macOS's dialog, offering images, where the wallpaper is", function()

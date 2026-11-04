@@ -2252,10 +2252,12 @@ that isn't one is left out, and the log says so.
       stays, and System Settings' Wallpaper pane sets it. A missing file is
       logged. Taking a setting out leaves the last picture tilemo set.
     - **A color** (`#rrggbb` or `#rgb`), which tide shows as a solid
-      wallpaper, is a setting here too, not an error, but a Mac's picture
-      stays: Hammerspoon sets only an image. It's logged once. The
-      Appearance page refuses one typed, saying why, rather than save
-      one that does nothing on this Mac.
+      wallpaper, is shown here too. macOS's desktop takes only a picture, so
+      tilemo draws the color into a small square once (`hs.canvas`), kept in
+      `~/Library/Application Support/tide`, and macOS stretches it to fill
+      each display. The Appearance page takes one typed, as tide's does.
+      *(Unverified on a Mac: that the stretched square shows as an even
+      color on every display.)*
     - **Choosing one:** each wallpaper's field has a choose button, which
       opens macOS's own file dialog (`hs.dialog.chooseFileOrFolder`),
       offering images, where the wallpaper is now, or in Pictures. The file

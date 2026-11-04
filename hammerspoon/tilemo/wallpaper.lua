@@ -11,10 +11,27 @@ M.SHARED_FILE = "appearance.json"
 M.LOCAL_FILE = "appearance.local.json"
 
 -- A wallpaper that's a solid color, #rrggbb or #rgb, as tide's
--- wallpaperColor takes one (tide SPEC.md §15). tide shows it; a Mac can't
--- set a color through Hammerspoon, so it leaves macOS's own picture.
+-- wallpaperColor takes one (tide SPEC.md §15). macOS's desktop takes only
+-- a picture, so tilemo draws the color into one (wallpaper_hs.lua).
 function M.is_color(v)
     return type(v) == "string" and (v:match("^#%x%x%x$") or v:match("^#%x%x%x%x%x%x$")) ~= nil
+end
+
+-- A color as rrggbb, in lower case, as tide's wallpaperColor gives it.
+function M.hex(v)
+    if not M.is_color(v) then
+        return nil
+    end
+    local h = v:sub(2):lower()
+    if #h == 3 then
+        h = h:gsub(".", "%0%0")
+    end
+    return h
+end
+
+-- Where the picture drawn for color `hex` is kept, in `dir`.
+function M.color_file(dir, hex)
+    return dir .. "/wallpaper-" .. hex .. ".png"
 end
 
 -- Why `v` can't be a wallpaper, as tide's wallpaperError says, or nil: a
@@ -84,11 +101,15 @@ function M.setting(path, home)
 end
 
 -- The picture to show for the mode, `dark` or light, from `walls`
--- (M.load's), as a path, or nil to leave macOS's own, as for a color.
+-- (M.load's), as a path, or nil to leave macOS's own; for a color, nil and
+-- the color as rrggbb, to be drawn.
 function M.now(walls, dark, home)
     local set = walls[dark and "dark" or "light"]
-    if set == nil or set == "" or M.is_color(set) then
+    if set == nil or set == "" then
         return nil
+    end
+    if M.is_color(set) then
+        return nil, M.hex(set)
     end
     return M.expand(set, home)
 end
