@@ -1527,8 +1527,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     occupied, and wanting attention, with no app icons. Its tooltip says
     tide. A click switches. It sits on the right, since
     the menu bar's left side is the Apple menu and the app's menus.
-  - Either way, the workspace's name shows briefly, large, in the middle
-    of the screen on each switch.
+  - Either way, the workspace's name shows briefly in the middle of the
+    screen on each switch, at about the size of macOS's own alerts
+    (28 pt), not across the screen.
 - **If it's a bar, it's tide's** (tide §7.1–§7.4):
   - a flush 36 px strip, one per display, with the tiling area starting
     below it;
