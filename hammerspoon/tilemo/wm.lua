@@ -3321,7 +3321,7 @@ function A.launcher(self, tab)
     end
 end
 
--- Super+C: the picker, on tab `tab`: what you've copied, and characters by
+-- Super+V: the picker, on tab `tab`: what you've copied, and characters by
 -- name (SPEC.md §7.2).
 function A.picker(self, tab)
     if self.open_picker then

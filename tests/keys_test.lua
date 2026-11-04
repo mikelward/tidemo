@@ -255,7 +255,7 @@ t.test("with Karabiner, every binding gets its own chord", function()
     t.eq(#list, #keys.map + #keys.plain + #keys.karabiner_only)
 end)
 
-t.test("Super+W and Super+V open terminals on the workstation and the VM", function()
+t.test("Super+W opens a terminal on the workstation; the VM's has no key", function()
     local by = {}
     for _, b in ipairs(keys.map) do
         if b.action == "app" and not b.shift then
@@ -263,7 +263,9 @@ t.test("Super+W and Super+V open terminals on the workstation and the VM", funct
         end
     end
     t.eq(by.w, "terminal_on_workstation")
-    t.eq(by.v, "terminal_on_vm")
+    for _, b in ipairs(keys.map) do
+        t.eq(type(b.arg) == "table" and b.arg.run == "terminal_on_vm", false, "a key runs terminal_on_vm")
+    end
 end)
 
 t.test("a screenshot action asks the adapter for that kind", function()
@@ -324,17 +326,15 @@ t.test("Super+Shift+Return moves the window to a workspace, Super+Return's old j
     t.eq(shifted["return"], "move_to")
 end)
 
-t.test("Super+C opens the picker on Clipboard; Calendar has no key; Super+H and Super+Shift+C stay", function()
+t.test("Super+V opens the picker on Clipboard; Super+C is Chat and Super+Shift+C Calendar", function()
     local by, shifted = {}, {}
     for _, b in ipairs(keys.map) do
         (b.shift and shifted or by)[b.key] = b
     end
-    t.eq({ by.c.action, by.c.arg }, { "picker", "clipboard" })
+    t.eq({ by.v.action, by.v.arg }, { "picker", "clipboard" })
     t.eq(by.h.arg.run, "home")
-    t.eq(shifted.c.arg.run, "google-chat")
-    for _, b in ipairs(keys.map) do
-        t.eq(type(b.arg) == "table" and b.arg.run == "google-calendar", false, "a key runs google-calendar")
-    end
+    t.eq(by.c.arg.run, "google-chat")
+    t.eq(shifted.c.arg.run, "google-calendar")
 end)
 
 t.test("the picker key asks the window manager to open the picker", function()
