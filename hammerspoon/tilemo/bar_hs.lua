@@ -498,13 +498,10 @@ function M.new(tilemo)
             return
         end
         self.apple_at = now
-        local point = plan.point
-        log("bar: opening the Apple menu by clicking the menu bar at " .. point.x .. ", " .. point.y)
-        self.reveal_until = plan.reveal_until
-        hs.mouse.absolutePosition(point)
-        hs.eventtap.event.newMouseEvent(hs.eventtap.event.types.mouseMoved, point):post()
-        tilemo.adapter.after(plan.click_after, function()
-            hs.eventtap.leftClick(point)
+        log("bar: opening the Apple menu with Control+F2 (Move focus to the menu bar), then Down")
+        hs.eventtap.keyStroke(plan.focus.mods, plan.focus.key, 0)
+        tilemo.adapter.after(plan.open_after, function()
+            hs.eventtap.keyStroke(plan.open.mods, plan.open.key, 0)
         end)
     end
 
@@ -596,8 +593,7 @@ function M.new(tilemo)
         -- Kept off the top row, so the hidden menu bar doesn't slide over
         -- the bar; the Apple logo opens the Apple menu instead. The
         -- Appearance page's Menu bar switch turns it off.
-        local revealing = self.reveal_until and hs.timer.secondsSinceEpoch() < self.reveal_until
-        local down = tilemo.keep_menu_bar_hidden ~= false and not revealing and bar.off_top(frames, x, y)
+        local down = tilemo.keep_menu_bar_hidden ~= false and bar.off_top(frames, x, y)
         if down then
             hs.mouse.absolutePosition({ x = x, y = down })
             y = down

@@ -1519,13 +1519,16 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     below it;
   - **the Apple logo first of all,** in the corner as on a Mac's own
     menu bar: the system font's Apple glyph in the text color. A click
-    opens the real Apple menu, since the menu bar is hidden for this bar:
-    the pointer goes to the top of that display, which reveals the menu
-    bar, and a click there 0.6 s later opens the menu; a second click
-    within 2 s is ignored, so a click landing on the bar again can't start
-    it over *(unverified on a Mac)*. An Accessibility press (`AXPress`) on
-    the menu bar's first item isn't used: with the menu bar hidden it
-    reports success and shows nothing. With the
+    opens the real Apple menu, since the menu bar is hidden for this bar.
+    tilemo sends macOS's "Move focus to the menu bar", `Control+F2` (on by
+    default under Keyboard Shortcuts, Keyboard), which shows the hidden
+    menu bar with the Apple menu highlighted, then `Down` 0.2 s later,
+    which opens it *(unverified on a Mac)*. It opens on the display macOS
+    gives the keyboard, the focused window's. A second click within 2 s is
+    ignored. Two ways that don't work, both seen on a Mac: moving the
+    pointer to the top edge, which macOS doesn't take as a reveal when
+    software moves it, and an Accessibility press (`AXPress`) on the menu
+    bar's first item, which reports success and shows nothing. With the
     menu bar's "Reduce transparency" on (Accessibility, Display), the
     revealed menu bar is solid over the bar;
   - **tide's logo next,** two waves in the accent color, as on tide

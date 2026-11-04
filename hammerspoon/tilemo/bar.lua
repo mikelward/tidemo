@@ -113,22 +113,22 @@ function M.pointer_at(frames, x, y)
     return nil
 end
 
--- How the Apple logo opens the Apple menu on display `uuid`, at time `now`
--- (seconds), the last open at `last_at`: the pointer to `point`, the top
--- of that display beside its corner, which shows the hidden menu bar, and
--- a click there `click_after` seconds later, with off_top's guard standing
--- aside until `reveal_until`. An Accessibility press on the menu bar's
--- first item reports success with the menu bar hidden and shows nothing,
--- so it isn't one of the steps. Nil and why: "again" within 2 s of the
--- last, so a click landing on the bar can't start it over, or "no display
--- <uuid>".
+-- How the Apple logo opens the Apple menu from display `uuid`'s bar, at
+-- time `now` (seconds), the last open at `last_at`: `focus`, macOS's "Move
+-- focus to the menu bar" (Control+F2, on by default in Keyboard
+-- Shortcuts), which shows the hidden menu bar with the Apple menu
+-- highlighted, then `open`, Down, `open_after` seconds later, which opens
+-- it. Neither a pointer moved to the top edge by software, which doesn't
+-- reveal the hidden menu bar, nor an Accessibility press on its first item,
+-- which reports success and shows nothing (both seen on a Mac). Nil and
+-- why: "again" within 2 s of the last, or "no display <uuid>".
 function M.apple_menu(screens, uuid, now, last_at)
     if last_at and now - last_at < 2 then
         return nil, "again"
     end
     for _, s in ipairs(screens) do
         if s.uuid == uuid then
-            return { point = { x = s.full.x + 18, y = s.full.y }, click_after = 0.6, reveal_until = now + 1.5 }
+            return { focus = { mods = { "ctrl" }, key = "f2" }, open = { mods = {}, key = "down" }, open_after = 0.2 }
         end
     end
     return nil, "no display " .. tostring(uuid)
