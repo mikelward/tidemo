@@ -1,4 +1,4 @@
--- tide's picker on Super+C (tide SPEC.md §8.4, SPEC.md §7.2): a Clipboard
+-- tide's picker on Super+V (tide SPEC.md §8.4, SPEC.md §7.2): a Clipboard
 -- tab of what you've copied and a Characters tab of emoji and symbols found
 -- by name. The history, its rows and the character search, in plain Lua;
 -- picker_hs.lua watches the pasteboard and draws it with hs.chooser.

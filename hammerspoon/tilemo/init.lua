@@ -664,7 +664,7 @@ function M.start(config)
     self.wm.open_dashboard = function()
         self.dashboard.show()
     end
-    -- Super+C's picker, whose watcher keeps what you copy from now on.
+    -- Super+V's picker, whose watcher keeps what you copy from now on.
     self.picker = picker_hs.new(self)
     self.wm.open_picker = function(tab)
         self.picker.show(tab)

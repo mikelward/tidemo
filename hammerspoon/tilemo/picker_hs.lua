@@ -1,8 +1,9 @@
--- The picker on Super+C, on Hammerspoon (SPEC.md §7.2, tide SPEC.md
+-- The picker on Super+V, on Hammerspoon (SPEC.md §7.2, tide SPEC.md
 -- §8.4): an hs.pasteboard watcher keeps what you copy, in memory only, and
 -- an hs.chooser shows it on a Clipboard tab, beside a Characters tab of
 -- emoji and symbols from tide's chars.tsv, copied unchanged. Tab and
--- Shift+Tab move between the tabs; Enter copies the row and closes;
+-- Shift+Tab move between the tabs; Enter copies the row, closes, and
+-- pastes it with Cmd+V into the app that was in front;
 -- Shift+Delete (forward delete on a Mac) forgets a clipboard entry. What it
 -- decides is picker.lua's. Not runnable outside Hammerspoon.
 
@@ -23,6 +24,8 @@ function M.new(tilemo)
     local tab = "clipboard"
     local chars, chars_error
     local open_keys = {}
+    -- The app in front when the picker opened, which Enter pastes into.
+    local target
 
     -- Read once, the first time the Characters tab shows.
     local function load_chars()
@@ -81,11 +84,20 @@ function M.new(tilemo)
 
     chooser = hs.chooser.new(function(choice)
         release()
+        local into = target
+        target = nil
         if choice and choice.copy then
-            -- Enter copies; Cmd+V pastes it where you were.
+            -- Enter copies, then pastes it where you were: Cmd+V, sent to
+            -- the app that was in front, once it's in front again.
             if not hs.pasteboard.setContents(choice.copy) then
                 tilemo.adapter.log("picker: couldn't put the selection on the pasteboard")
                 hs.alert.show("Couldn't copy that")
+            elseif into then
+                if into:activate() then
+                    hs.eventtap.keyStroke({ "cmd" }, "v", 0, into)
+                else
+                    tilemo.adapter.log("picker: couldn't bring " .. tostring(into:name()) .. " back to paste; it's on the clipboard")
+                end
             end
         end
     end)
@@ -104,7 +116,7 @@ function M.new(tilemo)
         end
     end)
 
-    -- Open on `t` (Clipboard if none). Super+C again closes it; the other
+    -- Open on `t` (Clipboard if none). Super+V again closes it; the other
     -- tab's key, from the switcher's IPC, moves there.
     function self.show(t)
         t = t or "clipboard"
@@ -117,6 +129,7 @@ function M.new(tilemo)
             return
         end
         tilemo.wm:hold("picker", true)
+        target = hs.application.frontmostApplication()
         open_keys = {
             hs.hotkey.bind({}, "tab", function()
                 set_tab(picker.next_tab(tab))

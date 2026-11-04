@@ -238,7 +238,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Full-width bar with workspaces and urgency (tide §7) | tilemo's own bar over an auto-hidden menu bar, with its own status items (§8) | **partial**: app menus and other apps' status items still need the menu bar revealed |
 | SYD / LAX / NYC / LON clocks (tileco `src/clocks.js`) | bar clocks, and tileco's clock panel in the dashboard | **yes** |
 | One switcher with tabs: launcher, workspaces, windows, attention (tide §8) | tilemo's switcher, an `hs.chooser`; the lone Super tap needs an event tap or Karabiner (§7, §9) | **yes** |
-| Clipboard history and characters by name on Super+C (tide §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with two tabs (§9.1) | **partial**: text only, kept in memory, so not across a restart |
+| Clipboard history and characters by name on Super+V (tide §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with two tabs (§9.1) | **partial**: text only, kept in memory, so not across a restart |
 | Browser tabs in the Windows tab (tileco §9.4) | Chrome, Brave and Safari tabs through AppleScript (§2.5) | **yes**, with Automation granted |
 | App keys (tide `hyprland.lua`, tileco §9.1) | global keys that bring an app's window, and its workspace, forward (§7) | **yes** |
 | Second and third Chrome profiles (`browser2`, `browser3`) | separate `--user-data-dir`s, as tide runs them (§7) | **yes** |
@@ -1207,8 +1207,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+A` | the switcher, on its Attention tab (§14.2) | hotkey |
 | `Super+Shift+Space` | dashboard (§8) | hotkey |
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
-| `Super+T` / `W` / `V` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
-| `Super+C` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1). It was Google Calendar, which has no key now: it's one of "in"'s apps (§6.2), and the switcher finds it | hotkey |
+| `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
+| `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
 | `Super+Backspace` | close the window | hotkey; Accessibility presses its close button |
 | `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
 | `Super+L` | lock | hotkey; macOS's lock screen |
@@ -1966,8 +1966,8 @@ tab, the search field naming the tab you're in.
 
 ### 9.1 The picker
 
-**`Super+C` opens tide's picker** (tide §8.4): its own `hs.chooser`, with
-two tabs. C is for clipboard and characters.
+**`Super+V` opens tide's picker** (tide §8.4): its own `hs.chooser`, with
+two tabs. V as in paste.
 
 - **Clipboard:** what you've copied since tilemo started, newest first,
   one line each, searched with the switcher's fuzzy match.
@@ -1990,8 +1990,9 @@ two tabs. C is for clipboard and characters.
   Unicode License v3 notice, and searched as tide does: each typed word
   must start a word of the name, so `e acute` finds é and É.
 - **Keys:** `Tab` / `Shift+Tab` switch tabs; Return copies the row and
-  closes, and Cmd+V pastes it, as on tide; Shift+Delete (forward delete)
-  forgets a clipboard entry; Esc closes; `Super+C` again closes.
+  closes, then brings back the app that was in front and sends it Cmd+V,
+  which pastes in a terminal too, as tide pastes; Shift+Delete (forward delete)
+  forgets a clipboard entry; Esc closes; `Super+V` again closes.
 - **Cost and reliability:** nothing to pay and no network. The watcher
   polls the pasteboard's change count, Hammerspoon's
   `hs.pasteboard.watcher.interval`, half a second by default. The list is

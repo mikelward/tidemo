@@ -47,7 +47,7 @@ It brings tide's desktop to macOS:
   shortcuts you make in the Shortcuts app, "Do Not Disturb On" and "Do Not
   Disturb Off", each one Set Focus action; tilemo says so if they're
   missing, and keep awake works without them;
-- tide's picker on Super+C: what you've copied since tilemo started,
+- tide's picker on Super+V: what you've copied since tilemo started,
   never a password manager's copy, and emoji and symbols by name (§9.1),
   with tide's Clipboard settings: the history on or off, how many copies it
   keeps, and Clear history (§15);
