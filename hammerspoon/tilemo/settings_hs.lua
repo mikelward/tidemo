@@ -644,6 +644,7 @@ function M.new(tilemo)
                 -- Read once there's a page to draw them on.
                 bt.watch(true)
                 np.watch(true)
+                screens.read_ddc()
                 push()
                 reveal(wanted)
                 fill_in(wanted_fill)

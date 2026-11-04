@@ -2772,8 +2772,14 @@ Each one names a workaround, or says there is none.
       Make main. One overlapping the main display, as a mirror does, is
       Elsewhere.
     - Its brightness, where macOS can set it (`hs.screen:getBrightness`
-      gives one): a slider, set as it moves. An external display's over
-      DDC isn't here yet.
+      gives one): a slider, set as it moves. An external display's is read
+      over DDC/CI with the bar's tool (m1ddc or ddcctl, §8), MCCS's
+      luminance (VCP 0x10), as the window opens and as displays change, and
+      set once the slider's let go, as a monitor's volume is. Every run of
+      the tool goes through one queue, so reads and sets reach the monitor
+      in the order asked, and of the sets waiting only the latest is sent. Without the
+      tool, or for a monitor that doesn't answer, there's no slider, and
+      the log says why once.
     - The page shows what macOS says after each change, and again as a
       display comes, goes or changes. tide tiles each display again as it
       changes, as it does for one plugged in.

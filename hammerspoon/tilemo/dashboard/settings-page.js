@@ -437,7 +437,8 @@ function drawDisplays(st) {
         // As Sound's: macOS's answer is drawn even if it's what was.
         displaysDrawn = "";
         level.textContent = `${slider.value}%`;
-        send({ displayBrightness: { uuid: d.uuid, level: Number(slider.value) } });
+        // Over DDC, each set is a slow run of the tool: set once let go.
+        if (!d.over_ddc) send({ displayBrightness: { uuid: d.uuid, level: Number(slider.value) } });
       });
       slider.addEventListener("change", () => {
         displayDragging = null;

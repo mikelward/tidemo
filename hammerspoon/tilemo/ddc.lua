@@ -91,6 +91,12 @@ function M.parse_ddcctl_list(out)
     return list
 end
 
+-- Whether the tool's display `d` is `screen` ({ uuid, name }), by UUID or
+-- by name, with no fallback.
+function M.matches(d, screen)
+    return d ~= nil and screen ~= nil and (same(d.uuid, screen.uuid) or same(d.name, screen.name))
+end
+
 -- Which of a tool's displays is `screen`, playing `device`: by UUID, then by
 -- name, then the only one.
 function M.pick(list, screen, device)
@@ -151,6 +157,49 @@ end
 -- A volume of 0…100 in the monitor's own units.
 function M.raw(volume, max)
     return math.floor(math.max(0, math.min(100, volume)) * max / 100 + 0.5)
+end
+
+-- A monitor's brightness, MCCS's luminance (VCP 0x10), for the Displays
+-- page: the tool's list of displays, how it names one, the runs that read
+-- the luminance and its maximum, and the run that sets it.
+function M.list_args(tool)
+    return tool.name == "m1ddc" and { "display", "list" } or {}
+end
+
+function M.id(tool, d)
+    return tool.name == "m1ddc" and d.uuid or d.index
+end
+
+function M.luminance_reads(tool, id)
+    if tool.name == "m1ddc" then
+        return { { "display", id, "get", "luminance" }, { "display", id, "max", "luminance" } }
+    end
+    return { { "-d", tostring(id), "-b", "?" } }
+end
+
+-- The reads' results ({ code, out, err } each) as { cur, max }, or nil and
+-- why.
+function M.parse_luminance(tool, results)
+    if tool.name == "m1ddc" then
+        local cur, why = M.parse_number(results[1].code, results[1].out, results[1].err, "m1ddc get luminance")
+        local max, why2 = M.parse_number(results[2].code, results[2].out, results[2].err, "m1ddc max luminance")
+        if not cur or not max or max <= 0 then
+            return nil, why or why2 or "m1ddc read a maximum luminance of 0"
+        end
+        return { cur = cur, max = max }
+    end
+    local b = M.parse_ddcctl_values(results[1].out)[0x10]
+    if not b or b.max <= 0 then
+        return nil, "ddcctl read no brightness (exit " .. tostring(results[1].code) .. ")"
+    end
+    return { cur = b.cur, max = b.max }
+end
+
+function M.luminance_set(tool, id, raw)
+    if tool.name == "m1ddc" then
+        return { "display", id, "set", "luminance", tostring(raw) }
+    end
+    return { "-d", tostring(id), "-b", tostring(raw) }
 end
 
 -- Whether reading `state` is the monitor volume of output reading `audio`
