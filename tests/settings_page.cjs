@@ -611,9 +611,9 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   walls()[0].children[1].listeners.keydown({ key: "Enter" });
   assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/Pictures/day.jpg" }, "only this Mac's own, in appearance.local.json");
   assert.strictEqual(walls()[0].children[1].value, "~/Pictures/day.jpg", "shown at once");
-  walls()[1].children[2].listeners.click();
+  walls()[1].children[3].listeners.click();
   assert.deepStrictEqual(sent.at(-1), { pickWallpaper: "darkWallpaper" });
-  assert.strictEqual(walls()[1].children[2].attrs["data-icon"], "folder");
+  assert.strictEqual(walls()[1].children[3].attrs["data-icon"], "folder");
   sandbox.tilemo.setWallpaper("darkWallpaper", "/Library/Desktop Pictures/Sky.heic");
   assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/Pictures/day.jpg", darkWallpaper: "/Library/Desktop Pictures/Sky.heic" });
   // A path tide wouldn't take is refused, saying why, and nothing's saved.
@@ -630,7 +630,97 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: "{" } });
   assert.match(ids["appearance-error"].textContent, /appearance\.local\.json/);
   assert.strictEqual(walls()[0].children[1].disabled, true);
-  assert.strictEqual(walls()[0].children[2].disabled, true);
+  assert.strictEqual(walls()[0].children[2].disabled, true, "nor its colors");
+  assert.strictEqual(walls()[0].children[3].disabled, true);
+}
+
+// A wallpaper's colors, as tide's page has them: its swatch shows the color
+// set, or the colors' icon for a picture or none, and opens tide's
+// palette's backgrounds under its row, the one set marked, with a field for
+// any color. Choosing one sets it and closes them; Escape, or a click
+// anywhere else, closes them with nothing set.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  const walls = () => ids.wallpapers.children;
+  const swatch = (i) => walls()[i].children[2];
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"darkWallpaper": "#ABC"}' } });
+  assert.strictEqual(swatch(0).attrs["data-icon"], "color", "a picture or none: the colors' icon");
+  assert.strictEqual(swatch(1).attrs.style, "--swatch: #aabbcc", "the color set");
+  assert.strictEqual(swatch(1).attrs["data-icon"], undefined);
+  assert.strictEqual(walls().length, 2, "shut");
+  swatch(0).listeners.click();
+  assert.strictEqual(swatch(0).attrs["aria-expanded"], "true");
+  const colors = () => walls()[1];
+  const choices = () => colors().children[1].children;
+  assert.strictEqual(colors().className, "colors");
+  assert.strictEqual(colors().children[0].textContent, "Light wallpaper");
+  assert.deepStrictEqual(choices().map((b) => b.attrs["aria-label"]),
+    ["Night", "Charcoal", "Teal", "Violet", "Dusk", "Sky", "Mist", "Paper"]);
+  assert.strictEqual(sandbox.document.activeElement, colors().children[2], "the field, to type one");
+  choices()[2].listeners.mouseenter();
+  assert.strictEqual(colors().children[0].textContent, "Teal", "the one pointed at, named");
+  choices()[2].listeners.mouseleave();
+  assert.strictEqual(colors().children[0].textContent, "Light wallpaper");
+  sent.length = 0;
+  choices()[2].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { darkWallpaper: "#ABC", lightWallpaper: "#13303a" });
+  assert.strictEqual(walls().length, 2, "closed once chosen");
+  assert.strictEqual(sandbox.document.activeElement, swatch(0), "back on its swatch");
+  assert.strictEqual(swatch(0).attrs.style, "--swatch: #13303a");
+  // The one set is marked, and in the field.
+  swatch(0).listeners.click();
+  assert.deepStrictEqual(choices().map((b) => b.attrs["aria-current"]),
+    ["false", "false", "true", "false", "false", "false", "false", "false"]);
+  assert.strictEqual(colors().children[2].value, "#13303a");
+  // Any color typed is set as the row's field sets one; one tide wouldn't
+  // take is refused, saying why.
+  colors().children[2].value = " #F0F ";
+  colors().children[2].listeners.keydown({ key: "Enter" });
+  assert.strictEqual(lastAppearance().lightWallpaper, "#F0F");
+  swatch(0).listeners.click();
+  const before = sent.length;
+  colors().children[2].value = "#12";
+  colors().children[2].listeners.keydown({ key: "Enter" });
+  assert.strictEqual(sent.length, before);
+  assert.match(ids["appearance-error"].textContent, /lightWallpaper must be a color/);
+  // Escape closes them, and not the window; a click elsewhere does too, and
+  // one on them doesn't.
+  swatch(1).listeners.click();
+  assert.strictEqual(walls().length, 3);
+  sent.length = 0;
+  docListeners.keydown({ key: "Escape" });
+  assert.strictEqual(walls().length, 2);
+  assert.deepStrictEqual(sent, [], "the window stays open");
+  assert.strictEqual(sandbox.document.activeElement, swatch(1));
+  swatch(1).listeners.click();
+  docListeners.click({ target: { closest: () => colors() } });
+  assert.strictEqual(walls().length, 3, "a click on them leaves them open");
+  docListeners.click({ target: { closest: () => null } });
+  assert.strictEqual(walls().length, 2);
+  // A click on another field closes them and leaves the keyboard there, to
+  // type in it, not back on the swatch.
+  swatch(0).listeners.click();
+  walls()[2].children[1].focus();
+  docListeners.click({ target: { closest: () => null } });
+  assert.strictEqual(walls().length, 2);
+  assert.strictEqual(sandbox.document.activeElement, walls()[1].children[1], "the dark wallpaper's field, drawn again");
+  // Its swatch again closes them.
+  swatch(0).listeners.click();
+  swatch(0).listeners.click();
+  assert.strictEqual(walls().length, 2);
+  // Drawn again as the files change, they stay open, with what's typed and
+  // the keyboard still in the field.
+  swatch(0).listeners.click();
+  colors().children[2].value = "#ab";
+  colors().children[2].listeners.input();
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"lightWallpaper": "#F0F", "darkWallpaper": "#ABC"}' } });
+  assert.strictEqual(colors().className, "colors");
+  assert.strictEqual(colors().children[2].value, "#ab");
+  assert.strictEqual(sandbox.document.activeElement, colors().children[2]);
+  docListeners.keydown({ key: "Escape" });
+  swatch(0).listeners.click();
+  assert.strictEqual(colors().children[2].value, "#ff00ff", "opened afresh: the color set");
+  docListeners.keydown({ key: "Escape" });
 }
 
 // Appearance's dim, as tide's page has it: tide's 7% until a file sets it,

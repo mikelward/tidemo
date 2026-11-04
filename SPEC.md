@@ -2255,7 +2255,12 @@ that isn't one is left out, and the log says so.
       wallpaper, is shown here too. macOS's desktop takes only a picture, so
       tilemo draws the color into a small square once (`hs.canvas`), kept in
       `~/Library/Application Support/tide`, and macOS stretches it to fill
-      each display. The Appearance page takes one typed, as tide's does.
+      each display. The Appearance page takes one typed, as tide's does,
+      or chosen from its swatch, as tide's: the color set, or a palette
+      icon for a picture or none, opening tide's eight colors
+      (`WALLPAPER_COLORS`) under the row, the one set marked, and a field
+      for any `#rrggbb`. Choosing one sets it and closes them; Escape, or a
+      click anywhere else, closes them with nothing set.
       *(Unverified on a Mac: that the stretched square shows as an even
       color on every display.)*
     - **Choosing one:** each wallpaper's field has a choose button, which

@@ -38,8 +38,8 @@ import {
 } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings, workspaceSetting } from "./tide-workspacenames.js";
 import {
-  MODE_CHOICES, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate, steppedDim, steppedModeAt,
-  steppedTimePast, withSetting as withAppearance,
+  MODE_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate, steppedDim,
+  steppedModeAt, steppedTimePast, wallpaperColor, withSetting as withAppearance,
 } from "./tide-appearance.js";
 import {
   DEFAULT_IDLE, STEPS as IDLE_STEPS, SWITCHES as IDLE_SWITCHES, formatDuration, loadIdle, stepped as steppedIdle,
@@ -729,6 +729,91 @@ function setWallpaper(key, value) {
   setAppearance(key, value);
 }
 
+// A wallpaper's colors, as tide's page has them (tide SPEC.md §16): its
+// swatch opens them under its row, tide's palette's backgrounds and a field
+// for any color, set with Enter. Choosing one sets it as the row's field
+// would, and closes them; Escape, or a click anywhere else, closes them
+// with nothing set. The wallpaper they're open for, by key, or "", and
+// what's typed in their field, kept as tilemo draws the page again.
+let colorsOpen = "";
+let colorsTyped = null;
+
+const focusKey = (key) => document.querySelector?.(`[data-key="${key}"]`)?.focus?.();
+
+function openColors(key) {
+  colorsOpen = colorsOpen === key ? "" : key;
+  colorsTyped = null;
+  renderAppearance();
+  if (colorsOpen) focusKey(`colors-hex-${key}`);
+}
+
+// Back on the swatch for Escape; a click elsewhere leaves the keyboard on
+// what was clicked, drawn again if it's one of the rows.
+function closeColors(toSwatch) {
+  const key = colorsOpen;
+  colorsOpen = "";
+  colorsTyped = null;
+  renderAppearance();
+  if (toSwatch) focusKey(`swatch-${key}`);
+}
+
+function chooseColor(key, value) {
+  colorsOpen = "";
+  colorsTyped = null;
+  setWallpaper(key, value);
+  // Drawn shut even when the value's refused.
+  renderAppearance();
+  focusKey(`swatch-${key}`);
+}
+
+// The swatch: the color set, or the colors' icon for a picture or none.
+function swatchFor(w, shows, disabled) {
+  const b = keyed(button("", `Colors for the ${w.label.toLowerCase()}`, disabled, () => openColors(w.key)), `swatch-${w.key}`);
+  b.className = "swatch";
+  b.setAttribute("data-colors", "");
+  b.setAttribute("aria-expanded", String(colorsOpen === w.key));
+  if (shows) b.setAttribute("style", `--swatch: ${shows}`);
+  else b.setAttribute("data-icon", "color");
+  return b;
+}
+
+// The colors, under the row: what's pointed at, tide's palette's
+// backgrounds, the one set marked, and the field.
+function colorsFor(w, shows) {
+  const li = el("li");
+  li.className = "colors";
+  li.setAttribute("data-colors", "");
+  const caption = el("span", w.label);
+  caption.className = "caption";
+  const grid = el("div");
+  grid.className = "grid";
+  for (const c of WALLPAPER_COLORS) {
+    const b = keyed(button("", c.label, false, () => chooseColor(w.key, c.color)), `colors-${w.key}-${c.label}`);
+    b.className = "swatch";
+    b.setAttribute("title", c.label);
+    b.setAttribute("style", `--swatch: ${c.color}`);
+    b.setAttribute("aria-current", String(c.color === shows));
+    b.addEventListener("mouseenter", () => { caption.textContent = c.label; });
+    b.addEventListener("mouseleave", () => { caption.textContent = w.label; });
+    grid.append(b);
+  }
+  const hex = keyed(el("input"), `colors-hex-${w.key}`);
+  hex.value = colorsTyped ?? shows;
+  hex.placeholder = "#rrggbb";
+  hex.spellcheck = false;
+  hex.setAttribute("aria-label", `Any color for the ${w.label.toLowerCase()}`);
+  hex.addEventListener("input", () => { colorsTyped = hex.value; });
+  hex.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && hex.value.trim() !== "") chooseColor(w.key, hex.value.trim());
+  });
+  li.append(caption, grid, hex);
+  return li;
+}
+
+document.addEventListener("click", (e) => {
+  if (colorsOpen && !e.target?.closest?.("[data-colors]")) closeColors(false);
+});
+
 // Set one of appearance.local.json's settings to `value`, or take it out
 // for undefined, or say why not.
 function setAppearance(key, value) {
@@ -840,34 +925,44 @@ function renderTheme(settings, bad) {
 }
 
 function renderAppearance() {
-  const list = document.getElementById("wallpapers");
-  list.replaceChildren();
   const { settings, errors } = loadAppearance(appearanceText("shared"), appearanceText("local"));
   if (errors.length) {
     document.getElementById("appearance-error").textContent = `${errors.join("; ")}. Fix the file to change these here.`;
   }
   renderTheme(settings, errors.length > 0);
-  for (const w of WALLPAPERS) {
-    const li = el("li");
-    const input = el("input");
-    input.value = settings[w.key] ?? "";
-    input.placeholder = "macOS's own";
-    input.spellcheck = false;
-    input.disabled = errors.length > 0;
-    input.setAttribute("aria-label", w.label);
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") setWallpaper(w.key, input.value.trim());
-    });
-    const choose = button("…", `Choose the ${w.label.toLowerCase()}`, errors.length > 0, () => send({ pickWallpaper: w.key }));
-    choose.setAttribute("data-icon", "folder");
-    li.append(el("span", w.label), input, choose);
-    list.append(li);
-  }
+  keepingFocus(() => renderWallpapers(settings, errors.length > 0));
   // The dim, as tide's page steps it: a point at a time, from none to half.
   const dim = dimStrength(settings);
   document.getElementById("dim-strength").textContent = formatDim(dim);
   document.getElementById("dim-less").disabled = errors.length > 0 || steppedDim(dim, -1) === dim;
   document.getElementById("dim-more").disabled = errors.length > 0 || steppedDim(dim, 1) === dim;
+}
+
+// The wallpapers' rows, and the colors under one if they're open; none
+// can be changed while a file is `bad`.
+function renderWallpapers(settings, bad) {
+  const list = document.getElementById("wallpapers");
+  list.replaceChildren();
+  for (const w of WALLPAPERS) {
+    const li = el("li");
+    // Keyed, so a redraw keeps the keyboard in it.
+    const input = keyed(el("input"), `wallpaper-${w.key}`);
+    input.value = settings[w.key] ?? "";
+    input.placeholder = "macOS's own";
+    input.spellcheck = false;
+    input.disabled = bad;
+    input.setAttribute("aria-label", w.label);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") setWallpaper(w.key, input.value.trim());
+    });
+    const choose = keyed(button("…", `Choose the ${w.label.toLowerCase()}`, bad, () => send({ pickWallpaper: w.key })),
+      `choose-${w.key}`);
+    choose.setAttribute("data-icon", "folder");
+    const shows = wallpaperColor(settings[w.key] ?? "");
+    li.append(el("span", w.label), input, swatchFor(w, shows, bad), choose);
+    list.append(li);
+    if (colorsOpen === w.key && !bad) list.append(colorsFor(w, shows));
+  }
 }
 
 const currentDim = () => dimStrength(loadAppearance(appearanceText("shared"), appearanceText("local")).settings);
@@ -1578,7 +1673,10 @@ const editing = (t) => ["INPUT", "TEXTAREA", "SELECT"].includes(t?.tagName) || t
 window.addEventListener?.("focus", () => send({ setupRefresh: true }));
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !e.handled) {
+  if (e.key === "Escape" && !e.handled && colorsOpen) {
+    // A wallpaper's colors close first, as tide's do.
+    closeColors(true);
+  } else if (e.key === "Escape" && !e.handled) {
     send({ close: true });
   } else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !editing(e.target)) {
     // Up and Down change the page, as on tide.
