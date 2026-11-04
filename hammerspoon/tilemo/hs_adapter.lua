@@ -58,6 +58,9 @@ local NOT_A_WINDOW = {
 -- freeze tilemo (Amethyst#342).
 M.AX_TIMEOUT = 0.25
 
+-- kCGDockWindowLevel: a.ordered() lists the windows below it.
+M.DOCK_LEVEL = 20
+
 M.SETTINGS_KEY = "tilemo.state"
 -- Where timo kept it, before the rename.
 M.OLD_SETTINGS_KEY = "timo.state"
@@ -69,6 +72,8 @@ end
 function M.new()
     local a = {}
     local cache = {}
+    -- Windows on screen that no filter watches, id -> frame (a.ordered).
+    local strangers = {}
     local system = hs.axuielement.systemWideElement()
     -- On the system-wide element this sets the timeout for every call.
     system:setTimeout(M.AX_TIMEOUT)
@@ -113,6 +118,12 @@ function M.new()
     end
 
     function a.state(id)
+        -- A window the last a.ordered() found that nothing watches: on
+        -- screen, where the window server said.
+        local stranger = not cache[id] and strangers[id]
+        if stranger then
+            return { frame = stranger, minimized = false, fullscreen = false, hidden = false }
+        end
         local w = win(id)
         if not w then
             return nil
@@ -190,14 +201,48 @@ function M.new()
         end)
     end
 
-    -- Visible windows, front to back.
+    -- Visible windows, front to back, from the window server's on-screen
+    -- list (hs.window.list), below the Dock's level, so the Dock, the menu
+    -- bar, menus and other overlays aren't in it. Not
+    -- hs.window.orderedWindows(): it lists only apps with a Dock icon (its
+    -- visibleWindows() skips app:kind() 0), so a menu bar app's window,
+    -- which tiles unless a rule floats it, never counted as in front, and
+    -- focus follows mouse buried it under the tile the pointer crossed
+    -- (SPEC.md §5.1). Of the windows no filter watches, only Hammerspoon's
+    -- console and Preferences stay in, as strangers, by their bounds: they
+    -- cover what's behind them (wm.window_at). They're named by title, as
+    -- the rules name them, not looked up through Accessibility, which can't
+    -- answer about Hammerspoon from its own thread. Everything else of
+    -- Hammerspoon's is tilemo's own drawing (the dim, the bar, the drag
+    -- outline, the switcher), click-through or reported by wm.own_window,
+    -- and a new overlay stays out without anyone naming it.
     function a.ordered()
+        local list = try(hs.window.list, true)
+        if not list then
+            local ids = {}
+            for _, w in ipairs(hs.window.orderedWindows()) do
+                local id = try(w.id, w)
+                if id then
+                    cache[id] = cache[id] or w
+                    ids[#ids + 1] = id
+                end
+            end
+            return ids
+        end
         local ids = {}
-        for _, w in ipairs(hs.window.orderedWindows()) do
-            local id = try(w.id, w)
-            if id then
-                cache[id] = cache[id] or w
-                ids[#ids + 1] = id
+        strangers = {}
+        for _, info in ipairs(list) do
+            local id = info.kCGWindowNumber
+            local layer = info.kCGWindowLayer or 0
+            local b = info.kCGWindowBounds
+            if id and layer >= 0 and layer < M.DOCK_LEVEL then
+                if cache[id] then
+                    ids[#ids + 1] = id
+                elseif info.kCGWindowOwnerPID == hs.processInfo.processID and not rules.tilemos(info.kCGWindowName)
+                    and b and (info.kCGWindowAlpha or 1) > 0 and (b.Width or 0) > 0 and (b.Height or 0) > 0 then
+                    strangers[id] = box({ x = b.X or 0, y = b.Y or 0, w = b.Width, h = b.Height })
+                    ids[#ids + 1] = id
+                end
             end
         end
         return ids

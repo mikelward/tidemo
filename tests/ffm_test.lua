@@ -547,6 +547,138 @@ t.test("a queued focus skips a tile under another app's float", function()
     t.eq(focuses(a), { "focus 1" })
 end)
 
+-- The report: an app floated by a rule sits in the top left, in front of
+-- tile B, another app's, which covers that corner and more. Tile C is a
+-- third app's, on the right. `how` is "start" for a rule the window opened
+-- under, or "later" for one added on the Floating page after it tiled
+-- (wm.set_float_rules). `more` adds windows before the float is placed.
+-- Returns a point on B outside the float, and a point on the float.
+local function rule_float(how, more)
+    local a = fake.new()
+    local float_rule = { app = "com.example.a", action = "float" }
+    a.add(1, { app = "com.example.b", pid = 2 })
+    a.add(2, { app = "com.example.c", pid = 3 })
+    if how == "later" then
+        a.add(3, { app = "com.example.a", pid = 1 })
+    end
+    local wm = wm_mod.new(a, { rules = how == "start" and { float_rule } or nil })
+    wm:sync()
+    wm:retile()
+    if how == "start" then
+        a.add(3, { app = "com.example.a", pid = 1 })
+        wm:sync()
+    else
+        wm:set_float_rules({ float_rule })
+    end
+    t.eq(wm.windows[3].floating, true, "the rule floats it")
+    if more then
+        more(a, wm)
+    end
+    a.wins[3].frame = { x = 0, y = 25, w = 600, h = 400 }
+    a.raise(3)
+    wm:retile()
+    local ffm = ffm_mod.new(wm, a)
+    wm.ffm = ffm
+    local move = ffm.move
+    function ffm.move(self, x, y, ...)
+        a.px, a.py = x, y
+        return move(self, x, y, ...)
+    end
+    t.eq(a.ordered()[1], 3, "the float is in front")
+    local b = a.wins[1].frame
+    t.eq(b.x < 600 and b.y < 425, true, "B covers the float's corner")
+    return a, wm, ffm, { 700, 800 }, { 100, 100 }
+end
+
+t.test("a tile under a rule's float isn't focused by the pointer, however it gets there", function()
+    for _, how in ipairs({ "start", "later" }) do
+        -- From the float onto B.
+        local a, wm, ffm, onb, onf = rule_float(how)
+        ffm:move(onf[1], onf[2])
+        a.focus_ = 3
+        wm:focused(3)
+        a.calls = {}
+        ffm:move(onb[1], onb[2])
+        t.eq(focuses(a), {}, how .. ": from the float")
+        t.eq(a.ordered()[1], 3, how .. ": the float stays in front")
+        -- From C, through a gap at the display's edge, onto B.
+        a, wm, ffm, onb = rule_float(how)
+        ffm:move(1500, 500)
+        a.focus_ = 2
+        wm:focused(2)
+        a.calls = {}
+        ffm:move(1500, 1079) -- below the work area: the Dock
+        ffm:move(1500, 500)
+        a.wins[1].frame.w = a.wins[1].frame.w - 100 -- a gap beside B
+        ffm:move(a.wins[1].frame.w + 50, 500)
+        ffm:move(onb[1], onb[2])
+        t.eq(focuses(a), {}, how .. ": from the gap")
+        -- After the stacking changed under a still pointer.
+        a, wm, ffm, onb = rule_float(how)
+        a.focus_ = 2
+        ffm:move(1500, 500)
+        a.px, a.py = onb[1], onb[2]
+        wm:raise_floats(wm.current) -- resyncs
+        a.calls = {}
+        ffm:move(onb[1] + 1, onb[2])
+        ffm:move(onb[1] + 2, onb[2])
+        t.eq(focuses(a), {}, how .. ": after a resync")
+    end
+end)
+
+-- B defers to its app's dialog (prefer_dialog), but B is still the window
+-- under the pointer: focusing the dialog activates B's app, which can bring
+-- B forward with it.
+t.test("B's own dialog isn't focused either while B is under another app's float", function()
+    local a, wm, ffm, onb = rule_float("later", function(a, wm)
+        -- B's app's dialog, on the right, over C.
+        a.add(4, { subrole = "AXDialog", app = "com.example.b", pid = 2 })
+        wm:sync()
+    end)
+    a.wins[4].frame = { x = 1400, y = 600, w = 300, h = 200 }
+    a.focus_ = 2
+    ffm:move(1500, 300) -- C
+    a.calls = {}
+    ffm:move(onb[1], onb[2])
+    t.eq(ffm:prefer_dialog(1), 4, "B defers to its dialog")
+    t.eq(focuses(a), {})
+end)
+
+t.test("another app's dialog clear of the float is still focused", function()
+    local a, wm, ffm, _, onf = rule_float("later", function(a, wm)
+        a.add(4, { subrole = "AXDialog", app = "com.example.c", pid = 3 })
+        wm:sync()
+    end)
+    a.wins[4].frame = { x = 1400, y = 600, w = 300, h = 200 }
+    a.raise(4)
+    ffm:move(onf[1], onf[2])
+    a.focus_ = 3
+    wm:focused(3)
+    a.calls = {}
+    ffm:move(1500, 700) -- C's dialog
+    t.eq(focuses(a), { "focus 4" })
+end)
+
+t.test("closing a window passes over the one under the pointer if it would bury a float", function()
+    local a, wm, ffm, onb = rule_float("later", function(a, wm)
+        a.add(4, { app = "com.example.d", pid = 4 })
+        wm:sync()
+    end)
+    wm:retile()
+    a.wins[3].frame = { x = 0, y = 25, w = 600, h = 400 }
+    a.raise(3)
+    a.focus(4)
+    wm:focused(4)
+    a.px, a.py = onb[1], onb[2]
+    a.calls = {}
+    a.drop(4)
+    wm:schedule()
+    a.tick()
+    t.eq(a.ordered()[1], 3, "the float stays in front")
+    t.eq(a.focus_ ~= 1, true, "B isn't focused")
+    t.eq(a.focus_ ~= nil, true, "something has focus")
+end)
+
 -- How many times Accessibility was asked what's under the pointer.
 local function counting(a)
     local real = a.window_at

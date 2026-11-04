@@ -10,8 +10,9 @@
 --   menu, popover or anything tilemo doesn't manage stops the lookup and
 --   focus stays put.
 -- - A window's own dialog wins over the window.
--- - A tile with another app's float in front of it is left alone: focusing
---   it would bury the float, and macOS won't raise the float back.
+-- - A tile with another app's float in front of it is left alone, and so
+--   is its app's dialog it would defer to: focusing either would bury the
+--   float, and macOS won't raise the float back.
 -- - It pauses while a menu is open, while a button is held, while Super is
 --   held, outside every
 --   display's work area (the menu bar and the Dock), over tilemo's own
@@ -245,7 +246,7 @@ function M:settled(id)
     end
     local now = self:hit(x, y)
     local target = now and self:prefer_dialog(now)
-    if target and target ~= self.a.focused() and not self:under_float(target) then
+    if target and target ~= self.a.focused() and not self:under_float(now) then
         self:focus(target)
     end
 end
@@ -286,9 +287,12 @@ function M:move(x, y, super_held)
     end
     self:remember(id)
     local target = self:prefer_dialog(id)
-    -- With a focus in flight, the latest crossing decides what follows it,
-    -- including going back to the window being focused.
-    if self:under_float(target) then
+    -- A tile under another app's float is left alone, and so is its own
+    -- dialog: focusing the dialog activates the tile's app, which can bring
+    -- the tile forward with it. With a focus in flight, the latest crossing
+    -- decides what follows it, including going back to the window being
+    -- focused.
+    if self:under_float(id) then
         target = nil
     end
     if self.pending then
