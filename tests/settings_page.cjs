@@ -750,16 +750,16 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(positions()[0].children[3].disabled, true);
 }
 
-// Appearance's dim, as tide's page has it: tide's 7% until a file sets it,
+// Appearance's dim, as tide's page has it: tide's 12% until a file sets it,
 // − and + a point at a time into appearance.local.json, keeping what else
 // it says, and none at the bottom.
 {
   const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
   sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"lightWallpaper": "~/day.jpg"}' } });
-  assert.strictEqual(ids["dim-strength"].textContent, "7%");
+  assert.strictEqual(ids["dim-strength"].textContent, "12%");
   ids["dim-more"].listeners.click();
-  assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/day.jpg", dimStrength: 0.08 });
-  assert.strictEqual(ids["dim-strength"].textContent, "8%", "shown at once");
+  assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/day.jpg", dimStrength: 0.13 });
+  assert.strictEqual(ids["dim-strength"].textContent, "13%", "shown at once");
   sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { shared: '{"dimStrength": 0.01}' } });
   assert.strictEqual(ids["dim-strength"].textContent, "1%", "the shared file's");
   assert.strictEqual(ids["dim-less"].disabled, false);
