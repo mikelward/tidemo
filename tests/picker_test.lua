@@ -8,11 +8,13 @@ local function read(path)
     return s
 end
 
-t.test("two tabs, Clipboard first, and Tab goes round them", function()
-    t.eq(picker.TABS, { "clipboard", "characters" })
+t.test("three tabs, Clipboard first, and Tab goes round them", function()
+    t.eq(picker.TABS, { "clipboard", "characters", "fill" })
     t.eq(picker.next_tab("clipboard"), "characters")
-    t.eq(picker.next_tab("characters"), "clipboard")
-    t.eq(picker.next_tab("clipboard", true), "characters")
+    t.eq(picker.next_tab("characters"), "fill")
+    t.eq(picker.next_tab("fill"), "clipboard")
+    t.eq(picker.next_tab("clipboard", true), "fill")
+    t.eq(picker.empty_text("fill", ""):find("snippets.json", 1, true) ~= nil, true)
     t.eq(pcall(picker.next_tab, "apps"), false)
 end)
 

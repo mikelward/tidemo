@@ -101,6 +101,9 @@ M.map[#M.map + 1] = { key = "space", shift = true, action = "dashboard" }
 -- paste: Return pastes the row where you were. Terminal on the VM, which
 -- it was, has no key now; the switcher finds it.
 M.map[#M.map + 1] = { key = "v", action = "picker", arg = "clipboard" }
+-- Super+Shift+V: its Fill tab, your snippets and Bitwarden's logins, one
+-- row per field; Return types it where you were (SPEC.md §9.1).
+M.map[#M.map + 1] = { key = "v", shift = true, action = "picker", arg = "fill", does = "Snippets and passwords" }
 -- Super+Tab flips between home and the workspace you used last, and
 -- Super+End goes to the last one other than home (SPEC.md §7.2).
 M.map[#M.map + 1] = { key = "tab", action = "flip" }

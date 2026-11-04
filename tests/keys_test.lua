@@ -335,6 +335,7 @@ t.test("Super+V opens the picker on Clipboard; Super+C is Chat and Super+Shift+C
     t.eq(by.h.arg.run, "home")
     t.eq(by.c.arg.run, "google-chat")
     t.eq(shifted.c.arg.run, "google-calendar")
+    t.eq({ shifted.v.action, shifted.v.arg }, { "picker", "fill" }, "Super+Shift+V is the picker's Fill tab")
 end)
 
 t.test("the picker key asks the window manager to open the picker", function()
