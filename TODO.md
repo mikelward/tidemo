@@ -265,6 +265,22 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
 
 ## Decisions needing review
 
+- **Pinned apps' close keys are hotkeys enabled while a pinned window has
+  focus** (SPEC.md §6.2, 2026-11-04), not a keyboard event tap, so they
+  need no Input Monitoring. A press just after focusing a pinned window,
+  before tilemo hears of the focus, still reaches the app; one that finds
+  focus moved on is posted on to the app. Only Cmd+W, Cmd+Shift+W and Cmd+Q
+  are held, tide's three that mean something on a Mac; Cmd+Option+W (close
+  all) isn't. A refused key notifies each press, as tide's does.
+  Reversible: `pinned_hs.KEYS`, `wm:check_pinned_focus`.
+- **start()'s `workspace_settings` takes tide's field names,** `askForName`
+  and `pinnedApps`, inside a snake_case option (SPEC.md §15, 2026-11-04),
+  so a table copies to and from workspaces.json unchanged.
+- **Pinned apps match by app name, as home's apps do** (SPEC.md §6.2,
+  2026-11-04); tide's web addresses pin nothing here, and a pinned app
+  that isn't one of home's still asks for a name as it opens on a
+  workspace that asks, as on tide.
+
 - **tide's idle timeline runs only once its files set some of it**
   (SPEC.md §15, 2026-11-04), as light and dark does, rather than tide's
   defaults locking every Mac after 5 minutes; the page's switch writes
@@ -940,6 +956,15 @@ Only the tests have run these (SPEC.md §5.1, §15):
   window* closed until clicked.
 - The "Always float APP?" notification shows both actions, as an alert
   and as a banner, and each does what it says.
+
+## Check workspace settings on a real Mac
+
+Only the tests have run (SPEC.md §6.2): with a workspace's `askForName` on,
+a new window and a launch there ask; with "in"'s off, nothing does. Pin
+Gmail on "in" and check Super+Backspace, the prompt's Esc, Cmd+W,
+Cmd+Shift+W and Cmd+Q each leave it open with a notification, that another
+app's window still gets Cmd+W, and how soon after a click on the pinned
+window Cmd+W is held.
 
 ## Check the picker on a real Mac
 

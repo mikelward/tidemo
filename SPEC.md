@@ -219,7 +219,8 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | New windows join the end of the stack, with a setting for elsewhere (tide §6.1) | tilemo state (§5) | **yes** |
 | Layout, `mfact`, master count per workspace, and per display within it | tilemo state | **yes** |
 | Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide §6.5) | minimized windows, as tileco does, named in tilemo's state (§6) | **partial**: each switch animates |
-| A new window on "in" asks for a workspace name (tide §6.5) | tilemo's name prompt, an `hs.chooser` (§6.2) | **yes** |
+| A new window on a workspace that asks, "in" by default, asks for a workspace name (tide §6.5) | tilemo's name prompt, an `hs.chooser` (§6.2) | **yes** |
+| Pinned apps stay open on their workspace (tide §6.5) | the close key and the prompt's Esc leave them open; Cmd+W, Cmd+Shift+W and Cmd+Q are hotkeys while one has focus (§6.2) | **partial**: by app name; the close button still closes |
 | `TIDE_WORKSPACE` in launched apps (tide §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
 | One workspace per monitor from a shared pool (tide §6.5) | decided against: one workspace spans every display, each display with its own layout in it (§6.1) | **differs** |
 | Dim inactive, 0.07, not a lone window or video (tide §6.2) | one dark layer over the windows, a hole for the focused one (§5.6) | **partial**: dims the desktop too; drawn only in CI's smoke test, not yet checked by eye on a Mac |
@@ -777,7 +778,8 @@ numbered ones:
   standing workspace that's special, not the name "in": whatever the list
   names first gets everything this spec says of "in". tilemo makes it at
   start. It can't be removed or renamed, holds the apps you keep open all
-  day, and asks for a name for any other window (§6.2).
+  day, and, unless its `askForName` is off, asks for a name for any other
+  window (§6.2).
 - **The other standing workspaces:**
   - they're always listed, on the bar and in the switcher, in the
     setting's order, even before they exist;
@@ -903,8 +905,21 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   - Moving one of "in"'s windows elsewhere by hand is allowed: the rule
     says where they open, not where they must stay *(a guess, to
     confirm)*.
-- **Any other window opening while you're on "in" asks for a name.** That
-  includes a link a browser opens as a new window.
+- **Each workspace has settings of its own,** tide's `workspaceSettings`
+  in `workspaces.json` (tide §6.5, and §15 here), by name, ignoring case:
+  - **`askForName`:** whether a new window there asks for a workspace's
+    name, below, and whether a launch from there does. The settings window
+    calls it "Open new windows on a new workspace".
+  - **`pinnedApps`:** the apps whose windows stay open there (Pinned apps,
+    below).
+  - With no `workspaceSettings` in either file, nor `workspace_settings`
+    in `start()`, it's tide's default: "in" asks, and nothing is pinned.
+    Once one is set, a workspace it doesn't list, or a field it leaves out,
+    is off: with "in"'s `askForName` off, nothing asks, "in" included.
+- **Any other window opening on a workspace that asks asks for a name,**
+  "in" by default. That includes a link a browser opens as a new window.
+  - One of "in"'s apps never asks: its window goes to "in", wherever you
+    are.
   - Dialogs and other windows that follow a parent (§5.1), and
     picture-in-picture (§5.5), don't ask: they go where their parent is.
   - The prompt is an `hs.chooser` listing the existing names, with a
@@ -919,22 +934,55 @@ the home workspace, the first standing one (§6.1), which is "in" unless
     - A Mac text field's Home and End only scroll, so while the prompt is
       open Home and End are hotkeys sending `Cmd+Left` and `Cmd+Right`.
   - **Enter** makes the workspace, or uses the existing one of that name,
-    moves the window there, and shows it. Focus follows. "in" keeps it
-    on "in".
+    moves the window there, and shows it. Focus follows. The workspace
+    it's on keeps it there, and it doesn't ask again.
   - **Esc closes the window,** politely, as the close-window key does
     (§7.2): Accessibility presses its close button, so the app can still
-    ask to save.
+    ask to save. A window pinned where it is stays open, and a
+    notification says it's pinned there.
   - A window's title often arrives after the window. The default follows
     the title until you type, or press Home or End *(a guess, to
     confirm)*.
   - Focus follows mouse pauses while it's open (§5.2), and the window
     stays put until you answer.
-- **tilemo's own launches from "in" ask before launching:** the switcher's
-  Launch tab, app keys and Cmd+Return (§9).
+- **tilemo's own launches from a workspace that asks ask before
+  launching,** "in" by default: the switcher's Launch tab, app keys and
+  Cmd+Return (§9). From any other, they launch where you are.
   - The process then starts with the right `TIDE_WORKSPACE` (§6.3), and its
     first window goes straight to the named workspace.
   - Esc cancels the launch, so nothing opens.
+  - Enter on the workspace you launched from launches there, and its
+    window, matched to the launch, doesn't ask again.
   - An app key for one of "in"'s apps doesn't ask.
+- **Pinned apps.** A window whose app is one of the `pinnedApps` of the
+  workspace it's on stays open there. Its app's name is matched as "in"'s
+  apps are, ignoring case, with spaces, hyphens and underscores alike, so
+  tide's `google-chat` is Google Chat; tide's web addresses match nothing
+  here.
+  - tilemo's close actions leave it open, and a notification says it's
+    pinned on that workspace: the close-window key (§7.2), and the name
+    prompt's Esc. The switcher and the dashboard close no window.
+  - **An app's own close and quit keys don't reach it:** Cmd+W, Cmd+Shift+W
+    and Cmd+Q, physical Ctrl+W, Ctrl+Shift+W and Ctrl+Q under the rotation
+    (§7.1), tide's own. tide's fourth, Alt+F4, closes nothing on a Mac.
+    - How: they're hotkeys (`RegisterEventHotKey`, §2.2), like every key of
+      tilemo's, so they need no permission. A hotkey can't depend on the
+      window, so tilemo enables the three only while a pinned window has
+      focus, checking on each focus change and whenever a window moves
+      between workspaces, and every other window gets them as ever. With
+      nothing pinned, tilemo never checks.
+    - A press that finds focus moved on before tilemo heard goes to the app
+      as a key posted with the hotkeys off. A press in the moment between
+      focusing a pinned window and tilemo hearing of it still reaches the
+      app *(how long that is, unmeasured)*.
+    - A CGEventTap could decide per press, with no gap, but a keyboard tap
+      may need Input Monitoring (§11.1), which tilemo otherwise needs only
+      without Karabiner (§7.1).
+  - It's pinned where it is, not as an app: sent to another workspace, it
+    closes as any other does. Another app's window there closes as usual.
+  - **The window's own close button still closes it,** and so do the app's
+    menus (File > Close, Quit) and the Dock's Quit. Accessibility can't
+    refuse them, and tilemo hears of them only once the window has gone.
 - **The default name** comes from the window's title:
   - A setting holds a list of patterns, tried in order against the title.
     The first that matches gives its first capture, such as a ticket ID or
@@ -1229,7 +1277,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
 | `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
 | `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
-| `Super+Backspace` | close the window | hotkey; Accessibility presses its close button |
+| `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey; Accessibility presses its close button |
+| `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2) | hotkeys, enabled only then |
 | `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
 | `Super+L` | lock | hotkey; macOS's lock screen |
 | `Super+S` | keep awake on or off (§10) | hotkey; `hs.caffeinate`, with an on-screen sign |
@@ -1376,8 +1425,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 - **App keys** are tide's (conf `hyprland.lua`). Each brings the app's
   window forward, launching the app if it has none, and brings its
   workspace with it (Activate, §6.1).
-  - From "in", a key that would launch asks for a workspace name first,
-    unless the app is one of "in"'s (§6.2). Esc cancels the launch.
+  - From a workspace that asks, "in" by default, a key that would launch
+    asks for a workspace name first, unless the app is one of "in"'s
+    (§6.2). Esc cancels the launch.
   - **Super+T opens a new kitty window every time,** on the workspace
     you're on, as tide's terminal key does: Cmd+N to a running kitty, or a
     launch.
@@ -1971,7 +2021,8 @@ tab, the search field naming the tab you're in.
   the window, screen or a region; lock, log out, sleep, restart, shut down;
   Do Not Disturb, keep awake, presenter mode, and dark style; reload
   tilemo. tilemo's settings are an app on Launch, Tide Settings.
-- **Launching from "in" asks for a workspace name first** (§6.2), so the
+- **Launching from a workspace that asks, "in" by default, asks for a
+  workspace name first** (§6.2), so the
   app starts with the right `TIDE_WORKSPACE` (§6.3). Esc cancels the launch.
 - **Cmd+Return** (physical Ctrl+Enter) runs the app on a new workspace, as
   Ctrl+Enter does on tide: it asks for a name first, from any workspace,
@@ -2632,14 +2683,27 @@ Each one names a workaround, or says there is none.
       doesn't parse can't be changed here until it's fixed.
     - A change takes effect at the next login: the list already ran in
       this one (above).
-- **The standing workspaces and home's apps are tide's settings,**
-  `standing` and `inApps` in `workspaces.json` and `workspaces.local.json`
-  (tide §6.5, §16), so one list serves both desktops.
-  - Each is a list, so a `.local` file's replaces the shared one whole
-    (tide §16.1).
+- **The standing workspaces, home's apps and each workspace's own settings
+  are tide's settings,** `standing`, `inApps` and `workspaceSettings` in
+  `workspaces.json` and `workspaces.local.json` (tide §6.5, §16), so one
+  file serves both desktops.
+  - A `.local` file's replaces the shared one's whole (tide §16.1): the
+    lists, and `workspaceSettings` too, so a Mac's is exactly what it says.
   - Where no file sets one, `start()`'s stands in: `workspaces`, a list of
-    names, `{ "in", "re", "oc", "me" }` by default (§6.1), and `home_apps`,
-    a list of app names, tilemo's eight by default (§6.2).
+    names, `{ "in", "re", "oc", "me" }` by default (§6.1), `home_apps`, a
+    list of app names, tilemo's eight by default (§6.2), and
+    `workspace_settings`, a table as tide's `workspaceSettings`, `{ ["in"]
+    = { askForName = true, pinnedApps = { "Gmail" } } }`, unset by default:
+    "in" asks and nothing is pinned (§6.2).
+  - `workspaceSettings` is checked as tide checks it: a key that isn't a
+    workspace's name, one named twice ignoring case, a field other than
+    `askForName` and `pinnedApps`, an `askForName` that isn't `true` or
+    `false`, or a `pinnedApps` that isn't a list of text, is an error at
+    load, naming the file and the setting, and the last good settings
+    stay. `start()`'s is checked the same way when tilemo starts, naming
+    `workspace_settings`. A JSON decoder can't tell `[]` from `{}`, so an
+    empty list passes as an empty `workspaceSettings` here, where tide
+    would refuse it.
   - They're checked as tide checks them. An empty `standing`, a name in it
     twice (ignoring case), one with quotes, backslashes, `@` or control
     characters, space around it or over 32 characters, or an `inApps`
@@ -2668,12 +2732,21 @@ Each one names a workaround, or says there is none.
     bundle ID, isn't opened again.
   - **The settings window's Workspaces section** edits them, as tide's
     Workspaces page does, with tide's own `workspacepage.mjs`,
-    `workspacenames.mjs` and `fuzzy.mjs`, copied unchanged as
-    `dashboard/tide-workspacepage.js`, `tide-workspacenames.js` and
-    `tide-fuzzy.js` (`make check-tide`).
+    `workspacenames.mjs`, `fuzzy.mjs` and `span.mjs`, copied unchanged as
+    `dashboard/tide-workspacepage.js`, `tide-workspacenames.js`,
+    `tide-fuzzy.js` and `tide-span.js` (`make check-tide`).
     - It lists `standing`, `inApps` and `namePatterns` (§6.2), as the
       files in effect have them, or `start()`'s or tilemo's defaults where
       they set none. The first standing workspace is marked home.
+    - Below them, each standing workspace has a section of its own, home's
+      marked: an "Open new windows on a new workspace" switch, its
+      `askForName`, and its pinned apps, each with a ✕, over a box that
+      pins one with Enter. The first change copies the `workspaceSettings`
+      in effect into `workspaces.local.json`, as a list's first change
+      does: with none set, that's "in" asking, so turning on another
+      workspace's switch leaves "in"'s on. It's tide's own
+      `editedWorkspace`, `withAskForName`, `withPinned` and
+      `withoutPinned`.
     - The standing workspaces and the patterns, whose order counts, have
       arrows that move one; each entry has a ✕ that takes it out. Moving
       another first makes it home.

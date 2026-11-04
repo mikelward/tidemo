@@ -330,6 +330,17 @@ body.settings {
 .settings #ws-list-inApps li {
   grid-template-columns: 1fr auto;
 }
+.settings .ws-pinned li {
+  grid-template-columns: 1fr auto;
+}
+/* A standing workspace's own settings: its name, its switch, its pins. */
+.settings .ws-setting h3 {
+  margin: 16px 0 4px;
+  font-size: 13px;
+}
+.settings .ws-setting .row {
+  justify-content: space-between;
+}
 .settings #ws-list-standing li span:nth-child(2) {
   color: var(--fg-dim);
 }
@@ -587,6 +598,9 @@ body.settings {
 <p class="note">JavaScript regular expressions, tried in order against a new window's title: the first that matches names its workspace by its first capture.</p>
 <ol id="ws-list-namePatterns"></ol>
 <p class="add"><input id="ws-add-namePatterns" aria-label="Add a name pattern" spellcheck="false"></p>
+<h2>Each workspace</h2>
+<p class="note">With Open new windows on a new workspace on, a new window there, and a launch from there, asks for a workspace's name; home's apps never ask. A pinned app, by its name as home's apps are, stays open on that workspace: the close key, the name prompt's Esc, and the app's own Cmd+W, Cmd+Shift+W and Cmd+Q leave it open. Its close button and its menus still close it.</p>
+<div id="ws-settings"></div>
 <p class="error" id="workspaces-error" role="alert"></p>
 </section>
 <section class="page" id="page-floating" hidden>

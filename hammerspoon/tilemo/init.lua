@@ -15,9 +15,14 @@
 -- removed, the first being home (SPEC.md §6.1); it defaults to
 -- wm.STANDING, home being "in". `home_apps` names the apps, by app name,
 -- whose windows always open on home (SPEC.md §6.2); it defaults to
--- wm.HOME_APPS. A list you set also starts at login. tide's `standing` and
--- `inApps`, in workspaces.json and workspaces.local.json, take the place of
--- either where a file sets them (SPEC.md §15).
+-- wm.HOME_APPS. A list you set also starts at login. `workspace_settings`
+-- is each workspace's own, as tide's workspaceSettings: { ["in"] = {
+-- askForName = true, pinnedApps = { "Gmail" } } }, whether a new window
+-- there asks for a name and the apps whose windows tilemo's close keys
+-- leave open there (SPEC.md §6.2); it defaults to home asking. tide's
+-- `standing`, `inApps` and `workspaceSettings`, in workspaces.json and
+-- workspaces.local.json, take the place of each where a file sets it
+-- (SPEC.md §15).
 -- tilemo.toggle_focus_follows_mouse() turns focus follows mouse off and on.
 -- tilemo.workspace() gives the current workspace's TIDE_WORKSPACE. Scripts
 -- read it from ~/Library/Caches/tilemo/workspace instead (SPEC.md §6.3):
@@ -37,6 +42,7 @@ local wallpaper_hs = require("tilemo.wallpaper_hs")
 local theme_hs = require("tilemo.theme_hs")
 local idle_hs = require("tilemo.idle_hs")
 local floating_hs = require("tilemo.floating_hs")
+local pinned_hs = require("tilemo.pinned_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
 local tap_mod = require("tilemo.tap")
@@ -280,23 +286,28 @@ function M.start(config)
     -- read before the first workspace is made and again when they change.
     local layout_base = config.layout or layout.defaults
     self.layout_base = layout_base
-    -- The standing workspaces and home's apps are tide's `standing` and
-    -- `inApps`, from workspaces.json and workspaces.local.json (SPEC.md
-    -- §15), each falling back to start()'s `workspaces` and `home_apps`,
+    -- The standing workspaces, home's apps and each workspace's settings
+    -- are tide's `standing`, `inApps` and `workspaceSettings`, from
+    -- workspaces.json and workspaces.local.json (SPEC.md §15), each falling
+    -- back to start()'s `workspaces`, `home_apps` and `workspace_settings`,
     -- or tilemo's defaults, when no file sets it.
     local start_home_apps = config.home_apps
     self.workspace_base = {
         standing = wm_mod.check_standing(config.workspaces or wm_mod.STANDING),
         inApps = config.home_apps or wm_mod.HOME_APPS,
+        workspaceSettings = wm_mod.check_workspace_settings(config.workspace_settings),
     }
     wm_mod.check_home_apps(self.workspace_base.inApps)
     local ws_settings, ws_errors = standing.load(dashboard.clock_dir(os.getenv), self.adapter.read, self.adapter.decode)
     config.workspaces = ws_settings and ws_settings.standing or self.workspace_base.standing
     config.home_apps = ws_settings and ws_settings.inApps or self.workspace_base.inApps
+    config.workspace_settings = ws_settings and ws_settings.workspaceSettings or self.workspace_base.workspaceSettings
     local layout_errors
     config.layout, layout_errors = layout.load_settings(
         dashboard.clock_dir(os.getenv), self.adapter.read, self.adapter.decode, layout_base)
     self.wm = wm_mod.new(self.adapter, config)
+    -- An app's own close and quit keys, kept from a pinned window.
+    self.pinned_keys = pinned_hs.new(hs, self.wm, self.adapter.log)
     -- Hammerspoon's console floats (rules.lua) at a floating window level of
     -- its own, so no tile's raise can bury it (SPEC.md §5.1).
     local ok, err = pcall(hs.console.level, hs.drawing.windowLevels.floating)
@@ -435,9 +446,9 @@ function M.start(config)
     end
     self.load_muted = load_muted
     load_muted()
-    -- The standing workspaces and home's apps, read again as the folder
-    -- changes. A file that's wrong is said once, naming it and the setting,
-    -- and the last good lists stay.
+    -- The standing workspaces, home's apps and each workspace's settings,
+    -- read again as the folder changes. A file that's wrong is said once,
+    -- naming it and the setting, and the last good settings stay.
     local reported_workspaces
     local function report_workspaces(errors)
         self.workspace_errors = errors
@@ -456,6 +467,10 @@ function M.start(config)
         end
         local ok, err = pcall(self.wm.set_workspaces, self.wm, s.standing or self.workspace_base.standing,
             s.inApps or self.workspace_base.inApps)
+        if ok then
+            ok, err = pcall(self.wm.set_workspace_settings, self.wm,
+                s.workspaceSettings or self.workspace_base.workspaceSettings)
+        end
         if not ok then
             report_workspaces({ tostring(err) })
         end

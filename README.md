@@ -131,17 +131,33 @@ login, in the background, skipping any app that's running:
 tilemo.start({ home_apps = { "Mail", "Messages", "Calendar", "Music" } })
 ```
 
-tide's `standing` and `inApps`, in `~/.config/tide/workspaces.json` and
-`workspaces.local.json`, take the place of `workspaces` and `home_apps` where
-a file sets them, and the settings window's Workspaces section edits them.
+`workspace_settings` is each workspace's own, as tide's `workspaceSettings`:
+whether a new window there asks for a name (`askForName`), and the apps,
+by app name, whose windows stay open there (`pinnedApps`). Unset, home asks
+and nothing is pinned; set, a workspace it doesn't list, or a field it
+leaves out, is off:
+
+```lua
+tilemo.start({ workspace_settings = { ["in"] = { askForName = true, pinnedApps = { "Gmail", "Google Chat" } } } })
+```
+
+tide's `standing`, `inApps` and `workspaceSettings`, in
+`~/.config/tide/workspaces.json` and `workspaces.local.json`, take the place
+of `workspaces`, `home_apps` and `workspace_settings` where a file sets them,
+and the settings window's Workspaces section edits them.
 `inApps` can name Mac apps alongside tide's entries: names match ignoring
 case, with hyphens as spaces, and at login only the ones that are Mac apps
 start.
 
-Any other window opening on "in" asks for a workspace name, and so does a
-launch from "in": Enter makes or uses the workspace and moves there, "in"
-included, and Esc closes the window or cancels the launch. Any window can be
-sent to "in". The default name comes from
+Any other window opening on a workspace whose `askForName` is on, "in" by
+default, asks for a workspace name, and so does a launch from there: Enter
+makes or uses the workspace and moves there, the one it's on included, and
+Esc closes the window or cancels the launch. Home's apps never ask. Any
+window can be sent to "in". A pinned app's window stays open on its
+workspace: Super+Backspace and the prompt's Esc leave it open, and while it
+has focus Cmd+W, Cmd+Shift+W and Cmd+Q never reach it, with a notification
+saying it's pinned there. Its close button and its menus still close it,
+since tilemo can't see those. The default name comes from
 the window's title: its first word, or a match of tide's `namePatterns` in
 `~/.config/tide/workspaces.json`, which are JavaScript regular expressions.
 Apps tilemo starts get the workspace's name, letters and digits only (in
