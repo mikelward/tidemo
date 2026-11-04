@@ -1304,6 +1304,7 @@ local function check_settings_page(next)
         headings: Array.from(document.querySelectorAll("#sidebar h3")).map((h) => h.textContent),
         pages: document.querySelectorAll("#sidebar button").length,
         outputs: document.querySelectorAll("#sound-outputs li").length,
+        displays: document.querySelectorAll("#display-list h2").length,
     })]], function(result, err)
         -- Out of the page's own callback.
         tilemo.adapter.after(0, function()
@@ -1325,6 +1326,13 @@ local function check_settings_page(next)
                 fail("settings: the Sound page lists %s outputs; macOS has %d", tostring(got.outputs), outputs)
             elseif got then
                 say("settings: the Sound page lists the %d output(s) macOS has", outputs)
+            end
+            -- The Displays page lists every display.
+            local screens = #hs.screen.allScreens()
+            if got and got.displays ~= screens then
+                fail("settings: the Displays page lists %s displays; macOS has %d", tostring(got.displays), screens)
+            elseif got then
+                say("settings: the Displays page lists the %d display(s) macOS has", screens)
             end
             next()
         end)

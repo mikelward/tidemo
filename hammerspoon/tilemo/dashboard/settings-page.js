@@ -339,6 +339,109 @@ function renderSound(s) {
   document.getElementById("sound-input-heading").hidden = !(Array.isArray(inputs) && inputs.length > 0);
 }
 
+// The Displays page, as tide's (tide SPEC.md §16): for each display, its
+// name, then its resolution, ‹ and ›, through the sizes macOS offers at its
+// scale; where it goes beside the main display, ‹ and ›; Make main; and its
+// brightness, where macOS can set it. tilemo answers each change with
+// tilemo.displays(), what macOS says now.
+// The display whose brightness slider is held, so an update doesn't move
+// it under you.
+let displayDragging = null;
+// What the page shows now, as soundDrawn is Sound's.
+let displaysDrawn = "";
+
+// A button that keeps its place for the keyboard across a redraw.
+function keyed(node, key) {
+  node.setAttribute("data-key", key);
+  return node;
+}
+
+function renderDisplays(st) {
+  if (displayDragging !== null) return;
+  const drawn = JSON.stringify(isObject(st) ? st : {});
+  if (drawn === displaysDrawn) return;
+  displaysDrawn = drawn;
+  keepingFocus(() => drawDisplays(st));
+}
+
+function drawDisplays(st) {
+  const box = document.getElementById("display-list");
+  box.replaceChildren();
+  const places = Array.isArray(st?.places) ? st.places : [];
+  for (const d of Array.isArray(st?.displays) ? st.displays : []) {
+    box.append(el("h2", d.main ? `${d.name} · main` : d.name));
+    const sizes = Array.isArray(d.sizes) ? d.sizes : [];
+    const at = sizes.findIndex((s) => s.current);
+    if (at >= 0) {
+      const size = (by) => send({ displaySize: { uuid: d.uuid, w: sizes[at + by].w, h: sizes[at + by].h } });
+      const value = el("span", `${sizes[at].w} × ${sizes[at].h}`);
+      value.className = "value";
+      const row = el("div");
+      row.className = "row choice";
+      row.append(el("span", "Resolution"),
+        keyed(button("‹", `Smaller: ${d.name}`, at === 0, () => size(-1)), `${d.uuid}-smaller`), value,
+        keyed(button("›", `Larger: ${d.name}`, at === sizes.length - 1, () => size(1)), `${d.uuid}-larger`));
+      box.append(row);
+    }
+    if (d.main) {
+      // Nothing to place it beside.
+    } else if (places.length > 0) {
+      // Overlapping the main display, as a mirror does, it's nowhere yet:
+      // › starts at the first place, and ‹ at the last.
+      const i = places.findIndex((p) => p.place === d.place);
+      const place = (by) => {
+        const next = i < 0 ? (by > 0 ? 0 : places.length - 1) : (i + by + places.length) % places.length;
+        send({ displayPlace: { uuid: d.uuid, place: places[next].place } });
+      };
+      const value = el("span", i < 0 ? "Elsewhere" : places[i].label);
+      value.className = "value";
+      const row = el("div");
+      row.className = "row choice";
+      row.append(el("span", "Place"),
+        keyed(button("‹", `Previous place: ${d.name}`, false, () => place(-1)), `${d.uuid}-previous`), value,
+        keyed(button("›", `Next place: ${d.name}`, false, () => place(1)), `${d.uuid}-next`));
+      box.append(row);
+      const main = el("p");
+      main.className = "row";
+      const name = el("span", "Main display");
+      name.className = "name";
+      main.append(name, keyed(button("Make main", `Make ${d.name} the main display`, false,
+        () => send({ displayMain: d.uuid })), `${d.uuid}-main`));
+      box.append(main);
+    }
+    if (typeof d.brightness === "number") {
+      const row = el("div");
+      row.className = "row volume";
+      const icon = el("span");
+      icon.setAttribute("data-icon", "brightness");
+      icon.className = "icon";
+      const slider = el("input");
+      slider.type = "range";
+      slider.min = "0";
+      slider.max = "100";
+      slider.step = "1";
+      slider.value = String(d.brightness);
+      slider.setAttribute("aria-label", `${d.name}'s brightness`);
+      keyed(slider, `${d.uuid}-brightness`);
+      const level = el("span", `${d.brightness}%`);
+      level.className = "value";
+      slider.addEventListener("input", () => {
+        displayDragging = d.uuid;
+        // As Sound's: macOS's answer is drawn even if it's what was.
+        displaysDrawn = "";
+        level.textContent = `${slider.value}%`;
+        send({ displayBrightness: { uuid: d.uuid, level: Number(slider.value) } });
+      });
+      slider.addEventListener("change", () => {
+        displayDragging = null;
+        send({ displayBrightness: { uuid: d.uuid, level: Number(slider.value) } });
+      });
+      row.append(icon, slider, level);
+      box.append(row);
+    }
+  }
+}
+
 // The Appearance page's wallpapers, light and dark, as tide's has them
 // (tide SPEC.md §15, §16): appearance.json and appearance.local.json, read
 // and changed with tide's own module, so the Mac's desktop shows the ones
@@ -1069,6 +1172,7 @@ window.tilemo = {
     renderClipboard();
     renderAppearance();
     if (isObject(state.sound)) renderSound(state.sound);
+    if (isObject(state.displays)) renderDisplays(state.displays);
     renderMuted();
     if (Array.isArray(state.links)) renderLinks(state.links);
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
@@ -1110,6 +1214,10 @@ window.tilemo = {
   // A Keyboard switch that couldn't be made.
   keyboardError(why) {
     document.getElementById("keyboard-error").textContent = String(why ?? "");
+  },
+  // The Displays page alone, as macOS says it is now.
+  displays(st) {
+    renderDisplays(st);
   },
   // The Sound page alone, as macOS says it is now.
   sound(s) {

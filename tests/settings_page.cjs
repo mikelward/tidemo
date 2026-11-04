@@ -371,6 +371,73 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["sound-output-volume"].hidden, true);
 }
 
+// Displays, as tide's page: each display's name, then its resolution and
+// where it goes, ‹ and ›, Make main, and its brightness.
+{
+  const box = () => ids["display-list"].children;
+  const row = (label) => box().find((r) => r.children?.[0]?.textContent === label);
+  const state = {
+    places: [
+      { place: "right", label: "To the right" }, { place: "left", label: "To the left" },
+      { place: "above", label: "Above" }, { place: "below", label: "Below" },
+    ],
+    displays: [
+      { uuid: "mac", name: "Built-in", main: true, sizes: [{ w: 1147, h: 745 }, { w: 1512, h: 982, current: true }], brightness: 60 },
+      { uuid: "ext", name: "LG", main: false, place: "right", sizes: [{ w: 2560, h: 1440, current: true }] },
+    ],
+  };
+  sandbox.tilemo.update({ clockFiles: [], displays: state });
+  assert.deepStrictEqual(box().filter((r) => r.tag === "h2").map((h) => h.textContent), ["Built-in · main", "LG"]);
+  const sizeRows = box().filter((r) => r.children?.[0]?.textContent === "Resolution");
+  assert.deepStrictEqual(sizeRows.map((r) => r.children[2].textContent), ["1512 × 982", "2560 × 1440"]);
+  assert.deepStrictEqual(sizeRows.map((r) => [r.children[1].disabled, r.children[3].disabled]), [[false, true], [true, true]]);
+  sent.length = 0;
+  sizeRows[0].children[1].listeners.click();
+  assert.deepStrictEqual(sent.at(-1), { displaySize: { uuid: "mac", w: 1147, h: 745 } });
+  // Only the other display has a place, stepping round the four.
+  assert.strictEqual(row("Place").children[2].textContent, "To the right");
+  row("Place").children[3].listeners.click();
+  assert.deepStrictEqual(sent.at(-1), { displayPlace: { uuid: "ext", place: "left" } });
+  row("Place").children[1].listeners.click();
+  assert.deepStrictEqual(sent.at(-1), { displayPlace: { uuid: "ext", place: "below" } });
+  row("Main display").children[1].listeners.click();
+  assert.deepStrictEqual(sent.at(-1), { displayMain: "ext" });
+  // Brightness, where macOS can set it: the built-in display's alone.
+  const bright = box().filter((r) => r.className === "row volume");
+  assert.strictEqual(bright.length, 1);
+  bright[0].children[1].value = "35";
+  bright[0].children[1].listeners.input();
+  assert.deepStrictEqual(sent.at(-1), { displayBrightness: { uuid: "mac", level: 35 } });
+  sandbox.tilemo.displays({ ...state, displays: [] });
+  assert.ok(box().length > 0, "not redrawn while the slider's held");
+  bright[0].children[1].listeners.change();
+  sandbox.tilemo.displays({ ...state, displays: [{ ...state.displays[1], place: undefined }] });
+  assert.strictEqual(row("Place").children[2].textContent, "Elsewhere", "a mirror of the main display");
+  // The same again draws nothing; a change draws again, keeping the
+  // keyboard on the control it was on, so › and arrow keys go on working.
+  sandbox.tilemo.displays(state);
+  const next = row("Place").children[3];
+  sandbox.tilemo.displays(JSON.parse(JSON.stringify(state)));
+  assert.strictEqual(row("Place").children[3], next, "nothing new, nothing drawn");
+  next.focus();
+  sandbox.tilemo.displays({ ...state, displays: [state.displays[0], { ...state.displays[1], place: "left" }] });
+  assert.notStrictEqual(row("Place").children[3], next);
+  assert.strictEqual(sandbox.document.activeElement, row("Place").children[3], "the keyboard stays on ›");
+  const brightness = () => box().find((r) => r.className === "row volume").children[1];
+  brightness().focus();
+  sandbox.tilemo.displays({ ...state, displays: [{ ...state.displays[0], brightness: 65 }, state.displays[1]] });
+  assert.strictEqual(brightness().value, "65");
+  assert.strictEqual(sandbox.document.activeElement, brightness(), "and on the brightness slider");
+  sandbox.document.activeElement = null;
+  // A level macOS refuses goes back to what it says.
+  const lit = { ...state, displays: [{ ...state.displays[0], brightness: 65 }, state.displays[1]] };
+  brightness().value = "70";
+  brightness().listeners.input();
+  brightness().listeners.change();
+  sandbox.tilemo.displays(JSON.parse(JSON.stringify(lit)));
+  assert.strictEqual(brightness().value, "65", "back to macOS's level");
+}
+
 // Appearance's wallpapers, light and dark, in tide's appearance files: the
 // one set shows, Enter sets a typed path, the choose button asks tilemo for
 // macOS's file dialog, and its answer is set as a typed one.
