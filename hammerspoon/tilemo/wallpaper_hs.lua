@@ -33,8 +33,19 @@ function M.new(tilemo)
     end
 
     -- Set the mode's picture on every display that doesn't show it yet.
+    local said_color = ""
     function self.apply()
-        local path = wallpaper.now(walls(), dark(), home)
+        local w = walls()
+        local set = w[dark() and "dark" or "light"]
+        if wallpaper.is_color(set) then
+            -- Said once for each color, not at every display or mode change.
+            if set ~= said_color then
+                tilemo.adapter.log("wallpaper: " .. set .. " is a color, which tide shows but a Mac can't set; the desktop picture stays as it is")
+                said_color = set
+            end
+            return
+        end
+        local path = wallpaper.now(w, dark(), home)
         if not path then
             return
         end

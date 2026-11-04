@@ -280,6 +280,11 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   walls()[0].children[1].listeners.keydown({ key: "Enter" });
   assert.strictEqual(sent.length, before);
   assert.match(ids["appearance-error"].textContent, /lightWallpaper must be a file's path/);
+  // A color, which tide takes, is refused here: a Mac can't show one.
+  walls()[0].children[1].value = "#1a1d2e";
+  walls()[0].children[1].listeners.keydown({ key: "Enter" });
+  assert.strictEqual(sent.length, before);
+  assert.match(ids["appearance-error"].textContent, /A solid color is tide's only/);
   // A file that's wrong is said, and nothing can be changed until it's fixed.
   sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: "{" } });
   assert.match(ids["appearance-error"].textContent, /appearance\.local\.json/);

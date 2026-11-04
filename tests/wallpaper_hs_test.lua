@@ -110,6 +110,13 @@ t.test("with none set, or no such file, macOS's own picture stays", function()
     t.eq(gone.logged, { "wallpaper: no file at /srv/day one.jpg; the desktop picture stays as it is" })
 end)
 
+t.test("a color from tide leaves the picture, said once", function()
+    local s = stub({ files = { ["/c/tide/appearance.json"] = '{"lightWallpaper": "#1a1d2e"}' }, pictures = PICTURES, screens = 2 })
+    s.screen_changed()
+    t.eq(s.set, {})
+    t.eq(s.logged, { "wallpaper: #1a1d2e is a color, which tide shows but a Mac can't set; the desktop picture stays as it is" })
+end)
+
 t.test("choosing opens macOS's dialog, offering images, where the wallpaper is", function()
     local s = stub({ files = FILES, pictures = PICTURES, chooser = { ["1"] = HOME .. "/Pictures/Dusk.heic" } })
     t.eq(s.wall.pick("darkWallpaper"), "~/Pictures/Dusk.heic")
