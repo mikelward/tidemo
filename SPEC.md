@@ -371,8 +371,18 @@ Placing and keeping floats:
     went behind Chrome a second after it took focus, though tilemo raised
     them again (§13). So focus follows mouse leaves a tile alone while
     another app's float is in front of it (§5.2), and the float stays on
-    top. A click or a key still focuses the tile, and the float goes
-    behind it.
+    top. That holds for a float a rule made, and for one of an app with
+    no Dock icon, such as a menu bar app's settings window, which tiles
+    unless a rule floats it. Which window is in front comes from the
+    window server's list of every window on screen below the Dock's level
+    (`hs.window.list`). `hs.window.orderedWindows()` leaves out the apps
+    with no Dock icon, so such a float never counted as in front, and the
+    tile was focused over it. Of the windows tilemo doesn't manage, only
+    Hammerspoon's console and Preferences stay in that list, by title and
+    bounds, so a Super+drag or Super+middle-click over one leaves the tile
+    behind alone, as over tilemo's own windows. tilemo's own drawing, such
+    as the dim and the drag outline, is click-through and stays out. A click or a key still focuses the
+    tile, and the float goes behind it.
   - **The tile's own app's floats** come back with it: tilemo raises them
     after it focuses the tile, as before.
 - **A float's size** is what it asks for, capped at 80% of its display
@@ -559,6 +569,8 @@ Focus follows mouse pauses, and focus stays where it is:
   the keyboard until it closes (tide §14.2).
 - **While the window under the pointer is a tile with another app's float
   in front of it.** Focusing the tile would bury the float for good (§5.1).
+  That includes the tile's own dialog, which step 4 would prefer: focusing
+  it activates the tile's app, which can bring the tile forward with it.
   Moving onto the float focuses the float; a click focuses the tile.
 - **While an app that must keep focus is in front:** the screenshot picker
   (`com.apple.screencaptureui`) and password prompts
@@ -570,7 +582,9 @@ Focus follows mouse pauses, and focus stays where it is:
 - **Closing a window** focuses the window under the pointer, or else the
   last one used on that workspace. Something always has focus. Amethyst can
   leave nothing focused (Amethyst#1560). This is tide's
-  `focus_on_close cursor`.
+  `focus_on_close cursor`. A tile with another app's float in front of it
+  is passed over while another window will do, so the float stays on top
+  (§5.1).
 - **No warping, ever.** tilemo has no "mouse follows focus". `Super+J`,
   the switcher and a new window move focus, not the pointer, as on tide
   (tide §14.2). Amethyst's warp sends a fake pointer move that its own

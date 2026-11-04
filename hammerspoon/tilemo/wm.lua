@@ -2207,9 +2207,12 @@ local function same(a, b)
 end
 
 -- The managed window under a point: the frontmost visible window there,
--- or nil if that one is ignored or unknown, such as picture-in-picture
--- over a tile.
+-- or nil if that one is ignored or unknown, such as picture-in-picture or
+-- Hammerspoon's console over a tile, or one of tilemo's own windows.
 function M:window_at(x, y)
+    if self:own_at(x, y) then
+        return nil
+    end
     for _, id in ipairs(self.a.ordered()) do
         local st = self.a.state(id)
         if st and not st.minimized and not st.hidden and inside(st.frame, x, y) then
@@ -2854,18 +2857,28 @@ end
 -- tide's focus_on_close, else the last used window left on that workspace,
 -- else any tile you can see there. The fallback means a window that reached
 -- the workspace without a focus event, such as one moved off a display that
--- went away, still counts.
+-- went away, still counts. A tile with another app's float in front of it
+-- is passed over while another will do: focusing it would bury the float
+-- (SPEC.md §5.1).
 function M:refocus(n)
     -- One of tilemo's own windows having it counts: a close behind the
     -- launcher or Tide Settings leaves them be.
     if self.a.focused() or self.a.own_front() then
         return
     end
+    local spare
+    local function take(id)
+        if self.ffm and self.ffm:under_float(id) then
+            spare = spare or id
+            return false
+        end
+        self:focus_window(id)
+        return true
+    end
     if self.ffm and self.ffm.enabled then
         local x, y = self.a.pointer()
         local id = x and self.ffm:hit(x, y)
-        if id and self.windows[id].ws == n then
-            self:focus_window(id)
+        if id and self.windows[id].ws == n and take(id) then
             return
         end
     end
@@ -2874,8 +2887,7 @@ function M:refocus(n)
         -- bring it back.
         local w = self.windows[id]
         local st = w and w.ws == n and self.a.state(id)
-        if st and not st.minimized and not st.hidden and not st.fullscreen then
-            self:focus_window(id)
+        if st and not st.minimized and not st.hidden and not st.fullscreen and take(id) then
             return
         end
     end
@@ -2883,10 +2895,12 @@ function M:refocus(n)
     table.insert(screens, 1, { uuid = self:current_screen() })
     for _, s in ipairs(screens) do
         local id = self:tiled(n, s.uuid)[1]
-        if id then
-            self:focus_window(id)
+        if id and take(id) then
             return
         end
+    end
+    if spare then
+        self:focus_window(spare)
     end
 end
 
