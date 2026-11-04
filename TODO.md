@@ -44,8 +44,15 @@ Privacy & Security or its pane in Desktop & Dock, Lock Screen and
 Notifications, on macOS 26 too; the settings each item names are worded
 so on macOS 26; ticks survive a reload. What's left:
 
-- **Appearance**, if anything's left for it: the dim's strength, once the
-  dim is built (SPEC.md §5.6), and a link to Appearance's own pane.
+- **Appearance**, if anything's left for it: a link to Appearance's own
+  pane.
+- **The dim (SPEC.md §5.6). Check on a Mac:** every window but the focused
+  one is dimmed, and the desktop; the hole's corners match the window's on
+  macOS 26 and before; clicks go through the layer; menus, popovers, the
+  bar, the tray, picture-in-picture and Mission Control look right; a
+  float over the focused tile is dimmed all over, once; the hole keeps up
+  with a drag well enough; the Appearance page's − and + change it at
+  once.
 - **The sidebar's icons,** as tide's sidebar has one per page (its
   `settings.mjs` names a symbolic icon for each). **Check on a Mac:** every
   page and heading fits the window without scrolling the sidebar, and Up

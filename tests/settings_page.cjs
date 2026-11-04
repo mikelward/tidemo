@@ -476,6 +476,28 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(walls()[0].children[2].disabled, true);
 }
 
+// Appearance's dim, as tide's page has it: tide's 7% until a file sets it,
+// − and + a point at a time into appearance.local.json, keeping what else
+// it says, and none at the bottom.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: '{"lightWallpaper": "~/day.jpg"}' } });
+  assert.strictEqual(ids["dim-strength"].textContent, "7%");
+  ids["dim-more"].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/day.jpg", dimStrength: 0.08 });
+  assert.strictEqual(ids["dim-strength"].textContent, "8%", "shown at once");
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { shared: '{"dimStrength": 0.01}' } });
+  assert.strictEqual(ids["dim-strength"].textContent, "1%", "the shared file's");
+  assert.strictEqual(ids["dim-less"].disabled, false);
+  ids["dim-less"].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { dimStrength: 0 });
+  assert.strictEqual(ids["dim-strength"].textContent, "0%");
+  assert.strictEqual(ids["dim-less"].disabled, true, "none is the least");
+  // A file that's wrong holds both until it's fixed.
+  sandbox.tilemo.update({ clockFiles: [], appearanceFiles: { local: "{" } });
+  assert.strictEqual(ids["dim-more"].disabled, true);
+}
+
 // The sidebar, as tide's settings panel's: each group's heading, then its
 // pages, with one page showing at a time.
 {

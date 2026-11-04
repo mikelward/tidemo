@@ -128,9 +128,10 @@ checked against a source or a Mac is marked *(unverified)*.
 - **The dim:** HazeOver lays "a translucent dark layer behind" the window in
   use, rather than shading each other window
   ([HazeOver help](https://hazeover.com/help.html)). It needs
-  Accessibility to follow focus reliably. That one-layer approach is what
-  tilemo would copy. How HazeOver keeps the layer ordered just below another
-  app's window is *(unverified)*.
+  Accessibility to follow focus reliably. An `hs.canvas` can only be
+  ordered against Hammerspoon's own windows, not just below another app's,
+  so tilemo's layer goes over the windows instead, with a hole where the
+  focused one is (§5.6).
 - **A bar:** SketchyBar is a free, open-source menu bar replacement that also
   shows the system's own menu bar items
   ([SketchyBar](https://github.com/felixkratz/sketchybar)). It sits over a
@@ -195,7 +196,7 @@ checked against a source or a Mac is marked *(unverified)*.
 | Layouts | Amethyst's built-ins match Krohnkite's. JavaScript layouts are possible | **tide's own Lua layout**, which is pure Lua by design (tide AGENTS: "keep geometry free of the `hl` API") | Port tide's or tileco's geometry |
 | Workspaces | Native Spaces, via symbolichotkeys | Minimizing (§6), or native Spaces through community modules, or emulated | Any of §2.3 |
 | Launcher and dashboard | Spotlight, or Raycast (free, with a paid tier) | `hs.chooser` plus canvases. Basic, but enough for tab search | Full control, like tileco's dashboard |
-| Dim | HazeOver ($5) or borders | A canvas layer *(ordering unverified)* | Own layer, as HazeOver does |
+| Dim | HazeOver ($5) or borders | A canvas layer over the windows, a hole for the focused one (§5.6) | Own layer, as HazeOver does |
 | Focus follows mouse | Off: Amethyst's breaks popovers (Amethyst#337) | tilemo's own (§5.2) | Same |
 | Cost to build | Done | Days to a first version | Weeks |
 | Breakage risk | Amethyst's throw-to-space on private API | Hammerspoon's community `spaces` modules | Ours to fix |
@@ -221,7 +222,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | A new window on "in" asks for a workspace name (tide §6.5) | tilemo's name prompt, an `hs.chooser` (§6.2) | **yes** |
 | `TIDE_WORKSPACE` in launched apps (tide §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
 | One workspace per monitor from a shared pool (tide §6.5) | decided against: one workspace spans every display, each display with its own layout in it (§6.1) | **differs** |
-| Dim inactive, 0.07, not a lone window or video (tide §6.2) | one dark layer behind the focused window (§5.6) | **not built**; when built, **partial**: dims the desktop too, as HazeOver does *(unverified)* |
+| Dim inactive, 0.07, not a lone window or video (tide §6.2) | one dark layer over the windows, a hole for the focused one (§5.6) | **partial**: dims the desktop too; drawn only in CI's smoke test, not yet checked by eye on a Mac |
 | No borders, no gaps | gaps 0; title bars stay | **partial** |
 | Maximize, fullscreen, restore (tide §6.3) | tilemo's own, on the same workspace (§5.4) | **yes**; native full screen is its own Space (§13) |
 | Picture-in-picture pinned bottom-right on every workspace (tide §6.4) | left alone and never minimized (§5.5) | **partial**: its place is the app's |
@@ -713,15 +714,34 @@ These work as on tide (tide §6.3), on the same workspace:
 
 ### 5.6 The dim
 
-- **Strength 0.07,** as on tide (tide §6.2), set on the Appearance page.
-- **Never dimmed:** a workspace with one visible window, a video playing
-  full screen, picture-in-picture, and a screen-share preview.
-- **How:** one dark layer just below the focused window, as HazeOver does
-  (§2.4). That also dims the desktop, and the other display's windows.
-  - A layer per other display isn't possible: tilemo can't place a layer
-    between two other apps' windows.
-  - The alternative, an outline round the focused window instead, is
-    JankyBorders' (§13).
+- **Strength 0.07,** as on tide (tide §6.2). It's tide's `dimStrength`,
+  in `appearance.json` and `appearance.local.json` (§15), and the
+  Appearance page's − and + step it a point at a time, from none to 50%.
+  A bad value is logged, and the one before it stands.
+- **Never dimmed:** a workspace with one visible window, and a focused
+  window that's full screen. A window full screen on its own Space isn't
+  visible beside the others, so it doesn't count.
+- **tilemo's own windows,** the settings window and the launchers, sit over
+  the layer; while one has the focus, every window under it is dimmed. Picture-in-picture, a screen-share preview
+  and apps' panels sit at the floating level or above, over the layer
+  *(unverified per app)*.
+- **How:** one click-through `hs.canvas` per display, at level 1: over
+  normal windows, under floating ones, the bar, the tray, menus and the
+  Dock (`dim.lua`, `dim_hs.lua`).
+  - It's filled at the strength, with a hole cut where the focused window
+    is, its corners rounded to a window's: 10 points, 16 from macOS 26
+    *(unverified per kind of window)*.
+  - A window in front of the focused one, such as a float over a tile, is
+    dimmed again where it covers the hole, so it's dimmed all over, once.
+  - That dims the desktop too, as HazeOver does, and every window on the
+    other displays.
+  - It's drawn again on focus, another app coming to the front
+    (Hammerspoon included), a window moving, a retile and a change of
+    displays, once for each burst, 30 ms after its first event.
+  - A popover reaching outside the focused window, at the window's own
+    level, is dimmed outside it *(unverified per app)*.
+- **The alternative,** an outline round the focused window instead, is
+  JankyBorders' (§13).
 
 ## 6. Workspaces
 
@@ -2359,7 +2379,7 @@ Each one names a workaround, or says there is none.
 | Focus without raising (KDE's focus follows mouse) | Focusing a window brings it to the front (§5.2). | yabai's `autofocus` does it through a private call, with SIP on *(unverified)*. Otherwise, raise, and keep floats above tiles (§5.1). |
 | Floats always on top | No public way to set another app's window level (§5.1), and raising another app's window doesn't put it back over the app just focused (seen on a Mac, 2026-11-01). | Hammerspoon's own floats get a floating window level. Focus follows mouse leaves a tile with another app's float in front of it alone. A true window level for other apps needs yabai's scripting addition, which needs SIP lowered: **none** within §1. |
 | Nothing ever steals focus (tide §14) | An app can activate itself, and macOS decides whether it may. | tilemo never focuses anything unasked, and hands focus back when an app takes it without a grant (§14.1) *(unverified that it can act in time)*. |
-| Dimming exactly the inactive windows | tilemo can't draw inside or between other apps' windows (§2.4). | One dark layer behind the focused window, which dims the desktop too, or JankyBorders' outline as the focus cue instead. |
+| Dimming exactly the inactive windows | tilemo can't draw inside or between other apps' windows (§2.4). | One dark layer over the windows with a hole for the focused one, which dims the desktop too (§5.6). |
 | Instant workspace switches with an honest Cmd+Tab | Hiding windows off screen leaves them in Cmd+Tab; minimizing and Spaces animate (§2.3, §6). | Minimize with the Scale effect, and Reduce Motion for Spaces. **No** way to get both at once. |
 | One workspace pool shared by every monitor (tide §6.5) | Minimized windows have no display, and native Spaces are per display. | tilemo tracks each workspace's display itself, as tileco does (tileco §6.1). |
 | Moving a window to a native Space | Only private calls can (§2.3). | Workspaces by minimizing (§6). |
@@ -3110,8 +3130,8 @@ Each one names a workaround, or says there is none.
    too, and it pulls an existing tilemo checkout first. Running both would
    fight over the same windows, so it warns about an Amethyst still
    installed.
-5. **Does HazeOver's one-layer dim** carry over to a canvas or panel, and
-   can a third-party app keep it just below another app's window (§2.4)?
+5. **The dim:** decided (2026-11-04), tilemo's own, a layer over the
+   windows with a hole for the focused one (§5.6), in place of HazeOver.
 6. **Karabiner for Super:** decided, yes (§7.1).
 7. **The built-in keyboard:** rotate its modifiers too, or PC keyboards
    only (§7.1)?

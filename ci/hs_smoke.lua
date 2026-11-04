@@ -897,6 +897,51 @@ local function check_launcher_keys(after)
     end)
 end
 
+-- The dim (SPEC.md §5.6): with the TextEdit windows tiled and one of them
+-- focused, a layer is up over the focused window's display, its hole cut
+-- where that window is. Waits for the dim's redraw, up to a deadline.
+local DIM_WAIT = 5
+local function check_dim(after)
+    local started = hs.timer.secondsSinceEpoch()
+    local function near(p, q)
+        return math.abs(p - q) <= 1
+    end
+    local function why_not()
+        local id = tilemo.adapter.focused()
+        local st = id and tilemo.adapter.state(id)
+        if not st then
+            return "no window has focus"
+        end
+        local why = "no layer is showing"
+        for _, c in pairs(tilemo.dim.canvases) do
+            local hole, full = c[2], c:frame()
+            if c:isShowing() and hole then
+                local f, w = hole.frame, st.frame
+                if near(f.x + full.x, w.x) and near(f.y + full.y, w.y) and near(f.w, w.w) and near(f.h, w.h) then
+                    return nil
+                end
+                why = string.format("the hole is at %d,%d %dx%d, the focused window at %d,%d %dx%d",
+                    f.x + full.x, f.y + full.y, f.w, f.h, w.x, w.y, w.w, w.h)
+            end
+        end
+        return why
+    end
+    -- A global, like smoke_poll, so it isn't collected.
+    smoke_dim = hs.timer.doEvery(0.2, function()
+        local why = why_not()
+        if why and hs.timer.secondsSinceEpoch() - started <= DIM_WAIT then
+            return
+        end
+        smoke_dim:stop()
+        if why then
+            fail("dim: %s after %ds", why, DIM_WAIT)
+        else
+            say("dim: a layer, its hole on the focused window")
+        end
+        after()
+    end)
+end
+
 local function check_tiling()
     if not hs.accessibilityState() then
         fail("tiling: Hammerspoon doesn't have Accessibility on this runner")
@@ -933,9 +978,11 @@ local function check_tiling()
             smoke_poll:stop()
             if done then
                 say("%d TextEdit windows tiled", WANT)
-                check_launcher_attention()
-                check_launcher_page(function()
-                    check_launcher_keys(finish)
+                check_dim(function()
+                    check_launcher_attention()
+                    check_launcher_page(function()
+                        check_launcher_keys(finish)
+                    end)
                 end)
                 return
             elseif not misses then
