@@ -1436,4 +1436,89 @@ t.test("a standing workspace other than home keeps its spelling too", function()
     t.eq(wm:index_of_ws("Docs"), 2)
 end)
 
+-- Win+T with the pointer on one display while the terminal's last window
+-- was on the other: macOS opens the new one over there, and tilemo brings
+-- it to the display you're on (SPEC.md §6.1).
+local TERM = { bundle = "net.kovidgoyal.kitty", new = true }
+
+local function launch_setup()
+    local a = fake.new()
+    two_displays(a)
+    a.add(1, { frame = { x = 2000, y = 100, w = 800, h = 600 } }) -- on B
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:show("dev", nil, true)
+    wm:send(1, "dev")
+    wm:retile()
+    a.focus(1)
+    wm:focused(1)
+    return a, wm
+end
+
+local function opens_on_b(a, wm, id)
+    a.add(id, { app = TERM.bundle, frame = { x = 2100, y = 200, w = 700, h = 500 } })
+    wm:schedule()
+    a.tick()
+end
+
+t.test("a launch's window goes to the display keys act on, not where macOS opens it", function()
+    local a, wm = launch_setup()
+    wm:keep_keys_on("A")
+    wm:act("app", TERM)
+    t.eq(#a.launched, 1)
+    opens_on_b(a, wm, 2)
+    t.eq(wm.windows[2].screen, "A")
+    t.eq(a.wins[2].frame.x < 1920, true, "tiled on A")
+end)
+
+t.test("a home app's launch goes home, on the display keys act on", function()
+    local a, wm = launch_setup()
+    wm:keep_keys_on("A")
+    wm:act("app", { bundle = "com.apple.mail", home_app = true })
+    a.add(2, { app = "com.apple.mail", name = "Mail", frame = { x = 2100, y = 200, w = 700, h = 500 } })
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[2].ws, "in")
+    t.eq(wm.windows[2].screen, "A")
+end)
+
+t.test("a launch that asks for a workspace keeps the display it was made from", function()
+    local a, wm = launch_setup()
+    local asked
+    wm.ask_launch = function(_, done)
+        asked = done
+    end
+    wm:show("in")
+    a.tick()
+    wm:keep_keys_on("A")
+    wm_mod.actions.app(wm, TERM, true) -- Cmd+Return: asks first
+    t.eq(asked ~= nil, true)
+    -- "dev" has window 1, on B: the switch focuses it.
+    asked("dev")
+    t.eq(wm:current_screen(), "B")
+    opens_on_b(a, wm, 2)
+    t.eq(wm.windows[2].screen, "A")
+end)
+
+t.test("with nothing moved since, a launch goes to the focused window's display", function()
+    local a, wm = launch_setup()
+    a.pointer_uuid = "A"
+    wm:act("app", TERM)
+    opens_on_b(a, wm, 2)
+    t.eq(wm.windows[2].screen, "B")
+end)
+
+t.test("the app moving a launch's new window before tilemo places it doesn't take it back", function()
+    local a, wm = launch_setup()
+    wm:keep_keys_on("A")
+    wm:act("app", TERM)
+    a.add(2, { app = TERM.bundle, frame = { x = 2100, y = 200, w = 700, h = 500 } })
+    a.focus(2)
+    wm:focused(2)
+    wm:moved(2)
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[2].screen, "A")
+end)
+
 t.done("workspaces")

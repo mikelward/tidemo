@@ -604,4 +604,31 @@ t.test("a resync skipped off the work area still forgets the window it was over"
     t.eq(focuses(a), { "focus 1" })
 end)
 
+t.test("the pointer onto another display's empty desktop takes the keys there", function()
+    local a, wm, ffm = setup()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
+    t.eq(wm:current_screen(), "A")
+    a.pointer_uuid = "B"
+    ffm:move(2500, 500)
+    t.eq(wm:current_screen(), "B", "a launch opens there")
+    t.eq(focuses(a), {}, "focus stays put")
+    -- Back into a window on A: focus follows, and the keys with it.
+    a.pointer_uuid = "A"
+    ffm:move(1500, 500)
+    t.eq(focuses(a), { "focus 2" })
+    t.eq(wm:current_screen(), "A")
+end)
+
+t.test("back from an empty desktop into the window that kept focus, the keys come back too", function()
+    local a, wm, ffm = setup()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
+    a.pointer_uuid = "B"
+    ffm:move(2500, 500)
+    t.eq(wm:current_screen(), "B")
+    a.pointer_uuid = "A"
+    ffm:move(500, 500) -- window 1, focused all along
+    t.eq(focuses(a), {})
+    t.eq(wm:current_screen(), "A")
+end)
+
 t.done("ffm")

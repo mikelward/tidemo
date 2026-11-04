@@ -264,8 +264,21 @@ function M:move(x, y, super_held)
         if not inside(self.region, x, y) then
             self.last, self.region, self.holes = nil, nil, {}
             self.queued = nil
+            self:desktop()
         end
         return
+    end
+    self.desk = nil
+    -- Off a desktop that took the keys and into a window: the keys come
+    -- with the pointer, even into the window that kept focus, which no
+    -- focus change would hand them back to.
+    if self.took then
+        local k = self.wm.kbd
+        if k and k.uuid == self.took then
+            self.wm.kbd = nil
+            self.wm:changed()
+        end
+        self.took = nil
     end
     if id == self.last then
         self:remember(id)
@@ -284,6 +297,23 @@ function M:move(x, y, super_held)
     end
     if target and target ~= self.a.focused() then
         self:focus(target)
+    end
+end
+
+-- The pointer is on the desktop. Onto another display's, with no window
+-- under it, that display takes the keys, as Hyprland's focused monitor
+-- follows the pointer: a launch opens there, and Super+Left/Right start
+-- from it (SPEC.md §5.2). Asked once each time it reaches a display's
+-- desktop, not at every move.
+function M:desktop()
+    local uuid = self.a.pointer_screen()
+    if not uuid or uuid == self.desk then
+        return
+    end
+    self.desk = uuid
+    if uuid ~= self.wm:current_screen() then
+        self.wm:keep_keys_on(uuid)
+        self.took = uuid
     end
 end
 

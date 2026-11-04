@@ -505,6 +505,11 @@ is.
      tileco's launcher for 3.4 s, and over the settings window it would
      stall each move. The resync after a raise skips them too, and the
      bar and the Dock.
+   - **Onto another display's desktop,** with no window there, focus
+     stays put but that display takes the keys, as Hyprland's focused
+     monitor follows the pointer: a launch opens there (§6.1), and
+     Super+Left/Right start from it. Crossing into a window after
+     focuses it, and the keys follow.
    - This is the rule Amethyst misses. It looks only among the windows it
      tiles, so the tile under a popover gets focus and the popover closes
      (Amethyst#337, #1566, #1629, #1872).
@@ -833,6 +838,11 @@ numbered ones:
   - A window from a launch you made, which opens after you've moved to
     another workspace, goes to the workspace you launched it from instead,
     marked for attention (tide §14.2).
+- **A tile from a launch you made goes to the display keys acted on as you
+  launched it,** one of "in"'s apps too, not where macOS opens it. macOS opens an app's new window
+  where its last one was, so Win+T with the pointer on the internal display
+  could open the terminal on the external one. Until tilemo first places
+  it, the app moving it doesn't count as you moving it.
 - **A new window opening on "in"** that isn't one of its apps asks for a
   workspace name first (§6.2).
 
