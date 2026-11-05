@@ -597,7 +597,7 @@ body.settings {
 <main id="content">
 <section class="page" id="page-displays">
 <h1 id="displays">Displays</h1>
-<p class="note">Each display's resolution, as macOS's Looks like has it, at the scale it's at; where it goes beside the main display; and its brightness, where macOS can set it. tide tiles each display again as it changes.</p>
+<p class="note">Resolution, position and brightness for each display.</p>
 <div id="display-list"></div>
 <p class="error" id="displays-error" role="alert"></p>
 <p class="row links" id="displays-links"></p>
@@ -629,7 +629,7 @@ body.settings {
 </section>
 <section class="page" id="page-mouse" hidden>
 <h1 id="mouse">Mouse</h1>
-<p class="note">Every mouse's wheel, shared with tide's input.json, through LinearMouse. Natural scrolling here is the mouse's alone: Trackpad settings has the trackpad's.</p>
+<p class="note">Scrolling for every mouse, through LinearMouse. The trackpad's is in System Settings.</p>
 <div id="mouse-rows"></div>
 <p class="error" id="mouse-error" role="alert"></p>
 <p class="row links" id="mouse-links"></p>
@@ -659,7 +659,7 @@ body.settings {
 </section>
 <section class="page" id="page-layouts" hidden>
 <h1 id="layouts">Layouts</h1>
-<p class="note">How a workspace tiles, shared with tide's layouts.json. A change reaches every workspace at once: each keeps its layout, and takes the new widths and masters in place of any set with the keys.</p>
+<p class="note">New workspaces start with these layouts. Changes here reset widths set with the keys.</p>
 <p class="source" id="layouts-source"></p>
 <div id="layout-rows"></div>
 <p class="error" id="layouts-error" role="alert"></p>
@@ -742,7 +742,7 @@ body.settings {
 </section>
 <section class="page" id="page-clipboard" hidden>
 <h1 id="clipboard">Clipboard</h1>
-<p class="note">The picker's history, on Super+C, shared with tide's clipboard.json. It's kept in memory, so it starts empty at each login. Turning it off keeps what's there until it's cleared.</p>
+<p class="note">Keeps what you copy for Super+C, until you log out.</p>
 <p class="row"><span class="name" id="clipboard-summary"></span><button type="button" id="clipboard-history"></button></p>
 <p class="row"><span class="name">Copies to keep</span>
 <button type="button" id="clipboard-fewer" aria-label="Keep fewer copies" data-icon="less">−</button>
