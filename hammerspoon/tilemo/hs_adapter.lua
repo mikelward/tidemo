@@ -6,6 +6,7 @@ local atomic = require("tilemo.atomic")
 local bar = require("tilemo.bar")
 local brand = require("tilemo.brand")
 local kitty = require("tilemo.kitty")
+local notices = require("tilemo.notices")
 local rules = require("tilemo.rules")
 local saved = require("tilemo.saved")
 local runner = require("tilemo.runner")
@@ -333,44 +334,6 @@ function M.new()
     function a.title(id)
         local w = win(id)
         return w and try(w.title, w)
-    end
-
-    -- Each Dock item's badge, as { app = bundle ID, label }. Read through
-    -- Accessibility's AXStatusLabel, which some apps don't set
-    -- (SPEC.md §2.5).
-    function a.dock_badges()
-        local out = {}
-        local dock = hs.application.get("com.apple.dock")
-        local el = dock and hs.axuielement.applicationElement(dock)
-        local list = el and try(function()
-            return el:attributeValue("AXChildren")[1]
-        end)
-        -- It runs every two seconds on Hammerspoon's thread, so it asks
-        -- each item only for its badge, and names the app of a badged one
-        -- alone, from one look at the running apps: hs.application.get by
-        -- name walks them all, once per item. An app left out has no badge,
-        -- as attention.dock takes it.
-        local apps
-        for _, item in ipairs(list and try(list.attributeValue, list, "AXChildren") or {}) do
-            local label = try(item.attributeValue, item, "AXStatusLabel")
-            if label and label ~= "" then
-                local name = try(item.attributeValue, item, "AXTitle")
-                if not apps then
-                    apps = {}
-                    for _, app in ipairs(hs.application.runningApplications()) do
-                        local n, bundle = try(app.name, app), try(app.bundleID, app)
-                        if n and bundle then
-                            apps[n] = bundle
-                        end
-                    end
-                end
-                local bundle = name and apps[name]
-                if bundle then
-                    out[#out + 1] = { app = bundle, label = label }
-                end
-            end
-        end
-        return out
     end
 
     -- Whether the menu bar is set to hide always ("Automatically hide and
@@ -1069,6 +1032,119 @@ function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
     end)
     sw:start()
     return { wf, sw }
+end
+
+-- Notification Center's banners (SPEC.md §14.2): `on_notice(app, site)`
+-- for each new one, with `app` the sender's bundle ID and `site` a browser
+-- notification's host or nil. Watched through Accessibility, which says
+-- when its window or a banner in it appears *(unverified on macOS 26:
+-- which of these notifications fire)*. A banner hidden by a Focus never
+-- shows, so it marks nothing. `log` hears what went wrong. Returns what to
+-- keep alive, started again when Notification Center restarts.
+local NC = "com.apple.notificationcenterui"
+
+local function app_bundle(name)
+    for _, app in ipairs(hs.application.runningApplications()) do
+        local ok, n = pcall(app.name, app)
+        if ok and n == name then
+            local got, bundle = pcall(app.bundleID, app)
+            return got and bundle or nil
+        end
+    end
+    return nil
+end
+
+function M.notifications(on_notice, log)
+    local keep = { seen = {} }
+    local function attr(el, name)
+        local ok, v = pcall(el.attributeValue, el, name)
+        return ok and v or nil
+    end
+    -- Every banner showing, each new one reported once: a banner is told
+    -- apart by its text, kept while it shows.
+    local function scan(root)
+        local showing = {}
+        local function walk(el, depth)
+            if depth > 6 then
+                return
+            end
+            if notices.is_banner(attr(el, "AXSubrole")) then
+                local desc = attr(el, "AXDescription")
+                local stacking = attr(el, "AXStackingIdentifier")
+                local key = tostring(stacking) .. "\0" .. tostring(desc)
+                showing[key] = true
+                if not keep.seen[key] then
+                    local who = notices.sender(desc, stacking)
+                    local app = who and (who.app or (who.name and app_bundle(who.name)))
+                    if app then
+                        on_notice(app, who.site)
+                    elseif who then
+                        log("a notification from " .. tostring(who.name) .. ", which isn't running, marks nothing")
+                    end
+                end
+                return
+            end
+            for _, child in ipairs(attr(el, "AXChildren") or {}) do
+                walk(child, depth + 1)
+            end
+        end
+        walk(root, 0)
+        keep.seen = showing
+    end
+    local function attach()
+        local app = hs.application.get(NC)
+        if not app then
+            return
+        end
+        local el = hs.axuielement.applicationElement(app)
+        local ok, ob = pcall(hs.axuielement.observer.new, app:pid())
+        if not (ok and ob and el) then
+            log("couldn't watch Notification Center's banners: " .. tostring(ob))
+            return
+        end
+        ob:callback(function()
+            local fine, err = pcall(scan, el)
+            if not fine then
+                log("couldn't read a notification banner: " .. tostring(err))
+            end
+        end)
+        for _, note in ipairs({ "AXWindowCreated", "AXCreated", "AXLayoutChanged" }) do
+            local added, err = pcall(ob.addWatcher, ob, el, note)
+            if not added then
+                log("couldn't watch Notification Center for " .. note .. ": " .. tostring(err))
+            end
+        end
+        ob:start()
+        keep.observer = ob
+    end
+    attach()
+    keep.apps = hs.application.watcher.new(function(_, event, app)
+        local ok, bundle = pcall(app.bundleID, app)
+        if ok and bundle == NC and event == hs.application.watcher.launched then
+            if keep.observer then
+                keep.observer:stop()
+            end
+            keep.observer = nil
+            attach()
+        end
+    end)
+    keep.apps:start()
+    return keep
+end
+
+-- `hammerspoon://tide-bell?window=<id>`: window `id` (its CGWindowID, as
+-- hs.window:id()) rang the bell. conf's kitty runs this on a bell, as
+-- tide's kitty activates its window (SPEC.md §14.2). Any program of yours
+-- can open it, and all it can do is mark a window.
+function M.bells(on_bell, log)
+    hs.urlevent.bind("tide-bell", function(_, params)
+        local id = tonumber(params and params.window)
+        if id then
+            on_bell(id)
+        else
+            log("a bell named no window: " .. hs.inspect(params))
+        end
+    end)
 end
 
 -- A watcher on folder `dir`, calling `on_change()` when anything in it

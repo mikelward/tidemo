@@ -383,11 +383,11 @@ t.test("a chip names its windows wanting attention, in layout order, up to five,
     t.eq(s.app_icons.float, nil)
 end)
 
-t.test("a badged app's icon shows on the chip of its last used window", function()
+t.test("a notifying app's icon shows on the chip of its last used window", function()
     local a, wm = two_displays()
     a.add(2, { app = "chat" })
     wm:sync()
-    wm.attention:dock({ { app = "chat", label = "2" } })
+    wm.attention:notified("chat")
     local s = bar.state(wm, "A", "", {})
     t.eq(s.workspaces[1].apps, { "chat" })
     t.eq(s.workspaces[1].wins, { 2 })

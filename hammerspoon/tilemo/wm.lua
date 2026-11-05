@@ -417,15 +417,16 @@ function M.new(adapter, config)
     self.muted = mute.empty()
     self.tab_hosts = {}
     self.attention.muted = function(m)
-        return self:is_muted(m.app, m.id)
+        return self:is_muted(m.app, m.id, m.site)
     end
     return self
 end
 
 -- Whether a mark for window `id` of `app` is muted: its app is in the
--- list, or it's a browser window whose front tab is on a muted site.
-function M:is_muted(app, id)
-    return mute.matches(self.muted, app, id and self.tab_hosts[id])
+-- list, or it's a browser window whose front tab is on a muted site, or a
+-- notification from muted site `site`.
+function M:is_muted(app, id, site)
+    return mute.matches(self.muted, app, (id and self.tab_hosts[id]) or site)
 end
 
 -- The muted list changed: marks it now covers go, and the bar shows it.
@@ -2164,8 +2165,8 @@ function M:bar_state()
         end
     end
     for _, m in ipairs(self.attention:list()) do
-        local ids = m.id and { m.id } or self:app_windows(m.app)
-        local w = ids[1] and self.windows[ids[1]]
+        local target = self:mark_target(m)
+        local w = target and self.windows[target]
         if w and w.ws and by[w.ws] then
             by[w.ws].urgent = true
         end
@@ -3078,7 +3079,7 @@ function M:focused_window(id)
     end
     remove_value(self.history, id)
     table.insert(self.history, 1, id)
-    self.attention:focused(id, w.app)
+    self.attention:focused(id, w.app, self.tab_hosts[id])
     self:changed()
     -- However the tile got focus, its floats go back over it. A focused
     -- float comes to the front, so it moves to the top of wm.floats, which
@@ -3953,14 +3954,32 @@ function A.app(self, spec, fresh)
     end
 end
 
+-- The window a mark points at: its own, or for an app's, the app's last
+-- used window, preferring one whose front tab is on the notification's
+-- site (SPEC.md §14.2). Nil when the app has no window left.
+function M:mark_target(m)
+    if m.id then
+        return m.id
+    end
+    local ids = self:app_windows(m.app)
+    if m.site then
+        for _, id in ipairs(ids) do
+            if self.tab_hosts[id] == m.site then
+                return id
+            end
+        end
+    end
+    return ids[1]
+end
+
 -- The windows wanting attention, newest first, for the switcher's
--- Attention tab (Super+A). Only marks with a window to go to: a badged app may have quit.
--- An app's badge and its window's title can name the same window; it comes
--- once, where its newest mark puts it.
+-- Attention tab (Super+A). Only marks with a window to go to: a notifying
+-- app may have quit. An app's notification and its window's bell can name
+-- the same window; it comes once, where its newest mark puts it.
 function M:attention_windows()
     local list, seen = {}, {}
     for _, m in ipairs(self.attention:list()) do
-        local target = m.id or self:app_windows(m.app)[1]
+        local target = self:mark_target(m)
         if target and self.windows[target] and not seen[target] then
             seen[target] = true
             list[#list + 1] = target
@@ -3969,25 +3988,42 @@ function M:attention_windows()
     return list
 end
 
--- Read Dock badges and window titles for new marks. What's focused now
--- can't want attention: a count can rise while you're looking at it, and
--- focus events alone wouldn't clear that.
+-- `app` sent a notification, from browser site `site` or nil (SPEC.md
+-- §14.2). The app you're in needs no mark: you're looking at it.
+function M:notified(app, site)
+    local f = self.a.focused()
+    local w = f and self.windows[f]
+    if w and w.app == app and (not site or self.tab_hosts[f] == site) then
+        return
+    end
+    self.attention:notified(app, site)
+    self:changed()
+end
+
+-- Window `id` rang the bell (SPEC.md §14.2); the focused one needs no mark.
+function M:rang(id)
+    local w = self.windows[id]
+    if not w or id == self.a.focused() then
+        return
+    end
+    self.attention:rang(id, w.app)
+    self:changed()
+end
+
+-- Read window titles, and clear what's focused now: a window left with the
+-- focus it took keeps its mark until you pick it, but focus events alone
+-- wouldn't clear a mark made while you were looking at it.
 function M:poll_attention()
-    local att = self.attention
-    att:dock(self.a.dock_badges())
     for id, w in pairs(self.windows) do
         if w.ws then
-            local title = self.a.title(id)
             -- Kept for matching the window after a restart.
-            w.title = title or w.title
-            att:title(id, w.app, title)
+            w.title = self.a.title(id) or w.title
         end
     end
     local f = self.a.focused()
     local w = f and self.windows[f]
-    -- A window left with the focus it took keeps its mark until you pick it.
     if w and not (self.last_steal and self.last_steal.id == f) then
-        att:focused(f, w.app)
+        self.attention:focused(f, w.app, self.tab_hosts[f])
     end
     self:changed()
 end

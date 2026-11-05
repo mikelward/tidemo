@@ -78,7 +78,7 @@ M.KARABINER_CHECK = 30
 -- How long after the last device plugged in, or a wake, to set the mouse
 -- and check Karabiner's rules: a KVM brings several at once (SPEC.md §10).
 M.PLUG_DELAY = 1
--- How often to read Dock badges and window titles for attention.
+-- How often to read window titles, and clear the focused window's marks.
 M.ATTENTION_POLL = 2
 
 local function bind_all(self)
@@ -364,6 +364,13 @@ function M.start(config)
     end, function(id)
         self.wm:retitled(id)
     end)
+    -- Notifications and bells want attention (SPEC.md §14.2).
+    self.notice_watch = adapter_mod.notifications(function(app, site)
+        self.wm:notified(app, site)
+    end, self.adapter.log)
+    adapter_mod.bells(function(id)
+        self.wm:rang(id)
+    end, self.adapter.log)
     -- Quitting or reloading Hammerspoon brings back every hidden window.
     hs.shutdownCallback = function()
         self.wm:restore_all()
