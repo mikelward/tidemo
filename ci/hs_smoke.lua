@@ -1128,12 +1128,17 @@ do
     end
 end
 -- The settings window's Shortcuts: the keys registered with Super on
--- Option, and only Super+Print left out, since Alt+Print has its chord.
+-- Option, and only Super+Print left out, since Alt+Print has its chord,
+-- and maybe the overview's keys.
 do
     local s = tilemo.shortcuts
     local unexpected = {}
+    -- The runner's macOS still holds Ctrl+Up and Ctrl+Down for Mission
+    -- Control, which setup-macos frees on a real Mac (SPEC.md §6.9), so the
+    -- overview's keys may be left out too.
+    local may_fail = { ["Super+Print"] = true, ["Ctrl+Up"] = true, ["Ctrl+Down"] = true }
     for _, f in ipairs(s and s.failed or {}) do
-        if f.keys ~= "Super+Print" then
+        if not may_fail[f.keys] then
             unexpected[#unexpected + 1] = f.keys .. ": " .. f.why
         end
     end
@@ -1531,11 +1536,33 @@ smoke_timer = hs.timer.doAfter(3, function()
         return
     end
     say("dashboard opened and closed")
-    check_failing_helper(function()
-        check_settings_page(function()
-            check_screenshot(function()
-                check_moved_screenshot(function()
-                    wait_for_bar(check_tiling)
+    -- The overview (SPEC.md §6.9), as Ctrl+Up opens it, then Ctrl+Down's
+    -- scope in the same page, then closed as a second Ctrl+Down closes it.
+    local shown, show_err = xpcall(function()
+        tilemo.overview.show("all")
+        tilemo.overview.show("current")
+    end, debug.traceback)
+    if not shown then
+        fail("overview: %s", show_err)
+        finish()
+        return
+    end
+    smoke_timer = hs.timer.doAfter(2, function()
+        local done, done_err = xpcall(function()
+            tilemo.overview.show("current")
+        end, debug.traceback)
+        if not done then
+            fail("closing the overview: %s", done_err)
+            finish()
+            return
+        end
+        say("overview opened and closed")
+        check_failing_helper(function()
+            check_settings_page(function()
+                check_screenshot(function()
+                    check_moved_screenshot(function()
+                        wait_for_bar(check_tiling)
+                    end)
                 end)
             end)
         end)

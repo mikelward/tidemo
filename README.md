@@ -57,6 +57,10 @@ It brings tide's desktop to macOS:
   (`brew install rbw`, then `rbw config set email` and `rbw login`), one
   row per field, typed where you were (§9.1);
 - tileco's dashboard on Super+Shift+Space;
+- an overview in place of Mission Control: Ctrl+Up shows every
+  workspace's windows as cards grouped by workspace, Ctrl+Down this
+  workspace's; click one, or type to filter and press Return, to go to it
+  (SPEC.md §6.9). `setup-macos` frees the two keys;
 - a settings window, from the launcher or the dashboard, with tide's
   Clocks, Start at login and Clipboard settings, sharing tide's
   `~/.config/tide/clocks*.json`, `startup*.json` and `clipboard*.json`, and
@@ -115,8 +119,9 @@ the workspaces in the menu bar instead.
 
 A workspace that isn't showing parks its windows off screen, as AeroSpace
 does, so a switch is instant: all but a 1 pt sliver of each goes past a
-corner of its display. Mission Control then shows every workspace's
-windows, and Cmd+Tab to a parked window brings its workspace along.
+corner of its display. Mission Control would then show every workspace's
+windows, so `setup-macos` turns it off and tilemo's overview takes its
+keys, and Cmd+Tab to a parked window brings its workspace along.
 `tilemo.start({ hide = "minimize" })` minimizes them instead, as tilemo
 used to: Mission Control shows only the workspace on screen, but every
 switch animates. The default is `hide = "park"` (SPEC.md §6).
