@@ -214,7 +214,7 @@ t.test("focus you moved ends a launch's grant, even after a hand-back since", fu
     a.add(4, { app = "d", pid = 4 })
     wm:sync()
     a.clock = a.clock + 1
-    -- Focus follows mouse moves you to window 2.
+    -- A key moves you to window 2.
     wm:focus_window(2)
     wm:focused(2)
     a.clock = a.clock + 2
@@ -224,6 +224,60 @@ t.test("focus you moved ends a launch's grant, even after a hand-back since", fu
     a.clock = a.clock + 2
     steal(a, wm, 3)
     t.eq(a.focused(), 2, "c's grant stays ended")
+end)
+
+-- System Settings takes a second or two to show About This Mac. Focus
+-- follows mouse moving you over a tile meanwhile isn't a choice against
+-- it: the window you asked for still gets the focus, and stays on top.
+t.test("focus follows mouse doesn't end the grant of a click on its way", function()
+    local a, wm = setup()
+    a.add(3, { app = "c", pid = 3 })
+    wm:sync()
+    wm:clicked()
+    a.clock = a.clock + 0.5
+    wm:focus_window(2, true)
+    wm:focused(2)
+    a.clock = a.clock + 1.5
+    a.add(4, { app = "d", pid = 4 })
+    wm:sync()
+    steal(a, wm, 4)
+    t.eq(a.focused(), 4, "the window the click started")
+end)
+
+-- A click's grant lasts M.GRANT, as a launch's does.
+t.test("a click's grant runs out", function()
+    local function after(secs)
+        local a, wm = setup()
+        wm:clicked()
+        a.clock = a.clock + secs
+        a.add(3, { app = "c", pid = 3 })
+        wm:sync()
+        steal(a, wm, 3)
+        return a.focused()
+    end
+    t.eq(after(wm_mod.GRANT - 0.5), 3, "within it")
+    t.eq(after(wm_mod.GRANT + 0.5), 1, "after it")
+end)
+
+-- About This Mac is System Settings', which may have a window open
+-- already: a menu item you chose is yours whatever it opens.
+t.test("a menu item chosen may bring up a window of an app that has one open", function()
+    local function chose(menu)
+        local a, wm = setup()
+        a.add(3, { app = "c", pid = 3 })
+        wm:sync()
+        a.clock = a.clock + 1
+        a.menu = menu
+        wm:clicked()
+        a.menu = false
+        a.clock = a.clock + 2
+        a.add(4, { app = "c", pid = 3 })
+        wm:sync()
+        steal(a, wm, 4)
+        return a.focused()
+    end
+    t.eq(chose(true), 4, "chosen from a menu")
+    t.eq(chose(false), 1, "a click elsewhere: only an app's first window")
 end)
 
 t.test("an app left with the focus it took back may open its own dialog", function()

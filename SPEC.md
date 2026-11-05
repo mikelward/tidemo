@@ -2748,7 +2748,8 @@ Each one names a workaround, or says there is none.
 |---|---|
 | tilemo's switcher, name prompt, dashboard or resize mode is open | It keeps it until it closes. Focus follows mouse pauses meanwhile (§5.2). |
 | A new window from the app you're in: a dialog, a second window | **Yes**, as tide (tide §14.1). |
-| The first window of an app you launched from tilemo (the switcher, an app key) | **Yes**, if you haven't typed, clicked or moved focus since. The grant lasts 10 s and is used once. |
+| The first window of an app you launched from tilemo (the switcher, an app key) | **Yes**, if you haven't typed, clicked or moved focus with a key since. The grant lasts 5 s and is used once. |
+| What a click starts: a Dock icon, a link, a notification, a menu item | **Yes**, within 5 s, once, if you haven't typed or clicked since: an app's first window, or for a menu item, any window, since About This Mac is a window of System Settings, which may be open already. Focus follows mouse passing over a tile meanwhile doesn't end it. Whether a menu is open is read at each click (`hs.window.list(true)`, a few milliseconds). |
 | A window started from the focused terminal (`open .` in kitty) | **Yes**, on the same terms *(how tilemo learns of it unsettled; tide's shell tells its guard, tide §14.3)*. |
 | A notification you click | **Yes**: the click was yours (§10). |
 | A password prompt | **Yes** when it follows something you did in the app that asks; otherwise it's macOS's to decide. |

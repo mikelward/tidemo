@@ -218,7 +218,7 @@ function M:focus(target)
     -- request for the same window.
     self.request = (self.request or 0) + 1
     local request = self.request
-    self.wm:focus_window(target)
+    self.wm:focus_window(target, true)
     self.a.after(M.IN_FLIGHT, function()
         if self.pending == target and self.request == request then
             self:settled(target)

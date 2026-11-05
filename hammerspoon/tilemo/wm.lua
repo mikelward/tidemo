@@ -96,7 +96,10 @@ M.FLOAT_CAP = 0.8
 -- The focus guard (SPEC.md §14.1): how long a launch you made may give its
 -- window focus, and how soon after something you did (a click, a key with
 -- Command, a focus tilemo asked for) an activation still counts as yours.
-M.GRANT = 10
+-- 5 s, for a launch and a click alike: long enough for a slow app's
+-- window (a cold launch, System Settings showing About This Mac), short
+-- enough that one long after isn't taken for what you asked.
+M.GRANT = 5
 M.GRACE = 1
 -- How long after tilemo first sees a window a new title still decides it
 -- again: a browser's popup can open before its page has named it.
@@ -2855,7 +2858,10 @@ function M:hold(owner, on)
     self.holding_keyboard = next(self.holds) ~= nil
 end
 
-function M:focus_window(id)
+-- `by_pointer`: focus follows mouse moved it, which doesn't end a grant
+-- (M:grant): what you clicked or chose may still be on its way, and a slow
+-- app's window mustn't lose its focus to the pointer passing over a tile.
+function M:focus_window(id, by_pointer)
     local w = self.windows[id]
     if not w then
         return
@@ -2878,7 +2884,9 @@ function M:focus_window(id)
     end
     asked[#asked + 1] = { id = id, app = w.app, at = now }
     self.asked = asked
-    self.granted = nil
+    if not by_pointer then
+        self.granted = nil
+    end
     self.a.focus(id)
     if not w.floating then
         self:raise_floats(w.ws, w.pid)
@@ -2919,7 +2927,9 @@ function M:clicked()
     local now = self.a.now()
     self.last_input = now
     self.last_switch = now
-    self:grant(nil, true)
+    -- A menu item you chose is yours whatever it opens, even a window of an
+    -- app that has one already: About This Mac is System Settings'.
+    self:grant(nil, not self.a.menu_open())
 end
 
 -- The focus guard (SPEC.md §14.1) -------------------------------------------
