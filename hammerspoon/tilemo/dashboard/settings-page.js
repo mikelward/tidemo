@@ -1427,7 +1427,7 @@ function renderFloating() {
   const list = document.getElementById("floating-list");
   list.replaceChildren();
   const rules = Array.isArray(f.rules) ? f.rules : [];
-  if (rules.length === 0) list.append(el("li", "No rules yet. Dialogs still float."));
+  if (rules.length === 0) list.append(el("li", "No rules yet. Dialogs always float."));
   rules.forEach((r, i) => {
     const index = i + 1;
     const name = r.title ? `${r.app}, ${r.title}` : r.app;
