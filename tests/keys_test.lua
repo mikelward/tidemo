@@ -380,9 +380,10 @@ t.test("Alt+Tab swaps with the master only with Karabiner, which makes it from p
 end)
 
 -- An installed tilemo rule, as karabiner.json holds it: the Win key's
--- manipulator, with what its lone tap sends, Alt+Tab's if `alt_tab`, and
--- the letters a and z, unless `no_z`.
-local function rule(tap, alt_tab, no_z)
+-- manipulator, with what its lone tap sends, Alt+Tab's if `alt_tab`, the
+-- letters a and z, unless `no_z`, and Backspace sent as F19, unless
+-- `old_backspace` keeps it Backspace.
+local function rule(tap, alt_tab, no_z, old_backspace)
     local m = {
         { from = { key_code = "left_command", modifiers = { optional = { "any" } } }, to = { { key_code = "left_command" } },
             to_if_alone = { { key_code = tap, modifiers = { "left_option", "left_command", "left_control" } } } },
@@ -397,6 +398,8 @@ local function rule(tap, alt_tab, no_z)
         m[#m + 1] = { from = { key_code = "tab", modifiers = { mandatory = { "left_option" } } },
             to = { { key_code = "tab", modifiers = { "shift", "left_command", "left_option" } } } }
     end
+    m[#m + 1] = { from = { key_code = "delete_or_backspace", modifiers = { mandatory = { "left_command" }, optional = { "shift" } } },
+        to = { { key_code = old_backspace and "delete_or_backspace" or "f19", modifiers = { "left_option", "left_command", "left_control" } } } }
     return { description = "tilemo: Win+key", manipulators = m }
 end
 
@@ -439,6 +442,30 @@ t.test("a rule without Win+Z is missing Super+Z, so minimize has no key", functi
     local gaps = keys.rule_gaps(read, HOME, decode)
     t.eq(gaps, { "Super+Z (minimize)" })
     t.eq(keys.gaps_notice(gaps):find("Super+Z (minimize) doesn't work", 1, true) ~= nil, true)
+end)
+
+t.test("a rule that still sends Win+Backspace as Backspace is missing Super+Backspace", function()
+    local read = env({ [CONFIG] = profiles(profile(true, rule("f20", true, false, true))) }, {})
+    local gaps = keys.rule_gaps(read, HOME, decode)
+    t.eq(gaps, { "Super+Backspace (close the window)" })
+end)
+
+-- Some Macs take Ctrl+Option+Command+Backspace before Hammerspoon sees it,
+-- so with Karabiner close is bound on the F19 the rule sends instead, and
+-- still listed as Super+Backspace. With Option as Super it stays on
+-- Backspace, which nothing takes there.
+t.test("Super+Backspace closes the window, bound on F19 with Karabiner", function()
+    local function close(list)
+        local out = {}
+        for _, b in ipairs(list) do
+            if b.action == "close" then
+                out[#out + 1] = { b.mods, b.key, b.keys }
+            end
+        end
+        return out
+    end
+    t.eq(close((keys.bindings(keys.KARABINER))), { { { "ctrl", "alt", "cmd" }, "f19", "Super+Backspace" } })
+    t.eq(close((keys.bindings(keys.OPTION))), { { { "alt" }, "delete", "Super+Backspace" } })
 end)
 
 t.done("keys")

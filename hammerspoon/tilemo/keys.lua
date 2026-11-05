@@ -40,7 +40,11 @@ M.map = {
     -- Option already (SPEC.md §7.2). The Floating settings, filled in for
     -- the focused window.
     { key = "i", shift = true, action = "float_rule" },
-    { key = "delete", action = "close" },
+    -- With Karabiner's rule, physical Win+Backspace arrives as Super+F19:
+    -- on some Macs something below Hammerspoon takes the chord on
+    -- Backspace itself, and a chord on a key no keyboard here has gets
+    -- through, as the Super tap's F20 does (SPEC.md §7.2).
+    { key = "delete", karabiner_key = "f19", action = "close" },
     -- Super+Z, not Super+Delete, which a PC keyboard may send as Backspace
     -- (SPEC.md §6.7).
     { key = "z", action = "minimize" },
@@ -358,7 +362,18 @@ function M.bindings(super)
         add(b.mods, b, false)
     end
     for _, b in ipairs(M.map) do
-        add(M.mods(super, b), b, true)
+        local mods = M.mods(super, b)
+        if super == M.KARABINER and b.karabiner_key then
+            -- Shown as the key you press, bound as the one Karabiner sends.
+            local sent = {}
+            for k, v in pairs(b) do
+                sent[k] = v
+            end
+            sent.key, sent.label = b.karabiner_key, M.keys_label(b, mods, true)
+            add(mods, sent, true)
+        else
+            add(mods, b, true)
+        end
     end
     if super == M.KARABINER then
         for _, b in ipairs(M.karabiner_only) do
@@ -490,6 +505,15 @@ M.RULE_FEATURES = {
         has = function(m)
             local a = (m.to_if_alone or {})[1] or {}
             return (m.from or {}).key_code == "left_command" and a.key_code == "f20"
+        end,
+    },
+    {
+        what = "Super+Backspace (close the window)",
+        -- Physical Win+Backspace, sent as Ctrl+Option+Command+F19 (M.map).
+        has = function(m)
+            local f, t = m.from or {}, (m.to or {})[1] or {}
+            return f.key_code == "delete_or_backspace" and same_set((f.modifiers or {}).mandatory, { "left_command" })
+                and t.key_code == "f19" and same_set(t.modifiers, { "left_option", "left_command", "left_control" })
         end,
     },
     {
