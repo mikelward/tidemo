@@ -231,7 +231,11 @@ end
 -- the switcher's "Check tilemo".
 function M.doctor()
     local lines = {}
-    for _, line in ipairs(checklist.doctor({ accessibility = M.adapter and M.adapter.accessibility() })) do
+    local hides = M.adapter and M.adapter.hides_menu_bar
+    for _, line in ipairs(checklist.doctor({
+        accessibility = M.adapter and M.adapter.accessibility(),
+        menu_bar_hidden = M.bar ~= nil and hides ~= nil and hides(),
+    })) do
         lines[#lines + 1] = line
     end
     if not M.karabiner then
@@ -957,6 +961,9 @@ function M.start(config)
     check_karabiner_rules(self)
     choose_super(self, true)
     check_linearmouse(self)
+    if self.bar and self.adapter.hides_menu_bar and self.adapter.hides_menu_bar() then
+        self.adapter.notify(checklist.MENU_BAR_NOTICE)
+    end
     self.karabiner_timer = hs.timer.doEvery(M.KARABINER_CHECK, function()
         check_karabiner_rules(self)
         choose_super(self, false)

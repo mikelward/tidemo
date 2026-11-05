@@ -1668,6 +1668,14 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     it, and choosing a menu item, by a click or a drag, brings the bars back *(unverified on a
     Mac that macOS lets a window sit over a menu bar that shows; CI's
     smoke test checks the bar's frame there)*.
+  - **Covering needs the setting.** While macOS still hides the menu bar,
+    it slides in over everything at the top edge, tilemo's bar included,
+    and no window level stops that. So tilemo says so at start and in
+    `tilemo doctor` (`checklist.MENU_BAR_NOTICE`), and the setup checklist
+    asks for Never. It reads the setting at start and again whenever the
+    displays change, as they do when the setting does, so covering starts
+    without a reload *(unverified on a Mac that the screen watcher fires
+    for it)*.
   - **What still needs the menu bar:** the app's own menus, the Apple menu,
     and other apps' status items (a VPN, an IT agent, Zoom). The Apple
     logo opens tilemo's copy of the Apple menu (below); the app's menus

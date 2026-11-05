@@ -375,12 +375,15 @@ function M.new()
 
     -- Whether the menu bar is set to hide always ("Automatically hide and
     -- show the menu bar": Always; scripts' setup-macos sets Never). Read
-    -- once: it changes only in System Settings, and tilemo reloads after.
-    -- Never set, defaults fails, and that's no: kept as nil, it ran
-    -- defaults, a process Hammerspoon waits on, at every display read.
+    -- once, and again after the displays change, as they do when the
+    -- setting does: the menu bar's strip comes or goes *(unverified on a
+    -- Mac that the screen watcher fires for it)*. Never set, defaults
+    -- fails, and that's no: kept as nil, it ran defaults, a process
+    -- Hammerspoon waits on, at every display read.
     local menu_bar_hidden
     local function hides_menu_bar()
-        if menu_bar_hidden == nil then
+        if menu_bar_hidden == nil or displays.menu_bar_stale then
+            displays.menu_bar_stale = false
             local out, ok = hs.execute("/usr/bin/defaults read -g _HIHideMenuBar 2>/dev/null")
             menu_bar_hidden = (ok and (out or ""):match("^%s*1") ~= nil) or false
         end
@@ -405,6 +408,8 @@ function M.new()
         end
         return out
     end
+    a.hides_menu_bar = hides_menu_bar
+
     function a.screens()
         if displays.list then
             return copy(displays.list)
@@ -1059,6 +1064,7 @@ function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
     wf:subscribe(hs.window.filter.windowTitleChanged, with_id(on_title))
     local sw = hs.screen.watcher.new(function(...)
         forget_displays()
+        displays.menu_bar_stale = true
         on_change(...)
     end)
     sw:start()

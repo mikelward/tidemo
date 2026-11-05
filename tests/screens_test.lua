@@ -124,6 +124,30 @@ t.test("the menu bar's setting is read once, even when it was never set", functi
     end
 end)
 
+t.test("the menu bar's setting is read again when the displays change", function()
+    local s = stub({ LEFT })
+    local watch
+    hs.screen.watcher = {
+        new = function(fn)
+            watch = fn
+            return { start = function() end }
+        end,
+    }
+    hs.window.filter.ignoreAlways = {}
+    local seen
+    require("tilemo.hs_adapter").watch(function()
+        seen = s.adapter.screens()[1]
+    end, function() end, function() end, function() end, function() end, function() end)
+    s.hides = true
+    t.eq(s.adapter.screens()[1].menu_bar, false, "hidden: nothing to cover")
+    s.settle()
+    -- Set to Never in System Settings: the menu bar's strip comes back.
+    s.hides = false
+    watch()
+    t.eq(seen.menu_bar, true, "covered, without a reload")
+    t.eq(s.asked, 2)
+end)
+
 t.test("a caller changing its list changes no one else's", function()
     local s = stub({ LEFT })
     local mine = s.adapter.screens()
