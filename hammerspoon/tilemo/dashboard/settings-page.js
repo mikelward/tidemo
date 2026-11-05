@@ -526,7 +526,7 @@ function renderDnd() {
 
 // The Idle page, as tide's (tide SPEC.md §16): whether tide's timeline
 // runs, then each step's time with no input, − and + along tide's ladder,
-// and Suspend on AC too. Shared with tide's idle.json; a change goes to
+// and Sleep when plugged in. Shared with tide's idle.json; a change goes to
 // idle.local.json ({ writeIdle: text }), and tilemo runs the timeline as it
 // says (idle_hs.lua). Off is macOS's own: no step set in either file.
 let idleFiles = null;

@@ -565,7 +565,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
 }
 
 // Idle, as tide's page: tide's timeline Off with nothing set; On writes
-// its timings, each stepped along tide's ladder, and Suspend on AC too.
+// its timings, each stepped along tide's ladder, and Sleep when plugged in.
 {
   const lastIdle = () => JSON.parse(sent.filter((m) => m.writeIdle).at(-1).writeIdle);
   const timeline = () => ids["idle-timeline"].children;
@@ -576,8 +576,8 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   timeline()[1].listeners.click();
   assert.deepStrictEqual(lastIdle(), { dim: 150, lock: 300, displaysOff: 330, suspend: 1800, suspendOnAC: false });
   assert.deepStrictEqual(steps().map((li) => [li.children[0].textContent, li.children[2]?.textContent ?? li.children[1].textContent]), [
-    ["Dim the screen", "2 min 30 s"], ["Lock", "5 min"], ["Turn off displays", "5 min 30 s"], ["Suspend, on battery", "30 min"],
-    ["Suspend on AC too", "Off"],
+    ["Dim screens", "2 min 30 s"], ["Lock", "5 min"], ["Screens off", "5 min 30 s"], ["Sleep (on battery)", "30 min"],
+    ["Sleep when plugged in", "Off"],
   ]);
   steps()[1].children[3].listeners.click();
   assert.strictEqual(lastIdle().lock, 330);
@@ -1216,7 +1216,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(items("standing")[0], ["in", "home", "↑", "↓", "✕"]);
   assert.deepStrictEqual(items("inApps"), [["Mail", "✕"], ["Gmail", "✕"]]);
   assert.deepStrictEqual(ids["ws-list-namePatterns"].children.map((li) => li.textContent), ["None yet."]);
-  assert.strictEqual(ids["ws-add-inApps"].placeholder, "Add a program or web address, such as gmail");
+  assert.strictEqual(ids["ws-add-inApps"].placeholder, "Add an app or web address, such as gmail");
 
   // The first change copies the list in effect, keeping `muted`.
   sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"muted": ["com.example.chat"]}' } });
@@ -1230,7 +1230,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   const before = sent.length;
   add.value = "mail";
   press(add, "Enter");
-  assert.match(ids["workspaces-error"].textContent, /listed already/);
+  assert.match(ids["workspaces-error"].textContent, /already in the list/);
   assert.strictEqual(sent.length, before);
 
   // Moving one first makes it home; taking out the last is refused.
@@ -1281,11 +1281,11 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   sandbox.tilemo.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"muted": ["com.example.chat"]}' } });
   assert.strictEqual(sections().length, 4);
   assert.deepStrictEqual([part(0).heading, part(1).heading], ["in · home", "re"]);
-  assert.strictEqual(part(0).label, "Open new windows on a new workspace");
+  assert.strictEqual(part(0).label, "New windows ask for a workspace");
   assert.deepStrictEqual([part(0).toggle.textContent, part(0).toggle.getAttribute("aria-pressed")], ["On", "true"]);
   assert.deepStrictEqual([part(1).toggle.textContent, part(1).toggle.getAttribute("aria-pressed")], ["Off", "false"]);
   assert.deepStrictEqual(pinned(0), ["None yet."]);
-  assert.strictEqual(part(0).input.placeholder, "Pin a program or web address, such as gmail");
+  assert.strictEqual(part(0).input.placeholder, "Pin an app or web address, such as gmail");
 
   // Turning on another's copies what's in effect, so home's stays on.
   sent.length = 0;
@@ -1306,7 +1306,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   const before = sent.length;
   part(0).input.value = "gmail";
   press(part(0).input, "Enter");
-  assert.match(ids["workspaces-error"].textContent, /listed already/);
+  assert.match(ids["workspaces-error"].textContent, /already in the list/);
   assert.strictEqual(sent.length, before);
   // ✕ unpins it; Off turns home's question off.
   part(0).list.children[0].children[1].listeners.click();

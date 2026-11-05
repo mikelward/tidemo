@@ -998,7 +998,7 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   in `workspaces.json` (tide §6.5, and §15 here), by name, ignoring case:
   - **`askForName`:** whether a new window there asks for a workspace's
     name, below, and whether a launch from there does. The settings window
-    calls it "Open new windows on a new workspace".
+    calls it "New windows ask for a workspace".
   - **`pinnedApps`:** the apps whose windows stay open there (Pinned apps,
     below).
   - With no `workspaceSettings` in either file, nor `workspace_settings`
@@ -2985,7 +2985,7 @@ Each one names a workaround, or says there is none.
       files in effect have them, or `start()`'s or tilemo's defaults where
       they set none. The first standing workspace is marked home.
     - Below them, each standing workspace has a section of its own, home's
-      marked: an "Open new windows on a new workspace" switch, its
+      marked: a "New windows ask for a workspace" switch, its
       `askForName`, and its pinned apps, each with a ✕, over a box that
       pins one with Enter. The first change copies the `workspaceSettings`
       in effect into `workspaces.local.json`, as a list's first change
@@ -3170,7 +3170,7 @@ Each one names a workaround, or says there is none.
       one keeping the system awake holds the sleep alone. tilemo's own
       keep awake holds the display, so it holds the timeline too.
     - The page: tide's timeline On or Off, then each step's time, − and +
-      along tide's ladder, and Suspend on AC too. On writes tide's timings
+      along tide's ladder, and Sleep when plugged in. On writes tide's timings
       as they stand to `idle.local.json`; Off empties it, and can't turn
       off what the shared file sets.
     - macOS's own timers still run, so the page says to set them later,
@@ -3240,7 +3240,7 @@ Each one names a workaround, or says there is none.
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tilemo's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
-    | Idle | tide's timeline On or Off, each step's time, and Suspend on AC too (below); Lock Screen settings |
+    | Idle | tide's timeline On or Off, each step's time, and Sleep when plugged in (below); Lock Screen settings |
     | Start at login | Login Items settings, for macOS's own list |
 
     - A pane opens by its `x-apple.systempreferences:` ID, as the bar's
