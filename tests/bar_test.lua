@@ -84,7 +84,17 @@ t.test("the room at the top is a notch, a menu bar that shows, or both", functio
     t.eq(room(0, true), { notch = false, menu_bar = false })
     t.eq(room(38, false), { notch = true, menu_bar = true }, "a notched display's menu bar, shown, still keeps the title clear")
     t.eq(room(25, false), { notch = false, menu_bar = true }, "a plain display's")
-    t.eq(room(0, false), { notch = false, menu_bar = false }, "a display with no menu bar")
+    t.eq(room(0, false), { notch = false, menu_bar = true },
+        "a menu bar that shows is covered even where macOS keeps no room for it")
+end)
+
+t.test("with no room kept for a menu bar that shows, the bar covers it from the top, above its level", function()
+    local s = { area = { x = 0, y = 0, w = 1920, h = 1080 }, full = { x = 0, y = 0, w = 1920, h = 1080 } }
+    s.notch, s.menu_bar = bar.top_room(s.area, s.full, false)
+    t.eq(bar.level(s), "status", "not floating, which the menu bar draws over")
+    local strip, below = bar.place(s, 36)
+    t.eq(strip, { x = 0, y = 0, w = 1920, h = 36 })
+    t.eq(below.y, 36)
 end)
 
 t.test("Show Menu Bar ends on Esc or a click below the bars, not on the menu bar", function()
