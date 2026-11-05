@@ -76,15 +76,15 @@ end
 -- room is the menu bar, and a notched display's is taller: 37 px or more,
 -- where a plain one's is 24 or 25 *(heights seen on Sonoma and later;
 -- unverified per model)*, so the title and chips still keep clear of it.
+-- A menu bar set to show is one to cover even where macOS keeps no room
+-- for it: on the owner's Mac, set to Never, hs.screen's frame starts at
+-- the top, menu bar and all, and a bar below its level sat under it.
 M.NOTCH_MENU_BAR = 30
 
 function M.top_room(area, full, hidden)
     local room = area.y - full.y
-    if room <= 0 then
-        return false, false
-    end
     if hidden then
-        return true, false
+        return room > 0, false
     end
     return room > M.NOTCH_MENU_BAR, true
 end
