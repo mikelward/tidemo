@@ -1318,6 +1318,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
 | `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
 | `Super+Shift+V` | the picker, on its Fill tab: your snippets and each Bitwarden login's username, password and 2FA code; Return types it (§9.1) | hotkey |
+| `Super+;` | the picker, on its Characters tab: emoji and symbols by name (§9.1); Return pastes | hotkey |
 | `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey; Accessibility presses its close button |
 | `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2) | hotkeys, enabled only then |
 | `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
@@ -2101,7 +2102,8 @@ tab, the search field naming the tab you're in.
 ### 9.1 The picker
 
 **`Super+V` opens tide's picker** (tide §8.4): its own `hs.chooser`, with
-three tabs. V as in paste. `Super+Shift+V` opens it on Fill.
+three tabs. V as in paste. `Super+;` opens it on Characters and
+`Super+Shift+V` on Fill.
 
 - **Clipboard:** what you've copied since tilemo started, newest first,
   one line each, searched with the switcher's fuzzy match.

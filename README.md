@@ -51,6 +51,7 @@ It brings tide's desktop to macOS:
   never a password manager's copy, and emoji and symbols by name (§9.1),
   with tide's Clipboard settings: the history on or off, how many copies it
   keeps, and Clear history (§15);
+- the picker straight on its Characters tab with Super+;;
 - the picker's Fill tab on Super+Shift+V: your snippets
   (`~/.config/tide/snippets.json`) and Bitwarden's logins through rbw
   (`brew install rbw`, then `rbw config set email` and `rbw login`), one
