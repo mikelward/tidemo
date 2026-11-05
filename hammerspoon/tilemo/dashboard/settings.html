@@ -687,12 +687,12 @@ body.settings {
 </section>
 <section class="page" id="page-floating" hidden>
 <h1 id="floating">Floating</h1>
-<p class="note">Rules that float an app's windows, by its bundle ID and, if you like, a Lua pattern found anywhere in the title, such as <code>^Save</code>. Escape a pattern's magic characters with <code>%</code>: <code>%.</code> is a dot. They come after start()'s rules, before tide's own, and dialogs float whatever they say. A new rule floats the windows open now that it covers, but not one you tiled by hand.</p>
+<p class="note">These apps open floating. Add a title to float only some of their windows. Titles are Lua patterns: <code>%.</code> matches a dot.</p>
 <p class="source" id="floating-source"></p>
 <ol id="floating-list"></ol>
 <p class="add row" id="floating-add">
-<input id="floating-app" placeholder="App's bundle ID, such as com.apple.Preview" aria-label="App's bundle ID" spellcheck="false">
-<input id="floating-title" placeholder="Title pattern, or none for every window" aria-label="Title pattern" spellcheck="false">
+<input id="floating-app" placeholder="App ID, such as com.apple.Preview" aria-label="App ID" spellcheck="false">
+<input id="floating-title" placeholder="Title (optional), such as ^Save" aria-label="Title (optional)" spellcheck="false">
 <button type="button" id="floating-add-button">Add</button>
 </p>
 <p class="note" id="floating-covered"></p>
@@ -702,7 +702,7 @@ body.settings {
 </details>
 <p class="error" id="floating-error" role="alert"></p>
 <h2>Floating now</h2>
-<p class="note">Floating windows no rule covers, one per app. Always float fills in a rule for it to trim and add.</p>
+<p class="note">Windows you floated by hand.</p>
 <ul id="floating-now"></ul>
 </section>
 <section class="page" id="page-appearance" hidden>

@@ -147,12 +147,12 @@ end
 
 t.test("what floats a window already is named, rule or dialog", function()
     local file = { { app = "com.example.app", title = "^Doc$", action = "float" } }
-    t.eq(floating.covered_by(std(), {}, file), 'rule 1, com.example.app, "^Doc$", floats it')
+    t.eq(floating.covered_by(std(), {}, file), "rule 1")
     t.eq(floating.covered_by(std(), { { app = "com.example.app", action = "tile" } }, file), nil,
         "start()'s rules come first")
-    t.eq(floating.covered_by(std({ app = "com.apple.systempreferences" }), {}, {}), "tide's own rule for this app floats it")
-    t.eq(floating.covered_by(std({ subrole = "AXDialog" }), {}, {}), "it floats anyway: macOS reports it as a dialog or panel")
-    t.eq(floating.covered_by(std({ size_settable = false }), {}, {}), "it floats anyway: its size can't be changed")
+    t.eq(floating.covered_by(std({ app = "com.apple.systempreferences" }), {}, {}), "built-in rule")
+    t.eq(floating.covered_by(std({ subrole = "AXDialog" }), {}, {}), "macOS reports it as a dialog or panel")
+    t.eq(floating.covered_by(std({ size_settable = false }), {}, {}), "its size can't be changed")
     t.eq(floating.covered_by(std(), {}, {}), nil)
 end)
 

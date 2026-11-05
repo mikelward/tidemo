@@ -285,19 +285,19 @@ function M.covered_by(facts, start_rules, file_rules)
     end
     local r, i = rules.first(start_rules, facts)
     if r then
-        return r.action == "float" and "a rule in start()'s rules floats it" or nil
+        return r.action == "float" and "a start() rule" or nil
     end
     r, i = rules.first(file_rules, facts)
     if r then
-        return string.format("rule %d, %s, floats it", i, M.describe(r))
+        return string.format("rule %d", i)
     end
     r = rules.first(rules.defaults, facts)
     if r then
-        return r.action == "float" and "tide's own rule for this app floats it" or nil
+        return r.action == "float" and "built-in rule" or nil
     end
     local action, step = rules.step(facts)
     if action == "float" then
-        return "it floats anyway: " .. rules.STEPS[step]
+        return rules.STEPS[step]
     end
 end
 

@@ -986,11 +986,11 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
     app: "com.example.viewer",
     name: "Viewer",
     title: "^Info %(1%)$",
-    covered: "rule 1, com.example.viewer, floats it",
+    covered: "rule 1",
     about: [{ label: "Role", value: "AXWindow" }, { label: "Subrole", value: "AXDialog" }],
   };
   sandbox.tilemo.update({ clockFiles: [], floating: { rules: [], now: [] } });
-  assert.strictEqual(rules()[0].textContent, "No rules of your own yet.");
+  assert.strictEqual(rules()[0].textContent, "No rules yet. Dialogs still float.");
   assert.match(now()[0].textContent, /^None/);
   assert.match(get("floating-source").textContent, /None yet/);
   sandbox.tilemo.update({
@@ -1028,7 +1028,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(get("floating-app").value, "");
   // The key's fill-in: what covers it and what macOS says of it.
   sandbox.tilemo.floatingFill(fill);
-  assert.strictEqual(get("floating-covered").textContent, "Already floating: rule 1, com.example.viewer, floats it.");
+  assert.strictEqual(get("floating-covered").textContent, "Already floats (rule 1).");
   assert.strictEqual(get("floating-about").hidden, false);
   assert.deepStrictEqual(get("floating-about-rows").children.map((c) => c.textContent), ["Role", "AXWindow", "Subrole", "AXDialog"]);
   // An error from tilemo shows; Esc clears the fields, and doesn't close.

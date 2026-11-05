@@ -1374,7 +1374,7 @@ function showFloatingError(text) {
 // What the fields were filled in for, if anything: what floats it already,
 // and what macOS says of it.
 function showFill(fill) {
-  document.getElementById("floating-covered").textContent = fill?.covered ? `Already floating: ${fill.covered}.` : "";
+  document.getElementById("floating-covered").textContent = fill?.covered ? `Already floats (${fill.covered}).` : "";
   const about = document.getElementById("floating-about");
   const rows = document.getElementById("floating-about-rows");
   rows.replaceChildren();
@@ -1427,7 +1427,7 @@ function renderFloating() {
   const list = document.getElementById("floating-list");
   list.replaceChildren();
   const rules = Array.isArray(f.rules) ? f.rules : [];
-  if (rules.length === 0) list.append(el("li", "No rules of your own yet."));
+  if (rules.length === 0) list.append(el("li", "No rules yet. Dialogs still float."));
   rules.forEach((r, i) => {
     const index = i + 1;
     const name = r.title ? `${r.app}, ${r.title}` : r.app;
@@ -1444,7 +1444,7 @@ function renderFloating() {
   const now = document.getElementById("floating-now");
   now.replaceChildren();
   const windows = Array.isArray(f.now) ? f.now : [];
-  if (windows.length === 0) now.append(el("li", "None: every floating window has a rule, or is a dialog."));
+  if (windows.length === 0) now.append(el("li", "None. Super+Shift+F floats a window."));
   for (const w of windows) {
     const li = el("li");
     li.append(el("span", w.name), el("span", w.title), button("Always float", `Always float ${w.name}`, broken, () => fillFloating(w)));
