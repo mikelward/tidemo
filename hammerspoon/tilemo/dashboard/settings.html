@@ -726,16 +726,16 @@ body.settings {
 </section>
 <section class="page" id="page-muted" hidden>
 <h1 id="muted">Notifications</h1>
-<p class="note">Do Not Disturb on a schedule, shared with tide's notifications.json, turned on and off through the Do Not Disturb On and Off shortcuts (Setup checklist). Focus settings' own schedules run too.</p>
+<p class="note">A Do Not Disturb schedule, shared with tide. It needs the Do Not Disturb shortcuts from Setup. A schedule that ends before it starts runs overnight.</p>
 <p class="row" id="dnd-scheduled"></p>
 <ul id="dnd-times"></ul>
 <p class="row" id="dnd-days"></p>
 <p class="error" id="dnd-error" role="alert"></p>
 <h2 id="muted-heading">Muted</h2>
-<p class="note">Apps and sites that are never marked for attention. Mute one with Cmd+M, or a right-click, on its row in the switcher's Windows or Attention tab, or type its bundle id, or site: and a host, below. macOS still shows their banners: turn those off in Notifications settings.</p>
+<p class="note">These never ask for attention. Cmd+M in the switcher mutes one. Turn off their banners in Notifications settings.</p>
 <ul id="muted-list"></ul>
 <p class="add">
-<input id="add-muted" placeholder="Mute an app's bundle id, or site:host" aria-label="Mute an app or site" spellcheck="false">
+<input id="add-muted" placeholder="Mute an app ID, such as com.apple.Mail, or site:chat.google.com" aria-label="Mute an app or site" spellcheck="false">
 </p>
 <p class="error" id="muted-error" role="alert"></p>
 <p class="row links" id="muted-links"></p>
