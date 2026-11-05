@@ -805,7 +805,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   // Sunrise and sunset is stepped past until there's a place.
   mode()[3].listeners.click();
   assert.strictEqual(lastAppearance().mode, "light");
-  assert.deepStrictEqual(place().map((li) => li.children[0].textContent), ["Latitude", "Longitude"]);
+  assert.deepStrictEqual(place().map((li) => li.children[0].textContent), ["Latitude, negative for south", "Longitude, negative for west"]);
   for (const [i, v] of [[0, "53.35"], [1, "-6.26"]]) {
     place()[i].children[1].value = v;
     place()[i].children[1].listeners.keydown({ key: "Enter" });
