@@ -841,7 +841,7 @@ function setAppearance(key, value) {
 let themeState = {};
 const OWN_MODE = { mode: undefined, label: "macOS's own" };
 const THEME_TIMES = [{ key: "light", label: "Light from", other: "dark" }, { key: "dark", label: "Dark from", other: "light" }];
-const THEME_PLACE = [{ key: "latitude", label: "Latitude" }, { key: "longitude", label: "Longitude" }];
+const THEME_PLACE = [{ key: "latitude", label: "Latitude, negative for south", example: "such as 37.8" }, { key: "longitude", label: "Longitude, negative for west", example: "such as -122.4" }];
 
 // Whether a file's text sets a mode.
 function setsMode(text) {
@@ -905,7 +905,7 @@ function renderTheme(settings, bad) {
       const li = el("li");
       const input = el("input");
       input.value = settings[c.key] === undefined ? "" : String(settings[c.key]);
-      input.placeholder = "none";
+      input.placeholder = c.example;
       input.spellcheck = false;
       input.disabled = bad;
       input.setAttribute("aria-label", c.label);
