@@ -990,7 +990,7 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
     about: [{ label: "Role", value: "AXWindow" }, { label: "Subrole", value: "AXDialog" }],
   };
   sandbox.tilemo.update({ clockFiles: [], floating: { rules: [], now: [] } });
-  assert.strictEqual(rules()[0].textContent, "No rules yet. Dialogs still float.");
+  assert.strictEqual(rules()[0].textContent, "No rules yet. Dialogs always float.");
   assert.match(now()[0].textContent, /^None/);
   assert.match(get("floating-source").textContent, /None yet/);
   sandbox.tilemo.update({
