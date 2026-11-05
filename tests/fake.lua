@@ -138,10 +138,6 @@ function M.new()
         return a.own
     end
 
-    a.badges = {} -- { app, label }, as the Dock shows them
-    function a.dock_badges()
-        return a.badges
-    end
     function a.title(id)
         return a.wins[id] and a.wins[id].title
     end

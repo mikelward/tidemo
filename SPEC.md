@@ -152,13 +152,15 @@ checked against a source or a Mac is marked *(unverified)*.
   titles with the Accessibility grant alone, which is how yabai and
   Amethyst read them *(unverified on macOS 26)*. So tilemo shouldn't need
   Screen Recording at all.
-- **Unread counts:** an app can't read other apps' notifications. It can read
-  the Dock badges, which carry the same counts:
-  - Through Accessibility, as the `AXStatusLabel` of each Dock item. That's
-    a community technique with no Apple documentation, and some apps don't
-    report through it ([MailMate list](https://lists.freron.com/mailmate/2018-October/010356.html)).
-  - Through `lsappinfo`, which can disagree with the visible badge
-    ([Cursor forum](https://forum.cursor.com/t/macos-dock-badge-stuck-at-1-after-update-os-badge-null-until-killall-dock/165949)).
+- **Notifications:** no public API lets an app read other apps'
+  notifications. Notification Center's banners are Accessibility elements,
+  though, in `com.apple.notificationcenterui`, each saying its app and text,
+  so tilemo reads them as they appear (§14.2) *(unverified on macOS 26)*.
+  The database behind them needs Full Disk Access, so tilemo leaves it
+  alone.
+- **Unread counts** are in Dock badges (Accessibility's `AXStatusLabel`)
+  and window titles, but tilemo no longer reads them: a count rises with
+  every message, wanted or not (§14.2).
 - **Browser tabs:** Chrome, Brave and Safari list their tabs, with titles
   and addresses, to AppleScript or JavaScript for Automation. Brave carries
   Chromium's AppleScript dictionary, so it's asked as Chrome is, as
@@ -240,7 +242,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Resize mode for floats, Super+Shift+R (tide §6.6) | a tilemo key mode (§5.3) | **yes** |
 | Focus follows mouse (KDE) | tilemo's own (§5.2) | **yes**, but focusing raises (§13) |
 | Nothing steals focus (tide §14) | macOS activation rules, plus tilemo's focus guard (§14) | **partial**: apps can still activate themselves |
-| Super+A lists the windows wanting attention, newest first (tide §14.4, tileco §10.3) | Dock badges, title counts, and apps activating themselves (§14.2) | **partial**: not every app says so |
+| Super+A lists the windows wanting attention, newest first (tide §14.4, tileco §10.3) | Notifications, bells, and apps activating themselves (§14.2) | **partial**: a banner a Focus hides marks nothing |
 | Minimize by key, restore from a tray of icons in the corner (tide's design) | `Super+Z` and an `hs.canvas` tray per display (§6.7) | **yes** *(unverified on a Mac)* |
 | Full-width bar with workspaces and urgency (tide §7) | tilemo's own bar over an auto-hidden menu bar, with its own status items (§8) | **partial**: app menus and other apps' status items still need the menu bar revealed |
 | SYD / LAX / NYC / LON clocks (tileco `src/clocks.js`) | bar clocks, and tileco's clock panel in the dashboard | **yes** |
@@ -2640,7 +2642,7 @@ that isn't one is left out, and the log says so.
 
 | Permission | Asked when | Buys |
 |---|---|---|
-| Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags (§5.3), Dock badges |
+| Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags (§5.3), notification banners |
 | Input Monitoring | only for the lone Super tap, if done by an event tap (§7) *(unverified that Accessibility alone isn't enough)* | seeing Option go down and up |
 | Screen Recording | never: titles come through Accessibility (§2.5), screenshots use macOS's own keys (§10), and the overview shows app icons, not thumbnails (§6.9) | nothing tilemo needs |
 | Automation, per browser | the first time the switcher's Windows tab lists tabs (§9) | tab titles and addresses |
@@ -2723,7 +2725,7 @@ Each one names a workaround, or says there is none.
 | Exact tiles for every app | Apps can refuse or round a size, such as terminals snapping to their character grid (§2.1). | The rest tile around what the app took (§5). In kitty, the grid snapping can be turned off *(unverified)*. |
 | Tiling native full-screen windows | A full-screen window lives in its own Space. | Maximize instead (§4). |
 | Own bar replacing the menu bar | The menu bar is the system's (§8). | Hide the menu bar automatically and put a bar over it, or use SketchyBar. |
-| Every window's attention request (tide §14.4) | There's no public signal for "this window wants attention" *(unverified)*. | Dock badges, title counts and self-activation (§14.2). **None** for an app that shows none of those. |
+| Every window's attention request (tide §14.4) | There's no public signal for "this window wants attention" *(unverified)*. | Notifications, bells and self-activation (§14.2). **None** for an app that does none of those. |
 | Own lock screen and login, with the hostname | The lock and login screens are the system's. | Lock Screen's "Show message when locked" can carry the hostname *(unverified on macOS 26)*. **None** for a custom lock screen. |
 | tide's idle timeline (dim, lock, off, suspend) | macOS sets its own timings (§10). | Energy and Lock Screen settings come close. `pmset` sets more, with admin rights (§11). |
 | Sharing a 16:9 slice of an ultrawide in Meet (tide §12) | Meet shares a screen, a window or a tab. | Share a window, or a virtual display from a tool such as BetterDisplay *(unverified)*. |
@@ -2771,29 +2773,41 @@ Each one names a workaround, or says there is none.
 
 ### 14.2 Attention
 
-- **What counts as wanting attention:**
-  - a Dock badge appearing or rising (§2.5);
-  - a window title gaining an unread count, such as `Chat (3)`, seen
-    through Accessibility's title notification, as tileco reads titles
-    (tileco §10.3);
-  - a window that activated itself without a grant (§14.1);
-  - a Dock icon bouncing *(unverified that it can be seen)*.
-- **A badge marks the app; a title or activation marks the window.**
-  `Super+A`'s list (§9) shows the window, or the app's last-used window.
-- **Read every two seconds, on Hammerspoon's thread,** so it asks only what
-  it needs: each Dock item's badge (`AXStatusLabel`), and only a badged
-  item's name, which one look at the running apps turns into its bundle
-  ID. It used to ask each item's name too and look each up with
-  `hs.application.get`, which walks every running app for a name: 334 ms a
-  read on CI's Mac with a near-empty Dock, and seconds on an old Mac with a
-  full one, every two seconds.
-- **The displays are read once a pass.** Each poll redraws the bar and the
-  tray, which asked for every display's ID and frames eight times, at
-  20 ms or more a read on CI's Mac. That was most of the poll. Now a read
-  is kept until Hammerspoon is next idle, or until macOS says a display
-  changed.
+- **What counts as wanting attention,** as on tide (tide §14.4):
+  - a notification, as Notification Center's banner shows it;
+  - a bell in kitty;
+  - a window that activated itself without a grant (§14.1).
+- **What doesn't:** an unread count. A Dock badge or a title such as
+  `(3) Inbox` rises with every message, wanted or not, so it marked
+  windows all day. tilemo used to read both every two seconds.
+- **A notification marks its app.** tilemo watches Notification Center
+  (`com.apple.notificationcenterui`) through Accessibility, for its window
+  and the banners in it appearing *(unverified on macOS 26: which of
+  `AXWindowCreated`, `AXCreated` and `AXLayoutChanged` fire)*.
+  - A banner's subrole starts with `AXNotificationCenter`. Its
+    `AXStackingIdentifier` names the app's bundle ID, else its
+    `AXDescription`, "App, title, body", names the app *(unverified on
+    macOS 26)*.
+  - A browser's body leads with its site, `mail.google.com`, so a
+    browser's mark goes to its window whose front tab is on that site, as
+    the switcher last saw it (§9), else to its last-used window, and
+    muting the site (below) silences it.
+  - A notification from the app you're in, or the site in front, isn't
+    marked.
+  - A banner a Focus hides never shows, so it marks nothing. Nor does one
+    from an app with banners off in System Settings.
+- **A bell marks its window.** kitty's bell only bounces its Dock icon on
+  a Mac, which tilemo can't see. So conf's kitty runs `tide-bell` on a
+  bell, which asks kitty which window rang and opens
+  `hammerspoon://tide-bell?window=<id>`. That marks the window, unless
+  it's the one you're in. Any program of yours can open the URL, and all
+  it does is mark a window.
+- **The `!` and icons need no polling.** Every two seconds tilemo still
+  reads titles, for matching windows after a restart, and clears the
+  focused window's marks.
 - **A mark clears** when you focus the window or app, as on tide
-  (tide §14.4).
+  (tide §14.4). A browser notification's mark clears only on a window whose
+  front tab is on its site, so reading Chat doesn't clear Mail's.
 - **Where it shows:** the app icon of each marked window on its
   workspace's chip in the bar, which a click focuses (§8); the chip's
   attention color; the `!` on the menu bar item's name; and `Super+A`'s
@@ -2808,9 +2822,9 @@ Each one names a workaround, or says there is none.
   - **Each entry** is an app's bundle id (`com.google.Chrome.app.…` for an
     installed web app, which has its own), or `site:<host>` for a site in
     a browser tab (`site:chat.google.com`).
-  - **An app matches** a mark for its window, or its Dock badge.
-  - **A site matches** a browser window's mark when that window's front
-    tab is on the host, as tilemo last saw it: the switcher's tab list
+  - **An app matches** a mark for its window, or its notification.
+  - **A site matches** a browser's notification from the host, and a
+    browser window's mark when that window's front tab is on the host, as tilemo last saw it: the switcher's tab list
     (§9) reads which tab is in front, and that's remembered per window
     until the next time the switcher opens. A host matches exactly,
     ignoring case: `site:chat.google.com` isn't `mail.google.com`.
@@ -3643,9 +3657,6 @@ Each one names a workaround, or says there is none.
 - [MacMost](https://macmost.com/how-to-use-spotlight-actions-in-macos-tahoe.html),
   [iThinkDiff](https://www.ithinkdiff.com/spotlight-macos-tahoe-quick-keys-clipboard/):
   Spotlight actions and Quick Keys in macOS 26.
-- [MailMate list](https://lists.freron.com/mailmate/2018-October/010356.html),
-  [Cursor forum](https://forum.cursor.com/t/macos-dock-badge-stuck-at-1-after-update-os-badge-null-until-killall-dock/165949):
-  reading Dock badges.
 - [iBoysoft](https://iboysoft.com/wiki/macos-mouse-acceleration.html),
   [NoMouseAccel](https://github.com/apsun/NoMouseAccel): pointer
   acceleration.

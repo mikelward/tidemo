@@ -972,9 +972,9 @@ hiding the system menu bar for good, so tilemo's bar is the only one:
 
   Doing it would take a compiled Objective-C bridge or a private call, so
   it waits for Hammerspoon to add one. Reversible once it does.
-- **Attention polls every 2 s** for Dock badges and window titles, rather
-  than watching Accessibility notifications. A count can take up to 2 s to
-  show. Reversible: `AXTitleChanged` observers in the adapter.
+- **Notification Center's banners are told apart by their text**
+  (2026-11-05): two identical banners showing at once mark once.
+  Reversible: `M.notifications` in `hs_adapter.lua`.
 - **The focus guard guesses what you asked for from your input**
   (SPEC.md §14.1). A focus is yours if it's another window of the app you
   were in, one tilemo asked for, one that follows a click, Return or a key
@@ -1078,3 +1078,13 @@ DDC, with a sign saying the level. Only `tests/bar_test.lua` covers the
 choice of keys. **Check on a Mac** (Intel with `ddcctl` and Apple silicon
 with `m1ddc`) that the keys reach the eventtap rather than only macOS's
 sign, and that holding a key repeats.
+
+## Check notifications and bells on a real Mac
+
+- Which of `AXWindowCreated`, `AXCreated` and `AXLayoutChanged` fire on
+  `com.apple.notificationcenterui` as a banner shows, and whether a banner
+  has `AXStackingIdentifier` and an "App, title, body" `AXDescription`
+  (SPEC.md §14.2). If neither names the app, try the banner's children.
+- That a Chrome banner's body leads with its site.
+- That conf's `command_on_bell` gets `KITTY_WINDOW_ID`, and that `kitten @
+  ls`'s `platform_window_id` is the window's `hs.window:id()`.

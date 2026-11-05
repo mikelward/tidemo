@@ -759,16 +759,16 @@ t.test("choosing a window from the Attention tab goes there, with its workspace"
     local a, wm = setup(2)
     a.focus_ = 2
     wm:act("send", "3")
-    wm.attention:title(2, "com.example.app", "Chat (1)")
+    wm.attention:rang(2, "com.example.app")
     a.focus_ = 1
     wm:activate(wm:attention_windows()[1])
     t.eq(wm.current, "3")
     t.eq(a.focus_, 2)
 end)
 
-t.test("a badged app that quit isn't listed as wanting attention", function()
+t.test("a notifying app that quit isn't listed as wanting attention", function()
     local _, wm = setup(2)
-    wm.attention:badge("com.example.gone", "3")
+    wm.attention:notified("com.example.gone")
     t.eq(wm:attention_windows(), {})
 end)
 
@@ -776,26 +776,24 @@ t.test("the windows wanting attention, as the launcher lists them, come newest f
     local a, wm = setup(3)
     a.wins[2].app = "com.example.chat"
     wm.windows[2].app = "com.example.chat"
-    wm.attention:title(3, "x", "Mail (1)")
-    wm.attention:title(2, "com.example.chat", "Chat (1)")
-    wm.attention:badge("com.example.chat", "1")
-    wm.attention:badge("com.example.gone", "2")
+    wm.attention:rang(3, "x")
+    wm.attention:rang(2, "com.example.chat")
+    wm.attention:notified("com.example.chat")
+    wm.attention:notified("com.example.gone")
     t.eq(wm:attention_windows(), { 2, 3 })
 end)
 
-t.test("a count rising in the window you're in doesn't want attention", function()
+t.test("a notification from the app you're in doesn't want attention", function()
     local a, wm = setup(2)
     a.focus_ = 2
     wm:focused(2)
-    a.wins[2].title = "Chat (1)"
-    wm:poll_attention()
+    wm:notified(wm.windows[2].app)
     t.eq(#wm.attention:list(), 0)
-    a.wins[1].title = "Mail (2)"
-    wm:poll_attention()
+    wm:notified("com.example.other")
     t.eq(#wm.attention:list(), 1)
 end)
 
-t.test("a badged app's mark goes to its last used window, whichever workspace it's on", function()
+t.test("a notifying app's mark goes to its last used window, whichever workspace it's on", function()
     local a, wm = setup(3)
     for _, id in ipairs({ 1, 2 }) do
         a.wins[id].app = "com.example.chat"
@@ -811,7 +809,7 @@ t.test("a badged app's mark goes to its last used window, whichever workspace it
     a.tick()
     a.focus_ = 3
     wm:focused(3)
-    wm.attention:badge("com.example.chat", "1")
+    wm.attention:notified("com.example.chat")
     wm:activate(wm:attention_windows()[1])
     t.eq(a.focus_, 2)
     t.eq(wm.current, "4")
@@ -821,7 +819,7 @@ t.test("the menu bar state marks here, occupied and wanting attention", function
     local a, wm = setup(2)
     a.focus_ = 2
     wm:act("send", "3")
-    wm.attention:title(2, "x", "c (1)")
+    wm.attention:rang(2, "x")
     local st = wm:bar_state()
     t.eq(#st, 5, '"in", the standing ones, then 3')
     t.eq(st[1].name, "in")
