@@ -1444,7 +1444,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
 | `Super+Shift+V` | the picker, on its Fill tab: your snippets and each Bitwarden login's username, password and 2FA code; Return types it (§9.1) | hotkey |
 | `Super+;` | the picker, on its Characters tab: emoji and symbols by name (§9.1); Return pastes | hotkey |
-| `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey; Accessibility presses its close button |
+| `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey, on `Super+F19` with Karabiner's rule (below); Accessibility presses its close button |
 | `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2) | hotkeys, enabled only then |
 | `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
 | `Super+L` | lock | hotkey; macOS's lock screen |
@@ -1483,6 +1483,13 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     key, and needs neither permission. tilemo's own tap is the fallback.
   - The rule sends the tap as `Super+F20`, a key no keyboard here has, so
     it's told apart from `Super+Space`.
+- **Karabiner sends `Win+Backspace` as `Super+F19`.** On one Mac,
+  something below Hammerspoon took Ctrl+Option+Command+Backspace: neither a
+  hotkey nor an event tap saw it, though plain Backspace and the other
+  chords got through. A chord on a key no keyboard here has does, as the
+  tap's F20 shows. The Shortcuts list still says `Super+Backspace`, and
+  with Option as Super it stays on Backspace, which nothing takes there. A
+  rule copy that still sends Backspace is reported as out of date.
 - **`Super+1…9` and `Super+Shift+1…9` count along the bar,** as on tide
   (tide §6.6). `Super+N` shows the Nth workspace in bar order, home first,
   so `Super+1` is "in"; `Super+Shift+N` sends the focused window there,
