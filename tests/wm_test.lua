@@ -87,30 +87,16 @@ t.test("a dialog floats, centered on its app's focused window, and never tiles",
     t.eq(frame(a, 3), { x = 328, y = 453, w = 400, h = 200 })
 end)
 
-t.test("a float with no parent opens under the pointer, on its display", function()
+-- Not under the pointer: a slow app's window, such as System Settings'
+-- About This Mac, arrives after the pointer has moved on, and would land
+-- where it was.
+t.test("a float with no parent centers on its display, wherever the pointer is", function()
     local a, wm = setup(2)
     a.px, a.py = 1500, 300
     a.add(3, { app = "com.apple.systempreferences", pid = 300, frame = { x = 0, y = 0, w = 600, h = 500 } })
     wm:sync()
     t.eq(wm.windows[3].floating, true)
-    t.eq(frame(a, 3), { x = 1200, y = 50, w = 600, h = 500 })
-end)
-
-t.test("near a corner, it stays on its display and still under the pointer", function()
-    local a, wm = setup(0)
-    a.px, a.py = 1910, 1075
-    a.add(1, { app = "com.apple.systempreferences", frame = { x = 0, y = 0, w = 600, h = 500 } })
-    wm:sync()
-    t.eq(frame(a, 1), { x = 1320, y = 580, w = 600, h = 500 })
-end)
-
-t.test("with the pointer off its display's area, it centers on the display", function()
-    local a, wm = setup(0)
-    -- In the menu bar's strip.
-    a.px, a.py = 1500, 10
-    a.add(1, { app = "com.apple.systempreferences", frame = { x = 0, y = 0, w = 600, h = 500 } })
-    wm:sync()
-    t.eq(frame(a, 1), { x = 660, y = 303, w = 600, h = 500 })
+    t.eq(frame(a, 3), { x = 660, y = 303, w = 600, h = 500 })
 end)
 
 t.test("a dialog centers on its parent, wherever the pointer is", function()

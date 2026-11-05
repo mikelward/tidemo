@@ -1015,15 +1015,14 @@ function M:place_float(id, f)
     local w = math.min(f.frame.w, math.floor(area.w * M.FLOAT_CAP))
     local h = math.min(f.frame.h, math.floor(area.h * M.FLOAT_CAP))
     local cx, cy = center(area)
+    -- One with no parent centers on its display, as on tide, not under the
+    -- pointer: a slow app's window arrives after the pointer has moved on,
+    -- and lands where it was. Focus follows mouse leaves it on top anyway
+    -- (M:buries).
     local parent = self.a.app_focused(f.pid)
     local pf = parent and parent ~= id and self.a.state(parent)
     if pf then
         cx, cy = center(pf.frame)
-    else
-        local px, py = self.a.pointer()
-        if px and py and px >= area.x and px < area.x + area.w and py >= area.y and py < area.y + area.h then
-            cx, cy = px, py
-        end
     end
     local x = math.floor(cx - w / 2 + 0.5)
     local y = math.floor(cy - h / 2 + 0.5)
