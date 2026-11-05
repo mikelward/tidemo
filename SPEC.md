@@ -357,12 +357,14 @@ can open before its page names it, and a title rule needs that name.
 Placing and keeping floats:
 
 - **A new float centers on its parent,** the app's focused window (tide
-  §6.4). One with no parent, like System Settings, centers on the pointer
-  when that's on its display, or else on the display. tide centers it on
-  the display; here it opens under the pointer, so the pointer's next move
-  doesn't focus the tile beside it, whose raise could bury it (below). One
-  that opens already placed, like a palette remembering its spot, keeps its
-  place.
+  §6.4). One with no parent, like System Settings, centers on its display,
+  as on tide. It used to open under the pointer, so the pointer's next move
+  wouldn't focus the tile beside it. But a slow app's window, such as About
+  This Mac, arrived after the pointer had moved on and landed where it had
+  been. Focus follows mouse now leaves a tile alone while another app's
+  float is in front of it (below), so the pointer can't bury it either way.
+  One that opens already placed, like a palette remembering its spot, keeps
+  its place.
 - **Floats stay above the tiles.** macOS has no public way to set another
   app's window level. Tiles never overlap, though, so the only thing that
   can cover a float is a tile being raised.
