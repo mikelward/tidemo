@@ -130,6 +130,15 @@ M.plain = {
     { mods = { "shift" }, key = "f13", action = "screenshot", arg = "region" },
 }
 
+-- Mission Control's and App Exposé's own keys, plain Control, not Super:
+-- the overview, of every workspace or this one (SPEC.md §6.9). macOS
+-- holds them until setup-macos turns off symbolic hotkeys 32 and 33, and
+-- until then they fail to register without a word (SPEC.md §7.3).
+M.overview = {
+    { mods = { "ctrl" }, key = "up", action = "overview", arg = "all" },
+    { mods = { "ctrl" }, key = "down", action = "overview", arg = "current" },
+}
+
 -- macOS's own screenshot keys, so tilemo needs no Screen Recording
 -- permission of its own (SPEC.md §10). They save the shot to Screenshot's
 -- folder, and tilemo copies it to the clipboard from there (shots.lua). A
@@ -223,6 +232,9 @@ M.DOES = {
         return TABS[arg]
     end,
     dashboard = "Dashboard",
+    overview = function(arg)
+        return arg == "current" and "Overview of this workspace" or "Overview of every workspace"
+    end,
     picker = "Clipboard and characters",
     flip = "Home, or the workspace used last",
     last = "The workspace used last, other than home",
@@ -312,7 +324,8 @@ end
 -- first, and a later binding on a chord already taken is left out, in
 -- `skipped` as { chord, keys, does, why }: with Super on Option, Super+Print
 -- is Alt+Print, which stays tide's window screenshot (Shift+Print still
--- takes a region). With Karabiner's Super, its own combinations come too.
+-- takes a region). The overview's Ctrl+Up and Ctrl+Down come next. With
+-- Karabiner's Super, its own combinations come too.
 function M.bindings(super)
     local out, seen, skipped = {}, {}, {}
     local function add(mods, b, is_super)
@@ -339,6 +352,9 @@ function M.bindings(super)
         }
     end
     for _, b in ipairs(M.plain) do
+        add(b.mods, b, false)
+    end
+    for _, b in ipairs(M.overview) do
         add(b.mods, b, false)
     end
     for _, b in ipairs(M.map) do

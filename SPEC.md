@@ -115,7 +115,8 @@ checked against a source or a Mac is marked *(unverified)*.
   ([HN](https://news.ycombinator.com/threads?id=irth)).
   - It switches instantly, and the workspace count is just config.
   - But Cmd+Tab and Mission Control show every workspace's windows, and
-    native full-screen apps misbehave (scripts `docs/MACOS.md`).
+    native full-screen apps misbehave (scripts `docs/MACOS.md`). tilemo
+    turns Mission Control off and has its own overview instead (§6.9).
   - **tilemo parks this way by default** (§6). macOS won't move a window
     wholly off screen, so a parked window keeps a 1 pt sliver inside a
     corner of its display, as AeroSpace's do *(unverified on a Mac)*.
@@ -222,7 +223,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Lone window 80% on ultrawide, 60% from 32:9 | same layout, per display (§5) | **yes** |
 | New windows join the end of the stack, with a setting for elsewhere (tide §6.1) | tilemo state (§5) | **yes** |
 | Layout, `mfact`, master count per workspace, and per display within it | tilemo state | **yes** |
-| Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide §6.5) | windows parked off screen, as AeroSpace does, or minimized as tileco does, named in tilemo's state (§6) | **partial**: Mission Control shows every workspace's windows, and a sliver of each parked window shows in a corner; minimizing instead animates each switch |
+| Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide §6.5) | windows parked off screen, as AeroSpace does, or minimized as tileco does, named in tilemo's state (§6) | **partial**: Mission Control would show every workspace's windows, so setup turns it off and tilemo's overview takes its keys (§6.9); a sliver of each parked window shows in a corner; minimizing instead animates each switch |
 | A new window on a workspace that asks, "in" by default, asks for a workspace name (tide §6.5) | tilemo's name prompt, an `hs.chooser` (§6.2) | **yes** |
 | Pinned apps stay open on their workspace (tide §6.5) | the close key and the prompt's Esc leave them open; Cmd+W, Cmd+Shift+W and Cmd+Q are hotkeys while one has focus (§6.2) | **partial**: by app name; the close button still closes |
 | `TIDE_WORKSPACE` in launched apps (tide §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
@@ -577,8 +578,8 @@ Focus follows mouse pauses, and focus stays where it is:
 - **While the pointer is in the menu bar's strip,** including an
   auto-hidden menu bar's reveal edge, or over the Dock or tilemo's bar
   (Amethyst#1221).
-- **While tilemo's switcher, name prompt or dashboard is open.** It keeps
-  the keyboard until it closes (tide §14.2).
+- **While tilemo's switcher, name prompt, dashboard or overview is
+  open.** It keeps the keyboard until it closes (tide §14.2).
 - **While the window under the pointer is a tile with another app's float
   in front of it.** Focusing the tile would bury the float for good (§5.1).
   That includes the tile's own dialog, which step 4 would prefer: focusing
@@ -806,7 +807,10 @@ API: the same Accessibility move a retile makes.
   takes the frame it had before the park.
 - **The costs, plainly:**
   - Mission Control shows every workspace's windows, not just the one on
-    screen.
+    screen. So `setup-macos` turns it off, its keys, gestures and hot
+    corners (§6.6), and tilemo's overview takes its place: Ctrl+Up shows
+    every workspace's windows grouped by workspace, Ctrl+Down this
+    workspace's (§6.9).
   - A sliver of every parked window shows in a corner of each display.
     Focus follows mouse passes over it.
   - Tools that read window positions, such as screenshot pickers,
@@ -1230,6 +1234,11 @@ The checklist (§10) sets these, and undoes `setup-macos`'s nine Spaces:
   "Hold Option key while dragging windows to tile" off. With Super as
   Option, the second would fight Super+drag (§5.3).
 - **"Click wallpaper to reveal desktop"** set to "Only in Stage Manager".
+- **Mission Control and App Exposé off,** since parked windows would
+  crowd them (§6): `setup-macos` turns off their keys, Ctrl+Up and
+  Ctrl+Down (symbolic hotkeys 32 and 33, `configure_shortcuts_tilemo` in
+  scripts), the trackpad's swipes for them, and the hot corners. tilemo's
+  overview takes the two keys (§6.9).
 
 ### 6.7 Windows you minimized
 
@@ -1314,6 +1323,63 @@ Cmd+Tab and Mission Control stay honest with them. The private call is
 the risk, and it breaks about once a year at a major macOS release *(from
 memory, not counted)*.
 
+### 6.9 The overview, in place of Mission Control
+
+**Built** (2026-11-05), only the tests have run it. Parking keeps every
+workspace on one Space, so Mission Control would show them all mixed
+together (§6). `setup-macos` turns it off (§6.6), and tilemo has its own.
+
+- **Ctrl+Up shows every workspace's windows; Ctrl+Down only this
+  workspace's,** in place of App Exposé. They're plain Control, not Super,
+  the keys Mission Control had. Under the PC keyboard's modifier rotation
+  that's physical Alt+Up and Alt+Down (§7.2).
+- **What it is:** a full-screen borderless `hs.webview` over the display
+  the keys act on, built as the dashboard is (§8): `overview.lua` makes the
+  data, `overview_hs.lua` shows it, and `dashboard/overview.html` and
+  `overview.js` are the page, with tileco's stylesheet.
+- **The groups:** each workspace with a window tilemo manages is a group,
+  headed by its name. The current workspace comes first, then the rest in
+  bar order (§8). Ctrl+Down shows the current workspace even with no
+  windows, and says so.
+- **The cards:** every window tilemo manages on that workspace, on any
+  display, each with its app's icon, its title and its app's name.
+  - The order is each display's in turn, in the order macOS lists the
+    displays: its tiles in stack order, then its floats, bottom to top.
+    Then any left over, such as a window on a display that went away.
+  - A window you minimized is there, marked "minimized" (§6.7).
+  - A window tilemo doesn't manage, such as picture-in-picture, isn't.
+- **No thumbnails.** They'd need Screen Recording, which tilemo never asks
+  for (§11.1). The icons come from each app's bundle
+  (`hs.image.imageFromAppBundle`), read once per app and sent as data
+  URLs. Thumbnails as an opt-in setting are in `TODO.md`.
+- **Choosing:**
+  - A click on a card, or the arrow keys and Return, activates that window
+    (Activate, §6.1): its workspace comes along, onto this display, and a
+    window you minimized is restored. The arrows step through the cards in
+    order, and the selection starts on the focused window.
+  - A click on a group's header shows that workspace.
+  - Typing filters the cards by title and app name, with tide's fuzzy
+    matcher (`tide-fuzzy.js`, the launcher's). Backspace takes a letter
+    back.
+- **Closing:** Esc, the same key again, a click on empty space, or a click
+  on another window. The other key while it's open switches it to that
+  scope.
+- **Focus follows mouse pauses** while it's open, as for the dashboard
+  (§5.2).
+- **The page talks to tilemo** as the dashboard does: tilemo calls
+  `tilemo.update(state)`, and the page posts `{ activate: id }`,
+  `{ show: name }` or `{ close: true }` to the `tilemo` message handler.
+- **The keys need macOS to let go of them.** `RegisterEventHotKey` fails
+  silently on a key the system still holds (§2.2). `setup-macos` frees
+  Ctrl+Up and Ctrl+Down by turning off symbolic hotkeys 32 and 33
+  (mikelward/scripts, `configure_shortcuts_tilemo`, §7.3). On a Mac that
+  hasn't run it, Mission Control keeps them.
+- **Unchecked:** *(unverified on a Mac)* the page's look, that the keys
+  reach tilemo once setup has run, that a click on another window closes
+  it, and whether conf's PC-arrows Karabiner rule, which sends physical
+  Ctrl+Home as Control+Up outside terminals, reaches tilemo as Ctrl+Up and
+  opens the overview.
+
 ## 7. Keys
 
 ### 7.1 Where Super comes from
@@ -1371,6 +1437,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+End` | the workspace you used last other than "in" and this one: from "in" where `Super+Tab` goes, from another the one before it | hotkey |
 | `Super+A` | the switcher, on its Attention tab (§14.2) | hotkey |
 | `Super+Shift+Space` | dashboard (§8) | hotkey |
+| `Ctrl+Up` | the overview: every workspace's windows, grouped by workspace, in place of Mission Control (§6.9) | hotkey, once `setup-macos` frees it (§7.3) |
+| `Ctrl+Down` | the overview of this workspace's windows, in place of App Exposé (§6.9) | hotkey, once `setup-macos` frees it (§7.3) |
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
 | `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
 | `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
@@ -1552,7 +1620,9 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   - 118–126 (Option+1…9, "Switch to Desktop N"), set by `setup-macos` now;
   - 64 (Spotlight on Option+Space): Spotlight moves back to Cmd+Space,
     physical Ctrl+Space;
-  - 79 and 81 (Ctrl+Option+arrows, move a Space left and right).
+  - 79 and 81 (Ctrl+Option+arrows, move a Space left and right);
+  - 32 and 33 (Ctrl+Up and Ctrl+Down, Mission Control and App Exposé),
+    which tilemo's overview takes (§6.9).
 - **Amethyst:** no longer `setup-macos`'s default (§19, question 4), so its
   `mod1`-`mod4` combinations go. `setup-macos --wm amethyst` still sets it
   up, with conf's `amethyst.yml`, for a machine that wants it.
@@ -2557,7 +2627,7 @@ that isn't one is left out, and the log says so.
 |---|---|---|
 | Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags (§5.3), Dock badges |
 | Input Monitoring | only for the lone Super tap, if done by an event tap (§7) *(unverified that Accessibility alone isn't enough)* | seeing Option go down and up |
-| Screen Recording | never: titles come through Accessibility (§2.5), and screenshots use macOS's own keys (§10) | nothing tilemo needs |
+| Screen Recording | never: titles come through Accessibility (§2.5), screenshots use macOS's own keys (§10), and the overview shows app icons, not thumbnails (§6.9) | nothing tilemo needs |
 | Automation, per browser | the first time the switcher's Windows tab lists tabs (§9) | tab titles and addresses |
 | Automation, for System Events | the first time tide's light and dark schedule switches the Mac (§10) | setting macOS's appearance |
 | Location Services | when you press its Setup checklist button, the first time: tilemo looks for where the Mac is for a minute, so macOS asks and lists Hammerspoon in Privacy & Security *(unverified)*; after that the button opens the list | the Wi-Fi network's name, on the bar and the Network page (§8, §15) |
@@ -2632,7 +2702,7 @@ Each one names a workaround, or says there is none.
 | Floats always on top | No public way to set another app's window level (§5.1), and raising another app's window doesn't put it back over the app just focused (seen on a Mac, 2026-11-01). | Hammerspoon's own floats get a floating window level. Focus follows mouse leaves a tile with another app's float in front of it alone. A true window level for other apps needs yabai's scripting addition, which needs SIP lowered: **none** within §1. |
 | Nothing ever steals focus (tide §14) | An app can activate itself, and macOS decides whether it may. | tilemo never focuses anything unasked, and hands focus back when an app takes it without a grant (§14.1) *(unverified that it can act in time)*. |
 | Dimming exactly the inactive windows | tilemo can't draw inside or between other apps' windows (§2.4). | One dark layer over the windows with a hole for the focused one, which dims the desktop too (§5.6). |
-| Instant workspace switches with an honest Cmd+Tab and Mission Control | Hiding windows off screen leaves them in Cmd+Tab and Mission Control; minimizing and Spaces animate (§2.3, §6). | Park, and bring the workspace along when Cmd+Tab picks a parked window; or minimize with the Scale effect (`hide = "minimize"`). **No** way to get all three at once. |
+| Instant workspace switches with an honest Cmd+Tab and Mission Control | Hiding windows off screen leaves them in Cmd+Tab and Mission Control; minimizing and Spaces animate (§2.3, §6). | Park, and bring the workspace along when Cmd+Tab picks a parked window; turn Mission Control off and use tilemo's overview on its keys (§6.9); or minimize with the Scale effect (`hide = "minimize"`). **No** way to get all three at once. |
 | One workspace pool shared by every monitor (tide §6.5) | Parked and minimized windows have no display of their own, and native Spaces are per display. | tilemo tracks each workspace's display itself, as tileco does (tileco §6.1). |
 | Moving a window to a native Space | Only private calls can (§2.3). | Workspaces by parking windows off screen, or minimizing (§6). |
 | Exact tiles for every app | Apps can refuse or round a size, such as terminals snapping to their character grid (§2.1). | The rest tile around what the app took (§5). In kitty, the grid snapping can be turned off *(unverified)*. |
@@ -3467,7 +3537,8 @@ Each one names a workaround, or says there is none.
   - the Hammerspoon config, if tilemo starts as route B (§3).
 - **scripts:** `setup-macos`. It installs tilemo, frees the keys in §7.3,
   removes Amethyst and Rectangle, applies the Mission Control settings
-  (§6.6), and stops making nine Spaces.
+  (§6.6), turning Mission Control's keys, gestures and hot corners off for
+  tilemo's overview (§6.9), and stops making nine Spaces.
 - **tide:** the layout geometry and its test fixtures, shared so tilemo
   doesn't keep its own copy, and the picker's character list (§9.1),
   which `make check-tide` compares.

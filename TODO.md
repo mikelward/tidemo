@@ -181,6 +181,30 @@ Mac:**
 - `Super+Z` reaches tilemo through Karabiner as Ctrl+Option+Command+Z,
   with nothing else on that chord.
 
+## The overview, in place of Mission Control
+
+**Built** (SPEC.md §6.9): Ctrl+Up shows every workspace's windows as
+cards grouped by workspace, Ctrl+Down this workspace's. Only the tests
+have run it. **Check on a Mac:**
+
+- once `setup-macos` has turned off symbolic hotkeys 32 and 33, Ctrl+Up and
+  Ctrl+Down reach tilemo, and the settings window's Shortcuts list them as
+  registered;
+- the page fills the display the keys act on, the icons show, and it
+  follows light and dark;
+- a card's click, and Return, bring the window and its workspace, and
+  restore one you minimized; a header's click shows its workspace;
+- Esc, the same key again, a click on empty space and a click on another
+  window each close it, and focus goes back where it was;
+- whether conf's PC-arrows rule, which sends physical Ctrl+Home as
+  Control+Up outside terminals, opens the overview; if it does, the rule
+  should send Command+Up instead, or tilemo should pick other keys.
+
+**Later, as an opt-in setting:** window thumbnails on the cards. They
+need Screen Recording (`hs.window:snapshot()` or ScreenCaptureKit), which
+tilemo never asks for now (SPEC.md §11.1), so off by default, with the
+setup checklist asking for the permission only once it's on.
+
 ## Mute: apps and sites that never want attention
 
 **Built** (SPEC.md §14.2, §15): `muted` in tide's `workspaces.json` and
@@ -290,6 +314,19 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
   Super+Backspace stays bound where it works.
 
 ## Decisions needing review
+
+- **The overview's window order** (SPEC.md §6.9, 2026-11-05): each
+  display in turn, in `wm:screens()`' order, its tiles in stack order, then
+  its floats bottom to top, then any left over (a window on a display
+  that went away, one you minimized out of the stack) in the order you
+  minimized them, then by id.
+- **The overview's selection starts on the focused window,** and the
+  arrows step through the cards in order, Up and Left back, Down and Right
+  on, stopping at the ends, rather than moving by row in the grid.
+- **The other overview key while it's open switches scope** in the same
+  page; only the same key again closes it.
+- **Ctrl+Down with an empty current workspace** shows its header and "No
+  windows on this workspace", rather than nothing or every workspace.
 
 - **Parking is the default; the setting is `hide`,** `"park"` or
   `"minimize"` (SPEC.md §6, 2026-11-05), a start() option only: tide has

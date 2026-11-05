@@ -35,6 +35,7 @@ local namealert = require("tilemo.namealert")
 local adapter_mod = require("tilemo.hs_adapter")
 local ffm_mod = require("tilemo.ffm")
 local dashboard_hs = require("tilemo.dashboard_hs")
+local overview_hs = require("tilemo.overview_hs")
 local launcherpage = require("tilemo.launcherpage")
 local picker_hs = require("tilemo.picker_hs")
 local picker = require("tilemo.picker")
@@ -730,6 +731,12 @@ function M.start(config)
     self.dashboard = dashboard_hs.new(self)
     self.wm.open_dashboard = function()
         self.dashboard.show()
+    end
+    -- Ctrl+Up and Ctrl+Down: the overview, in place of Mission Control
+    -- and App Exposé (SPEC.md §6.9).
+    self.overview = overview_hs.new(self)
+    self.wm.open_overview = function(scope)
+        self.overview.show(scope)
     end
     -- Super+V's picker, whose watcher keeps what you copy from now on.
     self.picker = picker_hs.new(self)

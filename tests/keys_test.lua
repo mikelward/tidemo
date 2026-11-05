@@ -252,7 +252,25 @@ end)
 t.test("with Karabiner, every binding gets its own chord", function()
     local list, skipped = keys.bindings(keys.KARABINER)
     t.eq(#skipped, 0)
-    t.eq(#list, #keys.map + #keys.plain + #keys.karabiner_only)
+    t.eq(#list, #keys.map + #keys.plain + #keys.overview + #keys.karabiner_only)
+end)
+
+t.test("Ctrl+Up and Ctrl+Down open the overview, in place of Mission Control and App Exposé", function()
+    for _, super in ipairs({ keys.KARABINER, keys.OPTION }) do
+        local list, skipped = keys.bindings(super)
+        local by = {}
+        for _, b in ipairs(list) do
+            if b.action == "overview" then
+                by[b.keys] = { b.mods, b.key, b.arg, b.does }
+            end
+        end
+        t.eq(by["Ctrl+Up"], { { "ctrl" }, "up", "all", "Overview of every workspace" })
+        t.eq(by["Ctrl+Down"], { { "ctrl" }, "down", "current", "Overview of this workspace" })
+        for _, s in ipairs(skipped) do
+            t.eq(s.keys:match("^Ctrl%+") == nil, true, s.keys)
+        end
+    end
+    t.eq(type(require("tilemo.wm").actions.overview), "function")
 end)
 
 t.test("Super+W opens a terminal on the workstation; the VM's has no key", function()

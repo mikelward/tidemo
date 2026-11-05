@@ -4049,6 +4049,15 @@ function A.dashboard(self)
     end
 end
 
+-- Ctrl+Up and Ctrl+Down: the overview, in place of Mission Control and
+-- App Exposé, of every workspace ("all") or the current one ("current"),
+-- or closes it (SPEC.md §6.9).
+function A.overview(self, scope)
+    if self.open_overview then
+        self.open_overview(scope)
+    end
+end
+
 function A.layout(self, mode)
     local ws = self:current_part()
     if ws then
