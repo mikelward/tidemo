@@ -107,7 +107,7 @@ alone (§7.1). By hand:
    "Automatically hide and show the menu bar": Never. tilemo's bar covers
    it, so it no longer slides in when the pointer reaches the top; the
    Apple logo's **Show Menu Bar** brings it back until Esc, Return, or a
-   click below it.
+   click below it. Until it's set, tilemo says so when it starts.
 4. Reload Hammerspoon's config.
 
 To update, `git pull` and `make install` again (or run `setup`): tilemo

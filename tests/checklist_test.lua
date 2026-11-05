@@ -95,4 +95,24 @@ t.test("tilemo doctor names Accessibility only when it's off", function()
     t.eq(checklist.doctor({}), {}, "unknown isn't a problem to report")
 end)
 
+t.test("tilemo doctor says when the menu bar is set to hide, with the fix", function()
+    local lines = checklist.doctor({ accessibility = true, menu_bar_hidden = true })
+    t.eq(lines, { checklist.MENU_BAR_NOTICE })
+    t.eq(lines[1]:find("Never", 1, true) ~= nil, true)
+    t.eq(checklist.doctor({ accessibility = true, menu_bar_hidden = false }), {})
+    t.eq(#checklist.doctor({ accessibility = false, menu_bar_hidden = true }), 2, "both, not just the first")
+end)
+
+t.test("the checklist asks for the menu bar shown, from Control Center", function()
+    local item
+    for _, i in ipairs(checklist.ITEMS) do
+        if i.id == "menu_bar" then
+            item = i
+        end
+    end
+    t.eq(item ~= nil, true)
+    t.eq(item.link, "control_center")
+    t.eq(item.how:find("Never", 1, true) ~= nil, true)
+end)
+
 t.done("checklist")

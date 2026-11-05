@@ -28,6 +28,7 @@ M.PANE_IDS = {
     lock_screen = "com.apple.Lock-Screen-Settings.extension",
     login_items = "com.apple.LoginItems-Settings.extension",
     desktop_dock = "com.apple.Desktop-Settings.extension",
+    control_center = "com.apple.ControlCenter-Settings.extension",
     privacy = "com.apple.settings.PrivacySecurity.extension",
 }
 

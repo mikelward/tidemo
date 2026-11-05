@@ -54,6 +54,13 @@ M.PERMISSIONS = {
 -- The settings to change by hand, ticked off when done.
 M.ITEMS = {
     {
+        id = "menu_bar",
+        title = "Keep the menu bar shown",
+        link = "control_center",
+        how = "Set \"Automatically hide and show the menu bar\" to Never. tide's bar then covers it, so it doesn't slide in when the pointer reaches the top; the Apple logo's Show Menu Bar brings it up.",
+        ref = "§8",
+    },
+    {
         id = "mission_control",
         title = "One Space per display",
         link = "desktop_dock",
@@ -200,14 +207,22 @@ end
 
 -- What `tilemo doctor` says of the permissions: a line for each that's
 -- off and needed, none when they're fine.
+-- Said at start, and by the doctor, while macOS hides the menu bar: tide's
+-- bar can't cover a menu bar that slides in over everything.
+M.MENU_BAR_NOTICE = "The menu bar is set to hide, so it slides in over tide's bar whenever the pointer reaches the top:"
+    .. " in System Settings, Control Center, set \"Automatically hide and show the menu bar\" to Never (or run setup and log out)."
+
 function M.doctor(facts)
+    facts = facts or {}
+    local lines = {}
     if M.permission_state("accessibility", facts) == "off" then
-        return {
-            "Accessibility is off for Hammerspoon, so nothing tiles, focus doesn't follow the mouse and the mouse's drags do nothing:"
-                .. " turn it on in Privacy & Security, from the settings window's Setup checklist.",
-        }
+        lines[#lines + 1] = "Accessibility is off for Hammerspoon, so nothing tiles, focus doesn't follow the mouse and the mouse's drags do nothing:"
+            .. " turn it on in Privacy & Security, from the settings window's Setup checklist."
     end
-    return {}
+    if facts.menu_bar_hidden then
+        lines[#lines + 1] = M.MENU_BAR_NOTICE
+    end
+    return lines
 end
 
 return M
