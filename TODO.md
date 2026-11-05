@@ -8,7 +8,7 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 2. The mouse: edge drags set the split, Super+drag moves and resizes,
    Super+middle-click maximizes, resize mode (SPEC.md §5.3).
 3. Focus follows mouse (SPEC.md §5.2).
-4. Workspaces by minimizing, displays and restarts (SPEC.md §6).
+4. Workspaces by parking (or minimizing), displays and restarts (SPEC.md §6).
 5. The launcher, app keys and the Super tap (SPEC.md §7.2, §9).
 6. The menu bar workspaces, the sign on switching, and attention
    (SPEC.md §8, §14.2).
@@ -111,8 +111,8 @@ launch's window going to the workspace it was launched for, and the keys:
   together, with no "elsewhere" marks; each display's tray from its own
   part; and an unplugged display's windows handed to the first display
   left, going back when it returns. The rest:
-  - **Check on a Mac:** with two displays, a switch restores and minimizes
-    on both at once without a flash of the wrong workspace; a window
+  - **Check on a Mac:** with two displays, a switch brings back and parks
+    (or, with `hide = "minimize"`, restores and minimizes) on both at once without a flash of the wrong workspace; a window
     dragged to the other display, or moved there by `Super+Shift+Right`,
     stays in its workspace; closing the lid or pulling the cable moves the
     other display's windows over, and plugging it back in returns them,
@@ -137,6 +137,32 @@ launch's window going to the workspace it was launched for, and the keys:
 - **Check on a Mac:** `open --env` on macOS 26, kitty's socket path, and
   how slow a pattern run through `hs.osascript.javascript` is (SPEC.md
   §6.2, §6.3).
+
+## Parking hidden workspaces
+
+**Built** (SPEC.md §6, 2026-11-05): a workspace that isn't showing parks
+its windows off screen, all but a 1 pt sliver in a corner of their
+display (`park.lua`), with `hide = "minimize"` for the old way. Only the
+tests have run it. **Check on a Mac:**
+
+- a switch is instant, with no animation and no flash of the wrong
+  workspace, on one display and on two;
+- macOS leaves a parked window where tilemo put it, a 1 pt sliver showing,
+  rather than pulling it back on screen; and whether the top corners work,
+  or macOS keeps a title bar below the menu bar (SPEC.md §6);
+- apps that refuse a move, or snap back, such as a terminal or a window
+  with a minimum size larger than what's left on screen;
+- Cmd+Tab to an app whose window is parked brings its workspace along,
+  as does clicking a sliver, a Dock click and a notification;
+- after a switch to an empty workspace, Hammerspoon takes the focus
+  without opening its console (SPEC.md §6);
+- a native full-screen window on a hidden workspace minimizes and comes
+  back;
+- quitting or reloading Hammerspoon brings every parked window back on
+  screen, and a crash's next start keeps the hidden ones parked and places
+  the rest;
+- which tools reading window positions are confused: screenshot pickers,
+  window switchers, Raycast's window list.
 
 ## Minimizing by key
 
@@ -264,6 +290,21 @@ agent or macOS itself. Win+\ gets through, as do the other typing keys.
   Super+Backspace stays bound where it works.
 
 ## Decisions needing review
+
+- **Parking is the default; the setting is `hide`,** `"park"` or
+  `"minimize"` (SPEC.md §6, 2026-11-05), a start() option only: tide has
+  nothing like it to share. Anything else is an error at load.
+- **The corners are tried bottom-right, bottom-left, top-right, top-left**
+  (`park.lua`), the first whose window overlaps no other display, else
+  bottom-right. The top corners are unchecked on a Mac.
+- **A native full-screen window still hides by minimizing** in park mode
+  (SPEC.md §6), as it did before: a move can't take it off its own Space.
+- **A focus of a parked window brings its workspace along** (Cmd+Tab, a
+  click on its sliver, its app coming to the front) only while that window
+  still has the focus, so a late report from before a switch doesn't flip
+  you back.
+- **A switch to an empty workspace gives the focus to Hammerspoon,** with
+  no window of its own, so typing doesn't reach a parked window.
 
 - **Pinned apps' close keys are hotkeys enabled while a pinned window has
   focus** (SPEC.md §6.2, 2026-11-04), not a keyboard event tap, so they

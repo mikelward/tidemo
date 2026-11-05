@@ -161,6 +161,12 @@ function M.new()
         a.wins[id].frame = { x = b.x, y = b.y, w = b.w, h = b.h }
     end
 
+    function a.focus_none()
+        a.calls[#a.calls + 1] = "focus none"
+        a.focus_ = nil
+        a.own = true
+    end
+
     function a.focus(id)
         a.calls[#a.calls + 1] = "focus " .. id
         a.focus_ = id

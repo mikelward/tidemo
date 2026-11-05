@@ -2,6 +2,16 @@ local t = require("t")
 local fake = require("fake")
 local wm_mod = require("tilemo.wm")
 
+-- Minimize mode (`hide = "minimize"`), for the tests about hiding a
+-- workspace by minimizing: they read macOS's minimized flag as hidden, or
+-- test the minimize expectations. Parking, the default, has its own tests
+-- (wm_test.lua, park_test.lua).
+local function minimizing(config)
+    config = config or {}
+    config.hide = "minimize"
+    return config
+end
+
 -- `config` is start()'s; `saved` the last run's state.
 local function setup(n, saved, config)
     local a = fake.new()
@@ -23,7 +33,7 @@ local function two_displays(a)
 end
 
 t.test("Super+N shows workspace N, hiding the one before", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     a.focus_ = 1
     wm:show("3", nil, true)
     t.eq(wm.current, "3")
@@ -35,7 +45,7 @@ t.test("Super+N shows workspace N, hiding the one before", function()
 end)
 
 t.test("restores come before minimizes, so the screen never goes empty", function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     -- One of "in"'s apps, so it may go back there.
     wm.windows[1].name = "Mail"
     a.focus_ = 1
@@ -54,7 +64,7 @@ t.test("restores come before minimizes, so the screen never goes empty", functio
 end)
 
 t.test("Super+Shift+N sends the window away, and focus stays on this workspace", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     wm:focused(1)
     wm:focused(2)
     a.focus_ = 2
@@ -130,7 +140,7 @@ t.test("Super+Shift+1…9 send the window to the Nth workspace, and focus stays 
 end)
 
 t.test("Super+Shift+PgDn moves the window to the next workspace and follows it", function()
-    local a, wm = setup(2, nil, { workspaces = { "in" } })
+    local a, wm = setup(2, nil, minimizing({ workspaces = { "in" } }))
     a.focus_ = 2
     wm:act("move_ws", 1)
     t.eq(wm.current, "in", "with one workspace, nowhere to go")
@@ -150,7 +160,7 @@ t.test("showing a workspace shows it on every display, each display its own part
     a.add(2, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
     a.add(3, {})
     a.add(4, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
-    local wm = wm_mod.new(a, {})
+    local wm = wm_mod.new(a, minimizing({}))
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -240,7 +250,7 @@ t.test("a switch says which display it showed the workspace on", function()
 end)
 
 t.test("a window you minimize stays minimized when its workspace comes back", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     a.wins[2].minimized = true
     wm:minimized(2)
     t.eq(wm.windows[2].mine, true)
@@ -251,7 +261,7 @@ t.test("a window you minimize stays minimized when its workspace comes back", fu
 end)
 
 t.test("tilemo's own minimizes aren't read as yours", function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     a.focus_ = 1
     wm:show("2", nil, true)
     wm:minimized(1)
@@ -353,12 +363,12 @@ t.test("a window handed off by a display that went away goes back to it after a 
 end)
 
 t.test("a restart puts windows back on their workspaces", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     a.focus_ = 2
     wm:act("send", "3")
     local snap = a.saved
     -- tilemo restarts: window 2 is still minimized, on workspace 3.
-    local wm2 = wm_mod.new(a, { saved = snap })
+    local wm2 = wm_mod.new(a, minimizing({ saved = snap }))
     wm2:sync()
     wm2:reconcile()
     t.eq(wm2.windows[2].ws, "3")
@@ -377,7 +387,7 @@ t.test("saved window ids that come back as strings still match", function()
 end)
 
 t.test("quitting restores every hidden window except yours", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     a.focus_ = 2
     wm:act("send", "3")
     a.wins[1].minimized = true
@@ -402,7 +412,7 @@ t.test("moving a window to the next workspace keeps it on its display, and shows
     two_displays(a)
     a.add(1, {})
     a.add(2, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
-    local wm = wm_mod.new(a, { workspaces = { "in", "re" } })
+    local wm = wm_mod.new(a, minimizing({ workspaces = { "in", "re" } }))
     wm:sync()
     wm:reconcile()
     a.focus_ = 2
@@ -420,7 +430,7 @@ t.test("a float stays on its display when the workspace comes back", function()
     a.add(1, {})
     a.add(3, { subrole = "AXDialog", frame = { x = 100, y = 100, w = 300, h = 200 } })
     a.add(2, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
-    local wm = wm_mod.new(a, {})
+    local wm = wm_mod.new(a, minimizing({}))
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -498,7 +508,7 @@ t.test("a tile you drag to the other display stays there after a restart, and ge
 end)
 
 t.test("a minimize that finishes after its workspace came back is undone", function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     a.focus_ = 1
     local min = a.minimize
     a.minimize = function(id)
@@ -514,7 +524,7 @@ t.test("a minimize that finishes after its workspace came back is undone", funct
 end)
 
 t.test("a minimize report that lands after the switch back is still tilemo's", function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     a.focus_ = 1
     wm:show("2", nil, true) -- minimize asked; the window reads minimized, no report yet
     t.eq(a.wins[1].minimized, true)
@@ -528,7 +538,7 @@ t.test("a minimize report that lands after the switch back is still tilemo's", f
 end)
 
 t.test("two minimizes still waiting on their reports are both tilemo's", function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     a.focus_ = 1
     wm:show("2", nil, true) -- minimize #1; the window reads minimized, no report yet
     wm:act("show", "in") -- restore #1, no report yet
@@ -542,7 +552,7 @@ t.test("two minimizes still waiting on their reports are both tilemo's", functio
 end)
 
 t.test("a minimize whose report never comes doesn't hold back a later one", function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     a.focus_ = 1
     wm:show("2", nil, true) -- minimize #1; its report is lost
     local lapse = a.timers -- minimize #1's timeout, not yet run out
@@ -586,7 +596,7 @@ t.test("an older minimize's timeout doesn't clear a newer one's expectation", fu
 end)
 
 t.test("a workspace's last window gets focus once its slow restore lands", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     a.focus_ = 2
     wm:focused(2)
     wm:act("send", "3")
@@ -625,7 +635,7 @@ local function slow_show(a, wm)
 end
 
 t.test("a click while a restore is on its way cancels its focus", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     slow_show(a, wm)
     wm:clicked()
     a.wins[2].minimized = false
@@ -634,7 +644,7 @@ t.test("a click while a restore is on its way cancels its focus", function()
 end)
 
 t.test("focusing another window while a restore is on its way cancels its focus", function()
-    local a, wm = setup(3)
+    local a, wm = setup(3, nil, minimizing())
     slow_show(a, wm)
     wm:focus_window(3)
     a.wins[2].minimized = false
@@ -644,7 +654,7 @@ t.test("focusing another window while a restore is on its way cancels its focus"
 end)
 
 t.test("a later switch cancels the wait for a slow restore", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     a.focus_ = 2
     wm:focused(2)
     wm:act("send", "3")
@@ -904,7 +914,7 @@ t.test('any app\'s window can be sent to "in"', function()
 end)
 
 t.test('"in"\'s apps always open on "in", by app name, wherever you are', function()
-    local a, wm = setup(1)
+    local a, wm = setup(1, nil, minimizing())
     a.focus_ = 1
     wm:act("send", "web")
     wm:act("show", "web")
@@ -923,7 +933,7 @@ end)
 t.test("a popup that floats once named joins its parent's workspace, as one named at once does", function()
     local a = fake.new()
     a.add(1, { name = "Google Chrome", app = "com.google.Chrome", pid = 200, title = "Amazon" })
-    local wm = wm_mod.new(a, { home_apps = { "Google Chrome" } })
+    local wm = wm_mod.new(a, minimizing({ home_apps = { "Google Chrome" } }))
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -972,7 +982,7 @@ t.test("a display with no windows in the workspace showing shows empty", functio
     two_displays(a)
     a.add(1, {})
     a.add(2, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
-    local wm = wm_mod.new(a, {})
+    local wm = wm_mod.new(a, minimizing({}))
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -1270,7 +1280,7 @@ t.test("Super+End and Super+Tab pass over a workspace that's gone", function()
 end)
 
 t.test("Super+Shift+Return asks for a workspace and moves the window there, following it", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     local asked
     wm.ask_move = function(done)
         asked = done

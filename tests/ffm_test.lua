@@ -42,6 +42,16 @@ t.test("crossing into a window focuses it at once", function()
     t.eq(focuses(a), { "focus 2" })
 end)
 
+t.test("a parked window's sliver in the display's corner isn't focused", function()
+    local a, wm, ffm = setup()
+    wm:show("2", nil, true)
+    a.calls = {}
+    -- Both windows are parked with their top-left 1 pt inside the corner.
+    ffm:move(1919, 1079)
+    t.eq(focuses(a), {})
+    t.eq(wm.current, "2", "its workspace doesn't come along")
+end)
+
 t.test("moving inside the window it was over does nothing, even after a key moved focus", function()
     local a, wm, ffm = setup()
     wm:act("focus", 1) -- Super+J to window 2, pointer still over 1
@@ -552,8 +562,9 @@ end)
 -- third app's, on the right. `how` is "start" for a rule the window opened
 -- under, or "later" for one added on the Floating page after it tiled
 -- (wm.set_float_rules). `more` adds windows before the float is placed.
--- Returns a point on B outside the float, and a point on the float.
-local function rule_float(how, more)
+-- `config` is start()'s, over the rules. Returns a point on B outside the
+-- float, and a point on the float.
+local function rule_float(how, more, config)
     local a = fake.new()
     local float_rule = { app = "com.example.a", action = "float" }
     a.add(1, { app = "com.example.b", pid = 2 })
@@ -561,7 +572,9 @@ local function rule_float(how, more)
     if how == "later" then
         a.add(3, { app = "com.example.a", pid = 1 })
     end
-    local wm = wm_mod.new(a, { rules = how == "start" and { float_rule } or nil })
+    config = config or {}
+    config.rules = how == "start" and { float_rule } or nil
+    local wm = wm_mod.new(a, config)
     wm:sync()
     wm:retile()
     if how == "start" then
@@ -682,8 +695,8 @@ end)
 -- The report's layout with B, the tile under the float, the window you
 -- were in: focused by a click, then the float went back over it, as tilemo
 -- raises the floats after any focus.
-local function b_was_yours()
-    local a, wm, ffm, onb, onf = rule_float("later")
+local function b_was_yours(config)
+    local a, wm, ffm, onb, onf = rule_float("later", nil, config)
     a.focus_ = 1
     wm:focused(1)
     t.eq(a.ordered()[1], 3, "the float went back in front")
@@ -713,7 +726,8 @@ t.test("switching back to a workspace passes over a tile under another app's flo
 end)
 
 t.test("a window restored after a switch isn't focused if it would bury another app's float", function()
-    local a, wm = b_was_yours()
+    -- A slow restore is minimize mode's.
+    local a, wm = b_was_yours({ hide = "minimize" })
     local home = wm.current
     wm:show("2", nil, true)
     local unmin = a.unminimize

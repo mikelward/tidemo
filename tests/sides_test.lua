@@ -200,9 +200,9 @@ end)
 t.test("after a switch to an empty workspace, layout keys act on it, not the one focus stayed on", function()
     local a, wm = setup({ 1 }, nil)
     a.focus_ = 1
-    -- Focus stays on window 1, now hidden on "in".
+    -- Window 1 is parked on "in", and the focus leaves it for Hammerspoon.
     wm:show("web", nil, true)
-    t.eq(a.focus_, 1)
+    t.eq(a.focus_, nil)
     wm:act("monocle")
     wm:act("mfact", 1)
     t.eq(wm:part("web", "A").mode, "monocle")

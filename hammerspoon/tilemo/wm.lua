@@ -12,7 +12,8 @@
 -- it: its own stack, layout, mfact and masters (`workspaces[n][uuid]`). A
 -- window belongs to a workspace and to a display within it (`w.screen`).
 -- An empty workspace that isn't standing goes once it isn't showing. A
--- window on a workspace that isn't showing is minimized. Every operation
+-- window on a workspace that isn't showing is parked off screen (park.lua),
+-- or minimized with `hide = "minimize"`. Every operation
 -- changes only which workspace shows and where each window is; then
 -- reconcile() makes the screen match, restoring first so the screen never
 -- goes empty.
@@ -27,6 +28,7 @@ local names = require("tilemo.names")
 local standing_mod = require("tilemo.standing")
 local rules = require("tilemo.rules")
 local floating = require("tilemo.floating")
+local park = require("tilemo.park")
 
 local M = {}
 
@@ -58,6 +60,14 @@ local function remove_value(list, v)
 end
 
 local set_big_on
+
+local function same_box(a, b)
+    return a ~= nil and b ~= nil and a.x == b.x and a.y == b.y and a.w == b.w and a.h == b.h
+end
+
+local function copy_box(b)
+    return { x = b.x, y = b.y, w = b.w, h = b.h }
+end
 
 -- Take window `w` out of its part's stack, if it's in one.
 local function unplace(self, w, id)
@@ -164,6 +174,22 @@ function M.check_standing(list)
         out[#out + 1] = n
     end
     return out
+end
+
+-- How a workspace that isn't showing hides its windows (SPEC.md §6):
+-- "park" moves them off screen, all but a sliver in a corner of their
+-- display, and "minimize" minimizes them. `hide` is checked when tilemo
+-- starts, so a typo is an error naming the setting. Nil is "park".
+M.HIDE = { park = true, minimize = true }
+function M.check_hide(value)
+    if value == nil then
+        return "park"
+    end
+    if not M.HIDE[value] then
+        error(string.format('hide must be "park" or "minimize", not %s',
+            type(value) == "string" and string.format("%q", value) or tostring(value)), 3)
+    end
+    return value
 end
 
 -- `home_apps` is checked when tilemo starts, so a typo is an error naming the
@@ -295,6 +321,17 @@ function M.new(adapter, config)
         -- Each workspace's own settings (SPEC.md §6.2): tide's
         -- workspaceSettings, or nil for its default, home asking.
         workspace_settings = M.check_workspace_settings(config.workspace_settings),
+        -- How hidden workspaces hide: "park" or "minimize" (M.check_hide).
+        hide = M.check_hide(config.hide),
+        -- id -> true for a window tilemo parked off screen (park.lua): not
+        -- minimized, but not on screen either. A move lands at once, so,
+        -- unlike a minimize, a park needs no expectation. `w.park_frame` is
+        -- where it was before, which a float goes back to.
+        parked = {},
+        -- id -> true for a native full-screen window tilemo minimized in
+        -- park mode: full screen is a Space of its own, which can't be
+        -- parked, so it hides as minimize mode does.
+        hid_full = {},
         standing = standing,
         -- The home workspace: the first standing one, "in" by default.
         home = standing[1],
@@ -457,6 +494,31 @@ function M:screen_by_uuid(uuid)
             return s
         end
     end
+end
+
+-- Every display's full frame, for park.lua.
+function M:fulls()
+    local out = {}
+    for i, s in ipairs(self:screens()) do
+        out[i] = s.full
+    end
+    return out
+end
+
+-- Whether window `id`, whose quick state is `st`, is on screen: neither
+-- minimized nor parked off screen. A hidden app's window (Cmd+H) still
+-- counts; visible() leaves it out too.
+function M:shows(id, st)
+    if not st then
+        return false
+    end
+    return not st.minimized and not self.parked[id]
+end
+
+-- Whether window `id` can be seen: on screen (shows), and its app not
+-- hidden.
+function M:visible(id, st)
+    return self:shows(id, st) and not st.hidden
 end
 
 -- A workspace name as typed: one line, runs of space made one, trimmed.
@@ -931,7 +993,7 @@ function M:tiled(n, uuid)
     end
     for _, id in ipairs(ws.order) do
         local f = self.a.state(id)
-        if f and not f.minimized and not f.fullscreen and not f.hidden then
+        if self:visible(id, f) and not f.fullscreen then
             out[#out + 1] = id
         end
     end
@@ -1052,6 +1114,8 @@ function M:add(id)
         -- it was. One of home's apps from a numbered state goes home.
         w.ws = (saved.numbered and self:is_home_app(w)) and self.home or saved.ws
         w.mine = saved.mine
+        -- Where it was before a park, if the last run left it parked.
+        w.park_frame = type(saved.frame) == "table" and saved.frame.w and copy_box(saved.frame) or nil
         -- Its old index, and which save it's from: only indexes from the
         -- same save say which window went before which.
         w.saved_pos = saved.pos
@@ -1122,7 +1186,11 @@ function M:add(id)
     if kind == "float" then
         w.floating = true
         self.floats[#self.floats + 1] = id
-        self:place_float(id, f)
+        -- One the last run left parked stays off screen, for reconcile to
+        -- keep parked or bring back to where it was.
+        if not (self.hide == "park" and w.park_frame and park.hidden(f.frame, self:fulls())) then
+            self:place_float(id, f)
+        end
     elseif saved and saved.ws and w.saved_pos then
         self:insert_back(id, w)
     else
@@ -1325,6 +1393,8 @@ function M:forget(id, pos, at)
     end
     remove_value(self.floats, id)
     self.placed[id] = nil
+    self.parked[id] = nil
+    self.hid_full[id] = nil
     remove_value(self.history, id)
     self.attention:gone(id)
     self.tab_hosts[id] = nil
@@ -1409,18 +1479,48 @@ end
 
 -- Make the screen match the state (SPEC.md §6.1): a window shows if its
 -- workspace is showing on some display and you haven't minimized it.
--- Restores go first, in tile order, then the rest are minimized.
+-- What shows comes back first, laid out, and only then does the rest
+-- hide, so the screen never goes empty in between. A workspace that isn't
+-- showing hides by parking its windows off screen (M:park_window), or,
+-- with `hide = "minimize"`, by minimizing them, as do the windows you
+-- minimized and, since full screen is a Space of its own, a native
+-- full-screen window. Coming back from a park, a float takes its own frame
+-- again and a tile takes its tile at the next retile.
 function M:reconcile()
-    local restore, hide = {}, {}
+    local parking = self.hide == "park"
+    local fulls = parking and self:fulls() or nil
+    local restore, hide, unpark, to_park = {}, {}, {}, {}
     for id, w in pairs(self.windows) do
         if w.ws then
             local st = self.a.state(id)
             if st then
                 local want = self:shown(w.ws) and not w.mine
-                if want and st.minimized and self:last_asked(id) ~= "unmin" then
-                    restore[#restore + 1] = id
-                elseif not want and not st.minimized and self:last_asked(id) ~= "min" then
-                    hide[#hide + 1] = id
+                if want then
+                    if st.minimized and self:last_asked(id) ~= "unmin" then
+                        restore[#restore + 1] = id
+                    end
+                    -- Parked, or still where a park left it, as after a
+                    -- restart.
+                    if parking and (self.parked[id] or (not st.minimized and park.hidden(st.frame, fulls))) then
+                        unpark[#unpark + 1] = id
+                    end
+                elseif not parking or w.mine or st.fullscreen or self.hid_full[id] then
+                    if not st.minimized and self:last_asked(id) ~= "min" then
+                        hide[#hide + 1] = id
+                        if parking and not w.mine then
+                            self.hid_full[id] = true
+                        end
+                    end
+                else
+                    -- One tilemo minimized under the old scheme, from a
+                    -- saved state or before an upgrade, comes back to be
+                    -- parked.
+                    if st.minimized and self:last_asked(id) ~= "unmin" then
+                        restore[#restore + 1] = id
+                    end
+                    if not self.parked[id] or not park.hidden(st.frame, fulls) then
+                        to_park[#to_park + 1] = id
+                    end
                 end
             end
         end
@@ -1453,8 +1553,27 @@ function M:reconcile()
         end)
     end
     for _, id in ipairs(restore) do
+        self.hid_full[id] = nil
         expect(id, "unmin")
         self.a.unminimize(id)
+    end
+    if parking then
+        table.sort(unpark, function(p, q)
+            return rank(p) < rank(q)
+        end)
+        for _, id in ipairs(unpark) do
+            self:unpark_window(id)
+        end
+        -- The workspace coming in is laid out before the one leaving goes.
+        if #unpark > 0 and #to_park > 0 then
+            self:retile()
+        end
+        table.sort(to_park, function(p, q)
+            return tostring(p) < tostring(q)
+        end)
+        for _, id in ipairs(to_park) do
+            self:park_window(id, fulls)
+        end
     end
     table.sort(hide)
     for _, id in ipairs(hide) do
@@ -1463,6 +1582,85 @@ function M:reconcile()
     end
     self:prune()
     self:save()
+end
+
+-- Park window `id` off screen (park.lua): all but a sliver of it past a
+-- corner of its display, the first corner whose side has no other display.
+-- Where it was is kept, unless it's already off screen, as after a
+-- restart, when the saved one stands.
+function M:park_window(id, fulls)
+    local w = self.windows[id]
+    local st = self.a.state(id)
+    if not (w and st and st.frame) then
+        return
+    end
+    fulls = fulls or self:fulls()
+    -- Already parked, it moves to a new spot but keeps where it was: a
+    -- display plugged in where it sat can show its old spot, which isn't
+    -- where you left it.
+    local again = self.parked[id]
+    local away = again or park.hidden(st.frame, fulls)
+    -- A float's display is where it is, read before it leaves; one already
+    -- off screen keeps the display it had.
+    local uuid = (not away and self:screen_of(id)) or w.screen
+    if w.floating and uuid then
+        w.screen = uuid
+    end
+    if not away then
+        w.park_frame = copy_box(st.frame)
+    end
+    self.parked[id] = true
+    local s = self:screen_by_uuid(uuid) or self:screens()[1]
+    if not s then
+        return
+    end
+    local spot = park.spot(s.full, fulls, st.frame)
+    if not same_box(st.frame, spot) then
+        self.a.set_frame(id, spot)
+    end
+end
+
+-- Where window `id` goes back to from a park: the frame it had before, if
+-- that's still on a display, else nil.
+function M:unpark_frame(id, fulls)
+    local w = self.windows[id]
+    local f = w and w.park_frame
+    if f and not park.hidden(f, fulls or self:fulls()) then
+        return f
+    end
+end
+
+-- Bring window `id` back from a park. A tile takes its tile at the next
+-- retile; a float, and a hidden app's tile (Cmd+H), which a retile passes
+-- over, go back to where they were now.
+function M:unpark_window(id)
+    local w = self.windows[id]
+    self.parked[id] = nil
+    if not w then
+        return
+    end
+    local st = self.a.state(id)
+    local f = self:unpark_frame(id)
+    if w.floating and not w.place_pending then
+        if f then
+            self.a.set_frame(id, f)
+        else
+            local facts = self.a.facts(id)
+            local s = self:screen_by_uuid(w.screen) or self:screens()[1]
+            if facts and s then
+                local placed = {}
+                for k, v in pairs(facts) do
+                    placed[k] = v
+                end
+                local size = (st and st.frame) or facts.frame
+                placed.frame = { x = s.area.x, y = s.area.y, w = size.w, h = size.h }
+                self:place_float(id, placed)
+            end
+        end
+    elseif st and st.hidden and f then
+        self.a.set_frame(id, f)
+    end
+    w.park_frame = nil
 end
 
 -- What a restart needs to put every window back: each window's workspace,
@@ -1487,6 +1685,9 @@ function M:snapshot()
                 app = w.app,
                 title = w.title,
                 pos = not w.floating and self:part_of(w) and layout.index_of(self:part_of(w).order, id) or nil,
+                -- Where a parked window was, for a float to go back to if
+                -- tilemo restarts without bringing it back first.
+                frame = self.parked[id] and w.park_frame or nil,
             }
         end
     end
@@ -1618,12 +1819,31 @@ function M:unminimized(id)
     self:schedule()
 end
 
--- When tilemo quits, nothing stays stranded in the Dock (SPEC.md §6.3).
+-- When tilemo quits, nothing stays stranded in the Dock or off screen
+-- (SPEC.md §6.3): what it minimized comes back, and what it parked goes
+-- back onto its display's tiling area, where it was if that's still on a
+-- display.
 function M:restore_all()
+    local fulls = self:fulls()
     for id, w in pairs(self.windows) do
-        local st = w.ws and not w.mine and self.a.state(id)
-        if st and st.minimized then
+        local st = w.ws and self.a.state(id)
+        if st and st.minimized and not w.mine then
             self.a.unminimize(id)
+        end
+        if st and self.parked[id] then
+            self.parked[id] = nil
+            local f = self:unpark_frame(id, fulls)
+            if not f then
+                local s = self:screen_by_uuid(w.screen) or self:screens()[1]
+                local area = s and s.area
+                f = area and {
+                    x = area.x, y = area.y, w = math.min(st.frame.w, area.w), h = math.min(st.frame.h, area.h),
+                }
+            end
+            if f then
+                self.a.set_frame(id, f)
+            end
+            w.park_frame = nil
         end
     end
 end
@@ -1670,9 +1890,15 @@ function M:screen_of(id)
     if not (w and w.ws) then
         return nil
     end
-    if w.floating then
+    -- A parked float is off screen: its display is the one it left. So is
+    -- one just unparked whose placement is still to come (place_pending):
+    -- its frame is still where the park left it.
+    if w.floating and not self.parked[id] then
         local st = self.a.state(id)
-        return st and self:screen_of_frame(st.frame) or w.screen
+        if st and st.frame and not park.hidden(st.frame, self:fulls()) then
+            return self:screen_of_frame(st.frame)
+        end
+        return w.screen
     end
     return w.screen
 end
@@ -1708,11 +1934,23 @@ function M:show(name, uuid, make)
     self:retile()
     -- With nothing to focus, focus stays put: keys still mean this display.
     if not self:refocus_ws(n) then
+        self:unfocus_parked()
         self:keep_keys_on(uuid)
     end
     -- The display keys act on, where the sign goes.
     if self.on_show then
         self.on_show(n, uuid)
+    end
+end
+
+-- With the focused window parked and nothing to focus in its place, focus
+-- goes to Hammerspoon, which has no window to type into, so keys don't
+-- reach a window you can't see. Minimizing left this to macOS, which
+-- moved focus on itself.
+function M:unfocus_parked()
+    local f = self.a.focused()
+    if f and self.parked[f] then
+        self.a.focus_none()
     end
 end
 
@@ -1729,8 +1967,9 @@ function M:refocus_ws(n, uuid)
         local w = self.windows[id]
         local st = w and w.ws == n and not w.mine and (uuid == nil or self:screen_of(id) == uuid)
             and self.a.state(id)
-        -- An app you hid with Cmd+H stays hidden: pass over its windows.
-        if st and not st.hidden then
+        -- An app you hid with Cmd+H stays hidden: pass over its windows,
+        -- and over any still parked.
+        if st and not st.hidden and not self.parked[id] then
             if st.minimized then
                 -- What's in front of it is known once it's back.
                 self.focus_after = id
@@ -1813,7 +2052,7 @@ function M:follow_floats()
     for _, id in ipairs(self.floats) do
         local w = self.windows[id]
         local st = w and w.place_pending and self:shown(w.ws) and self.a.state(id)
-        local to = st and not st.minimized and (self:screen_by_uuid(self:screen_of(id)) or self:screens()[1])
+        local to = self:shows(id, st) and (self:screen_by_uuid(self:screen_of(id)) or self:screens()[1])
         local f = to and self.a.facts(id)
         if f then
             local size = w.place_pending
@@ -1949,7 +2188,7 @@ function M:dim_scene()
         return nil
     end
     local st = self.a.state(id)
-    if not st or st.minimized or st.hidden or st.fullscreen then
+    if not self:visible(id, st) or st.fullscreen then
         return nil
     end
     local others = {}
@@ -1957,7 +2196,7 @@ function M:dim_scene()
         if oid ~= id and o.ws == w.ws and not o.mine then
             local ost = self.a.state(oid)
             -- One full screen is on a Space of its own, not showing here.
-            if ost and not ost.minimized and not ost.hidden and not ost.fullscreen then
+            if self:visible(oid, ost) and not ost.fullscreen then
                 others[oid] = ost.frame
             end
         end
@@ -2232,7 +2471,8 @@ function M:window_at(x, y)
     end
     for _, id in ipairs(self.a.ordered()) do
         local st = self.a.state(id)
-        if st and not st.minimized and not st.hidden and inside(st.frame, x, y) then
+        -- A parked window's sliver isn't one to pick.
+        if self:visible(id, st) and inside(st.frame, x, y) then
             local w = self.windows[id]
             if w and w.kind ~= "ignore" and w.ws then
                 return id
@@ -2381,6 +2621,10 @@ function M:to_screen(id, uuid)
 end
 
 function M:moved(id)
+    -- tilemo's own park, which no request or landing should read.
+    if self.parked[id] then
+        return
+    end
     local w = self.windows[id]
     if w and w.floating then
         if not self.a.buttons_down() then
@@ -2734,7 +2978,7 @@ function M:may_focus(id, w)
     -- The window you were in went away (closed, minimized, hidden, its
     -- workspace switched away), so macOS moving focus on isn't theft.
     local st = self.a.state(prev)
-    if not st or st.minimized or st.hidden or p.mine or not (p.ws and self:shown(p.ws)) then
+    if not self:visible(prev, st) or p.mine or not (p.ws and self:shown(p.ws)) then
         return true
     end
     local now = self.a.now()
@@ -2857,6 +3101,14 @@ function M:focused_window(id)
     if changed then
         self:retile()
     end
+    -- A parked window that took focus, from Cmd+Tab, a click on its sliver
+    -- or its app coming to the front, brings its workspace along, as one
+    -- restored from the Dock does (M:unminimized).
+    -- Only while it still has the focus: a late report of a focus from
+    -- before a switch, its window parked since, mustn't pull you back.
+    if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
+        self:activate(id)
+    end
 end
 
 -- Take tile `id` out of its workspace's layout and float it, placed as a
@@ -2867,7 +3119,12 @@ function M:float_tile(id, f)
     w.big = nil
     unplace(self, w, id)
     self.floats[#self.floats + 1] = id
-    if f then
+    if f and self.parked[id] then
+        -- Parked, it's placed once its workspace shows (follow_floats), at
+        -- this size: the tile's frame from before the park is stale.
+        w.park_frame = nil
+        w.place_pending = { w = f.frame.w, h = f.frame.h }
+    elseif f then
         self:place_float(id, f)
     end
 end
@@ -3038,7 +3295,7 @@ function M:refocus(n)
         -- bring it back.
         local w = self.windows[id]
         local st = w and w.ws == n and self.a.state(id)
-        if st and not st.minimized and not st.hidden and not st.fullscreen and take(id) then
+        if self:visible(id, st) and not st.fullscreen and take(id) then
             return
         end
     end
@@ -3070,7 +3327,7 @@ function M:unburied_on(n, except, avoid)
     for _, id in ipairs(self.mru[n] or {}) do
         local w = self.windows[id]
         local st = id ~= except and id ~= avoid and w and w.ws == n and not w.mine and self.a.state(id)
-        if st and not st.minimized and not st.hidden and not st.fullscreen and not self:buries(id) then
+        if self:visible(id, st) and not st.fullscreen and not self:buries(id) then
             return id
         end
     end
@@ -3301,8 +3558,11 @@ function M:send_keeping_focus(id, n)
     -- Focus stays on the workspace you're on, on this display, as on tide;
     -- with nothing left there, so do the keys.
     if from and self.windows[id] and self.windows[id].ws ~= from then
-        if not self:refocus_ws(from, uuid) and uuid then
-            self:keep_keys_on(uuid)
+        if not self:refocus_ws(from, uuid) then
+            self:unfocus_parked()
+            if uuid then
+                self:keep_keys_on(uuid)
+            end
         end
     end
 end
@@ -3483,7 +3743,7 @@ function M:beside(d)
     local w = self.windows[focused or false]
     if not box and w and w.ws and w.floating then
         local st = self.a.state(focused)
-        local on = st and not st.minimized and self:screen_for(st.frame)
+        local on = self:shows(focused, st) and self:screen_for(st.frame)
         if on and on.uuid == uuid then
             box = st.frame
         end
@@ -3553,7 +3813,7 @@ end
 -- joining that display's part, with focus. Past the last display, nothing.
 function M:move_float_side(id, w, d)
     local st = self.a.state(id)
-    if not st or st.minimized or not self:shown(w.ws) then
+    if not self:shows(id, st) or not self:shown(w.ws) then
         return
     end
     local here = self:screen_for(st.frame)

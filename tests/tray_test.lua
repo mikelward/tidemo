@@ -5,14 +5,27 @@ local ffm_mod = require("tilemo.ffm")
 local tray = require("tilemo.tray")
 local launcher = require("tilemo.launcher")
 
--- Windows 1..n on "in", on display A, with a second display B.
-local function setup(n)
+-- Minimize mode (`hide = "minimize"`), for the tests about hiding a
+-- workspace by minimizing: they read macOS's minimized flag as hidden, or
+-- test the minimize expectations. Parking, the default, has its own tests
+-- (wm_test.lua, park_test.lua).
+local function minimizing(config)
+    config = config or {}
+    config.hide = "minimize"
+    return config
+end
+
+-- Windows 1..n on "in", on display A, with a second display B. `config`
+-- is start()'s, over the workspaces "in" and "web".
+local function setup(n, _, config)
     local a = fake.new()
     a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
     for i = 1, n do
         a.add(i, { title = "Window " .. i, app = "app" .. i })
     end
-    local wm = wm_mod.new(a, { workspaces = { "in", "web" } })
+    config = config or {}
+    config.workspaces = { "in", "web" }
+    local wm = wm_mod.new(a, config)
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -65,7 +78,7 @@ t.test("Super+Z on no managed window does nothing", function()
 end)
 
 t.test("a window you minimized stays down when its workspace comes back", function()
-    local a, wm = setup(2)
+    local a, wm = setup(2, nil, minimizing())
     focus(wm, 2)
     wm:act("minimize")
     settle(a, wm)
@@ -78,7 +91,7 @@ t.test("a window you minimized stays down when its workspace comes back", functi
 end)
 
 t.test("the tray lists the windows you minimized there, in order, and not the ones tilemo hid", function()
-    local a, wm = setup(4)
+    local a, wm = setup(4, nil, minimizing())
     focus(wm, 3)
     wm:act("minimize")
     -- Cmd+M, which macOS reports without tilemo asking.
