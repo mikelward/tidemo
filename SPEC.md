@@ -116,9 +116,13 @@ checked against a source or a Mac is marked *(unverified)*.
   - It switches instantly, and the workspace count is just config.
   - But Cmd+Tab and Mission Control show every workspace's windows, and
     native full-screen apps misbehave (scripts `docs/MACOS.md`).
+  - **tilemo parks this way by default** (§6). macOS won't move a window
+    wholly off screen, so a parked window keeps a 1 pt sliver inside a
+    corner of its display, as AeroSpace's do *(unverified on a Mac)*.
 - **Minimizing (tileco's way):** hide a workspace by minimizing its windows.
   It's public API, but every switch plays the Genie animation, and minimized
-  windows pile up in the Dock *(unverified at scale)*.
+  windows pile up in the Dock *(unverified at scale)*. It was tilemo's
+  first choice; it's now the `hide = "minimize"` setting (§6).
 
 ### 2.4 Drawing over the desktop
 
@@ -194,7 +198,7 @@ checked against a source or a Mac is marked *(unverified)*.
 |---|---|---|---|
 | What | Amethyst, Karabiner, Spotlight or Raycast, SketchyBar, JankyBorders or HazeOver, as `setup-macos` does now | One Lua config on [Hammerspoon](https://www.hammerspoon.org), which wraps windows (`hs.window`), keys (`hs.hotkey`), drawing (`hs.canvas`) and a picker (`hs.chooser`) | One Swift app: window manager, keys, launcher, bar and dim |
 | Layouts | Amethyst's built-ins match Krohnkite's. JavaScript layouts are possible | **tide's own Lua layout**, which is pure Lua by design (tide AGENTS: "keep geometry free of the `hl` API") | Port tide's or tileco's geometry |
-| Workspaces | Native Spaces, via symbolichotkeys | Minimizing (§6), or native Spaces through community modules, or emulated | Any of §2.3 |
+| Workspaces | Native Spaces, via symbolichotkeys | Emulated, parking windows off screen (§6), or minimizing, or native Spaces through community modules | Any of §2.3 |
 | Launcher and dashboard | Spotlight, or Raycast (free, with a paid tier) | `hs.chooser` plus canvases. Basic, but enough for tab search | Full control, like tileco's dashboard |
 | Dim | HazeOver ($5) or borders | A canvas layer over the windows, a hole for the focused one (§5.6) | Own layer, as HazeOver does |
 | Focus follows mouse | Off: Amethyst's breaks popovers (Amethyst#337) | tilemo's own (§5.2) | Same |
@@ -218,7 +222,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Lone window 80% on ultrawide, 60% from 32:9 | same layout, per display (§5) | **yes** |
 | New windows join the end of the stack, with a setting for elsewhere (tide §6.1) | tilemo state (§5) | **yes** |
 | Layout, `mfact`, master count per workspace, and per display within it | tilemo state | **yes** |
-| Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide §6.5) | minimized windows, as tileco does, named in tilemo's state (§6) | **partial**: each switch animates |
+| Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide §6.5) | windows parked off screen, as AeroSpace does, or minimized as tileco does, named in tilemo's state (§6) | **partial**: Mission Control shows every workspace's windows, and a sliver of each parked window shows in a corner; minimizing instead animates each switch |
 | A new window on a workspace that asks, "in" by default, asks for a workspace name (tide §6.5) | tilemo's name prompt, an `hs.chooser` (§6.2) | **yes** |
 | Pinned apps stay open on their workspace (tide §6.5) | the close key and the prompt's Esc leave them open; Cmd+W, Cmd+Shift+W and Cmd+Q are hotkeys while one has focus (§6.2) | **partial**: by app name; the close button still closes |
 | `TIDE_WORKSPACE` in launched apps (tide §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
@@ -781,21 +785,61 @@ These work as on tide (tide §6.3), on the same workspace:
 
 ## 6. Workspaces
 
-**Decided: minimize, as tileco does.** It uses only public API, so macOS
-updates shouldn't break it. Mission Control shows only the workspace on
-screen. Cmd+Tab still lists every app, but choosing one whose windows are
-all hidden brings their workspace along (below), so no window turns up on
-the wrong workspace. Two settings soften the costs, and the setup
-checklist (§10) asks for both:
+**Decided: park, with minimizing as a setting** (2026-11-05, replacing
+minimize, which made each switch too slow). A workspace that isn't
+showing parks its windows off screen, as AeroSpace does (§2.3): each one
+moves past a corner of its display, all but a 1 pt sliver. A move lands at
+once and plays no animation, so a switch is instant. It uses only public
+API: the same Accessibility move a retile makes.
 
-- **System Settings › Desktop & Dock › "Minimize windows into application
-  icon"** keeps minimized windows out of the Dock, so hidden workspaces
-  don't crowd it.
-- **"Minimize windows using: Scale effect"** is quicker than the default
-  Genie animation.
-
-What it still costs is an animation on every switch, and switches slower
-than the other two choices.
+- **Where a window parks** (`park.lua`): its top-left 1 pt inside its
+  display's bottom-right corner, reaching out past it. With more than one
+  display, a window parked there could show on a display to the right or
+  below, so the corners are tried in turn, bottom-right, bottom-left,
+  top-right, top-left, each with the window reaching outward; the first
+  whose window overlaps no other display, the sliver aside, wins. With
+  every corner against another display, it's bottom-right. Whether macOS
+  lets a window's top go above its display, for the top corners, is
+  *(unverified on a Mac)*: it keeps title bars below the menu bar on
+  some versions.
+- **Coming back,** a tile takes its tile at the next retile, and a float
+  takes the frame it had before the park.
+- **The costs, plainly:**
+  - Mission Control shows every workspace's windows, not just the one on
+    screen.
+  - A sliver of every parked window shows in a corner of each display.
+    Focus follows mouse passes over it.
+  - Tools that read window positions, such as screenshot pickers,
+    window switchers and other window managers, see windows far off screen,
+    and may be confused *(unverified which)*.
+  - Cmd+Tab lists every app, as before. Choosing one whose window is
+    parked focuses that window, and tilemo brings its workspace along
+    (Activate, §6.1), so no window turns up on the wrong workspace. So does
+    clicking a sliver, or an app's window coming to the front.
+  - That's only while the window still has the focus, so a late report
+    of a focus from before a switch doesn't flip you back.
+  - A switch to an empty workspace gives the focus to Hammerspoon, which
+    has no window to type into, so keys don't reach a parked window
+    (`wm:unfocus_parked`) *(unverified on a Mac that activating it opens
+    no console)*.
+- **Native full screen** is a Space of its own, which a move can't take a
+  window out of, so a full-screen window on a hidden workspace is
+  minimized, as before, and restored when its workspace shows.
+- **The windows you minimized** (`Super+Z`, Cmd+M, the yellow button)
+  are still really minimized, to the tray (§6.7).
+- **A window tilemo minimized before,** under minimizing, from a saved
+  state or an upgrade, is restored, then parked or placed.
+- **Minimizing stays a setting:** `tilemo.start({ hide = "minimize" })`.
+  Mission Control then shows only the workspace on screen, but every switch
+  animates. Two settings soften that, and the setup checklist (§10) asks
+  for both:
+  - **System Settings › Desktop & Dock › "Minimize windows into
+    application icon"** keeps minimized windows out of the Dock, so hidden
+    workspaces don't crowd it.
+  - **"Minimize windows using: Scale effect"** is quicker than the default
+    Genie animation.
+- **`hide`** is `"park"` (the default) or `"minimize"`; anything else is
+  an error at load, naming the setting.
 
 ### 6.1 Model
 
@@ -831,8 +875,8 @@ numbered ones:
 - **An empty workspace is removed once you leave it,** other than "in" and
   the standing ones. Leaving means no display shows it any more. A workspace holding only
   windows you minimized isn't empty.
-- **Names are tilemo's own.** Its workspaces are minimized windows, not
-  Spaces, so a name is just tilemo state, saved with the rest (§6.5). Two
+- **Names are tilemo's own.** Its workspaces are parked or minimized
+  windows, not Spaces, so a name is just tilemo state, saved with the rest (§6.5). Two
   workspaces can't share a name; names are compared ignoring case
   *(a guess, to confirm)*, with Unicode's case folding for Latin, Greek
   and Cyrillic letters, so "Équipe" and "équipe" are one workspace.
@@ -879,8 +923,9 @@ numbered ones:
 **One rule decides what's on screen:** a window shows if its workspace is
 showing and you haven't minimized it. Every operation
 changes only that state. Then one reconcile step makes the screen match:
-it restores the windows that should show first, in tile order, and only
-then minimizes the rest, so the screen is never empty in between.
+it brings back the windows that should show first, in tile order, lays
+them out, and only then parks (or minimizes) the rest, so the screen is
+never empty in between.
 
 | Operation | What changes | Focus |
 |---|---|---|
@@ -1149,7 +1194,13 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   tileco matches by tab addresses (tileco §14.2). A window it can't match joins
   the workspace showing.
 - **If tilemo quits,** it restores every window it hid first, so nothing is
-  left stranded in the Dock.
+  left stranded in the Dock or off screen: a parked window goes back
+  onto its display's tiling area, where it was before the park if that's
+  still on a display.
+- **A reload with windows parked,** if they weren't brought back first,
+  finds them still off screen. Each one on a workspace that isn't showing
+  stays parked; one whose workspace shows is placed as usual, a float at
+  the frame saved with it (`frame`).
 - **If it crashes,** the next start restores what it can't place and
   reconciles the rest. `tilemo restore` does it by hand (§16).
 - **What's saved:** `hs.settings`' `tilemo.state` names each window's
@@ -1194,8 +1245,9 @@ mock of five (tide's `docs/mocks/minimized.html`), as tide does.
     window still showing.
   - Floats and dialogs minimize too. A window tilemo doesn't manage is left
     alone.
-- **Only windows you minimized count.** tilemo minimizes windows itself to
-  hide the other workspaces, and those never show here. `wm.lua` flags
+- **Only windows you minimized count.** tilemo parks windows itself to hide
+  the other workspaces, or minimizes them with `hide = "minimize"` (§6),
+  and those never show here. `wm.lua` flags
   yours as `mine`: from `Super+Z`, Cmd+M, the yellow button, or a window
   already minimized when tilemo first saw it. The tray and the Windows tab
   read that flag, not macOS's minimized state.
@@ -1232,7 +1284,7 @@ mock of five (tide's `docs/mocks/minimized.html`), as tide does.
   quitting tilemo leaves your minimized windows down, restoring only the
   ones it hid (§6.5).
 
-### 6.8 The alternatives, to revisit if minimizing doesn't work out
+### 6.8 The alternatives, to revisit if parking doesn't work out
 
 1. **Native Spaces, one per workspace:**
    - Switching uses symbolichotkeys, as `setup-macos` does now.
@@ -1243,17 +1295,22 @@ mock of five (tide's `docs/mocks/minimized.html`), as tide does.
      screen works.
    - The costs: the animation, Spaces created by hand, and a private call
      that may break.
-2. **Emulated, AeroSpace-style:**
+2. **Emulated, AeroSpace-style, parking windows off screen:** the choice
+   above.
    - Switching is instant, there's one shared pool across monitors, and
      tide's model fits exactly.
-   - The cost is Cmd+Tab and Mission Control showing everything. That's the
-     reason `setup-macos` turned AeroSpace down.
-3. **Minimized, tileco-style:** the choice above.
+   - The cost is Mission Control showing everything, a sliver in a corner
+     of each display, and tools that read positions seeing windows off
+     screen. Cmd+Tab bringing the workspace along softens the reason
+     `setup-macos` turned AeroSpace down.
+3. **Minimized, tileco-style:** tilemo's first choice, now the
+   `hide = "minimize"` setting. Mission Control stays honest, but every
+   switch animates, too slowly even with the Scale effect.
 
-Revisit if switching is too slow even with the Scale effect, if apps restore
-from minimize in the wrong place or size, or if a window refuses to
-minimize, which tileco had to handle on chromeOS (tileco §6.4). Native Spaces
-come first then, since Cmd+Tab stays honest with them. The private call is
+Revisit if apps refuse to move or snap back on screen, if macOS clamps a
+parked window back into view, or if Mission Control's clutter outweighs the
+speed. Minimizing is one setting away. Native Spaces come next, since
+Cmd+Tab and Mission Control stay honest with them. The private call is
 the risk, and it breaks about once a year at a major macOS release *(from
 memory, not counted)*.
 
@@ -2537,7 +2594,7 @@ it's IT's call. tileco has the same section for chromeOS (tileco §14.4).
 | Running tilemo or Hammerspoon at all | block apps by name or signature, with Gatekeeper rules or a tool such as Santa | **No workaround.** Ask IT to allow it. A Developer ID build (§12) is easier for IT to allow than an unsigned one. |
 | Login items | manage background items, and hide or block them | Start tilemo by hand. |
 | Idle and lock timings | enforce the screen lock delay and password rules | **None.** The policy wins, and tilemo's keep-awake toggle may not stop the lock *(unverified)*. |
-| Spaces, Dock and Mission Control settings | lock some of these preferences | Leave the defaults; minimizing still works (§6). |
+| Spaces, Dock and Mission Control settings | lock some of these preferences | Leave the defaults; parking, and minimizing, still work (§6). |
 
 Nothing in tilemo needs SIP lowered, which a managed Mac wouldn't allow. That
 was a goal (§1), and it's why the native-Spaces alternative avoids yabai's
@@ -2575,9 +2632,9 @@ Each one names a workaround, or says there is none.
 | Floats always on top | No public way to set another app's window level (§5.1), and raising another app's window doesn't put it back over the app just focused (seen on a Mac, 2026-11-01). | Hammerspoon's own floats get a floating window level. Focus follows mouse leaves a tile with another app's float in front of it alone. A true window level for other apps needs yabai's scripting addition, which needs SIP lowered: **none** within §1. |
 | Nothing ever steals focus (tide §14) | An app can activate itself, and macOS decides whether it may. | tilemo never focuses anything unasked, and hands focus back when an app takes it without a grant (§14.1) *(unverified that it can act in time)*. |
 | Dimming exactly the inactive windows | tilemo can't draw inside or between other apps' windows (§2.4). | One dark layer over the windows with a hole for the focused one, which dims the desktop too (§5.6). |
-| Instant workspace switches with an honest Cmd+Tab | Hiding windows off screen leaves them in Cmd+Tab; minimizing and Spaces animate (§2.3, §6). | Minimize with the Scale effect, and Reduce Motion for Spaces. **No** way to get both at once. |
-| One workspace pool shared by every monitor (tide §6.5) | Minimized windows have no display, and native Spaces are per display. | tilemo tracks each workspace's display itself, as tileco does (tileco §6.1). |
-| Moving a window to a native Space | Only private calls can (§2.3). | Workspaces by minimizing (§6). |
+| Instant workspace switches with an honest Cmd+Tab and Mission Control | Hiding windows off screen leaves them in Cmd+Tab and Mission Control; minimizing and Spaces animate (§2.3, §6). | Park, and bring the workspace along when Cmd+Tab picks a parked window; or minimize with the Scale effect (`hide = "minimize"`). **No** way to get all three at once. |
+| One workspace pool shared by every monitor (tide §6.5) | Parked and minimized windows have no display of their own, and native Spaces are per display. | tilemo tracks each workspace's display itself, as tileco does (tileco §6.1). |
+| Moving a window to a native Space | Only private calls can (§2.3). | Workspaces by parking windows off screen, or minimizing (§6). |
 | Exact tiles for every app | Apps can refuse or round a size, such as terminals snapping to their character grid (§2.1). | The rest tile around what the app took (§5). In kitty, the grid snapping can be turned off *(unverified)*. |
 | Tiling native full-screen windows | A full-screen window lives in its own Space. | Maximize instead (§4). |
 | Own bar replacing the menu bar | The menu bar is the system's (§8). | Hide the menu bar automatically and put a bar over it, or use SketchyBar. |
@@ -3436,7 +3493,7 @@ Each one names a workaround, or says there is none.
      on Hammerspoon. Done when the dialog checklist passes.
   3. **Focus follows mouse,** on by default. Done when its checklist
      passes.
-  4. **Workspaces:** minimizing, displays and restarts. Done when a day's
+  4. **Workspaces:** parking (or minimizing), displays and restarts. Done when a day's
      work needs no Mission Control.
   5. **Bar, switcher and dashboard,** then attention.
   6. **Named workspaces:** "in", the name prompt, `TIDE_WORKSPACE` and the
@@ -3445,8 +3502,9 @@ Each one names a workaround, or says there is none.
 
 ## 19. Open questions
 
-1. **Workspaces:** decided, minimize (§6), with native Spaces next if it
-   doesn't work out.
+1. **Workspaces:** decided, park, with minimizing as a setting (§6, changed
+   from minimize on 2026-11-05), and native Spaces next if neither works
+   out.
 2. **Build route:** Hammerspoon first (§3 B), or straight to a native app?
 3. **Bar:** decided, tilemo's own bar over an auto-hidden menu bar, with its
    own status items (§8). The menu bar item stays as the fallback.

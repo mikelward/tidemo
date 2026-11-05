@@ -113,6 +113,14 @@ reloads itself a second after the new copy lands in
 `tilemo.start({ bar = false })` leaves the bar out and shows tide's logo and
 the workspaces in the menu bar instead.
 
+A workspace that isn't showing parks its windows off screen, as AeroSpace
+does, so a switch is instant: all but a 1 pt sliver of each goes past a
+corner of its display. Mission Control then shows every workspace's
+windows, and Cmd+Tab to a parked window brings its workspace along.
+`tilemo.start({ hide = "minimize" })` minimizes them instead, as tilemo
+used to: Mission Control shows only the workspace on screen, but every
+switch animates. The default is `hide = "park"` (SPEC.md §6).
+
 The Switcher row under Keyboard in tide's settings swaps the `hs.chooser`
 switcher for tileco's dashboard page, still being tried, at once (SPEC.md
 §9.2). Until it's chosen there, `tilemo.start({ launcher = "dashboard" })`

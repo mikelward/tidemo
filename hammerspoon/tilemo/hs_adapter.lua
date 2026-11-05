@@ -451,6 +451,16 @@ function M.new()
         return focused_in(pid and hs.application.applicationForPID(pid))
     end
 
+    -- Give the focus to Hammerspoon itself, with no window of its own in
+    -- front, so typing reaches no app's window (wm's unfocus_parked)
+    -- *(unverified on a Mac that activating it opens no console)*.
+    function a.focus_none()
+        local app = hs.application.applicationForPID(me)
+        if app then
+            app:activate()
+        end
+    end
+
     -- Whether Hammerspoon has the focus, which focused() can't say.
     function a.own_front()
         local app = hs.application.frontmostApplication()

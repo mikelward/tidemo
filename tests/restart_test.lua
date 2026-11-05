@@ -6,8 +6,20 @@ local t = require("t")
 local fake = require("fake")
 local wm_mod = require("tilemo.wm")
 
-local function start(a, saved)
-    local wm = wm_mod.new(a, { saved = saved })
+-- Minimize mode (`hide = "minimize"`), for the tests about hiding a
+-- workspace by minimizing: they read macOS's minimized flag as hidden, or
+-- test the minimize expectations. Parking, the default, has its own tests
+-- (wm_test.lua, park_test.lua).
+local function minimizing(config)
+    config = config or {}
+    config.hide = "minimize"
+    return config
+end
+
+local function start(a, saved, config)
+    config = config or {}
+    config.saved = saved
+    local wm = wm_mod.new(a, config)
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -25,7 +37,7 @@ t.test("after a restart, windows with new ids go back by app and title", functio
     local wm = start(a, {
         windows = { ["1"] = place("mail", "Inbox", "3", 1), ["2"] = place("mail", "Drafts", "4", 1) },
         screens = { A = "in" },
-    })
+    }, minimizing())
     t.eq(wm.windows[11].ws, "3", "Inbox")
     t.eq(wm.windows[10].ws, "4", "Drafts")
     t.eq(a.wins[10].minimized, true, "hidden with its workspace")

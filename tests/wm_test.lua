@@ -892,4 +892,385 @@ t.test("new layout settings retile every display at once, and the same ones chan
     t.eq(wm:part("in", "A").opts.tile.mfact, 0.525, "a reload with the same settings keeps the keys'")
 end)
 
+-- Parking (SPEC.md §6): the default way a hidden workspace hides. -----------
+
+local park = require("tilemo.park")
+
+-- Whether the adapter was asked to minimize anything.
+local function minimizes(a)
+    for _, c in ipairs(a.calls) do
+        if c:match("^minimize ") then
+            return true
+        end
+    end
+    return false
+end
+
+-- Where display A parks a window of `w` by `h`, alone: its top-left 1 pt
+-- inside A's bottom-right corner.
+local function spot_on_a(w, h)
+    return { x = 1919, y = 1079, w = w, h = h }
+end
+
+t.test("in park mode, a switch parks the hidden workspace's windows and never minimizes", function()
+    local a, wm = setup(2)
+    t.eq(wm.hide, "park", "the default")
+    local f1, f2 = frame(a, 1), frame(a, 2)
+    a.calls = {}
+    wm:show("2", nil, true)
+    t.eq(minimizes(a), false, "nothing minimized")
+    t.eq(a.wins[1].minimized, nil)
+    t.eq(frame(a, 1), spot_on_a(f1.w, f1.h))
+    t.eq(frame(a, 2), spot_on_a(f2.w, f2.h))
+    t.eq(wm.parked[1], true)
+    t.eq(wm.parked[2], true)
+    t.eq(wm:tiled("in", "A"), {}, "a parked window isn't on screen")
+end)
+
+t.test("switching back puts parked windows back in their tiles", function()
+    local a, wm = setup(3)
+    local before = { frame(a, 1), frame(a, 2), frame(a, 3) }
+    wm:show("2", nil, true)
+    wm:show("in")
+    for i = 1, 3 do
+        t.eq(frame(a, i), before[i], "tile " .. i)
+        t.eq(wm.parked[i], nil, "unparked " .. i)
+    end
+    t.eq(wm:tiled("in", "A"), { 1, 2, 3 })
+end)
+
+t.test("the workspace coming in is laid out before the one leaving is parked", function()
+    local a, wm = setup(1)
+    a.focus_ = 1
+    wm:act("send", "2")
+    a.add(2, {})
+    wm:sync()
+    wm:retile()
+    a.calls = {}
+    wm:show("2", nil, true)
+    t.eq(a.calls[1], "frame 1", "1 comes in first")
+    t.eq(a.calls[2], "frame 2", "then 2 leaves")
+end)
+
+t.test("a float gets its own frame back when its workspace shows again", function()
+    local a, wm = setup(1)
+    a.focus_ = 1
+    a.add(2, { subrole = "AXDialog", frame = { x = 0, y = 0, w = 400, h = 200 } })
+    wm:sync()
+    wm:retile()
+    local f = frame(a, 2)
+    -- You moved it.
+    a.wins[2].frame = { x = 1300, y = 700, w = 400, h = 200 }
+    wm:show("2", nil, true)
+    t.eq(frame(a, 2), spot_on_a(400, 200))
+    t.eq(wm.windows[2].ws, "in", "its park doesn't move it to another workspace")
+    wm:show("in")
+    t.eq(frame(a, 2), { x = 1300, y = 700, w = 400, h = 200 })
+    t.eq(f ~= nil, true)
+end)
+
+t.test("macOS reporting a park's move isn't read as you moving the window", function()
+    local a, wm = setup(2)
+    a.add(3, { app = "com.apple.systempreferences", pid = 300, frame = { x = 0, y = 0, w = 600, h = 500 } })
+    wm:sync()
+    wm:show("2", nil, true)
+    for _, id in ipairs({ 1, 2, 3 }) do
+        wm:moved(id)
+    end
+    t.eq(wm.windows[1].ws, "in")
+    t.eq(wm.windows[3].ws, "in", "the float stays on its workspace")
+    t.eq(wm:part("in", "A").order, { 1, 2 })
+    t.eq(wm.windows[1].screen, "A")
+end)
+
+t.test("focusing a parked window, as Cmd+Tab does, brings its workspace along", function()
+    local a, wm = setup(2)
+    wm:focused(1)
+    wm:show("2", nil, true)
+    t.eq(wm.parked[1], true)
+    -- Cmd+Tab: Command down, then macOS focuses the app's window.
+    wm:modifiers(true)
+    a.focus_ = 1
+    wm:focused(1)
+    wm:modifiers(false)
+    t.eq(wm.current, "in", "its workspace shows")
+    t.eq(wm.parked[1], nil)
+    t.eq(wm.parked[2], nil)
+    t.eq(park.hidden(frame(a, 1), wm:fulls()), false, "back on screen")
+    t.eq(a.focus_, 1)
+end)
+
+t.test("a late report of a focus from before a switch doesn't pull you back", function()
+    local a, wm = setup(2)
+    a.focus_ = 1
+    wm:focused(1)
+    wm:show("2", nil, true)
+    -- The switch focused window 2's workspace's window; macOS reports the
+    -- old focus late.
+    a.focus_ = 3
+    wm:focused(1)
+    t.eq(wm.current, "2", "the workspace you switched to stays")
+    t.eq(wm.parked[1], true)
+end)
+
+t.test("switching to an empty workspace takes the focus off the parked window", function()
+    local a, wm = setup(1)
+    a.focus_ = 1
+    wm:focused(1)
+    wm:show("2", nil, true)
+    t.eq(wm.parked[1], true)
+    t.eq(a.focus_, nil, "typing reaches no window you can't see")
+    t.eq(a.own, true, "Hammerspoon has the focus")
+end)
+
+t.test("a parked window's sliver isn't a window to pick under the pointer", function()
+    local a, wm = setup(1)
+    wm:show("2", nil, true)
+    t.eq(wm:window_at(1919, 1079), nil)
+end)
+
+t.test("restore_all brings every parked window back onto its display", function()
+    local a, wm = setup(2)
+    a.focus_ = 1
+    a.add(3, { subrole = "AXDialog", frame = { x = 0, y = 0, w = 400, h = 200 } })
+    wm:sync()
+    wm:retile()
+    local tile, float = frame(a, 1), frame(a, 3)
+    wm:show("2", nil, true)
+    wm:restore_all()
+    t.eq(next(wm.parked), nil, "nothing parked")
+    t.eq(frame(a, 1), tile, "a tile where it was")
+    t.eq(frame(a, 3), float, "a float where it was")
+    t.eq(park.hidden(frame(a, 2), wm:fulls()), false, "the other tile too")
+end)
+
+t.test("Super+Z in park mode still minimizes, to the tray, and the window stays down", function()
+    local a, wm = setup(2)
+    wm:focus_window(2)
+    wm:focused(2)
+    a.calls = {}
+    wm:act("minimize")
+    t.eq(a.wins[2].minimized, true, "really minimized")
+    t.eq(a.calls[1], "minimize 2")
+    t.eq(wm.windows[2].mine, true)
+    t.eq(wm:minimized_windows("in", "A"), { 2 }, "in the tray")
+    wm:minimized(2) -- macOS's report of tilemo's own minimize
+    wm:show("2", nil, true)
+    t.eq(wm.parked[2], nil, "a window you minimized isn't parked")
+    t.eq(wm.parked[1], true)
+    wm:show("in")
+    t.eq(a.wins[2].minimized, true, "still down")
+    t.eq(wm:tiled("in", "A"), { 1 })
+end)
+
+t.test("minimize mode hides by minimizing, as before, and moves nothing off screen", function()
+    local a = fake.new()
+    a.add(1, {})
+    a.add(2, {})
+    local wm = wm_mod.new(a, { hide = "minimize" })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    local f1 = frame(a, 1)
+    a.calls = {}
+    wm:show("2", nil, true)
+    t.eq(a.calls, { "minimize 1", "minimize 2" })
+    t.eq(a.wins[1].minimized, true)
+    t.eq(frame(a, 1), f1, "not moved")
+    t.eq(next(wm.parked), nil)
+    a.calls = {}
+    wm:show("in")
+    t.eq(a.calls[1], "unminimize 1")
+    t.eq(a.calls[2], "unminimize 2")
+    t.eq(a.wins[1].minimized, false)
+end)
+
+t.test("a window tilemo minimized under the old scheme comes back in park mode", function()
+    local a = fake.new()
+    a.add(1, { minimized = true, title = "Shown" })
+    a.add(2, { minimized = true, title = "Hidden" })
+    local wm = wm_mod.new(a, { saved = {
+        windows = {
+            ["1"] = { ws = "in", mine = false, app = "com.example.app", pos = 1 },
+            ["2"] = { ws = "2", mine = false, app = "com.example.app" },
+        },
+        current = "in",
+        names = { "in", "2" },
+    } })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(a.wins[1].minimized, false, "its workspace shows: restored")
+    t.eq(frame(a, 1), { x = 0, y = 25, w = 1920, h = 1055 }, "and tiled")
+    t.eq(a.wins[2].minimized, false, "hidden: restored, then parked")
+    t.eq(wm.parked[2], true)
+    t.eq(frame(a, 2), spot_on_a(800, 600))
+    wm:unminimized(1)
+    wm:unminimized(2)
+    t.eq(wm.windows[2].mine, false, "macOS's reports are tilemo's, not yours")
+end)
+
+t.test("a native full-screen window hides by minimizing, since it can't be parked", function()
+    local a, wm = setup(2)
+    a.wins[2].fullscreen = true
+    local f = frame(a, 2)
+    a.calls = {}
+    wm:show("2", nil, true)
+    t.eq(a.wins[2].minimized, true, "minimized")
+    t.eq(frame(a, 2), f, "not moved")
+    t.eq(wm.parked[2], nil)
+    t.eq(wm.parked[1], true, "the other window parks")
+    wm:minimized(2)
+    t.eq(wm.windows[2].mine, false, "tilemo's own minimize")
+    -- macOS takes it out of full screen as it minimizes.
+    a.wins[2].fullscreen = false
+    wm:reconcile()
+    t.eq(a.wins[2].minimized, true, "it stays down, not unminimized to be parked")
+    wm:show("in")
+    t.eq(a.wins[2].minimized, false, "back with its workspace")
+end)
+
+t.test("parked windows survive a restart that didn't bring them back first", function()
+    local a, wm = setup(2)
+    a.focus_ = 1
+    a.add(3, { subrole = "AXDialog", frame = { x = 0, y = 0, w = 400, h = 200 } })
+    wm:sync()
+    wm:retile()
+    a.wins[3].frame = { x = 1300, y = 700, w = 400, h = 200 }
+    wm:show("2", nil, true)
+    local spot = frame(a, 1)
+    -- A restart with the windows still parked: a crash, say.
+    a.calls = {}
+    local wm2 = wm_mod.new(a, { saved = a.saved })
+    wm2:sync()
+    wm2:reconcile()
+    wm2:retile()
+    t.eq(wm2.current, "2")
+    t.eq(wm2.parked[1], true, "parked again")
+    t.eq(wm2.parked[3], true)
+    t.eq(frame(a, 1), spot, "left where it was")
+    t.eq(a.calls, {}, "nothing moved")
+    wm2:show("in")
+    t.eq(frame(a, 3), { x = 1300, y = 700, w = 400, h = 200 }, "the float's saved frame")
+    t.eq(park.hidden(frame(a, 1), wm2:fulls()), false, "the tiles placed")
+    t.eq(wm2:tiled("in", "A"), { 1, 2 })
+end)
+
+t.test("a window left at a park spot, whose workspace now shows, is placed as usual", function()
+    local a = fake.new()
+    a.add(1, { frame = spot_on_a(800, 600) })
+    a.add(2, { app = "com.apple.systempreferences", pid = 300, frame = spot_on_a(600, 500) })
+    local wm = wm_mod.new(a, { saved = {
+        windows = {
+            ["1"] = { ws = "in", mine = false, app = "com.example.app", pos = 1 },
+            ["2"] = { ws = "in", mine = false, app = "com.apple.systempreferences" },
+        },
+        current = "in",
+    } })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(frame(a, 1), { x = 0, y = 25, w = 1920, h = 1055 }, "tiled")
+    t.eq(park.hidden(frame(a, 2), wm:fulls()), false, "the float is back on screen")
+    t.eq(next(wm.parked), nil)
+end)
+
+t.test("with a display to the right, a window parks clear of it", function()
+    local a = fake.new()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
+    a.add(1, { frame = { x = 100, y = 100, w = 800, h = 600 } })
+    a.add(2, { frame = { x = 2000, y = 100, w = 800, h = 600 } })
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(wm.windows[2].screen, "B")
+    wm:show("2", nil, true)
+    local f1, f2 = frame(a, 1), frame(a, 2)
+    t.eq({ x = f1.x, y = f1.y }, { x = 1 - f1.w, y = 1079 }, "A's bottom-left, away from B")
+    t.eq({ x = f2.x, y = f2.y }, { x = 3839, y = 1079 }, "B's bottom-right")
+    wm:show("in")
+    t.eq(wm.windows[1].screen, "A")
+    t.eq(wm.windows[2].screen, "B", "each back on its own display")
+    t.eq(wm:tiled("in", "B"), { 2 })
+end)
+
+t.test("a float still parked after a restart keeps its display", function()
+    local a = fake.new()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
+    a.add(1, { app = "com.apple.systempreferences", pid = 300, frame = { x = 2000, y = 100, w = 600, h = 500 } })
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(wm:screen_of(1), "B")
+    wm:show("2", nil, true)
+    local wm2 = wm_mod.new(a, { saved = a.saved })
+    wm2:sync()
+    wm2:reconcile()
+    t.eq(wm2.parked[1], true)
+    t.eq(wm2.windows[1].screen, "B", "not the first display, which an off-screen frame would say")
+    wm2:show("in")
+    t.eq(wm2:screen_of(1), "B")
+end)
+
+t.test("a parked float still to be placed keeps its display as it comes back", function()
+    local a = fake.new()
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
+    a.add(1, { app = "com.apple.systempreferences", pid = 300, frame = { x = 2000, y = 100, w = 600, h = 500 } })
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    wm:show("2", nil, true)
+    t.eq(wm.parked[1], true)
+    -- New float rules leave its placement to come, as set_float_rules does.
+    wm.windows[1].place_pending = { w = 600, h = 500 }
+    wm:show("in")
+    t.eq(wm.parked[1], nil)
+    t.eq(wm.windows[1].screen, "B")
+    t.eq(frame(a, 1).x >= 1920, true, "placed on B, not the first display, which its off-screen frame would say")
+end)
+
+t.test("a parked float re-parked after a display appears keeps where you left it", function()
+    local a = fake.new()
+    a.add(1, { app = "com.apple.systempreferences", pid = 300, frame = { x = 300, y = 200, w = 600, h = 500 } })
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    local before = frame(a, 1)
+    before = { x = before.x, y = before.y, w = before.w, h = before.h }
+    wm:show("2", nil, true)
+    t.eq(wm.parked[1], true)
+    -- A taller display to A's right shows A's bottom-right spot.
+    a.screens_[2] = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1415 }, full = { x = 1920, y = 0, w = 1920, h = 1440 } }
+    wm:reconcile()
+    t.eq(park.hidden(frame(a, 1), wm:fulls()), true, "parked clear of B")
+    wm:show("in")
+    t.eq(frame(a, 1), before, "back where you left it, not at its old spot")
+end)
+
+t.test("a parked tile floated while hidden comes back at the float's size, not its tile's", function()
+    local a, wm = setup(2)
+    wm:show("2", nil, true)
+    t.eq(wm.parked[1], true)
+    -- As retitled() does for a popup whose title arrives late.
+    wm:float_tile(1, { frame = { x = 0, y = 0, w = 400, h = 300 }, pid = a.wins[1].pid })
+    wm:show("in")
+    local f = frame(a, 1)
+    t.eq({ w = f.w, h = f.h }, { w = 400, h = 300 }, "the float's own size")
+    t.eq(park.hidden(f, wm:fulls()), false, "on screen")
+end)
+
+t.test("a bad hide setting fails at load, naming the setting", function()
+    for _, v in ipairs({ "hidden", true, 1 }) do
+        local ok, e = pcall(wm_mod.new, fake.new(), { hide = v })
+        t.eq(ok, false, tostring(v))
+        t.eq(tostring(e):find('hide must be "park" or "minimize"', 1, true) ~= nil, true, tostring(e))
+    end
+    t.eq(wm_mod.new(fake.new(), { hide = "minimize" }).hide, "minimize")
+    t.eq(wm_mod.new(fake.new(), { hide = "park" }).hide, "park")
+end)
+
 t.done("wm")

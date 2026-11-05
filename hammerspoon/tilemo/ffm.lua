@@ -139,11 +139,13 @@ function M:remember(id)
     end
 end
 
--- The managed window at x, y, or nil when something else is on top.
+-- The managed window at x, y, or nil when something else is on top. A
+-- parked window's sliver, in a display's corner (park.lua), is nothing to
+-- focus: crossing it would bring its workspace along.
 function M:hit(x, y)
     local id = self.a.window_at(x, y)
     local w = id and self.wm.windows[id]
-    if w and w.kind ~= "ignore" and w.ws then
+    if w and w.kind ~= "ignore" and w.ws and not (self.wm.parked and self.wm.parked[id]) then
         return id
     end
 end
