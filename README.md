@@ -26,7 +26,8 @@ It brings tide's desktop to macOS:
   a window to one, Super+Tab to flip between "in" and the last workspace,
   Super+End to the last one other than "in", Super+1…9 to the Nth
   workspace on the bar (Super+1 is "in") and Super+Shift+1…9 to send a
-  window there, and Alt+Tab to swap with the master, with conf's Karabiner
+  window there, Super+0 and Super+Shift+0 the same for the last workspace
+  on the bar, and Alt+Tab to swap with the master, with conf's Karabiner
   rule (§7.2);
 - Super+Left and Right to select the window that way, going on to the next
   display at the edge, and Super+Shift+Left and Right to move it there;

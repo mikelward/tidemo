@@ -139,6 +139,25 @@ t.test("Super+Shift+1…9 send the window to the Nth workspace, and focus stays 
     t.eq(wm.windows[1].ws, "in", "nothing past the last")
 end)
 
+t.test("Super+0 shows the last workspace in bar order, and Super+Shift+0 sends the window there", function()
+    local a, wm = setup(2, nil, { workspaces = { "in", "re" } })
+    wm:act("nth", 0)
+    t.eq(wm.current, "re", "with none made, the last standing one")
+    wm:act("nth", 1)
+    wm:focused(1)
+    wm:focused(2)
+    a.focus_ = 2
+    wm:act("send", "web")
+    wm:act("nth", 1)
+    t.eq(wm:listed(), { "in", "re", "web" })
+    a.focus_ = 1
+    wm:act("send_nth", 0)
+    t.eq(wm.windows[1].ws, "web")
+    t.eq(wm.current, "in", "and focus stays here, as Super+Shift+1…9")
+    wm:act("nth", 0)
+    t.eq(wm.current, "web")
+end)
+
 t.test("Super+Shift+PgDn moves the window to the next workspace and follows it", function()
     local a, wm = setup(2, nil, minimizing({ workspaces = { "in" } }))
     a.focus_ = 2

@@ -879,7 +879,8 @@ numbered ones:
   workspace you used last; `Super+End` goes to the last one other than
   "in"** (§7.2).
 - **`Super+1…9` count along the bar:** `Super+N` is the Nth workspace in
-  bar order, so `Super+1` is "in", as `Super+Home` is (§7.2).
+  bar order, so `Super+1` is "in", as `Super+Home` is, and `Super+0` is
+  the last (§7.2).
 - **An empty workspace is removed once you leave it,** other than "in" and
   the standing ones. Leaving means no display shows it any more. A workspace holding only
   windows you minimized isn't empty.
@@ -1498,7 +1499,8 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   (tide §6.6). `Super+N` shows the Nth workspace in bar order, home first,
   so `Super+1` is "in"; `Super+Shift+N` sends the focused window there,
   with focus staying where you are. A number past the last workspace does
-  nothing. A number is a position, not a name.
+  nothing. A number is a position, not a name. `Super+0` and
+  `Super+Shift+0` do the same for the last workspace in bar order.
 - **`Super+Left` and `Right` go between windows, across displays.**
   **Decided** (2026-11-01, §19 question 12). They select the tiled window
   that way; at a display's edge, a window on the next display that way.
