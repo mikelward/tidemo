@@ -22,7 +22,7 @@
 // tilemo.reveal(id) shows a page, or the part of one, for the launcher's
 // rows.
 
-import { editableClocks, editedClocks, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
+import { barredClock, editableClocks, editedClocks, inBar, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
 import { editableStartup, editedStartup, movedCommand, withCommand, withoutCommand } from "./tide-startup.js";
 import { historySummary, loadClipboardSettings, steppedMax, withSetting } from "./tide-clipboard.js";
 import {
@@ -147,9 +147,18 @@ function render() {
     label.addEventListener("keydown", (e) => {
       if (e.key === "Enter") change((cs) => relabeledClock(cs, i, c.zone, label.value));
     });
+    // In the bar, or only in the dashboard's clock panel.
+    const bar = el("input");
+    bar.type = "checkbox";
+    bar.checked = inBar(c);
+    bar.setAttribute("aria-label", `Show ${c.zone} in the bar`);
+    bar.addEventListener("change", () => change((cs) => barredClock(cs, i, c.zone, bar.checked)));
+    const barLabel = el("label");
+    barLabel.append(bar, " Bar");
     li.append(
       el("span", c.zone),
       label,
+      barLabel,
       button("↑", `Move ${c.zone} left`, i === 0, () => change((cs) => movedClock(cs, i, c.zone, -1))),
       button("↓", `Move ${c.zone} right`, i === base.clocks.length - 1, () => change((cs) => movedClock(cs, i, c.zone, 1))),
       button("✕", `Remove ${c.zone}`, false, () => change((cs) => withoutClock(cs, i, c.zone))),
