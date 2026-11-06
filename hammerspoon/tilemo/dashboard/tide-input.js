@@ -412,6 +412,46 @@ export function connectedDevices(text) {
     return { devices };
 }
 
+// The mice, touchpads and keyboards tidewm's GET_INPUTS (`tide-msg --type
+// get_inputs`) gives, as connectedDevices gives Hyprland's: each by the
+// name Hyprland would give it, its hyprland_name, and of a pointer's kind
+// as its name says, or {error}.
+export function connectedTidewmDevices(text) {
+    const what = "tide-msg --type get_inputs";
+    let value;
+    try {
+        value = JSON.parse(text);
+    } catch (e) {
+        return { error: `${what}: ${jsonError(text)}` };
+    }
+    if (!Array.isArray(value)) {
+        return { error: `${what}: expected a list of devices` };
+    }
+    const devices = [];
+    for (const d of value) {
+        if (d === null || typeof d !== "object" || typeof d.type !== "string") {
+            return { error: `${what}: a device without its type` };
+        }
+        if (typeof d.hyprland_name !== "string") {
+            return { error: `${what}: a device without its hyprland_name; is tidewm too old to name it?` };
+        }
+        if (deviceNameError(d.hyprland_name) === "") {
+            devices.push({ name: d.hyprland_name, kind: d.type === "keyboard" ? "keyboard" : deviceKind(d.hyprland_name) });
+        }
+    }
+    return { devices };
+}
+
+// tidewm's devices from a run of `tide-msg --type get_inputs`, as
+// listedDevices.
+export function listedTidewmDevices(failed, text) {
+    if (failed) {
+        return { devices: [], error: "" };
+    }
+    const r = connectedTidewmDevices(text);
+    return r.error ? { devices: [], error: r.error } : { devices: r.devices, error: "" };
+}
+
 // The devices a run of hyprctl devices -j lists, with why its output didn't
 // read ("" if it did): none when the run failed (`failed`) or its output
 // didn't read, not the last list's, since those may have gone since.
@@ -486,6 +526,79 @@ export function accelCurve(amount, speed) {
 // needs no escapes.
 function luaValue(value) {
     return typeof value === "string" ? `"${value}"` : String(value);
+}
+
+// Each section's input name in tidewm's config (its docs/config.md), and
+// each setting's: what tide writes to ~/.config/tidewm/tide-input.conf,
+// which conf's tidewm config includes. tidewm's pointer is a mouse, and a
+// touchpad is a pointer that can tap, so a pointing stick, a touchpad's
+// on Hyprland here (deviceKind), is a mouse there.
+const TIDEWM_INPUTS = Object.freeze({ mouse: "type:pointer", touchpad: "type:touchpad", keyboard: "type:keyboard" });
+const TIDEWM_SETTINGS = Object.freeze({
+    speed: "pointer_accel",
+    acceleration: "accel_profile",
+    scrollSpeed: "scroll_factor",
+    naturalScroll: "natural_scroll",
+    leftHanded: "left_handed",
+    tapToClick: "tap",
+    disableWhileTyping: "dwt",
+    layout: "xkb_layout",
+    variant: "xkb_variant",
+    repeatDelay: "repeat_delay",
+    repeatRate: "repeat_rate",
+});
+
+// A setting as tidewm takes it: a toggle as enabled or disabled; an
+// acceleration as libinput's flat profile for 0, else its adaptive one,
+// since tidewm has no curve, so the amount is Hyprland's alone; an empty
+// variant, none, as ""; anything else as it is, which settingError has kept
+// to letters, digits, -, _, commas and numbers.
+function tidewmValue(s, value) {
+    if (s.kind === "toggle") {
+        return value ? "enabled" : "disabled";
+    }
+    if (s.kind === "accel") {
+        return value === 0 ? "flat" : "adaptive";
+    }
+    return value === "" ? '""' : String(value);
+}
+
+// The file conf's tidewm config includes: an input block for each section
+// with something set in it, then one for each device with settings of its
+// own, by the name Hyprland gives it, which tidewm takes too. A device's
+// name needs no escapes inside quotes (DEVICE_NAME).
+export function inputConf(input) {
+    const lines = [
+        "# Written by tide from input.json and input.local.json (tide SPEC.md §16).",
+        "# Change those, or the Mouse, Touchpad and Keyboard pages of tide's",
+        "# settings, not this file. Only what's set is here; conf's tidewm config",
+        "# has the rest.",
+    ];
+    for (const section of Object.keys(SECTIONS)) {
+        const set = input[section] || {};
+        const fields = SECTIONS[section].filter(s => set[s.key] !== undefined);
+        if (fields.length === 0) {
+            continue;
+        }
+        lines.push(`input ${TIDEWM_INPUTS[section]} {`);
+        for (const s of fields) {
+            lines.push(`    ${TIDEWM_SETTINGS[s.key]} ${tidewmValue(s, set[s.key])}`);
+        }
+        lines.push("}");
+    }
+    for (const name of Object.keys(input.devices || {}).sort()) {
+        const set = ownDevice(input.devices, name);
+        const fields = deviceSettings(name).filter(s => set[s.key] !== undefined);
+        if (fields.length === 0) {
+            continue;
+        }
+        lines.push(`input "${name}" {`);
+        for (const s of fields) {
+            lines.push(`    ${TIDEWM_SETTINGS[s.key]} ${tidewmValue(s, set[s.key])}`);
+        }
+        lines.push("}");
+    }
+    return lines.join("\n") + "\n";
 }
 
 // The file conf's hyprland.lua reads: every section, with what's set in it.
