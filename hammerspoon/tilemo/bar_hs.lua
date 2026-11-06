@@ -573,6 +573,11 @@ function M.new(tilemo)
                     tilemo.launcher.show("workspaces")
                 end,
                 sound = show_sound,
+                -- A right-click: that item's settings page (SPEC.md §8), or
+                -- with "" the first, even with the window open on another.
+                settings = function(page)
+                    tilemo.settings.show(page)
+                end,
             })
         end)
     end

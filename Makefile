@@ -4,7 +4,7 @@
 #   make lint     check every Lua file parses
 #   make install  copy the Hammerspoon modules to ~/.hammerspoon/tilemo
 #   make check-tide   compare tilemo's copies of tide's geometry, direction, clocks,
-#                 startup, clipboard, steps, layouts, input, fuzzy and workspaces modules and character list with a tide checkout (TIDE=../tide
+#                 startup, clipboard, steps, layouts, input, fuzzy, workspaces and bar settings modules and character list with a tide checkout (TIDE=../tide
 #                 by default)
 #   make check-tileco   compare the dashboard's copies of tileco's clock
 #                 modules and launcher page with a tileco checkout
@@ -73,6 +73,7 @@ check-tide:
 	cmp $(TIDE)/shell/lib/span.mjs hammerspoon/tilemo/dashboard/tide-span.js
 	cmp $(TIDE)/shell/lib/workspacenames.mjs hammerspoon/tilemo/dashboard/tide-workspacenames.js
 	cmp $(TIDE)/shell/lib/workspacepage.mjs hammerspoon/tilemo/dashboard/tide-workspacepage.js
+	cmp $(TIDE)/shell/lib/barsettings.mjs hammerspoon/tilemo/dashboard/tide-barsettings.js
 	cmp $(TIDE)/shell/chars/chars.tsv hammerspoon/tilemo/chars.tsv
 	cmp $(TIDE)/shell/icons/tide-symbolic.svg hammerspoon/tilemo/icons/tide-symbolic.svg
 	$(LUA) ci/check_chip_colors.lua $(TIDE)/theme/palette.json hammerspoon/tilemo/dashboard/bar.html

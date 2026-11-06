@@ -7,12 +7,52 @@
 // { toggle: "mic" | "volume" | "awake" | "presenter" | "source" },
 // { sound: { right } } from the speaker, its right edge,
 // { volume: 1 or -1 }, { session: { x } } from the session icon at x,
+// { settings: page } from a right-click, "" for the first page,
 // { dashboard: true }, { switcher: true } from the logo, { menubar: true } from the Apple logo, { maximize: true }, { tip: { text, x } } while
 // an item with a tip is hovered and { tip: { text: "" } } once none is, { clockErrors } naming a clocks file that's wrong, or
 // { goodClocks }, the clocks to keep while one is.
 
 import { renderClocks } from "./clockview.js";
 import { DEFAULT_SETTINGS, nextSettings } from "./settings.js";
+import { page as tidePage } from "./tide-barsettings.js";
+
+// Each bar item, by the selector its element matches and its name in
+// tide's map (tide-barsettings.js), first match winning. The Apple logo
+// opens the first page, as tide's logo does, and the camera too, as tide's
+// sharing pill does.
+const ITEMS = [
+  ["#apple", "logo"],
+  ["#logo", "logo"],
+  ["#workspaces", "workspaces"],
+  ["#title", "title"],
+  ["#clocks", "clocks"],
+  [".source", "keyboard"],
+  [".awake", "keepawake"],
+  [".camera", "sharing"],
+  [".mic", "mic"],
+  [".bluetooth", "bluetooth"],
+  [".headphones", "bluetooth"],
+  [".volume", "volume"],
+  [".wifi, .wired", "network"],
+  [".battery", "battery"],
+  [".sysmon", "sysmon"],
+  [".session", "session"],
+];
+// tilemo's ids for tide's pages, where they differ.
+const PAGE_IDS = { notifications: "muted" };
+
+// The settings page a right-click on `target` opens (tide §7.1): tilemo's
+// id for it, "" for the first page, or null off every item.
+export function settingsPage(target) {
+  for (const [selector, item] of ITEMS) {
+    const e = target?.closest?.(selector);
+    if (!e) continue;
+    const name = item === "keepawake" && e.getAttribute("data-state") === "presenting" ? "presenter" : item;
+    const id = tidePage(name);
+    return PAGE_IDS[id] ?? id;
+  }
+  return null;
+}
 
 // Every message names this bar's display, so tilemo acts there.
 const send = (msg) => window.webkit?.messageHandlers?.tilemo?.postMessage({ uuid, ...msg });
@@ -507,6 +547,14 @@ document.getElementById("bar").addEventListener("dblclick", (e) => {
 // tide's logo opens the switcher on Launch, or closes it, as Super+Space
 // does (SPEC.md §8).
 document.getElementById("logo").addEventListener("click", () => send({ switcher: true }));
+// A right-click on an item opens its settings page, in place of WebKit's
+// menu; elsewhere on the bar it does nothing.
+document.getElementById("bar").addEventListener("contextmenu", (e) => {
+  const id = settingsPage(e.target);
+  if (id === null) return;
+  e.preventDefault();
+  send({ settings: id });
+});
 // The Apple menu, which tilemo opens for real (bar_hs.lua).
 document.getElementById("apple").addEventListener("click", () => send({ menubar: true }));
 

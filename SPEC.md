@@ -1758,6 +1758,15 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     tide (tide §7.1);
   - the clocks shrink to local time alone when the title would get narrower
     than 200 px.
+  - **a right-click on an item opens its Tide Settings page,** by tide's map
+    (tide §7.1), copied as `dashboard/tide-barsettings.js` and checked by
+    `make check-tide`: a chip opens Workspaces, the title Floating, the
+    clocks Clocks, the speaker and the mic Sound, keep awake and the session
+    icon Idle, Presenting Notifications, and so on. The Apple logo, the
+    camera and the system monitor open the first page, as tide's logo,
+    sharing pill and system monitor do. WebKit's own menu stays away from
+    the items *(unverified on a Mac that the bar's webview gets the
+    right-click)*.
 - **The bar on Hammerspoon** is built like the dashboard: one borderless
   `hs.webview` per display, from the same copies of tileco's modules and
   stylesheet, plus tilemo's `bar.js`. It stays open, and tilemo sends it new

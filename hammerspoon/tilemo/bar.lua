@@ -831,6 +831,7 @@ end
 -- window only if that window is on B, where the title shows. `act` holds what needs Hammerspoon: open(url),
 -- dashboard(uuid), switcher(uuid) for the logo, toggle(what), volume(step),
 -- session(uuid, { x }) for the session menu under the icon at x,
+-- settings(page) for a right-click's settings page, "" for the first,
 -- sound(uuid, { right }) for the volume popover under the speaker,
 -- and tip(uuid, tip).
 function M.handle(wm, body, act)
@@ -864,6 +865,8 @@ function M.handle(wm, body, act)
         act.volume(tonumber(body.volume))
     elseif body.menubar and act.menubar then
         act.menubar(uuid)
+    elseif type(body.settings) == "string" and act.settings then
+        act.settings(body.settings)
     elseif body.workspaces and act.workspaces then
         act.workspaces(uuid)
     elseif type(body.session) == "table" and act.session then

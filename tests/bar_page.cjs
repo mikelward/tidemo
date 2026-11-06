@@ -670,4 +670,43 @@ sandbox.tilemo.update({
   assert.strictEqual(labels[0], "TYO");
   assert.ok(!labels.includes("DEN"), "Denver is out of the bar");
 }
+// A right-click on an item opens its settings page, by tide's map with
+// tilemo's page ids (tide SPEC.md §7.1), and keeps WebKit's menu away;
+// off every item it does nothing.
+{
+  sandbox.tilemo.update({
+    uuid: "B", workspaces: ws, title: "Doc", icons: {
+      source: { name: "U.S.", label: "US" }, awake: { on: false }, mic: { muted: false }, bluetooth: { on: true },
+      headphones: { devices: [{ name: "Buds" }] }, volume: { level: "high", text: "50%" }, wifi: { on: true, bars: 3, name: "home" },
+      battery: { percent: 50, text: "50%" }, sysmon: { text: "5%" },
+    },
+  });
+  const pages = (target) => {
+    sent.length = 0;
+    let stopped = false;
+    ids.bar.listeners.contextmenu({ target, preventDefault: () => (stopped = true) });
+    const m = sent.filter((x) => x.settings !== undefined);
+    assert.strictEqual(stopped, m.length === 1, "WebKit's menu stays away only for an item");
+    return m.length ? m[0].settings : null;
+  };
+  const named = Object.fromEntries(ids.icons.children.map((c) => [c.className.replace("icon ", ""), c]));
+  const chipsNow = ids.workspaces.children;
+  assert.strictEqual(pages(chipsNow[0]), "workspaces");
+  assert.strictEqual(pages(ids.title), "floating");
+  assert.strictEqual(pages(ids.clocks), "clocks");
+  assert.strictEqual(pages(ids.logo), "");
+  assert.strictEqual(pages(named.source), "keyboard");
+  assert.strictEqual(pages(named.awake), "idle");
+  assert.strictEqual(pages(named.mic), "sound");
+  assert.strictEqual(pages(named.bluetooth), "bluetooth");
+  assert.strictEqual(pages(named.headphones), "bluetooth");
+  assert.strictEqual(pages(named.volume), "sound");
+  assert.strictEqual(pages(named.wifi), "network");
+  assert.strictEqual(pages(named.battery), "power");
+  assert.strictEqual(pages(named.sysmon), "");
+  assert.strictEqual(pages(named.session), "idle");
+  assert.strictEqual(pages(ids.bar), null);
+  sandbox.tilemo.update({ uuid: "B", workspaces: ws, title: "", icons: { awake: { on: true, presenting: true } } });
+  assert.strictEqual(pages(ids.icons.children[0]), "muted", "Presenting opens Notifications, tilemo's muted page");
+}
 console.log("bar page: ok");
