@@ -137,13 +137,25 @@ assert.strictEqual(ids.error.textContent, "");
 // Relabel, move and remove, each keeping the file's switches. Each change
 // redraws the rows, so each is found afresh.
 const row = (zone) => rows().find((li) => li.children[0].textContent === zone);
-assert.strictEqual(row("Asia/Tokyo").children[2].disabled, true, "the first can't move left");
+for (const li of rows()) assert.strictEqual(li.children.length, 6, "a zone, its label, Bar, left, right and remove");
+assert.strictEqual(row("Asia/Tokyo").children[3].disabled, true, "the first can't move left");
 row("Asia/Tokyo").children[1].value = "abbr";
 press(row("Asia/Tokyo").children[1], "Enter");
 assert.deepStrictEqual(lastWrite(), { clocks: [{ zone: "Asia/Tokyo", label: "abbr" }, { zone: "Europe/London", label: "LON" }], hour24: false });
-row("Europe/London").children[2].listeners.click();
+// Bar takes a clock out of the bar, keeping it in the dashboard's panel,
+// and puts it back (tide SPEC.md §7.3).
+const barBox = (zone) => row(zone).children[2].children[0];
+assert.strictEqual(barBox("Asia/Tokyo").checked, true, "every clock is in the bar to start with");
+barBox("Asia/Tokyo").checked = false;
+barBox("Asia/Tokyo").listeners.change();
+assert.deepStrictEqual(lastWrite(), { clocks: [{ zone: "Asia/Tokyo", label: "abbr", bar: false }, { zone: "Europe/London", label: "LON" }], hour24: false });
+assert.strictEqual(barBox("Asia/Tokyo").checked, false);
+barBox("Asia/Tokyo").checked = true;
+barBox("Asia/Tokyo").listeners.change();
+assert.deepStrictEqual(lastWrite(), { clocks: [{ zone: "Asia/Tokyo", label: "abbr" }, { zone: "Europe/London", label: "LON" }], hour24: false });
+row("Europe/London").children[3].listeners.click();
 assert.deepStrictEqual(lastWrite().clocks.map((c) => c.zone), ["Europe/London", "Asia/Tokyo"]);
-row("Asia/Tokyo").children[4].listeners.click();
+row("Asia/Tokyo").children[5].listeners.click();
 assert.deepStrictEqual(lastWrite(), { clocks: [{ zone: "Europe/London", label: "LON" }], hour24: false });
 
 // Two changes before tilemo hands the saved file back both stick: the page
@@ -154,8 +166,8 @@ const three = [
   { zone: "America/Denver", label: "DEN" },
 ];
 sandbox.tilemo.update({ clockFiles: { local: JSON.stringify(three) } });
-row("Asia/Tokyo").children[4].listeners.click();
-row("Europe/London").children[4].listeners.click();
+row("Asia/Tokyo").children[5].listeners.click();
+row("Europe/London").children[5].listeners.click();
 assert.deepStrictEqual(lastWrite(), [{ zone: "America/Denver", label: "DEN" }]);
 assert.deepStrictEqual(zones(), ["America/Denver"]);
 

@@ -657,4 +657,17 @@ assert.strictEqual(presenting.attrs["data-tip"], "Presenting: Do Not Disturb and
 assert.strictEqual(presenting.children[0].textContent, "Presenting");
 presenting.listeners.click();
 assert.strictEqual(JSON.stringify(sent.filter((m) => !m.goodClocks)), JSON.stringify([{ uuid: "B", toggle: "presenter" }]));
+
+// A clock set bar: false stays in the dashboard's panel and out of the bar
+// (tide SPEC.md §7.3); every other one is in it, then local time.
+sandbox.tilemo.update({
+  uuid: "B", workspaces: ws, title: "", icons: {},
+  clockFiles: { local: JSON.stringify([{ zone: "Asia/Tokyo", label: "TYO" }, { zone: "America/Denver", label: "DEN", bar: false }]) },
+});
+{
+  const labels = ids.clocks.children.map((li) => li.children[0].textContent);
+  assert.strictEqual(labels.length, 2, `Tokyo and local: ${labels.join(", ")}`);
+  assert.strictEqual(labels[0], "TYO");
+  assert.ok(!labels.includes("DEN"), "Denver is out of the bar");
+}
 console.log("bar page: ok");

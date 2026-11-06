@@ -2058,6 +2058,10 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
     tide's in CI. With neither file, they're tileco's: Sydney, Los Angeles,
     New York and London. A label of `"abbr"` shows the zone's abbreviation
     from Intl, which says `GMT+1` for London in summer (tide §7.3).
+  - **Which are in the bar** is tide's setting too (tide §7.3): every zone
+    is unless its entry says `"bar": false`, and the dashboard's clock
+    panel lists them all. The Clocks window's **Bar** box on each clock
+    sets it, in `clocks.local.json`.
   - tide's `hour24` and `dedupeLocal` switches are read but not followed:
     tileco's clock view is always 24-hour and always hides the local zone.
   - A file that's wrong keeps the clocks as they were, and a notification

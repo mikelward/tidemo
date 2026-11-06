@@ -43,6 +43,8 @@ function tilecoClock(c) {
       return c.label === "abbr" ? abbreviation(new Date(), c.zone) : c.label;
     },
     city: cityLabel(c.zone),
+    // In the bar unless it says otherwise (tide SPEC.md §7.3).
+    bar: c.bar !== false,
   };
 }
 
