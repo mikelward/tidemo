@@ -194,6 +194,8 @@ t.test("each binding says its keys as they're printed on the keyboard, and what 
         ["Tap Super"] = "The switcher, on Launch",
         ["Super+3"] = "Workspace 3 on the bar",
         ["Super+Shift+3"] = "Send the window to workspace 3 on the bar",
+        ["Super+0"] = "The last workspace on the bar",
+        ["Super+Shift+0"] = "Send the window to the last workspace on the bar",
         ["Print"] = "Screenshot",
         ["Alt+Print"] = "Screenshot of the window",
         ["Shift+Print"] = "Screenshot of a region",
@@ -294,7 +296,7 @@ t.test("a screenshot action asks the adapter for that kind", function()
     t.eq(table.concat(a.shots, " "), "window screen")
 end)
 
-t.test('Super+Home goes to "in", and Super+1…9 and Super+Shift+1…9 count along the bar', function()
+t.test('Super+Home goes to "in", Super+1…9 and Super+Shift+1…9 count along the bar, and 0 is the last', function()
     local home
     local nth, send = {}, {}
     for _, b in ipairs(keys.map) do
@@ -307,13 +309,12 @@ t.test('Super+Home goes to "in", and Super+1…9 and Super+Shift+1…9 count alo
         end
     end
     t.eq(home, "home")
-    for i = 1, 9 do
+    for i = 0, 9 do
         t.eq(nth[i] and nth[i].action, "nth", "Super+" .. i)
         t.eq(nth[i] and nth[i].arg, i, "Super+" .. i)
         t.eq(send[i] and send[i].action, "send_nth", "Super+Shift+" .. i)
         t.eq(send[i] and send[i].arg, i, "Super+Shift+" .. i)
     end
-    t.eq(nth[0], nil, "no Super+0")
 end)
 
 t.test("the switcher's keys open it on their own tabs, and Super+Tab, End and Return have their new jobs", function()

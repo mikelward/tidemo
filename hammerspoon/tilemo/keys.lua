@@ -156,7 +156,8 @@ M.SCREENSHOT = {
 
 -- Super+1…9: the Nth workspace in bar order, so Super+1 is home, as
 -- Super+Home is; Super+Shift+1…9 sends the window there (SPEC.md §7.2).
-for i = 1, 9 do
+-- Super+0 (arg 0) is the last workspace on the bar.
+for i = 0, 9 do
     M.map[#M.map + 1] = { key = tostring(i), action = "nth", arg = i }
     M.map[#M.map + 1] = { key = tostring(i), shift = true, action = "send_nth", arg = i }
 end
@@ -250,9 +251,15 @@ M.DOES = {
         return SCREENSHOTS[arg]
     end,
     nth = function(arg)
+        if arg == 0 then
+            return "The last workspace on the bar"
+        end
         return "Workspace " .. tostring(arg) .. " on the bar"
     end,
     send_nth = function(arg)
+        if arg == 0 then
+            return "Send the window to the last workspace on the bar"
+        end
         return "Send the window to workspace " .. tostring(arg) .. " on the bar"
     end,
     swap_master = "Swap with the master",

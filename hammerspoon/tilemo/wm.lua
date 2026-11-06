@@ -3615,10 +3615,16 @@ function A.step(self, d)
     end
 end
 
+-- The Nth workspace in bar order, or the last for 0, or nil past the last.
+function M:nth_listed(i)
+    local list = self:listed()
+    return list[i == 0 and #list or i]
+end
+
 -- Super+1…9 (SPEC.md §7.2): the Nth workspace in bar order, home first, so
--- Super+1 is home. Past the last workspace, nothing.
+-- Super+1 is home. Past the last workspace, nothing. Super+0 is the last.
 function A.nth(self, i)
-    local n = self:listed()[i]
+    local n = self:nth_listed(i)
     if n then
         self:show(n)
     end
@@ -3626,9 +3632,9 @@ end
 
 -- Super+Shift+1…9: send the focused window to the Nth workspace in bar
 -- order, with focus staying here, as Super+Shift+N did. Past the last,
--- nothing.
+-- nothing. Super+Shift+0 sends it to the last.
 function A.send_nth(self, i)
-    local n = self:listed()[i]
+    local n = self:nth_listed(i)
     if n then
         self:send_keeping_focus(self.a.focused(), n)
     end
