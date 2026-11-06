@@ -161,6 +161,17 @@ t.test("a display with a notch tiles under the raised bar, and shows no title", 
     t.eq(opened, "A", "the +n chip opens the switcher's Workspaces")
 end)
 
+t.test("a right-click opens its item's settings page, or the first", function()
+    local _, wm = two_displays()
+    local shown = {}
+    local act = { settings = function(page) shown[#shown + 1] = page end }
+    bar.handle(wm, { uuid = "A", settings = "clocks" }, act)
+    bar.handle(wm, { uuid = "A", settings = "" }, act)
+    bar.handle(wm, { uuid = "A", settings = 3 }, act)
+    -- "" goes on as it is, so an open window turns to its first page too.
+    t.eq(shown, { "clocks", "" }, "a page that isn't a name opens nothing")
+end)
+
 t.test("with the bar on, windows tile below it and maximize stops at it", function()
     local a, wm = two_displays()
     a.add(2, {})

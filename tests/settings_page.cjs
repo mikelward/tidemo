@@ -903,6 +903,10 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(showing(), ["keyboard"]);
   sandbox.tilemo.reveal("nothing-by-this-id");
   assert.deepStrictEqual(showing(), ["displays"]);
+  // A right-click on the bar asks for the first page by "", from any page.
+  sandbox.tilemo.reveal("clocks");
+  sandbox.tilemo.reveal("");
+  assert.deepStrictEqual(showing(), ["displays"]);
 }
 
 // An app or site typed at the Muted list's foot goes to tilemo, which

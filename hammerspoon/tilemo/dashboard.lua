@@ -11,7 +11,7 @@ local M = {}
 -- In the order they're needed: each module only imports ones before it.
 M.MODULES = { "clocks.js", "calendar.js", "tide-clocks.js", "settings.js", "clockview.js", "dashboard.js" }
 -- The bar's page (bar_hs.lua) is built the same way, from the same files.
-M.BAR_MODULES = { "clocks.js", "calendar.js", "tide-clocks.js", "settings.js", "clockview.js", "bar.js" }
+M.BAR_MODULES = { "clocks.js", "calendar.js", "tide-clocks.js", "settings.js", "clockview.js", "tide-barsettings.js", "bar.js" }
 -- And the settings page (settings_hs.lua).
 M.SETTINGS_MODULES = { "clocks.js", "tide-clocks.js", "tide-startup.js", "tide-clipboard.js", "tide-steps.js", "tide-layouts.js", "tide-input.js", "tide-palette.js", "tide-appearance.js", "tide-idle.js", "tide-dnd.js", "linearmouse.js", "tide-fuzzy.js", "tide-span.js", "tide-workspacenames.js", "tide-workspacepage.js", "settings.js", "settings-page.js" }
 
