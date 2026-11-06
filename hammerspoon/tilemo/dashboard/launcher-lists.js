@@ -31,6 +31,16 @@ export const SCOPE_ORDER = TILECO_SCOPE_ORDER;
 export const SECTION_KEY = TILECO_SECTION_KEY;
 export const workspaceRows = tilecoWorkspaceRows;
 
+// The page a right-click on each bar item opens, by Tide Settings' ids in
+// place of tileco's sections: the cup opens Idle, as on tilemo's own bar.
+export const BAR_SECTIONS = Object.freeze({
+  logo: null,
+  workspaces: "workspaces",
+  title: "workspaces",
+  "keep-awake": "idle",
+  clocks: "clocks",
+});
+
 export function actions() {
   return feed.actions.map((a) => ({ ...a }));
 }
