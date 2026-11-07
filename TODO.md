@@ -299,6 +299,46 @@ hiding the system menu bar for good, so tilemo's bar is the only one:
   at the same level, or under it, which decides whether the bar must hide
   while the menu bar is out.
 
+## From the parity review (2026-11-07)
+
+What the user picked from a list of what else would bring a Mac closer to
+tide. INFEASIBLE.md lists what can't be fixed.
+
+- **In progress, in scripts:** `setup-macos` opens Save and Print
+  dialogs expanded, saves new documents to disk rather than iCloud, turns
+  off window animations, and shows the hostname on the lock screen
+  (mikelward/scripts#408).
+- **Next: a three-finger swipe between workspaces.** SPEC.md §13 says no
+  public API, but Hammerspoon's event taps can read the trackpad's touches
+  (`hs.eventtap.event.types.gesture` and `getTouches()`, as community
+  swipe Spoons do). `setup-macos` already turns off macOS's own swipe
+  between Spaces. **Check on a Mac:** that the events still come on
+  macOS 26, without Input Monitoring.
+- **Then: Caps Lock as Compose.** Karabiner sends Caps Lock as a spare key
+  (F19), and tilemo reads the next keys and types the character, from the
+  same compose table conf gives Linux, so it works in every app, kitty
+  included.
+- **To explore: clipboard history that survives a restart,** with images.
+  It's text only and in memory now (SPEC.md §9.1). Passwords must stay out:
+  - skip what password managers mark as concealed or transient
+    (`org.nspasteboard.ConcealedType`, `org.nspasteboard.TransientType`),
+    as Linux's `x-kde-passwordManagerHint` does;
+  - the user's idea: also skip a copy with no spaces that has a character
+    other than a letter or digit, which is what most passwords and tokens
+    look like. It would also skip URLs, paths, emails and code
+    identifiers, so it might apply only to what's saved to disk, with
+    everything still kept in memory;
+  - **to decide with the user:** whether the file is encrypted, and how
+    long entries last.
+- **To consider: middle-click paste,** like Linux's primary selection.
+  tilemo would copy what's selected and put the clipboard back after the
+  paste, which can lose a copy made in between.
+- **Not yet decided:** Tab reaching every control in dialogs
+  (`AppleKeyboardUIMode`), no `.DS_Store` on network shares, and Touch ID
+  for `sudo` (`/etc/pam.d/sudo_local`).
+- **For tide, not here:** holding a key on Linux shows an accent picker, as
+  macOS's press-and-hold does. macOS keeps its own.
+
 ## Decisions needing review
 
 - **The overview's window order** (SPEC.md §6.9, 2026-11-05): each
