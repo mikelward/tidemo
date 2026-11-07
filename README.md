@@ -35,6 +35,7 @@ It brings tide's desktop to macOS:
   Super+PgUp and PgDn for the previous and next workspace with windows,
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);
+- Caps Lock as Compose, as on Linux, with Linux's own sequences (§10);
 - tide's bar along the top: tide's logo, opening the switcher, the
   workspaces, the window's title, the clocks
   and tilemo's own status items (input source, keep awake, camera,

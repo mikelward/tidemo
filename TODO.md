@@ -316,10 +316,13 @@ tide. INFEASIBLE.md lists what can't be fixed.
   trackpad's width feels right; that a three-finger drag, if turned on in
   Accessibility, holds the button down from its first touch, so it never
   swipes.
-- **Next: Caps Lock as Compose.** Karabiner sends Caps Lock as a spare key
-  (F19), and tilemo reads the next keys and types the character, from the
-  same compose table conf gives Linux, so it works in every app, kitty
-  included.
+- **Built: Caps Lock as Compose** (SPEC.md §10, `compose.lua`), with
+  Caps Lock sending F18 from `setup-macos` (mikelward/scripts#408). Only the
+  tests have run it. **Check on a Mac:** that `hidutil`'s Caps Lock to F18
+  holds alongside Karabiner, with no Caps Lock light or delay; that
+  `getCharacters()` gives Dvorak's characters, with Shift; that
+  `keyStrokes` types é, ① and combining marks in kitty, Chrome and a
+  native text field.
 - **To explore: clipboard history that survives a restart,** with images.
   It's text only and in memory now (SPEC.md §9.1). Passwords must stay out:
   - skip what password managers mark as concealed or transient

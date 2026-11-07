@@ -41,6 +41,7 @@ install:
 	mkdir -p $(HAMMERSPOON_DIR)/tilemo
 	cp hammerspoon/tilemo/*.lua $(HAMMERSPOON_DIR)/tilemo/
 	cp hammerspoon/tilemo/chars.tsv hammerspoon/tilemo/LICENSE-UNICODE $(HAMMERSPOON_DIR)/tilemo/
+	cp hammerspoon/tilemo/compose.tsv hammerspoon/tilemo/LICENSE-X11 $(HAMMERSPOON_DIR)/tilemo/
 	mkdir -p $(HAMMERSPOON_DIR)/tilemo/icons
 	cp hammerspoon/tilemo/icons/*.png $(HAMMERSPOON_DIR)/tilemo/icons/
 	mkdir -p $(HAMMERSPOON_DIR)/tilemo/dashboard
