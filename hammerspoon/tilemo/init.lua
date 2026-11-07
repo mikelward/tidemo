@@ -64,6 +64,8 @@ local mute = require("tilemo.mute")
 local standing = require("tilemo.standing")
 local startup = require("tilemo.startup")
 local current = require("tilemo.current")
+local clipstore = require("tilemo.clipstore")
+local clipcrypt = require("tilemo.clipcrypt")
 local prompt_hs = require("tilemo.prompt_hs")
 local presenter_hs = require("tilemo.presenter_hs")
 local presenter = require("tilemo.presenter")
@@ -758,6 +760,33 @@ function M.start(config)
     end
     -- Super+V's picker, whose watcher keeps what you copy from now on.
     self.picker = picker_hs.new(self)
+    -- What was copied in the last week, kept on disk, encrypted with a key
+    -- in the login keychain (SPEC.md §9.1). A failure is said once, until a
+    -- save works.
+    self.clip_store = clipstore.new(current.dir(os.getenv("HOME") or ""), adapter_mod.current_fs,
+        hs.json.encode, self.adapter.decode, clipcrypt.new(io.popen), os.time)
+    local clip_save_error
+    local function saved(ok, err)
+        if ok then
+            clip_save_error = nil
+        elseif err ~= clip_save_error then
+            clip_save_error = err
+            self.adapter.log("clipboard history: couldn't save: " .. tostring(err))
+            self.adapter.notify("Couldn't save the clipboard history: " .. tostring(err))
+        end
+    end
+    self.save_clipboard = function()
+        self.clip_store.changed(self.picker.history, saved)
+    end
+    self.clipboard_cleared = function()
+        self.clip_store.cleared(self.picker.history, saved)
+    end
+    -- A copy a week old goes, whether or not anything else is copied.
+    self.clip_expiry = hs.timer.doEvery(3600, function()
+        if self.clip_store.expire(self.picker.history) then
+            self.on_clipboard()
+        end
+    end)
     self.wm.open_picker = function(tab)
         self.picker.show(tab)
     end
@@ -768,7 +797,16 @@ function M.start(config)
     local function load_clipboard()
         local s, errors = picker.load_settings(self.clock_dir, self.adapter.read, self.adapter.decode, self.clipboard_settings)
         self.clipboard_settings = s
-        picker.configure(self.picker.history, s)
+        -- The first time, what was saved comes back, under this cap; after,
+        -- a smaller cap trims what's saved too.
+        self.clip_store.configure(self.picker.history, s, function(load_error)
+            if load_error then
+                self.adapter.log("clipboard history: " .. load_error)
+                self.adapter.notify("The clipboard history from before couldn't be read: " .. load_error)
+            end
+            -- What came back shows in the settings window's count.
+            self.settings.clipboard_changed()
+        end, saved)
         local text = table.concat(errors, "; ")
         if text ~= "" and text ~= reported_clipboard then
             self.adapter.notify("The clipboard settings stay as they were: " .. text)
@@ -779,6 +817,7 @@ function M.start(config)
     self.load_clipboard = load_clipboard
     -- A copy kept or forgotten: the settings window's Clipboard count.
     self.on_clipboard = function()
+        self.save_clipboard()
         self.settings.clipboard_changed()
     end
     load_clipboard()

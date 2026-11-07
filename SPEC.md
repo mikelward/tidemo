@@ -247,7 +247,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Full-width bar with workspaces and urgency (tide §7) | tilemo's own bar over an auto-hidden menu bar, with its own status items (§8) | **partial**: app menus and other apps' status items still need the menu bar revealed |
 | SYD / LAX / NYC / LON clocks (tileco `src/clocks.js`) | bar clocks, and tileco's clock panel in the dashboard | **yes** |
 | One switcher with tabs: launcher, workspaces, windows, attention (tide §8) | tilemo's switcher, an `hs.chooser`; the lone Super tap needs an event tap or Karabiner (§7, §9) | **yes** |
-| Clipboard history and characters by name on Super+V (tide §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with two tabs (§9.1) | **partial**: text only, kept in memory, so not across a restart |
+| Clipboard history and characters by name on Super+V (tide §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with two tabs (§9.1) | **partial**: text only |
 | Browser tabs in the Windows tab (tileco §9.4) | Chrome, Brave and Safari tabs through AppleScript (§2.5) | **yes**, with Automation granted |
 | App keys (tide `hyprland.lua`, tileco §9.1) | global keys that bring an app's window, and its workspace, forward (§7) | **yes** |
 | Second and third Chrome profiles (`browser2`, `browser3`) | separate `--user-data-dir`s, as tide runs them (§7) | **yes** |
@@ -2286,8 +2286,8 @@ tab, the search field naming the tab you're in.
 three tabs. V as in paste. `Super+;` opens it on Characters and
 `Super+Shift+V` on Fill.
 
-- **Clipboard:** what you've copied since tilemo started, newest first,
-  one line each, searched with the switcher's fuzzy match.
+- **Clipboard:** what you've copied, newest first, one line each,
+  searched with the switcher's fuzzy match.
   - An `hs.pasteboard` watcher keeps each copy as it happens. It keeps
     text only: an image or a file copied isn't listed.
   - **It never keeps a password.** A copy whose pasteboard types include
@@ -2298,11 +2298,44 @@ three tabs. V as in paste. `Super+;` opens it on Characters and
     can't be read isn't kept either.
   - The types are read when the watcher fires, so a copy replaced within
     that moment is judged by its replacement's types, as on tide.
-  - **In memory only,** the newest 200, or as many as the Clipboard
-    settings say (§15). Nothing is written to disk, so
-    quitting Hammerspoon or reloading tilemo wipes it. That's cheaper
-    than a file (no permissions to keep at 600, nothing to clean up), and
-    safer: a copy you regret is gone at the next restart.
+  - **Kept on disk for a week, encrypted:** the newest 200, or as many
+    as the Clipboard settings say (§15), so it outlives a restart and a
+    reboot, as tide's does (tide §8.4).
+    - **A week:** an entry last copied seven days ago is forgotten, in
+      memory and on disk, checked hourly and at each save. Copying it
+      again starts its week afresh.
+    - **Encrypted** (`clipcrypt.lua`) with AES-256 by macOS's own
+      `openssl`, its key derived with PBKDF2 from a random 256-bit secret
+      kept in the login keychain as "tide clipboard history" through
+      `security`. The secret is made the first time a copy is saved.
+    - **How it runs:** each save or read is one short `sh` script, run
+      with `io.popen`, that fetches the secret itself and hands it to
+      `openssl` in its environment, so it never passes through
+      Hammerspoon or a command's arguments, save `security`'s the once
+      it's made. `openssl` writes and reads the encrypted file; only the
+      plain text crosses a pipe, written or read whole, rather than
+      through `hs.task`, whose pipes can drop the end of a large
+      history.
+    - **No prompts:** the login keychain unlocks at login, and the item
+      trusts `security`, which made it. A keychain set to lock after
+      sleep or idle asks for your password the first time after.
+    - **What it protects:** the history in a backup, a copied or synced
+      file, another account, a stray `cat` or upload, or an agent
+      reading files. Not from a program running as you, which can ask
+      `security` for the key too.
+    - **Where:** `~/Library/Caches/tilemo/clipboard-history`, mode 600
+      in a 700 folder, which Time Machine leaves out. It's written whole
+      after each copy kept, each entry forgotten, a clear, and a smaller
+      cap, by a rename over the last, so a crash leaves the old file or
+      the new one.
+    - **Reading it back:** at start, after the Clipboard settings, so a
+      cap over 200 gets all of it, behind anything copied meanwhile, and
+      nothing's written until it's read. A file that can't be read or
+      decrypted is said once and left as it is until the history
+      changes.
+    - **Cost:** one `security` and one `openssl` run per save, a few tens
+      of milliseconds that Hammerspoon waits for, and the same at start.
+      No network.
 - **Characters:** tide's list, `chars.tsv`, copied unchanged with its
   Unicode License v3 notice, and searched as tide does: each typed word
   must start a word of the name, so `e acute` finds é and É.
