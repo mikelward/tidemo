@@ -7,7 +7,8 @@ tide's tiling desktop, and tileco's launcher and dashboard, on macOS:
 **Status: exploration, with a first Hammerspoon version.** [SPEC.md](SPEC.md)
 says what macOS allows for each of their features, how well, and at what
 cost, and lists the open questions that decide what tilemo becomes.
-[TODO.md](TODO.md) says what's next.
+[TODO.md](TODO.md) says what's next, and [INFEASIBLE.md](INFEASIBLE.md) what
+macOS won't let tilemo fix.
 
 ## The Hammerspoon version
 
