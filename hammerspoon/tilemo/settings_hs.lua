@@ -559,6 +559,7 @@ function M.new(tilemo)
                 end
             elseif body.clearClipboard and tilemo.picker then
                 picker.clear(tilemo.picker.history)
+                tilemo.clipboard_cleared()
                 push()
             elseif type(body.mute) == "string" then
                 -- Typed at the Muted list's foot: as Cmd+M on a row, once

@@ -323,18 +323,26 @@ tide. INFEASIBLE.md lists what can't be fixed.
   `getCharacters()` gives Dvorak's characters, with Shift; that
   `keyStrokes` types é, ① and combining marks in kitty, Chrome and a
   native text field.
-- **To explore: clipboard history that survives a restart,** with images.
-  It's text only and in memory now (SPEC.md §9.1). Passwords must stay out:
-  - skip what password managers mark as concealed or transient
-    (`org.nspasteboard.ConcealedType`, `org.nspasteboard.TransientType`),
-    as Linux's `x-kde-passwordManagerHint` does;
-  - the user's idea: also skip a copy with no spaces that has a character
-    other than a letter or digit, which is what most passwords and tokens
-    look like. It would also skip URLs, paths, emails and code
-    identifiers, so it might apply only to what's saved to disk, with
-    everything still kept in memory;
-  - **to decide with the user:** whether the file is encrypted, and how
-    long entries last.
+- **Built: the clipboard history survives a restart, for a week,
+  encrypted** (SPEC.md §9.1, `clipstore.lua`, `clipcrypt.lua`), text only.
+  **Decided** by the user (2026-11-07): it keeps out only what password
+  managers mark, concealed or transient; the file is encrypted with a key
+  in the login keychain through `security` (no prompts, over a key only
+  Hammerspoon may read); copies go after a week. **Check on a Mac:** the
+  first copy makes "tide clipboard history" in Keychain Access with no
+  prompt; the file isn't readable text and comes back after a reload;
+  LibreSSL's `openssl enc` takes `-pbkdf2` and `-pass env:`; a save doesn't stall typing; Clear history empties it.
+- **For tide:** the same on Linux, the key in gnome-keyring through the
+  Secret Service; it needs tide's own store in place of cliphist, which
+  keeps every copy as it came.
+- **To consider: more defenses for the saved history.** Ideas so far:
+  - leave out copies that look like a secret, such as no spaces and a
+    symbol, or a known token's shape (`ghp_`, `sk-`, `AKIA`), from the file
+    only, kept in memory for the session;
+  - pause the history while a password manager or a terminal's secure
+    keyboard entry is in front.
+- **Later: images in the clipboard history,** as tide's cliphist keeps
+  them.
 - **To consider: middle-click paste,** like Linux's primary selection.
   tilemo would copy what's selected and put the clipboard back after the
   paste, which can lose a copy made in between.

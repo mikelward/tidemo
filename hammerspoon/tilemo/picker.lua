@@ -30,7 +30,7 @@ M.MAX_ITEMS_LIMIT = 10000
 -- At most this many character rows, so one letter doesn't fill the chooser
 -- with thousands.
 M.CHARACTER_LIMIT = 200
--- A copy longer than this isn't kept: the history is in memory.
+-- A copy longer than this isn't kept.
 M.MAX_BYTES = 1000000
 
 -- The pasteboard types an app sets on a copy that clipboard managers should
@@ -78,7 +78,18 @@ end
 
 -- A new, empty history.
 function M.history()
-    return { items = {} }
+    -- `times` holds when each entry was last copied, by its text, for the
+    -- saved history's week (clipstore.lua); it holds only what's in
+    -- `items`.
+    return { items = {}, times = {} }
+end
+
+-- Drops entries past the cap, newest kept, with their times.
+local function trim(history, cap)
+    while #history.items > cap do
+        local text = table.remove(history.items)
+        history.times[text] = nil
+    end
 end
 
 -- Why `value` can't be tide's setting `key`, or nil, as clipboard.mjs's
@@ -141,21 +152,21 @@ end
 -- smaller cap trims it at once. What's kept stays until it's cleared.
 function M.configure(history, s)
     history.settings = s
-    while #history.items > (s.max_items or M.MAX_ITEMS) do
-        table.remove(history.items)
-    end
+    trim(history, s.max_items or M.MAX_ITEMS)
 end
 
 -- Forgets every copy, as tide's Clear history does.
 function M.clear(history)
     history.items = {}
+    history.times = {}
 end
 
 -- Adds `text` as the newest entry of `history`: a repeat moves to the top
 -- rather than being kept twice, and the oldest go past the cap. Empty or
 -- blank text, text over MAX_BYTES, or any while the history is off, isn't
--- kept. Returns whether it was.
-function M.add(history, text)
+-- kept. `now` is when, in seconds, os.time()'s if not given: a copy made
+-- again starts its week afresh. Returns whether it was.
+function M.add(history, text, now)
     local s = history.settings or M.DEFAULTS
     if not s.history or type(text) ~= "string" or not text:find("%S") or #text > M.MAX_BYTES then
         return false
@@ -167,10 +178,33 @@ function M.add(history, text)
         end
     end
     table.insert(history.items, 1, text)
-    while #history.items > (s.max_items or M.MAX_ITEMS) do
-        table.remove(history.items)
-    end
+    history.times[text] = now or os.time()
+    trim(history, s.max_items or M.MAX_ITEMS)
     return true
+end
+
+-- Puts `list`, saved entries newest first, back into `history`, behind
+-- any copied since: what add() would keep, kept whether the history is on
+-- or off, as what's kept stays until it's cleared. Anything else in the
+-- list is passed over. `times` holds when each was copied, by its text.
+-- Returns whether the cap left some out.
+function M.restore(history, list, times)
+    local s = history.settings or M.DEFAULTS
+    local seen = {}
+    for _, item in ipairs(history.items) do
+        seen[item] = true
+    end
+    for _, text in ipairs(list) do
+        if type(text) == "string" and text:find("%S") and #text <= M.MAX_BYTES and not seen[text] then
+            if #history.items >= (s.max_items or M.MAX_ITEMS) then
+                return true
+            end
+            seen[text] = true
+            history.items[#history.items + 1] = text
+            history.times[text] = times and times[text] or os.time()
+        end
+    end
+    return false
 end
 
 -- Forgets the entry `text`.
@@ -178,6 +212,7 @@ function M.forget(history, text)
     for i, item in ipairs(history.items) do
         if item == text then
             table.remove(history.items, i)
+            history.times[text] = nil
             return true
         end
     end
