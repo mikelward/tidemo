@@ -91,11 +91,13 @@ t.test("a file that's wrong is said, and tide's last good settings stand", funct
 end)
 
 t.test("a look again at the next change, or within the hour", function()
-    t.eq(theme.wait({ next = at(12, 30) }, at(12)), 1800)
-    t.eq(theme.wait({ next = at(19) }, at(12)), theme.RECHECK)
+    t.eq(theme.wait({ chosen = true, next = at(12, 30) }, at(12)), 1800)
+    t.eq(theme.wait({ chosen = true, next = at(19) }, at(12)), theme.RECHECK)
     t.eq(theme.wait({}, at(12)), theme.RECHECK)
     t.eq(theme.wait(nil, at(12)), theme.RECHECK)
-    t.eq(theme.wait({ next = at(12) }, at(12)), 1)
+    t.eq(theme.wait({ chosen = false, next = at(12, 30) }, at(12)), theme.RECHECK,
+        "no mode chosen: tide's default schedule isn't followed")
+    t.eq(theme.wait({ chosen = true, next = at(12) }, at(12)), 1)
 end)
 
 t.test("System Events sets it", function()
