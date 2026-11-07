@@ -1,13 +1,13 @@
 ---
 trigger: always_on
 alwaysApply: true
-last_modified: 2026-11-05
+last_modified: 2026-11-07
 ---
 
-# tilemo
+# tidemo
 
-tide's tiling desktop and tileco's launcher and dashboard on macOS, as a Hammerspoon
-setup. `SPEC.md` says what macOS allows and at what cost; `TODO.md` what's next.
+tide on macOS: tide for Linux's tiling desktop and tide for Chrome's launcher and
+dashboard, as a Hammerspoon setup. `SPEC.md` says what macOS allows and at what cost; `TODO.md` what's next.
 
 ## Fleet conventions
 
@@ -105,5 +105,6 @@ Shared by every mikelward repo and the user-level agent config; canonical in mik
 ## Project
 
 - **Tests**. `make lint test` (plain Lua 5.4, no Mac needed). `make check-tide` and
-  `make check-tileco` compare the copied tide and tileco code with their sources.
+  `make check-tideco` compare the copied tide for Linux and tide for Chrome
+  code with their sources.
 - **Hammerspoon**. It can't run here: say what only the tests covered.

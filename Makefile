@@ -6,9 +6,9 @@
 #   make check-tide   compare tilemo's copies of tide's geometry, direction, clocks,
 #                 startup, clipboard, steps, layouts, input, fuzzy, workspaces and bar settings modules and character list with a tide checkout (TIDE=../tide
 #                 by default)
-#   make check-tileco   compare the dashboard's copies of tileco's clock
-#                 modules and launcher page with a tileco checkout
-#                 (TILECO=../tileco by default)
+#   make check-tideco   compare the dashboard's copies of tide for Chrome's clock
+#                 modules and launcher page with a tideco checkout
+#                 (TIDECO=../tideco by default)
 #   make icons    render tide's logo to hammerspoon/tilemo/icons/*.png (needs
 #                 Node and Playwright's Chromium; skips with a note without them)
 #   make mocks    render the bar in fixed states to mocks/*.png (needs Node
@@ -18,16 +18,16 @@ LUA ?= $(shell command -v lua5.4 || command -v lua)
 LUAC ?= $(shell command -v luac5.4 || command -v luac)
 HAMMERSPOON_DIR ?= $(HOME)/.hammerspoon
 TIDE ?= ../tide
-TILECO ?= ../tileco
-# The dashboard files that are tileco's, copied unchanged.
-TILECO_FILES := clocks.js calendar.js clockview.js launcher.css \
+TIDECO ?= ../tideco
+# The dashboard files that are tide for Chrome's, copied unchanged.
+TIDECO_FILES := clocks.js calendar.js clockview.js launcher.css \
 	launcherview.js launcher.js extras.js keepawake.js platform.js apps.js workspaces.js unread.js watchers.js
 export LUA_PATH := hammerspoon/?.lua;hammerspoon/?/init.lua;tests/?.lua;;
 
 LUA_FILES := $(wildcard hammerspoon/tilemo/*.lua hammerspoon/timo/*.lua tests/*.lua ci/*.lua)
 TESTS := $(wildcard tests/*_test.lua)
 
-.PHONY: test lint install check-tide check-geometry check-tileco mocks icons
+.PHONY: test lint install check-tide check-geometry check-tideco mocks icons
 
 test:
 	@status=0; for t in $(TESTS); do $(LUA) $$t || status=1; done; exit $$status
@@ -82,16 +82,16 @@ check-tide:
 
 check-geometry: check-tide
 
-# The dashboard's clocks, calendar and styles are tileco's, so the two
+# The dashboard's clocks, calendar and styles are tide for Chrome's, so the two
 # dashboards agree; so is the dashboard launcher's page and what it imports.
-check-tileco:
-	@for f in $(TILECO_FILES); do cmp $(TILECO)/src/$$f hammerspoon/tilemo/dashboard/$$f || exit 1; done
+check-tideco:
+	@for f in $(TIDECO_FILES); do cmp $(TIDECO)/src/$$f hammerspoon/tilemo/dashboard/$$f || exit 1; done
 	@# The launcher page's markup is launcher.html's body, around tide's script.
 	@dir=$$(mktemp -d) || exit 1; \
-	sed -n '/^<body>$$/,/^<\/body>$$/p' $(TILECO)/src/launcher.html | sed '1d;$$d' > "$$dir/theirs"; \
+	sed -n '/^<body>$$/,/^<\/body>$$/p' $(TIDECO)/src/launcher.html | sed '1d;$$d' > "$$dir/theirs"; \
 	sed -n '/^<body>$$/,/^<script>$$/p' hammerspoon/tilemo/dashboard/launcherpage.html | sed '1d;$$d' > "$$dir/ours"; \
 	if test -s "$$dir/theirs" && cmp "$$dir/theirs" "$$dir/ours"; then status=0; else \
-		echo "dashboard/launcherpage.html: its body isn't tileco's launcher.html's"; status=1; fi; \
+		echo "dashboard/launcherpage.html: its body isn't tide for Chrome's launcher.html's"; status=1; fi; \
 	rm -rf "$$dir"; exit $$status
 
 # The bar's page as tilemo builds it, rendered in fixed states. The page is
