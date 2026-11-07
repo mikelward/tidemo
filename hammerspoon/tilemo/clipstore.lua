@@ -2,7 +2,8 @@
 -- (SPEC.md §9.1, tide §8.4): newest first, each copy with when it was
 -- kept, as JSON, encrypted with a key in the login keychain (clipcrypt),
 -- in a folder only you can read, written whole, mode 600, after each
--- change. A copy older than a week is forgotten, on disk and in memory.
+-- change. An entry past the Clipboard settings' days, a week by default,
+-- is forgotten, on disk and in memory.
 -- What it keeps is what picker.lua kept, so a copy password managers mark
 -- is never written.
 -- Pure Lua: `fs` is atomic.lua's, plus mkdir(path, mode) and chmod(path,
@@ -17,8 +18,14 @@ local M = {}
 -- Beside the workspace's name, in ~/Library/Caches/tilemo (current.lua),
 -- which Time Machine leaves out.
 M.FILE = "clipboard-history"
--- How long a copy is kept.
-M.TTL = 7 * 24 * 3600
+local DAY = 24 * 3600
+
+-- How long an entry is kept after it was last copied: the Clipboard
+-- settings' days, a week by default.
+local function ttl(history)
+    local s = history.settings or picker.DEFAULTS
+    return (s.max_age_days or picker.MAX_AGE_DAYS) * DAY
+end
 
 function M.new(dir, fs, encode, decode, crypt, now)
     local self = { path = dir .. "/" .. M.FILE }
@@ -30,7 +37,7 @@ function M.new(dir, fs, encode, decode, crypt, now)
     -- so the file isn't replaced by what's in memory before it's read.
     local pending
 
-    -- Forgets entries older than M.TTL from `history`. Returns whether any
+    -- Forgets entries past the Clipboard settings' days from `history`. Returns whether any
     -- went.
     function self.expire(history)
         local t = now()
@@ -38,7 +45,7 @@ function M.new(dir, fs, encode, decode, crypt, now)
         for i = #history.items, 1, -1 do
             local text = history.items[i]
             history.times[text] = history.times[text] or t
-            if t - history.times[text] >= M.TTL then
+            if t - history.times[text] >= ttl(history) then
                 table.remove(history.items, i)
                 history.times[text] = nil
                 gone = true
@@ -76,7 +83,7 @@ function M.new(dir, fs, encode, decode, crypt, now)
             local texts, times, dropped = {}, {}, false
             for _, e in ipairs(list) do
                 if type(e) == "table" and type(e.text) == "string" and type(e.at) == "number" then
-                    if t - e.at < M.TTL then
+                    if t - e.at < ttl(history) then
                         texts[#texts + 1] = e.text
                         times[e.text] = times[e.text] or e.at
                     else
@@ -119,7 +126,7 @@ function M.new(dir, fs, encode, decode, crypt, now)
         end)
     end
 
-    -- Writes `history`'s entries, less any a week old, then calls
+    -- Writes `history`'s entries, less any past their days, then calls
     -- `done(true)` or `done(nil, why)`. A save asked for while one is
     -- writing runs once that's done, with the history as it is then.
     function self.save(history, done)

@@ -24,7 +24,7 @@
 
 import { barredClock, editableClocks, editedClocks, inBar, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
 import { editableStartup, editedStartup, movedCommand, withCommand, withoutCommand } from "./tide-startup.js";
-import { historySummary, loadClipboardSettings, steppedMax, withSetting } from "./tide-clipboard.js";
+import { ageText, historySummary, loadClipboardSettings, steppedAge, steppedMax, withSetting } from "./tide-clipboard.js";
 import {
   effectiveLayouts, formatLayout, layoutChoices, layoutRows, loadLayouts, shownLayout, steppedLayout, steppedSingle,
   withLayoutSetting,
@@ -258,11 +258,14 @@ function renderClipboard() {
   toggle.textContent = s.history ? "History on" : "History off";
   toggle.setAttribute("aria-pressed", String(s.history));
   document.getElementById("clipboard-max").textContent = String(s.maxItems);
-  for (const id of ["clipboard-history", "clipboard-fewer", "clipboard-more"]) {
+  document.getElementById("clipboard-age").textContent = ageText(s.maxAgeDays);
+  for (const id of ["clipboard-history", "clipboard-fewer", "clipboard-more", "clipboard-shorter", "clipboard-longer"]) {
     document.getElementById(id).disabled = errors.length > 0;
   }
   document.getElementById("clipboard-fewer").disabled ||= steppedMax(s.maxItems, -1) === s.maxItems;
   document.getElementById("clipboard-more").disabled ||= steppedMax(s.maxItems, 1) === s.maxItems;
+  document.getElementById("clipboard-shorter").disabled ||= steppedAge(s.maxAgeDays, -1) === s.maxAgeDays;
+  document.getElementById("clipboard-longer").disabled ||= steppedAge(s.maxAgeDays, 1) === s.maxAgeDays;
   document.getElementById("clipboard-clear").disabled = clipboardCount === 0;
 }
 
@@ -1013,6 +1016,12 @@ document.getElementById("clipboard-fewer").addEventListener("click", () => {
 document.getElementById("clipboard-more").addEventListener("click", () => {
   setClipboard("maxItems", steppedMax(clipboardSettings().settings.maxItems, 1));
 });
+document.getElementById("clipboard-shorter").addEventListener("click", () => {
+  setClipboard("maxAgeDays", steppedAge(clipboardSettings().settings.maxAgeDays, -1));
+});
+document.getElementById("clipboard-longer").addEventListener("click", () => {
+  setClipboard("maxAgeDays", steppedAge(clipboardSettings().settings.maxAgeDays, 1));
+});
 document.getElementById("clipboard-clear").addEventListener("click", () => send({ clearClipboard: true }));
 
 // The Layouts section, as tide's Layouts page (tide SPEC.md §16): its rows,
@@ -1739,7 +1748,7 @@ window.tilemo = {
     workspaceBase = isObject(state.workspaceBase) ? state.workspaceBase : {};
     clipboardCount = Number.isInteger(state.clipboardCount) ? state.clipboardCount : 0;
     const e = state.clipboardSettings;
-    clipboardInEffect = e && typeof e.history === "boolean" && Number.isInteger(e.maxItems) ? e : undefined;
+    clipboardInEffect = e && typeof e.history === "boolean" && Number.isInteger(e.maxItems) && Number.isInteger(e.maxAgeDays) ? e : undefined;
     muted = Array.isArray(state.muted) ? state.muted : [];
     // New files: what went wrong before is about the old ones.
     showError("");

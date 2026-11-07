@@ -39,7 +39,7 @@ t.test("the history keeps the newest first, moves a repeat up, and keeps 200", f
     end
     t.eq(#h.items, picker.MAX_ITEMS)
     t.eq(h.items[1], "copy 250")
-    t.eq(h.items[picker.MAX_ITEMS], "copy 51")
+    t.eq(h.items[picker.MAX_ITEMS], "copy 151")
 end)
 
 t.test("a query finds text past what the row shows", function()
@@ -169,6 +169,8 @@ local DECODED = {
     ['{"maxItems": 25.0}'] = { maxItems = 25.0 },
     ['{"maxItems": 0}'] = { maxItems = 0 },
     ['{"maxItems": 2.5}'] = { maxItems = 2.5 },
+    ['{"maxAgeDays": 30}'] = { maxAgeDays = 30 },
+    ['{"maxAgeDays": 0}'] = { maxAgeDays = 0 },
     ['{"history": "no"}'] = { history = "no" },
     ['{"colour": 1}'] = { colour = 1 },
     ["[]"] = {},
@@ -185,10 +187,12 @@ end
 
 t.test("the clipboard settings are tide's defaults with no files, then each file's, key by key", function()
     local s, errors = picker.load_settings("/c/tide", files(nil, nil), decode)
-    t.eq(s, { history = true, max_items = 200 })
+    t.eq(s, { history = true, max_items = 100, max_age_days = 7 })
     t.eq(errors, {})
     s = picker.load_settings("/c/tide", files('{"history": false}', '{"maxItems": 25}'), decode)
-    t.eq(s, { history = false, max_items = 25 })
+    t.eq(s, { history = false, max_items = 25, max_age_days = 7 })
+    s = picker.load_settings("/c/tide", files(nil, '{"maxAgeDays": 30}'), decode)
+    t.eq(s.max_age_days, 30)
     s = picker.load_settings("/c/tide", files(nil, '{"maxItems": 25.0}'), decode)
     t.eq(s.max_items, 25, "a JSON number read as a float")
     t.eq(math.type(s.max_items), "integer")
@@ -198,6 +202,7 @@ t.test("a clipboard file that's wrong keeps the last good settings, naming the f
     local last = { history = false, max_items = 50 }
     for text, why in pairs({
         ['{"maxItems": 0}'] = "maxItems must be a whole number from 1 to 10000",
+        ['{"maxAgeDays": 0}'] = "maxAgeDays must be a whole number from 1 to 3650",
         ['{"maxItems": 2.5}'] = "maxItems must be a whole number from 1 to 10000",
         ['{"history": "no"}'] = "history must be true or false",
         ['{"colour": 1}'] = "isn't a setting",

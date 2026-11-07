@@ -168,6 +168,7 @@ body.settings {
   font-variant-numeric: tabular-nums;
 }
 #clipboard-max,
+#clipboard-age,
 #dim-strength {
   width: 92px;
 }
@@ -743,12 +744,16 @@ body.settings {
 </section>
 <section class="page" id="page-clipboard" hidden>
 <h1 id="clipboard">Clipboard</h1>
-<p class="note">Keeps what you copy for Super+C, until you log out.</p>
+<p class="note">Keeps what you copy for Super+C.</p>
 <p class="row"><span class="name" id="clipboard-summary"></span><button type="button" id="clipboard-history"></button></p>
 <p class="row"><span class="name">Copies to keep</span>
 <button type="button" id="clipboard-fewer" aria-label="Keep fewer copies" data-icon="less">−</button>
 <span class="value" id="clipboard-max"></span>
 <button type="button" id="clipboard-more" aria-label="Keep more copies" data-icon="more">+</button></p>
+<p class="row"><span class="name">Days to keep</span>
+<button type="button" id="clipboard-shorter" aria-label="Keep copies fewer days" data-icon="less">−</button>
+<span class="value" id="clipboard-age"></span>
+<button type="button" id="clipboard-longer" aria-label="Keep copies more days" data-icon="more">+</button></p>
 <p class="row"><button type="button" id="clipboard-clear">Clear history</button></p>
 <p class="error" id="clipboard-error" role="alert"></p>
 </section>

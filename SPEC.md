@@ -2298,12 +2298,12 @@ three tabs. V as in paste. `Super+;` opens it on Characters and
     can't be read isn't kept either.
   - The types are read when the watcher fires, so a copy replaced within
     that moment is judged by its replacement's types, as on tide.
-  - **Kept on disk for a week, encrypted:** the newest 200, or as many
-    as the Clipboard settings say (§15), so it outlives a restart and a
-    reboot, as tide's does (tide §8.4).
-    - **A week:** an entry last copied seven days ago is forgotten, in
-      memory and on disk, checked hourly and at each save. Copying it
-      again starts its week afresh.
+  - **Kept on disk for a week, encrypted:** the newest 100, each for 7
+    days, or as the Clipboard settings say (§15), so it outlives a restart
+    and a reboot, as tide's does (tide §8.4).
+    - **The days:** an entry last copied that many days ago is forgotten,
+      in memory and on disk, checked hourly and at each save. Copying it
+      again starts its days afresh.
     - **Encrypted** (`clipcrypt.lua`) with AES-256 by macOS's own
       `openssl`, its key derived with PBKDF2 from a random 256-bit secret
       kept in the login keychain as "tide clipboard history" through
@@ -3483,10 +3483,13 @@ Each one names a workaround, or says there is none.
     `clipboard.json` and `clipboard.local.json`, key by key, so one setting
     serves both desktops.
     - `history` turns keeping new copies on or off, on by default. Off,
-      what's kept stays until it's cleared.
-    - `maxItems` is how many it keeps, 200 by default, from 1 to 10,000.
+      what's kept stays until it's cleared or its days are up.
+    - `maxItems` is how many it keeps, 100 by default, from 1 to 10,000.
       − and + step through tide's marks (25 to 1,000). A smaller cap trims
       the history at once.
+    - `maxAgeDays` is how many days an entry stays after it was last
+      copied, 7 by default, from 1 to 3,650: "Days to keep", whose − and
+      + step through tide's marks (1 day to 365).
     - **Clear history** forgets every copy, at once.
     - A file that's wrong is an error at load, in a notification naming
       the file and the setting, and the last good settings stay; the

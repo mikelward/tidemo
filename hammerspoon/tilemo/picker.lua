@@ -15,18 +15,21 @@ M.PLACEHOLDERS = {
     fill = "Fill: snippets and logins, as address, github (Tab: Clipboard)",
 }
 
--- The newest this many copies are kept, as tide keeps (SPEC.md §7.2),
--- unless tide's Clipboard settings say otherwise (below).
-M.MAX_ITEMS = 200
+-- The newest this many copies are kept, each for this many days from when
+-- it was last copied, as tide keeps them (SPEC.md §9.1), unless tide's
+-- Clipboard settings say otherwise (below).
+M.MAX_ITEMS = 100
+M.MAX_AGE_DAYS = 7
 
 -- tide's Clipboard settings (tide SPEC.md §16): clipboard.json and
 -- clipboard.local.json, in tide's settings folder, key by key, as tide's
 -- clipboard.mjs reads them. Their JSON keys are tide's; here they're
--- history and max_items.
+-- history, max_items and max_age_days.
 M.SETTINGS_FILES = { "clipboard.json", "clipboard.local.json" }
 M.SETTINGS_LOCAL_FILE = "clipboard.local.json"
-M.DEFAULTS = { history = true, max_items = M.MAX_ITEMS }
+M.DEFAULTS = { history = true, max_items = M.MAX_ITEMS, max_age_days = M.MAX_AGE_DAYS }
 M.MAX_ITEMS_LIMIT = 10000
+M.MAX_AGE_LIMIT = 3650
 -- At most this many character rows, so one letter doesn't fill the chooser
 -- with thousands.
 M.CHARACTER_LIMIT = 200
@@ -103,18 +106,26 @@ local function value_error(key, value)
         if type(value) ~= "number" or value ~= math.floor(value) or value < 1 or value > M.MAX_ITEMS_LIMIT then
             return "maxItems must be a whole number from 1 to " .. M.MAX_ITEMS_LIMIT
         end
+    elseif key == "maxAgeDays" then
+        if type(value) ~= "number" or value ~= math.floor(value) or value < 1 or value > M.MAX_AGE_LIMIT then
+            return "maxAgeDays must be a whole number from 1 to " .. M.MAX_AGE_LIMIT
+        end
     else
-        return string.format("%q isn't a setting (history, maxItems)", tostring(key))
+        return string.format("%q isn't a setting (history, maxItems, maxAgeDays)", tostring(key))
     end
 end
 
--- The settings in effect, { history, max_items }, and the errors to say:
+-- The settings in effect, { history, max_items, max_age_days }, and the
+-- errors to say:
 -- the defaults, then each file's keys. A file that's wrong keeps `last`
 -- (the defaults if none), as tide does, and an error names the file.
 -- `read(path)` gives a file's text or nil; `decode(text)` its value, or nil
 -- if it doesn't parse.
 function M.load_settings(dir, read, decode, last)
-    local s = { history = M.DEFAULTS.history, max_items = M.DEFAULTS.max_items }
+    local function defaults()
+        return { history = M.DEFAULTS.history, max_items = M.DEFAULTS.max_items, max_age_days = M.DEFAULTS.max_age_days }
+    end
+    local s = defaults()
     local errors = {}
     for _, name in ipairs(M.SETTINGS_FILES) do
         local text = read(dir .. "/" .. name)
@@ -139,11 +150,14 @@ function M.load_settings(dir, read, decode, last)
                 if v.maxItems ~= nil then
                     s.max_items = math.tointeger(v.maxItems)
                 end
+                if v.maxAgeDays ~= nil then
+                    s.max_age_days = math.tointeger(v.maxAgeDays)
+                end
             end
         end
     end
     if #errors > 0 then
-        return last or { history = M.DEFAULTS.history, max_items = M.DEFAULTS.max_items }, errors
+        return last or defaults(), errors
     end
     return s, errors
 end
