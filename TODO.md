@@ -308,13 +308,15 @@ tide. INFEASIBLE.md lists what can't be fixed.
   dialogs expanded, saves new documents to disk rather than iCloud, turns
   off window animations, and shows the hostname on the lock screen
   (mikelward/scripts#408).
-- **Next: a three-finger swipe between workspaces.** SPEC.md §13 says no
-  public API, but Hammerspoon's event taps can read the trackpad's touches
-  (`hs.eventtap.event.types.gesture` and `getTouches()`, as community
-  swipe Spoons do). `setup-macos` already turns off macOS's own swipe
-  between Spaces. **Check on a Mac:** that the events still come on
-  macOS 26, without Input Monitoring.
-- **Then: Caps Lock as Compose.** Karabiner sends Caps Lock as a spare key
+- **Built: a three-finger swipe between workspaces** (SPEC.md §7.2,
+  `swipe.lua`), with macOS's own swipe between Spaces turned off by
+  `setup-macos` (mikelward/scripts#408). Only the tests have run it.
+  **Check on a Mac:** that gesture events reach the tap on macOS 26
+  without Input Monitoring; `getTouches()`' fields; that 15% of the
+  trackpad's width feels right; that a three-finger drag, if turned on in
+  Accessibility, holds the button down from its first touch, so it never
+  swipes.
+- **Next: Caps Lock as Compose.** Karabiner sends Caps Lock as a spare key
   (F19), and tilemo reads the next keys and types the character, from the
   same compose table conf gives Linux, so it works in every app, kitty
   included.

@@ -1271,6 +1271,32 @@ function M.taps(on_flags, on_other)
     return tap
 end
 
+-- The fingers on the trackpad, from each gesture event, for the swipe
+-- between workspaces (swipe.lua): `fn` gets an array of { id, x, y }, in
+-- the trackpad's own 0 to 1 coordinates, leaving out the fingers lifting,
+-- and whether a mouse button is down. Passes every event through, so apps still see pinches and scrolls.
+-- `getTouches()`' fields on macOS 26 are unverified on a Mac.
+function M.gestures(fn)
+    local tap = hs.eventtap.new({ hs.eventtap.event.types.gesture }, function(e)
+        local list = {}
+        for _, touch in ipairs(e:getTouches() or {}) do
+            local phase = touch.phase
+            local p = touch.normalizedPosition
+            if p and touch.touching ~= false and phase ~= "ended" and phase ~= "cancelled" then
+                list[#list + 1] = { id = touch.identity, x = p.x, y = p.y }
+            end
+        end
+        local dragging = false
+        for _, down in pairs(hs.eventtap.checkMouseButtons()) do
+            dragging = dragging or down
+        end
+        fn(list, dragging)
+        return false
+    end)
+    tap:start()
+    return tap
+end
+
 -- Pointer moves, for focus follows mouse. Drags are separate events, so a
 -- drag never reaches it. Passes every event through.
 function M.pointer_moves(fn)

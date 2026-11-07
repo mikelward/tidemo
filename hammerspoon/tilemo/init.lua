@@ -11,6 +11,7 @@
 -- (tilemo/rules.lua, floating.lua), and `keep_focus` names more apps, by bundle ID,
 -- that keep focus while they're in front. `bar = false` leaves out the bar
 -- along the top and shows the workspaces in the menu bar instead.
+-- `swipe = false` turns off the three-finger swipe between workspaces.
 -- `workspaces` names the standing workspaces, always listed and never
 -- removed, the first being home (SPEC.md §6.1); it defaults to
 -- wm.STANDING, home being "in". `home_apps` names the apps, by app name,
@@ -49,6 +50,7 @@ local pinned_hs = require("tilemo.pinned_hs")
 local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
 local tap_mod = require("tilemo.tap")
+local swipe_mod = require("tilemo.swipe")
 local bar = require("tilemo.bar")
 local selfreload = require("tilemo.selfreload")
 local bar_hs = require("tilemo.bar_hs")
@@ -289,6 +291,7 @@ function M.start(config)
     config.saved = adapter_mod.load()
     -- The tiling area starts below the bar.
     config.top = config.bar ~= false and bar.HEIGHT or 0
+    swipe_mod.check(config.swipe)
     -- The layouts are tide's, from layouts.json and layouts.local.json in
     -- its settings folder, over `layout` or tide's defaults (SPEC.md §15),
     -- read before the first workspace is made and again when they change.
@@ -793,6 +796,15 @@ function M.start(config)
             self.wm:key_down(key, flags.cmd or false)
         end
     end)
+    -- A three-finger swipe steps through workspaces, as tide's does
+    -- (SPEC.md §7.2). setup-macos turns macOS's own swipe between Spaces
+    -- off, so the two don't both act.
+    if config.swipe ~= false then
+        self.swipe = swipe_mod.for_wm(self.wm)
+        self.swipe_watch = adapter_mod.gestures(function(list, dragging)
+            self.swipe:touches(list, dragging)
+        end)
+    end
     -- The current workspace's name, for scripts, written whenever it
     -- changes (SPEC.md §6.3). A failure is said once, until a write works.
     self.workspace_file = current.new(current.dir(os.getenv("HOME") or ""), adapter_mod.current_fs,

@@ -265,7 +265,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Setup checklist (tileco §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
 | Settings pages, shared `~/.config/tide` files, `.local` overrides (tide §16) | tilemo reads the same files (§15); every page of tide's is a section, with buttons to macOS's panes and the helpers for what tilemo can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts and the Setup checklist are tilemo's own; Appearance is only a button |
 | `tide doctor` (tide §5.4) | `tilemo doctor` (§15) | **yes** |
-| Workspace swipe, three fingers (conf `hyprland.lua`) | no public gesture API (§13) | **no** |
+| Workspace swipe, three fingers (conf `hyprland.lua`) | the trackpad's touches through an event tap, with macOS's own swipe between Spaces off (§7.2) | **yes** *(unverified on a Mac)* |
 | kitty, Ubuntu Mono, shell config | native, through `setup` and `conf` | **yes** |
 
 ## 5. Windows and layouts
@@ -1243,7 +1243,8 @@ The checklist (§10) sets these, and undoes `setup-macos`'s nine Spaces:
   crowd them (§6): `setup-macos` turns off their keys, Ctrl+Up and
   Ctrl+Down (symbolic hotkeys 32 and 33, `configure_shortcuts_tilemo` in
   scripts), the trackpad's swipes for them, and the hot corners. tilemo's
-  overview takes the two keys (§6.9).
+  overview takes the two keys (§6.9). The swipe left and right between
+  Spaces goes too, for tilemo's own (§7.2).
 
 ### 6.7 Windows you minimized
 
@@ -1461,6 +1462,7 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+Shift+Left` / `Right` | move the window left / right the same way, onto the next display at the edge; a float straight onto the next display (below) | hotkey |
 | `Super+PgUp` / `PgDn` | previous / next workspace | hotkey |
 | `Super+Shift+PgUp` / `PgDn` | move the window to the previous / next workspace, and follow it | hotkey |
+| three fingers left / right on the trackpad | next / previous workspace, as `Super+PgDn` / `PgUp` | event tap |
 | `Super+J` / `K`, with Shift | focus / move down and up the stack | hotkey |
 | `Super+Return` | go to a workspace, by name (below); it moves no window, so it works with none focused | hotkey |
 | `Super+Shift+Return` | move the window to a workspace, by name (below), and follow it there; with no window focused, nothing | hotkey |
@@ -1560,6 +1562,24 @@ tilemo registers each with `RegisterEventHotKey`, which needs no permission
   with Shift they move the window to the very next, empty or not, and
   follow it. These took the jobs tide gives
   `Super+Left` / `Right` and `Super+Shift+Left` / `Right` (tide §6.6).
+- **A three-finger swipe steps the same way** (`swipe.lua`), as tide's
+  does (conf `hyprland.lua`): fingers moving left for the next workspace,
+  right for the previous, as macOS's own swipe between Spaces goes.
+  - There's no public gesture API, but an event tap on gesture events
+    gets each finger's place on the trackpad (`getTouches()`), as
+    community swipe Spoons read it. The events pass on, so apps still get
+    their pinches and scrolls.
+  - A swipe counts once three fingers have moved together 15% of the
+    trackpad's width, at least twice as far sideways as up or down. It
+    steps once, however far it goes, and the next needs every finger
+    lifted first. Two or four fingers are left alone, and so is a
+    three-finger drag, which holds the mouse button down.
+  - `setup-macos --wm tilemo` turns off macOS's swipe left and right
+    between Spaces, with three fingers or four, so the two don't both act
+    (§6.6). `swipe = false` in start() turns tilemo's off.
+  - *Unverified on a Mac:* that gesture events reach the tap on macOS 26
+    with Accessibility alone, and that `getTouches()` still names each
+    finger's `identity`, `phase` and `normalizedPosition`.
 - **`Super+Tab` and `Super+End` remember the workspaces you've shown,**
   most recent first. Like every workspace key, they switch every display
   together. A workspace that's gone since is
@@ -2749,7 +2769,6 @@ Each one names a workaround, or says there is none.
 | Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which `setup-macos` installs, tilemo checks is running, and tilemo sets from tide's Scroll speed (§10). |
 | A Compose key | macOS has none. | Option dead keys, a custom layout made with Ukelele, or Karabiner sequences. |
 | Keys and the Super tap during Secure Input | While a password field or a terminal's secure keyboard entry is active, event taps stop seeing typed keys *(unverified for hotkeys)*. | **None**, by design. Registered hotkeys keep working, if they do. |
-| Three-finger swipe between workspaces (conf `hyprland.lua`) | No public API for trackpad gestures; the native swipe switches Spaces, which tilemo doesn't use. | BetterTouchTool, a paid app, can bind gestures to keys *(unverified price)*. Otherwise **none**. |
 | Pinning picture-in-picture to a corner (tide §6.4) | The app places it, and moves it back. | Leave it where the app puts it (§5.5). |
 | Option's text gestures alongside Super on Option | One key can't be both. | Karabiner's mapping (§7.1). Without it, **none**: tilemo takes them. |
 | Natural scrolling on the trackpad but not the mouse | macOS has one switch for both. | LinearMouse reverses the mouse alone, set from tide's Natural scrolling (§10). |
