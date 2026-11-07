@@ -89,7 +89,9 @@ end
 -- Seconds until `plan` next needs a look, from `now` (ms): its next change,
 -- or M.RECHECK, whichever's sooner; never less than one.
 function M.wait(plan, now)
-    if not plan or not plan.next then
+    -- With no mode chosen there's nothing to follow, so tide's default
+    -- schedule's next change isn't one to wake for.
+    if not plan or not plan.chosen or not plan.next then
         return M.RECHECK
     end
     return math.max(1, math.min(M.RECHECK, math.ceil((plan.next - now) / 1000)))
