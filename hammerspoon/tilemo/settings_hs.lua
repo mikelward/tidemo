@@ -300,6 +300,7 @@ function M.new(tilemo)
             clipboardSettings = tilemo.clipboard_settings and {
                 history = tilemo.clipboard_settings.history,
                 maxItems = tilemo.clipboard_settings.max_items,
+                maxAgeDays = tilemo.clipboard_settings.max_age_days,
             } or nil,
             muted = "__muted__",
             -- The sidebar's groups and pages, as tide's settings panel has

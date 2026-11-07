@@ -198,6 +198,25 @@ t.test("a copy a week old is forgotten, in memory and on disk", function()
     t.eq(saved(d, now), { "new" }, "a week on, the old one's gone from the file too")
 end)
 
+t.test("the Clipboard settings' days are how long a copy stays", function()
+    local d = disk()
+    local c, now = clock()
+    local h = picker.history()
+    local st = store(d, nil, now)
+    st.configure(h, { history = true, max_items = 100, max_age_days = 1 }, function() end)
+    picker.add(h, "a", now())
+    st.changed(h)
+    c.t = c.t + DAY - 1
+    t.eq(st.expire(h), false)
+    c.t = c.t + 1
+    t.eq(st.expire(h), true)
+    t.eq(h.items, {})
+    picker.configure(h, { history = true, max_items = 100, max_age_days = 30 })
+    picker.add(h, "b", now())
+    c.t = c.t + 29 * DAY
+    t.eq(st.expire(h), false, "29 days under a 30-day setting")
+end)
+
 t.test("a week-old copy in the file isn't brought back, and the file loses it", function()
     local d = disk()
     local c, now = clock()

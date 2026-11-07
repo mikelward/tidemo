@@ -328,7 +328,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   **Decided** by the user (2026-11-07): it keeps out only what password
   managers mark, concealed or transient; the file is encrypted with a key
   in the login keychain through `security` (no prompts, over a key only
-  Hammerspoon may read); copies go after a week. **Check on a Mac:** the
+  Hammerspoon may read); copies go after a week, or the Clipboard settings' Days to keep (also tide's; mikelward/tide#381). **Check on a Mac:** the
   first copy makes "tide clipboard history" in Keychain Access with no
   prompt; the file isn't readable text and comes back after a reload;
   LibreSSL's `openssl enc` takes `-pbkdf2` and `-pass env:`; a save doesn't stall typing; Clear history empties it.
