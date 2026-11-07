@@ -11,7 +11,8 @@
 -- (tilemo/rules.lua, floating.lua), and `keep_focus` names more apps, by bundle ID,
 -- that keep focus while they're in front. `bar = false` leaves out the bar
 -- along the top and shows the workspaces in the menu bar instead.
--- `swipe = false` turns off the three-finger swipe between workspaces.
+-- `swipe = false` turns off the three-finger swipe between workspaces,
+-- and `compose = false` Caps Lock as Compose.
 -- `workspaces` names the standing workspaces, always listed and never
 -- removed, the first being home (SPEC.md §6.1); it defaults to
 -- wm.STANDING, home being "in". `home_apps` names the apps, by app name,
@@ -51,6 +52,8 @@ local dashboard = require("tilemo.dashboard")
 local shots = require("tilemo.shots")
 local tap_mod = require("tilemo.tap")
 local swipe_mod = require("tilemo.swipe")
+local compose_mod = require("tilemo.compose")
+local compose_hs = require("tilemo.compose_hs")
 local bar = require("tilemo.bar")
 local selfreload = require("tilemo.selfreload")
 local bar_hs = require("tilemo.bar_hs")
@@ -292,6 +295,7 @@ function M.start(config)
     -- The tiling area starts below the bar.
     config.top = config.bar ~= false and bar.HEIGHT or 0
     swipe_mod.check(config.swipe)
+    compose_mod.check(config.compose)
     -- The layouts are tide's, from layouts.json and layouts.local.json in
     -- its settings folder, over `layout` or tide's defaults (SPEC.md §15),
     -- read before the first workspace is made and again when they change.
@@ -804,6 +808,11 @@ function M.start(config)
         self.swipe_watch = adapter_mod.gestures(function(list, dragging)
             self.swipe:touches(list, dragging)
         end)
+    end
+    -- Caps Lock as Compose, as on Linux (SPEC.md §10): setup-macos makes
+    -- it send F18.
+    if config.compose ~= false then
+        self.compose = compose_hs.new(hs, self.adapter.log)
     end
     -- The current workspace's name, for scripts, written whenever it
     -- changes (SPEC.md §6.3). A failure is said once, until a write works.

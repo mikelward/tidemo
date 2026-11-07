@@ -261,7 +261,7 @@ Status: **yes** = tilemo or macOS meets the tide or tileco behavior;
 | Mouse: fastest, acceleration on, left-handed, wheel 3× (conf `hyprland.lua`) | Mouse settings and `com.apple.mouse.scaling`; the wheel's speed and direction through LinearMouse, from tide's `input.json` (§10) | **partial**: the wheel **yes**; speed and left-handed in Mouse settings |
 | Touchpad: natural scroll, tap to click; mouse not natural | Trackpad settings (§10) | **partial**: one natural-scroll switch for both *(unverified)* |
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
-| Caps Lock as Compose | no Compose; Karabiner can map key sequences | **partial** |
+| Caps Lock as Compose | Caps Lock sends F18, and tilemo reads the keys after it from Linux's own Compose table (§10) | **yes** *(unverified on a Mac)*: not during Secure Input |
 | Setup checklist (tileco §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
 | Settings pages, shared `~/.config/tide` files, `.local` overrides (tide §16) | tilemo reads the same files (§15); every page of tide's is a section, with buttons to macOS's panes and the helpers for what tilemo can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts and the Setup checklist are tilemo's own; Appearance is only a button |
 | `tide doctor` (tide §5.4) | `tilemo doctor` (§15) | **yes** |
@@ -2661,6 +2661,26 @@ that isn't one is left out, and the log says so.
 - **Keyboard:** repeat after 600 ms at 25 a second, set as `InitialKeyRepeat`
   and `KeyRepeat` in 15 ms steps, so the nearest is 40 and 3
   *(unverified units)*. US Dvorak is a native input source.
+- **Caps Lock as Compose,** as on Linux (`compose.lua`): Caps Lock, then
+  ' and e, types é.
+  - macOS has no Compose key, so `setup-macos` makes Caps Lock send F18
+    in the same `hidutil` mapping as the modifiers, and tilemo binds F18.
+    It's F18, not F19, since Karabiner sends `Super+Backspace` as
+    `Super+F19` (§7.2).
+  - The keys after it are held back from the app in front, by an event
+    tap, and read as the characters they'd type, so Shift and the layout,
+    Dvorak included, count as they do on Linux.
+  - The sequences are Linux's own: libX11's en_US.UTF-8 Compose table,
+    the one Linux's Compose key reads, as `compose.tsv` (1,199 of them,
+    written by `ci/compose_table.lua`). Only those typed with ASCII keys
+    are kept, since a Mac can't send the dead keys.
+  - A sequence it doesn't know types nothing and ends, as on Linux. Esc,
+    a click, or a key with Command or Control ends it too.
+  - The character is typed with `hs.eventtap.keyStrokes`, so it works in
+    every app, kitty included.
+  - It doesn't work during Secure Input, such as in a password field, when
+    event taps don't see typed keys (§13). `compose = false` in start()
+    turns it off.
 - **Setup checklist:** as tileco's (tileco §3.4). Each item links to its System
   Settings pane with an `x-apple.systempreferences:` URL *(unverified per
   pane on macOS 26)*. It covers the Mission Control settings (§6.6), the
@@ -2767,7 +2787,6 @@ Each one names a workaround, or says there is none.
 | tide's idle timeline (dim, lock, off, suspend) | macOS sets its own timings (§10). | Energy and Lock Screen settings come close. `pmset` sets more, with admin rights (§11). |
 | Sharing a 16:9 slice of an ultrawide in Meet (tide §12) | Meet shares a screen, a window or a tab. | Share a window, or a virtual display from a tool such as BetterDisplay *(unverified)*. |
 | Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which `setup-macos` installs, tilemo checks is running, and tilemo sets from tide's Scroll speed (§10). |
-| A Compose key | macOS has none. | Option dead keys, a custom layout made with Ukelele, or Karabiner sequences. |
 | Keys and the Super tap during Secure Input | While a password field or a terminal's secure keyboard entry is active, event taps stop seeing typed keys *(unverified for hotkeys)*. | **None**, by design. Registered hotkeys keep working, if they do. |
 | Pinning picture-in-picture to a corner (tide §6.4) | The app places it, and moves it back. | Leave it where the app puts it (§5.5). |
 | Option's text gestures alongside Super on Option | One key can't be both. | Karabiner's mapping (§7.1). Without it, **none**: tilemo takes them. |
