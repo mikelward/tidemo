@@ -12,24 +12,24 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 5. The launcher, app keys and the Super tap (SPEC.md §7.2, §9).
 6. The menu bar workspaces, the sign on switching, and attention
    (SPEC.md §8, §14.2).
-7. The dashboard: tileco's bar and clock panel in an `hs.webview`, on
+7. The dashboard: tide for Chrome's bar and clock panel in an `hs.webview`, on
    Super+Shift+Space (SPEC.md §8).
-   **Decided:** tilemo's own bar along the top, over an auto-hidden menu bar,
-   with the workspaces, the title, tileco's clocks and its own status items.
+   **Decided:** tide's own bar along the top, over an auto-hidden menu bar,
+   with the workspaces, the title, tide for Chrome's clocks and its own status items.
    The menu bar item stays as the fallback (`bar = false`), and a large
    number shows briefly on each switch.
 8. **Done:** conf's Karabiner rule turns Win+key into
    Ctrl+Option+Command+key (description starting `tilemo:`), and
-   `setup-macos --wm tilemo` in scripts installs Hammerspoon and tilemo, frees
-   the keys in SPEC.md §7.3, and stops the menu bar hiding, for tilemo's bar to cover.
+   `setup-macos --wm tilemo` in scripts installs Hammerspoon and tide, frees
+   the keys in SPEC.md §7.3, and stops the menu bar hiding, for tide's bar to cover.
 
-## Settings pages, for parity with tide
+## Settings pages, for parity with tide for Linux
 
-tide has 17 settings pages (tide SPEC.md §16); tilemo's settings window has
-a page for each, in tide's order and under its sidebar's groups, then a
+tide for Linux has 17 settings pages (tide for Linux SPEC.md §16); tide's settings window has
+a page for each, in tide for Linux's order and under its sidebar's groups, then a
 Setup checklist of its own.
 Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list,
-Floating, Keyboard's Shortcuts and the Setup checklist are tilemo's own;
+Floating, Keyboard's Shortcuts and the Setup checklist are tide's own;
 the rest are buttons to System Settings' panes, LinearMouse and Karabiner (SPEC.md
 §15). **Check on a Mac:** a Layouts change retiles at once, and so does a
 hand edit of `layouts.local.json`; each section's buttons open their pane,
@@ -53,7 +53,7 @@ so on macOS 26; ticks survive a reload. What's left:
   float over the focused tile is dimmed all over, once; the hole keeps up
   with a drag well enough; the Appearance page's − and + change it at
   once.
-- **The sidebar's icons,** as tide's sidebar has one per page (its
+- **The sidebar's icons,** as tide for Linux's sidebar has one per page (its
   `settings.mjs` names a symbolic icon for each). **Check on a Mac:** every
   page and heading fits the window without scrolling the sidebar, and Up
   and Down change the page.
@@ -61,34 +61,34 @@ so on macOS 26; ticks survive a reload. What's left:
 ## Keep the Mac as you set it
 
 The goal: after each login, each time a device is plugged in, each time a
-KVM switches back to this Mac, and on wake, tilemo does its best to make
-the Mac match your settings, with tide's files as the one source, so tide
+KVM switches back to this Mac, and on wake, tide does its best to make
+the Mac match your settings, with tide for Linux's files as the one source, so tide for Linux
 looks and works the same on Linux, chromeOS and a Mac. The first piece,
 the mouse wheel, is built:
 
-- **Done: tide's Scroll speed and Natural scrolling through LinearMouse**
-  (SPEC.md §10, §15), applied as tilemo starts, when tide's folder changes,
+- **Done: tide for Linux's Scroll speed and Natural scrolling through LinearMouse**
+  (SPEC.md §10, §15), applied as tide starts, when tide for Linux's folder changes,
   after a plug or a wake, and at the 30 s check; Karabiner's rules are
   checked after a plug or a wake too. **Check on a Mac:** LinearMouse
-  reloads tilemo's write and scrolls nine lines at 3×; the mouse reverses
+  reloads tide's write and scrolls nine lines at 3×; the mouse reverses
   while the trackpad doesn't; a KVM switch back, a wake and an unlock each
   set it again and start a quit LinearMouse without its window; a change
   in LinearMouse's window is put back within 30 s; `hs.usb.watcher` and
   `hs.caffeinate.watcher` fire as expected on macOS 26.
-- **scripts' setup-macos writes ten lines a notch;** tilemo makes it nine
+- **scripts' setup-macos writes ten lines a notch;** tide makes it nine
   as it starts. setup-macos's `LINEARMOUSE_LINES` should move to nine to
   match, in mikelward/scripts.
-- **Then the rest of tide's Mouse, Touchpad and Keyboard pages,** where
-  macOS lets tilemo apply them at once: a keyboard's layout as its input
+- **Then the rest of tide for Linux's Mouse, Touchpad and Keyboard pages,** where
+  macOS lets tide apply them at once: a keyboard's layout as its input
   source (`hs.keycodes`), and LinearMouse's pointer speed. What macOS
   takes only at the next login stays behind its pane's button.
-- tide's per-device settings need one name for a device on both desktops:
+- tide for Linux's per-device settings need one name for a device on both desktops:
   `hyprctl devices` names differ from LinearMouse's product names.
 
 ## Named workspaces
 
 SPEC.md now has named workspaces in place of the nine numbered ones, and
-one switcher with tabs (SPEC.md §6, §7.2, §9, §14.2), as tide's does.
+one switcher with tabs (SPEC.md §6, §7.2, §9, §14.2), as tide for Linux's does.
 **Built:** workspaces by name, the standing workspaces (`workspaces`, the
 first being home, "in" by default) and home's apps (`home_apps`),
 `Super+Home`, the saved state, names on the bar, the menu bar item, the
@@ -118,20 +118,20 @@ launch's window going to the workspace it was launched for, and the keys:
     other display's windows over, and plugging it back in returns them,
     each in its old place, with the display's own layout; how macOS itself
     moves windows off a display that goes away, and back, and whether
-    tilemo's handoff fights it; that `hs.screen`'s UUIDs stay the same
+    tide's handoff fights it; that `hs.screen`'s UUIDs stay the same
     across a replug and a restart.
-  - **Check on a Mac:** `Super+Shift+PgUp` / `PgDn` reach tilemo through
+  - **Check on a Mac:** `Super+Shift+PgUp` / `PgDn` reach tide through
     Karabiner as Ctrl+Option+Command+Shift+PgUp / PgDn (conf's rule sends
     PgUp and PgDn with Shift already), and nothing else holds those
     chords; `Super+Left` / `Right` across two real displays of different
     sizes, one offset, pick the windows SPEC.md §7.2 says.
-  - **tide** has the same keys (tide SPEC.md §6.6) and has decided on
+  - **tide for Linux** has the same keys (tide for Linux SPEC.md §6.6) and has decided on
     the same model, a workspace spanning every monitor with an empty
-    part showing the wallpaper and the bar (tide SPEC.md §6.5); it's not
+    part showing the wallpaper and the bar (tide for Linux SPEC.md §6.5); it's not
     built there yet.
-- **conf:** Karabiner sends physical Alt+Tab as tilemo's
+- **conf:** Karabiner sends physical Alt+Tab as tide's
   `Ctrl+Option+Shift+Tab` instead of Cmd+Tab, and the lone Super tap as
-  `Super+F20` (conf's PR for this goes with tilemo's keys PR); `kitty.conf` allows remote control on a socket; the shell reads
+  `Super+F20` (conf's PR for this goes with tide's keys PR); `kitty.conf` allows remote control on a socket; the shell reads
   `~/Library/Caches/tilemo/workspace` on a Mac when `TIDE_WORKSPACE` is
   missing (SPEC.md §6.3, §17).
 - **Check on a Mac:** `open --env` on macOS 26, kitty's socket path, and
@@ -147,7 +147,7 @@ tests have run it. **Check on a Mac:**
 
 - a switch is instant, with no animation and no flash of the wrong
   workspace, on one display and on two;
-- macOS leaves a parked window where tilemo put it, a 1 pt sliver showing,
+- macOS leaves a parked window where tide put it, a 1 pt sliver showing,
   rather than pulling it back on screen; and whether the top corners work,
   or macOS keeps a title bar below the menu bar (SPEC.md §6);
 - apps that refuse a move, or snap back, such as a terminal or a window
@@ -178,7 +178,7 @@ Mac:**
   front app first (`clickActivating(false)`);
 - the title's tip shows on hover while another app is in front;
 - the icons follow light and dark;
-- `Super+Z` reaches tilemo through Karabiner as Ctrl+Option+Command+Z,
+- `Super+Z` reaches tide through Karabiner as Ctrl+Option+Command+Z,
   with nothing else on that chord.
 
 ## The overview, in place of Mission Control
@@ -188,7 +188,7 @@ cards grouped by workspace, Ctrl+Down this workspace's. Only the tests
 have run it. **Check on a Mac:**
 
 - once `setup-macos` has turned off symbolic hotkeys 32 and 33, Ctrl+Up and
-  Ctrl+Down reach tilemo, and the settings window's Shortcuts list them as
+  Ctrl+Down reach tide, and the settings window's Shortcuts list them as
   registered;
 - the page fills the display the keys act on, the icons show, and it
   follows light and dark;
@@ -198,25 +198,25 @@ have run it. **Check on a Mac:**
   window each close it, and focus goes back where it was;
 - whether conf's PC-arrows rule, which sends physical Ctrl+Home as
   Control+Up outside terminals, opens the overview; if it does, the rule
-  should send Command+Up instead, or tilemo should pick other keys.
+  should send Command+Up instead, or tide should pick other keys.
 
 **Later, as an opt-in setting:** window thumbnails on the cards. They
 need Screen Recording (`hs.window:snapshot()` or ScreenCaptureKit), which
-tilemo never asks for now (SPEC.md §11.1), so off by default, with the
+tide never asks for now (SPEC.md §11.1), so off by default, with the
 setup checklist asking for the permission only once it's on.
 
 ## Mute: apps and sites that never want attention
 
-**Built** (SPEC.md §14.2, §15): `muted` in tide's `workspaces.json` and
+**Built** (SPEC.md §14.2, §15): `muted` in tide for Linux's `workspaces.json` and
 `workspaces.local.json`, the marks suppressed and cleared, `Cmd+M` and the
 right-click in the switcher's Windows and Attention tabs, the "muted"
 mark, each browser window's front tab, and the settings window's list.
 **The key is `Cmd+M`** (decided by the maintainer, 2026-10-31), physical
-Ctrl+M under `setup-macos`'s rotation, the same key as tide's `Ctrl+M`.
+Ctrl+M under `setup-macos`'s rotation, the same key as tide for Linux's `Ctrl+M`.
 It's an `hs.hotkey` bound only while the switcher's chooser is open and
 deleted as it closes, never globally, so it can't reach macOS's own
 `Cmd+M` minimize there and leaves it alone everywhere else; `Super+Z` is
-tilemo's minimize. Hammerspoon's hotkeys are Carbon hot keys
+tide's minimize. Hammerspoon's hotkeys are Carbon hot keys
 (`RegisterEventHotKey`, `extensions/hotkey/libhotkey.m`), which take the
 key before the chooser or Hammerspoon's own Window › Minimize item
 (`MainMenu.xib`) sees it, and the chooser's panel isn't miniaturizable
@@ -226,13 +226,13 @@ anyway (its `styleMask` in `HSChooserWindow.xib` is only
 
 - the Notifications pane's URL on macOS 26, from the notice after a mute;
 - that clicking the notice opens it (`hs.notify`'s callback);
-- `Cmd+M` and the right-click reach tilemo while the switcher is open,
+- `Cmd+M` and the right-click reach tide while the switcher is open,
   and `Cmd+M` doesn't minimize anything there;
 - Chrome's `active tab index` and Safari's `current tab` in the tab list.
 
 ## Launcher looks
 
-**Built, switched off** (SPEC.md §9.2): tileco's dashboard page as the
+**Built, switched off** (SPEC.md §9.2): tide for Chrome's dashboard page as the
 launcher, in an `hs.webview`, with `start({ launcher = "dashboard" })`. The
 default stays the `hs.chooser` switcher. Only the plain-Lua tests and the
 page's test, against a fake DOM, cover it.
@@ -259,10 +259,10 @@ page's test, against a fake DOM, cover it.
   - `Cmd+Return`'s new workspace, and `Cmd+M` or a right-click to mute a row;
   - an Attention scope: `Super+A` opens it on Tabs;
   - a window's "minimized" and "muted", and the app's name, in its row:
-    tileco's page says "tab on <workspace>" for every row on Tabs;
-  - app icons on Launch and Tabs, which tileco's page takes as `favIconUrl`;
+    tide for Chrome's page says "tab on <workspace>" for every row on Tabs;
+  - app icons on Launch and Tabs, which tide for Chrome's page takes as `favIconUrl`;
   - CI's smoke test opens only the chooser.
-- **Compare the two on the Mac,** tileco's page with its scope chips over
+- **Compare the two on the Mac,** tide for Chrome's page with its scope chips over
   the bar and clocks against the chooser, then pick the default.
 
 ## Keep awake and presenter mode
@@ -273,7 +273,7 @@ Presenter mode, the bar's Presenting pill, and Do Not Disturb through
 `tilemo doctor`) and in a notification on first use. Only the plain-Lua
 tests and the bar page's test cover it. **Check on a Mac:**
 
-- `Super+S` and `Super+P` reach tilemo through Karabiner as
+- `Super+S` and `Super+P` reach tide through Karabiner as
   Ctrl+Option+Command+S and P, with nothing else on those chords;
 - Set Focus's wording on macOS 26, and that "Do Not Disturb On" and
   "Do Not Disturb Off" made with it work from `shortcuts run`;
@@ -289,7 +289,7 @@ On a display with a notch the bar now sits at the main menu's window level,
 the lowest macOS leaves in the notch's strip (SPEC.md §8); every other bar
 stays floating, below the menu bar. Consider the main menu's level on every
 display, so the bar looks and stacks the same everywhere, and, further on,
-hiding the system menu bar for good, so tilemo's bar is the only one:
+hiding the system menu bar for good, so tide's bar is the only one:
 
 - **What the menu bar still gives** (SPEC.md §8): the app's own menus, the
   Apple menu and other apps' status items. Those need a way in first, such
@@ -328,12 +328,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
   **Decided** by the user (2026-11-07): it keeps out only what password
   managers mark, concealed or transient; the file is encrypted with a key
   in the login keychain through `security` (no prompts, over a key only
-  Hammerspoon may read); copies go after a week, or the Clipboard settings' Days to keep (also tide's; mikelward/tide#381). **Check on a Mac:** the
+  Hammerspoon may read); copies go after a week, or the Clipboard settings' Days to keep (also tide for Linux's; mikelward/tide#381). **Check on a Mac:** the
   first copy makes "tide clipboard history" in Keychain Access with no
   prompt; the file isn't readable text and comes back after a reload;
   LibreSSL's `openssl enc` takes `-pbkdf2` and `-pass env:`; a save doesn't stall typing; Clear history empties it.
-- **For tide:** the same on Linux, the key in gnome-keyring through the
-  Secret Service; it needs tide's own store in place of cliphist, which
+- **For tide for Linux:** the same on Linux, the key in gnome-keyring through the
+  Secret Service; it needs tide for Linux's own store in place of cliphist, which
   keeps every copy as it came.
 - **To consider: more defenses for the saved history.** Ideas so far:
   - leave out copies that look like a secret, such as no spaces and a
@@ -341,15 +341,15 @@ tide. INFEASIBLE.md lists what can't be fixed.
     only, kept in memory for the session;
   - pause the history while a password manager or a terminal's secure
     keyboard entry is in front.
-- **Later: images in the clipboard history,** as tide's cliphist keeps
+- **Later: images in the clipboard history,** as tide for Linux's cliphist keeps
   them.
 - **To consider: middle-click paste,** like Linux's primary selection.
-  tilemo would copy what's selected and put the clipboard back after the
+  tide would copy what's selected and put the clipboard back after the
   paste, which can lose a copy made in between.
 - **Not yet decided:** Tab reaching every control in dialogs
   (`AppleKeyboardUIMode`), no `.DS_Store` on network shares, and Touch ID
   for `sudo` (`/etc/pam.d/sudo_local`).
-- **For tide, not here:** holding a key on Linux shows an accent picker, as
+- **For tide for Linux, not here:** holding a key on Linux shows an accent picker, as
   macOS's press-and-hold does. macOS keeps its own.
 
 ## Decisions needing review
@@ -368,7 +368,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   windows on this workspace", rather than nothing or every workspace.
 
 - **Parking is the default; the setting is `hide`,** `"park"` or
-  `"minimize"` (SPEC.md §6, 2026-11-05), a start() option only: tide has
+  `"minimize"` (SPEC.md §6, 2026-11-05), a start() option only: tide for Linux has
   nothing like it to share. Anything else is an error at load.
 - **The corners are tried bottom-right, bottom-left, top-right, top-left**
   (`park.lua`), the first whose window overlaps no other display, else
@@ -385,40 +385,40 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **Pinned apps' close keys are hotkeys enabled while a pinned window has
   focus** (SPEC.md §6.2, 2026-11-04), not a keyboard event tap, so they
   need no Input Monitoring. A press just after focusing a pinned window,
-  before tilemo hears of the focus, still reaches the app; one that finds
+  before tide hears of the focus, still reaches the app; one that finds
   focus moved on is posted on to the app. Only Cmd+W, Cmd+Shift+W and Cmd+Q
-  are held, tide's three that mean something on a Mac; Cmd+Option+W (close
-  all) isn't. A refused key notifies each press, as tide's does.
+  are held, tide for Linux's three that mean something on a Mac; Cmd+Option+W (close
+  all) isn't. A refused key notifies each press, as tide for Linux's does.
   Reversible: `pinned_hs.KEYS`, `wm:check_pinned_focus`.
-- **start()'s `workspace_settings` takes tide's field names,** `askForName`
+- **start()'s `workspace_settings` takes tide for Linux's field names,** `askForName`
   and `pinnedApps`, inside a snake_case option (SPEC.md §15, 2026-11-04),
   so a table copies to and from workspaces.json unchanged.
 - **Pinned apps match by app name, as home's apps do** (SPEC.md §6.2,
-  2026-11-04); tide's web addresses pin nothing here, and a pinned app
+  2026-11-04); tide for Linux's web addresses pin nothing here, and a pinned app
   that isn't one of home's still asks for a name as it opens on a
   workspace that asks, as on tide.
 - **Trackpad, key repeat and left-handed stay in System Settings**
-  (2026-11-04): tide's pages set them live, but macOS's `defaults` for tap
+  (2026-11-04): tide for Linux's pages set them live, but macOS's `defaults` for tap
   to click, natural scrolling, tracking speed, key repeat and swapping the
   buttons take effect only at the next login *(unverified)*, so controls
   here would seem not to work. Revisit if a live way turns up.
 
-- **tide's idle timeline runs only once its files set some of it**
-  (SPEC.md §15, 2026-11-04), as light and dark does, rather than tide's
+- **tide for Linux's idle timeline runs only once its files set some of it**
+  (SPEC.md §15, 2026-11-04), as light and dark does, rather than tide for Linux's
   defaults locking every Mac after 5 minutes; the page's switch writes
   them. The dim is a half-dark veil, not the displays' brightness, so it
   covers every display alike. An app's power assertion holds the whole
   timeline. Reversible: `chosen` in `idle.load`, `idle_hs.DIM_ALPHA`.
 
-- **Light or dark follows tide's schedule only once a mode is set**
-  (SPEC.md §10, 2026-11-04): with none in tide's appearance files, macOS's
-  own appearance stays, rather than tide's default of 07:00 and 19:00
+- **Light or dark follows tide for Linux's schedule only once a mode is set**
+  (SPEC.md §10, 2026-11-04): with none in tide for Linux's appearance files, macOS's
+  own appearance stays, rather than tide for Linux's default of 07:00 and 19:00
   taking over every Mac. The page's first mode is "macOS's own". macOS's
-  Auto can't be set from here, so Sunrise and sunset is tide's
+  Auto can't be set from here, so Sunrise and sunset is tide for Linux's
   computation, not macOS's. Reversible: `chosen` in `theme.script`.
 
 - **The Bluetooth page** (SPEC.md §15, 2026-11-04) lists the paired
-  devices as tide's popover does, connected first, then by name, and a
+  devices as tide for Linux's popover does, connected first, then by name, and a
   click connects or disconnects one; pairing stays in Bluetooth settings.
   It reads blueutil every 5 s while the window's open, rather than only
   as it opens. Reversible: `bluetooth.page_state`, `bluetooth_hs.EVERY`.
@@ -430,24 +430,24 @@ tide. INFEASIBLE.md lists what can't be fixed.
   `fitNotch` in `dashboard/bar.js`.
 
 - **The settings window has no logo atop its sidebar** (2026-11-03), so
-  it looks as tide's panel does, which has none; its title still says
+  it looks as tide for Linux's panel does, which has none; its title still says
   tide. Its toggles keep their words, such as "History on", rather than
-  tide's bare On and Off. Reversible: the `brand` paragraph in
+  tide for Linux's bare On and Off. Reversible: the `brand` paragraph in
   `dashboard/settings.html`.
 - **The Setup checklist is General's last page** in the settings window's
-  sidebar (2026-11-02), since tide has no such page and General is "the
+  sidebar (2026-11-02), since tide for Linux has no such page and General is "the
   rest". Reversible: its `group` in `launcher.SETTINGS_SECTIONS`.
 - **The volume popover** (2026-11-02): a click on the speaker opens it
-  rather than muting, as tide's does; mute is in the popover. No inputs
-  or per-app volumes, unlike tide's.
+  rather than muting, as tide for Linux's does; mute is in the popover. No inputs
+  or per-app volumes, unlike tide for Linux's.
 - **The volume keys over DDC** (2026-11-02): 5% steps, the bar's scroll
   step, not macOS's sixteenths, and the level as an `hs.alert` sign rather
   than a drawn bar like macOS's.
 - **The switcher's look** (2026-11-02): headers only with nothing typed, on
   Launch (Recent, the five used last, then Apps, System Settings,
-  Commands) and Actions (Session, tide, Toggles, Screenshots); fonts at
+  Commands) and Actions (Session, tide for Linux, Toggles, Screenshots); fonts at
   16/12/11 pt, 40% wide, 10 rows; the session's icons are macOS's
-  `NSLockLockedTemplate`, `NSUser` and `NSComputer`, and tide's toggles
+  `NSLockLockedTemplate`, `NSUser` and `NSComputer`, and tide for Linux's toggles
   show its logo, for want of a fitting system image; a workspace shows
   `NSMultipleDocuments`. Unseen on a Mac: whether a template image tints
   on the dark rows, and whether a styled title keeps hs.chooser's own
@@ -490,42 +490,42 @@ tide. INFEASIBLE.md lists what can't be fixed.
   the nearest center (2026-11-01). The alternative was the one used last.
   Reversible: `direction.nearest`.
 
-- **The dashboard launcher feeds tileco's page through stand-ins for two
-  of tileco's modules, not only Chrome's APIs** (2026-11-01):
+- **The dashboard launcher feeds tide for Chrome's page through stand-ins for two
+  of tide for Chrome's modules, not only Chrome's APIs** (2026-11-01):
   `launcher-lists.js` replaces `launcher.js`'s `actions()` and
   `settingsSections()`, whose rows are chromeOS's, with the switcher's
   Actions tab and Tide Settings' sections, and `launcher-settings.js`
-  replaces tileco's `settings.js` with tide's clocks. The alternative was
-  tileco's own Actions (keep awake, dim, reload) and settings sections,
+  replaces tide for Chrome's `settings.js` with tide for Linux's clocks. The alternative was
+  tide for Chrome's own Actions (keep awake, dim, reload) and settings sections,
   which name a Chromebook's settings. Reversible: drop the two from
   `launcherpage.MODULES`.
-- **The page tells tileco it runs on chromeOS** (`getPlatformInfo` says
-  `cros`), so it shows workspaces, as tileco does only there
+- **The page tells tide for Chrome it runs on chromeOS** (`getPlatformInfo` says
+  `cros`), so it shows workspaces, as tide for Chrome does only there
   (2026-11-01). Reversible: `launcher-chrome.js`.
-- **The page keeps tileco's chip names,** "Tabs" for the windows and tabs,
+- **The page keeps tide for Chrome's chip names,** "Tabs" for the windows and tabs,
   since its footer names the scopes too (2026-11-01). The alternative is
-  calling it "Windows", as the switcher does, which needs tileco's markup
-  and `launcher.js` to change. Reversible: in tileco.
+  calling it "Windows", as the switcher does, which needs tide for Chrome's markup
+  and `launcher.js` to change. Reversible: in tide for Chrome.
 - **Windows are listed as tabs with a made-up address,**
-  `tide-window://<app>/`, so a query finds a window by its app as tileco
+  `tide-window://<app>/`, so a query finds a window by its app as tide for Chrome
   finds a tab by its site (2026-11-01). Reversible: `launcherpage.feed`.
 - **System Settings' panes are among the apps on Launch,** most recently
-  used first with them, since tileco's page has no other row for them
+  used first with them, since tide for Chrome's page has no other row for them
   (2026-11-01). Reversible: `launcherpage.feed`.
-- **tilemo's commands go in as manifest commands with no key,** so tileco
+- **tide's commands go in as manifest commands with no key,** so tide for Chrome
   lists them on Actions after the actions and on Launch for a query
   (2026-11-01). The switcher lists them on Launch only. Reversible:
   `launcherpage.feed`.
-- **`make check-tileco` compares `launcher.html`'s body with the page
-  template's**, since the template wraps it in tilemo's style and script
+- **`make check-tideco` compares `launcher.html`'s body with the page
+  template's**, since the template wraps it in tide's style and script
   markers (2026-11-01). Reversible: the `Makefile`.
-- **The Setup checklist is tileco's, not tide's,** and the window's last
-  section, after Start at login (2026-11-01): tide has no checklist page
-  (tide SPEC.md §16), and tilemo's SPEC.md §10 says "as tileco's". The
+- **The Setup checklist is tide for Chrome's, not tide for Linux's,** and the window's last
+  section, after Start at login (2026-11-01): tide for Linux has no checklist page
+  (tide for Linux SPEC.md §16), and tide's SPEC.md §10 says "as tide for Chrome's". The
   alternative is putting it first, as a new Mac's first stop. Reversible:
   `settings.html`, `SETTINGS_SECTIONS` in `launcher.lua` and `TIDE_ORDER`
   in `links_test.lua`.
-- **The checklist's settings are ticked off by hand,** as tileco's are,
+- **The checklist's settings are ticked off by hand,** as tide for Chrome's are,
   kept per Mac in `hs.settings` (2026-11-01). The alternative is reading
   each with `defaults` (`com.apple.dock` `minimize-to-application`,
   `mineffect`, `mru-spaces`, `com.apple.WindowManager`'s keys), which would
@@ -533,20 +533,20 @@ tide. INFEASIBLE.md lists what can't be fixed.
   `checklist.page`.
 - **Input Monitoring and Automation show "Can't tell",** and Screen
   Recording "Not needed" without reading it (2026-11-01): Hammerspoon reads
-  neither of the first two without prompting, and tilemo never needs the
+  neither of the first two without prompting, and tide never needs the
   third. The alternative is an Input Monitoring probe through the Super
   tap's event tap. Reversible: `checklist.permission_state`.
 - **The permissions have no ticks;** only the settings do (2026-11-01).
   The alternative is a tick on the two that can't be read. Reversible:
   `checklist.PERMISSIONS` and `renderSetup`.
 
-- **Keyboard's Shortcuts are under the Keyboard section,** as tide moved its
+- **Keyboard's Shortcuts are under the Keyboard section,** as tide for Linux moved its
   Keys page into Keyboard (2026-11-01), with their own launcher row, "Tide
   Settings: Keyboard shortcuts". The alternative is a Keys section of its
   own. Reversible: `settings.html` and `SETTINGS_SECTIONS` in
   `launcher.lua`.
 - **What each key does is written in `keys.lua`** (`DOES`, and `does` on
-  the app keys), in conf's words for tide's same key (2026-11-01), since
+  the app keys), in conf's words for tide for Linux's same key (2026-11-01), since
   Hammerspoon's hotkeys have no description. The alternative is reading
   conf's `hyprland.lua`, which a Mac may not have and whose keys differ.
   Reversible: `keys.DOES`.
@@ -555,7 +555,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   and named by `tilemo doctor`, beside its fallback notice. The
   alternative is listing only the keys macOS refused. Reversible: where
   `bind_all` in `init.lua` adds `skipped` to `failed`.
-- **Keys show as a PC keyboard prints them** (2026-11-01), as tide's do:
+- **Keys show as a PC keyboard prints them** (2026-11-01), as tide for Linux's do:
   `Super+Backspace`, `Super+Insert`, `Print`, `Alt+Tab`, not the Mac's
   delete, Help, F13 or Karabiner's Ctrl+Option+Shift+Tab. The alternative
   is the Mac's names. Reversible: `KEY_NAMES` and `keys_label` in
@@ -568,40 +568,40 @@ tide. INFEASIBLE.md lists what can't be fixed.
   Reversible: `standing.app_key`.
 - **At login, the files' `inApps` opens only the entries that are a Mac
   app** in the usual Applications folders (2026-11-01); the rest are taken
-  to be tide's and skipped, logged but not notified, so tide's programs
+  to be tide for Linux's and skipped, logged but not notified, so tide for Linux's programs
   don't nag on every login. A typo goes unannounced too. The alternative is
   opening every entry and notifying each that fails, as `home_apps` does.
   Reversible: `standing.app_paths` and `find_app` in `hs_adapter.lua`.
-- **A Workspaces change applies at once** (2026-11-01), as tide's does: a new
+- **A Workspaces change applies at once** (2026-11-01), as tide for Linux's does: a new
   first standing workspace is home from then on, and the old home becomes an
   ordinary workspace, its windows left where they are. The alternative is
   taking effect at the next reload. Reversible: `wm:set_workspaces`.
 - **The muted list stays in the Notifications section** (2026-11-01), as on
-  tide, where `muted` is the Notifications page's; the Workspaces section's
+  tide for Linux, where `muted` is the Notifications page's; the Workspaces section's
   writes keep it. The TODO item had it in the Workspaces section.
   Reversible: the sections in `settings.html`.
 - **With no file setting a list, the Workspaces section shows `start()`'s or
-  tilemo's defaults,** and its first change copies them into
+  tide's defaults,** and its first change copies them into
   `workspaces.local.json` (2026-11-01), as the Clocks section copies its
-  defaults. Copying tilemo's default home apps makes them a list you set, so
+  defaults. Copying tide's default home apps makes them a list you set, so
   the installed ones (Mail, Messages, Calendar, Music) start at the next
-  login. The alternative is starting from tide's empty default. Reversible:
+  login. The alternative is starting from tide for Linux's empty default. Reversible:
   `workspaceShared` in `settings-page.js`.
 
 - **Focus follows mouse skips a tile with another app's float in front of
   it** (2026-11-01), since macOS buries the float once the tile is focused
-  and tilemo's re-raise doesn't bring it back. Moving onto the float, or
+  and tide's re-raise doesn't bring it back. Moving onto the float, or
   clicking the tile, still moves focus. The alternative is focusing the
   tile and losing the float behind it. Reversible: `under_float` in
   `ffm.lua`.
 - **The Actions tab comes last,** after Attention, and has no key of its
   own (2026-11-01). Its order puts the session and power first, then
-  tilemo, the toggles and the screenshots. Reversible: `SCOPE_ORDER` and
+  tide, the toggles and the screenshots. Reversible: `SCOPE_ORDER` and
   `COMMANDS` in `launcher.lua`.
 - **The settings sections' rows are for a query alone** (2026-11-01), as
-  tide's per-page rows are, so Launch's empty list shows only Tide
+  tide for Linux's per-page rows are, so Launch's empty list shows only Tide
   Settings. Reversible: `query_only` in `launcher.lua`.
-- **tilemo turns on each Karabiner rule it hasn't seen, once,** and keeps
+- **tide turns on each Karabiner rule it hasn't seen, once,** and keeps
   every enabled copy up to date with its file, editing `karabiner.json`
   itself (SPEC.md §15). So Ctrl+Tab's next tab works without a visit to
   Karabiner's window, and a rule you turn off stays off. The alternative is
@@ -610,25 +610,25 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **The doctor names only conf's rules that are off** (`karabiner.CONF_FILES`),
   so a rule file from elsewhere you've left off isn't nagged about.
 
-- **The settings window's sections are in tide's order** (SPEC.md §15),
+- **The settings window's sections are in tide for Linux's order** (SPEC.md §15),
   Displays first, where Clocks used to be. The muted list's section is
-  titled Notifications, as tide's page is, and its launcher row still
+  titled Notifications, as tide for Linux's page is, and its launcher row still
   scrolls to it. Reversible: the sections' order in `settings.html`.
-- **LinearMouse missing or stopped is a notification** as tilemo starts,
+- **LinearMouse missing or stopped is a notification** as tide starts,
   even on a Mac with no mouse, since `setup-macos` always installs it.
-  tilemo starts it on a login, a plug or a wake, and a click on the
+  tide starts it on a login, a plug or a wake, and a click on the
   notification does too. Reversible: `linearmouse.problem`.
-- **tide's Mouse settings that aren't set apply as tide's page shows them**
+- **tide for Linux's Mouse settings that aren't set apply as tide for Linux's page shows them**
   (2026-11-01): 3× and natural scrolling off, so setup-macos's ten lines
   become nine and the mouse wheel is reversed while macOS's switch is on.
   The alternative is leaving LinearMouse's own values alone until a
   setting is made. Reversible: `mouseScrolling` in
   `dashboard/linearmouse.js`.
 - **Lines a notch round to the nearest whole line, one at least**
-  (2026-11-01): LinearMouse takes whole lines, so tide's 1.5× is five, not
+  (2026-11-01): LinearMouse takes whole lines, so tide for Linux's 1.5× is five, not
   4.5. Its pixel distance could be exact instead. Reversible: `linesFor`
   in `dashboard/linearmouse.js`.
-- **A change to tide's folder starts LinearMouse only when the Mouse
+- **A change to tide for Linux's folder starts LinearMouse only when the Mouse
   settings changed** (2026-11-01), so editing a clock doesn't undo quitting
   it on purpose. The alternative is starting it on every folder change, as
   the other events do. Reversible: `apply` in `linearmouse.lua`.
@@ -637,11 +637,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
   `PLUG_DELAY` and `plugs_and_wakes`.
 
 - **The Floating section's rules are in `floating-macos.json` and
-  `floating-macos.local.json`** in tide's folder (SPEC.md §15), not tide's
+  `floating-macos.local.json`** in tide for Linux's folder (SPEC.md §15), not tide for Linux's
   `floating.json`, since a bundle ID isn't a Wayland class. The shared file
-  is for every Mac of yours, the local one this Mac's, as tide's other
+  is for every Mac of yours, the local one this Mac's, as tide for Linux's other
   files. The alternatives are one per-Mac file alone, or a `macos` key in
-  tide's `floating.json`. Reversible: `floating.FILE` and `LOCAL_FILE`,
+  tide for Linux's `floating.json`. Reversible: `floating.FILE` and `LOCAL_FILE`,
   and a rename of the file.
 - **`start()`'s `rules` come before the section's,** so one there that
   tiles or ignores an app wins over a section rule floating it (SPEC.md
@@ -653,11 +653,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
   alternative is a regex through `hs.javascript`, as the workspace-name
   patterns use. Reversible: `floating.pattern_problem`, `exact` and
   `rules.lua`'s `matches`.
-- **The key is Super+Shift+I** (SPEC.md §7.2), since tide's Super+Alt+F
+- **The key is Super+Shift+I** (SPEC.md §7.2), since tide for Linux's Super+Alt+F
   can't be had with Super holding Option. Chosen as free, not for its
   letter. Reversible: one line in `keys.lua`.
 - **A click on the "Always float APP?" notification is Edit rule…,** and
-  it expires after 30 s, which is Not now (SPEC.md §5.1). tide's has no
+  it expires after 30 s, which is Not now (SPEC.md §5.1). tide for Linux's has no
   body click. Reversible: `floating_hs.lua`.
 - **A swept window that isn't showing is placed when it next shows**
   (SPEC.md §15), not while minimized, which Accessibility may refuse
@@ -669,19 +669,19 @@ tide. INFEASIBLE.md lists what can't be fixed.
     remove the `"tilemo:"` rule, since that's its name in conf; when conf
     renames it, add `"tide:"` to `keys.RULE_PREFIXES`, first.
   - "Reload tide" and "Check tide (doctor)" keep "Reload tilemo" and "Check
-    tilemo (doctor)" as the key their use is remembered by, so they don't
+    tide (doctor)" as the key their use is remembered by, so they don't
     drop down the switcher. Typing "tilemo" no longer finds them.
   - Console errors and the log say `tide:`; `require("timo")`'s note still
     names `require("tilemo")`, which is what to write. `setup-macos --wm
     tilemo` in the blueutil hint is that script's flag, so it stays.
-  - The logo is a PNG pair, not drawn with `hs.canvas`, so it's tide's SVG
+  - The logo is a PNG pair, not drawn with `hs.canvas`, so it's tide for Linux's SVG
     as rendered, and one file to swap: a 16 pt template (64 px) for the menu
     bar, and a 64 pt one (256 px) in the light accent blue, `#3584e4`, for
     notifications and the switcher's two rows. The dark accent, `#78aeed`,
     would read better on a dark notification; macOS gives a notification no
     way to switch.
   - The settings page gets a header, the logo and "tide", above Clocks; the
-    dashboard, tileco's page, gets no logo.
+    dashboard, tide for Chrome's page, gets no logo.
   - Only the switcher's own two commands show the logo; the other commands'
     rows stay without an image.
 - **Check the logo on a Mac:** the menu bar item with `bar = false` in light
@@ -692,41 +692,41 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **The switcher's tab keys go in the search field's hint,** after where
   Tab goes: "Cmd+Return: new workspace" on Launch, "Cmd+M: mute" on
   Windows and Attention (SPEC.md §9), since `hs.chooser` has no footer to
-  put them in as tide does. The longest hint is now 80 characters
+  put them in as tide for Linux does. The longest hint is now 80 characters
   *(unverified that it fits the chooser's default width on a Mac)*. The
   alternatives are a wider chooser (`chooser:width`), or the keys as a
   row of their own. Reversible: `launcher.SCOPE_KEYS`.
 - **The bar's logo opens the switcher where `Super+Space` does,** on the
   display with the focused window, not always the clicked bar's (SPEC.md
-  §8), as tide's opens on that bar's monitor. `hs.chooser:show` takes a
+  §8), as tide for Linux's opens on that bar's monitor. `hs.chooser:show` takes a
   top-left point, so it could be placed on the bar's display, at the cost
   of working out the chooser's width there. Reversible: `launcher_hs`'s
   `toggle`.
 - **Home's apps start at login only from a `home_apps` you set** (SPEC.md
-  §6.2), not tilemo's default list, which names a Mac app and a web app for
+  §6.2), not tide's default list, which names a Mac app and a web app for
   each of mail, chat, calendar and music, and so would open Mail's and
-  Messages' first-run setup on a Mac that uses Google's. tide starts its
+  Messages' first-run setup on a Mac that uses Google's. tide for Linux starts its
   list, which `conf` sets to the four Google launchers. The alternatives are
   starting the default list's installed apps, or the first installed of
   each pair. Reversible: `startup.home_starts`.
-- **Home's entries stay app names, not tide's programs and web
+- **Home's entries stay app names, not tide for Linux's programs and web
   addresses,** since a `chrome --app=URL` window on a Mac is Google
-  Chrome's, which tilemo can't tell from a browser window (SPEC.md §6.2).
+  Chrome's, which tide can't tell from a browser window (SPEC.md §6.2).
   The alternative is matching such windows by title. Reversible: it adds
   nothing, so it's an addition later.
-- **tilemo's settings are one window with sections, not tide's pages**
+- **tide's settings are one window with sections, not tide for Linux's pages**
   (SPEC.md §15): Clocks, Start at login, Clipboard and Muted, each with its own
   launcher row that scrolls there. It's one short window, and an
   `hs.webview` has no sidebar to build. The alternative is a page per
-  section, as tide's panel has. Reversible: `settings.html` and
+  section, as tide for Linux's panel has. Reversible: `settings.html` and
   `settings_hs.lua`'s `reveal`.
 - **Enter on a new name in `Super+Return`'s prompt goes to a new, empty
-  workspace of that name** (SPEC.md §7.2), as tide's does. It goes again
+  workspace of that name** (SPEC.md §7.2), as tide for Linux's does. It goes again
   once you leave it empty, so a stray name costs nothing. The alternative
   is offering only existing names there. Reversible: `wm.lua`'s
   `go_answer` would refuse a name `find` doesn't know.
 - **`Super+Shift+Return` with no window focused does nothing,** and says
-  why only in Hammerspoon's console, as tide's says it only in the shell's
+  why only in Hammerspoon's console, as tide for Linux's says it only in the shell's
   log. The alternative is a notification. Reversible: one line in
   `wm.lua`'s `A.move_to`.
 - **A chip's tip shows only when the chip cuts its name** (SPEC.md §8),
@@ -738,20 +738,20 @@ tide. INFEASIBLE.md lists what can't be fixed.
   A login it can't tell runs nothing. The alternatives are a file in
   `$TMPDIR`, which outlives a logout, or a Login Item that runs the list
   itself. Reversible: `startup.due` and `a.login`.
-- **Start at login has no page in tilemo yet;** tide's page or a hand
+- **Start at login has no page in tide yet;** tide for Linux's page or a hand
   edit changes the list. The settings window could list it as it lists
   the muted apps. It's an addition.
 - **A default name's first word loses `.` `,` `:` `;` `!` `?` `|` `…` and
   dashes from its end, a word with no letter or digit is passed over, and a
-  title with no such word gives the app's name,** matching tide's list.
+  title with no such word gives the app's name,** matching tide for Linux's list.
   The alternatives are a shorter list (only `:` `,` `|`), or an empty
-  default as tide gives. Reversible: `names.fallback`.
+  default as tide for Linux gives. Reversible: `names.fallback`.
 - **The title's target is the whole free bar between the two groups,**
   for a double click and on hover, so it isn't just its text. The
   alternative was the title's own box stretched to the bar's height,
   leaving the rest of the middle dead. Reversible: `titleInsets` and the
   bar's `dblclick` listener in `bar.js`.
-- **Hover comes from tilemo's pointer tap,** one `evaluateJavaScript` per
+- **Hover comes from tide's pointer tap,** one `evaluateJavaScript` per
   pointer move over a bar, since WebKit gives the never-key bar no
   `:hover`. The alternative, making the bar's window key on entry, would
   take focus from the app under it. Reversible: `bar_hs`'s `pointer`.
@@ -760,7 +760,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   panel is where a single zone is picked. Reversible: `bar.js`'s clocks
   listener.
 - **Presenter mode turns Do Not Disturb off when it ends,** even if it
-  was on before, since tilemo can't read a Focus. Keep awake goes back as
+  was on before, since tide can't read a Focus. Keep awake goes back as
   it was. A third shortcut using "Get Current Focus" could read it, at
   the cost of one more shortcut to make. Reversible: `presenter.presenter`.
 - **The shortcuts are "Do Not Disturb On" and "Do Not Disturb Off",** two
@@ -785,20 +785,20 @@ tide. INFEASIBLE.md lists what can't be fixed.
   history is a plain list a file could back, and the watcher could keep
   `hs.pasteboard.readImage()` too.
 - **Return in the picker pastes with Cmd+V,** sent to the app that was
-  in front when it opened, once it's brought back, as tide pastes. A
+  in front when it opened, once it's brought back, as tide for Linux pastes. A
   terminal pastes on Cmd+V on a Mac too, so there's no exception list.
   Reversible: one call in `picker_hs.lua`'s chooser callback.
 - **Shift+Delete forgets a clipboard entry,** which on a Mac keyboard is
-  Shift+forward delete (Fn+Shift+Delete). tide's key; plain Delete stays
+  Shift+forward delete (Fn+Shift+Delete). tide for Linux's key; plain Delete stays
   the search field's.
 
-- **After a mute, clicking tilemo's notice opens Notifications settings,**
+- **After a mute, clicking tide's notice opens Notifications settings,**
   rather than a dialog asking first, which would take the keyboard from
   the switcher. Reversible: `toggle_mute` in `init.lua`.
 - **`muted` lives in `workspaces.json`,** beside `inApps` and
   `namePatterns`, rather than a file of its own, since it's another list
-  of apps tide and tilemo share. Reversible: one name in `mute.lua`, and
-  tide's agent may pick otherwise.
+  of apps tide for Linux and tide share. Reversible: one name in `mute.lua`, and
+  tide for Linux's agent may pick otherwise.
 - **A right-click on a row stands in for a hover button,** which
   `hs.chooser` can't draw. Reversible: a webview switcher.
 - **A site matches a browser window by its front tab as the switcher last
@@ -808,7 +808,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **A site's host matches exactly,** ignoring case, so
   `site:chat.google.com` doesn't cover `mail.google.com`, and
   `site:google.com` doesn't cover either. Reversible: `mute.matches`.
-- **Workspace names take tide's character rule but not its 32-character
+- **Workspace names take tide for Linux's character rule but not its 32-character
   cap.** No quotes, backslashes or control characters, refused at load and
   at the prompt. Long names are left alone, since nothing here breaks on
   them and the bar already shortens a long name. A refused launch prompt
@@ -826,10 +826,10 @@ tide. INFEASIBLE.md lists what can't be fixed.
   icon, not a canvas element's `toolTip`, which may only show while
   Hammerspoon is in front *(unverified)*. Reversible: `tray_hs.lua`.
 - **conf's Karabiner rule needs no change for `Super+Z`:** it has sent
-  Win+Z as Ctrl+Option+Command+Z since it was first added. tilemo's rule
+  Win+Z as Ctrl+Option+Command+Z since it was first added. tide's rule
   check still flags a copy without it. Reversible: `keys.RULE_FEATURES`.
-- **An out-of-date tilemo rule in Karabiner is flagged, not worked
-  around:** tilemo reads the enabled copy in `karabiner.json`, and if
+- **An out-of-date tide rule in Karabiner is flagged, not worked
+  around:** tide reads the enabled copy in `karabiner.json`, and if
   Alt+Tab's or the tap's Super+F20 manipulator is missing it says which,
   and how to re-add the rule, in a notification and in `tilemo.doctor()`.
   It doesn't bind Super+Space's old tap or anything else in their place.
@@ -837,13 +837,13 @@ tide. INFEASIBLE.md lists what can't be fixed.
   console or the switcher. Reversible: `keys.rule_gaps` and `init.lua`'s
   `check_rule`.
 
-- **A name pattern with no capture group is an error at load,** as tide's
+- **A name pattern with no capture group is an error at load,** as tide for Linux's
   spec says for the same shared file, since it can't give a name. The
-  patterns are tide's `workspaces.json` `namePatterns`, with
+  patterns are tide for Linux's `workspaces.json` `namePatterns`, with
   `workspaces.local.json` taking their place when it sets them; that's the
-  name on tide's spec branch, not merged there yet. A bad list is said
+  name on tide for Linux's spec branch, not merged there yet. A bad list is said
   in a notification and the last good one stays, rather than stopping
-  tilemo. Reversible: `names.lua`.
+  tide. Reversible: `names.lua`.
 - **The home workspace's name typed at the name prompt is refused** with a notice, and the
   window asks again; for a launch, nothing opens. Reversible:
   `wm.answer` and `wm.before_launch`.
@@ -856,7 +856,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   Reversible: `hs_adapter.lua`'s `launch`.
 - **Scripts read the workspace from `~/Library/Caches/tilemo/workspace`,**
   not `hs -c`, since `hs.ipc`'s port runs any Lua a local process sends,
-  with tilemo's Accessibility grant. Lua has no chmod, so each write runs
+  with tide's Accessibility grant. Lua has no chmod, so each write runs
   `/bin/chmod` three times; that's only when the workspace changes. Reversible:
   `current.lua`.
 - **A launch's window is matched by its app's bundle ID,** or, for a
@@ -897,7 +897,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   workspace, its parent being its app's focused window, before home's
   apps are routed home. Reversible: `wm.parent_ws`.
 - **Names are one line, with runs of space made one and the ends
-  trimmed;** a blank name moves nothing. SPEC.md sets no length; tide caps
+  trimmed;** a blank name moves nothing. SPEC.md sets no length; tide for Linux caps
   names at 32 characters. Reversible: `wm.clean_name`.
 
 - **The bar floats at the floating window level,** above every app's
@@ -909,7 +909,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   takes up to 5 s to show. Reversible: `hs.battery.watcher` and
   `hs.network.reachability` in `bar_hs.lua`.
 - **macOS's own full screen hides the bar only while that window is
-  focused,** on its display. tilemo hears of focus changes but not of Space
+  focused,** on its display. tide hears of focus changes but not of Space
   swipes, so a full-screen window swiped away from but still focused may
   keep the bar hidden *(unverified)*. The alternative is tracking Spaces
   through `hs.spaces`. Reversible: `bar.hidden` in `bar.lua`.
@@ -922,19 +922,19 @@ tide. INFEASIBLE.md lists what can't be fixed.
   emptying the title until focus moves. Reversible: hand focus back after
   a click, as the dashboard does on closing.
 
-- **tide's geometry, direction and clocks modules are copied, not shared.**
+- **tide for Linux's geometry, direction and clocks modules are copied, not shared.**
   `hammerspoon/tilemo/geometry.lua`, `direction.lua` and
-  `dashboard/tide-clocks.js` are tide's files unchanged, and CI fails if
+  `dashboard/tide-clocks.js` are tide for Linux's files unchanged, and CI fails if
   they drift (`make check-tide`).
   The alternative is a git submodule of tide. Reversible: swap the copies
   for the submodule paths.
-- **No frame-offset store.** tileco stores, per app, how far a window's frame
-  lands from where it asked (tileco SPEC.md §5.3). tilemo leaves an app that
+- **No frame-offset store.** tide for Chrome stores, per app, how far a window's frame
+  lands from where it asked (tide for Chrome SPEC.md §5.3). tide leaves an app that
   rounds its size where it settled. Reversible: add the store in `wm.lua`'s
   retile if gaps or overlaps show up on a Mac.
-- **The master count never drops below one,** in every mode. tide's tile
+- **The master count never drops below one,** in every mode. tide for Linux's tile
   can go to none. Reversible: one line in `layout.nmaster`.
-- **How tilemo tells Karabiner is ready:** its config has a rule whose
+- **How tide tells Karabiner is ready:** its config has a rule whose
   description starts `tilemo:` (or `timo:`, from before the rename), and
   `Karabiner-Core-Service` or `karabiner_grabber` is running, checked every
   30 s. Unverified on a Mac.
@@ -962,10 +962,10 @@ tide. INFEASIBLE.md lists what can't be fixed.
   real window has no close button would need a user rule to float or tile.
   Reversible: step 3 in `rules.decide`.
 - **Every new float is centered,** even one that opens where it remembers
-  being. SPEC.md §5.1 wants those left in place, but tilemo can't yet tell
+  being. SPEC.md §5.1 wants those left in place, but tide can't yet tell
   them apart. Reversible: skip `place_float` for a float that opens away
   from the display's origin, say.
-- **A tile's height can't be dragged.** tide's stacks are equal rows, so a
+- **A tile's height can't be dragged.** tide for Linux's stacks are equal rows, so a
   tile dragged taller or shorter snaps back; only the split between columns
   follows a drag. Reversible: give each stack row a weight in the layout.
 - **Super+drag shows an outline and moves the window on release,** rather
@@ -976,7 +976,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   for every kind of menu)*. Mission Control isn't watched for; the hit test
   landing on something unmanaged stands in *(unverified)*. Reversible:
   `AXMenuOpened` observers in the adapter.
-- **A window minimized before tilemo first starts counts as yours,** so tilemo
+- **A window minimized before tide first starts counts as yours,** so tide
   never restores something you put away. Reversible: `wm.add`.
 - **Restarts match windows by app and title, closest first** (SPEC.md
   §6.3). A window keeps its saved place by id only if the app matches. If
@@ -984,18 +984,18 @@ tide. INFEASIBLE.md lists what can't be fixed.
   the same title first, then the most in common at the start and end. With
   no title alike at all, any of its app's places still counts. Places are
   kept for 10 minutes, at most 50: a saved window that hasn't come back
-  since tilemo started, or a window whose process quit, even if the app is
+  since tide started, or a window whose process quit, even if the app is
   running again already. A window you close while its process runs leaves
   no place, so its next window opens where you are. An app that quits when
   its last window closes leaves one, though. *Unverified:* that
   `hs.application.applicationForPID` no longer finds a process by the
   time its windows are reported gone. A window saves its current index,
-  so if tilemo restarts while an app is still bringing windows back, the
+  so if tide restarts while an app is still bringing windows back, the
   rest may land out of order around the ones already back. That's the
   price of a stack you've rearranged since staying put. Reversible:
   `wm.match`, `wm.KEEP` and `wm.snapshot`.
-- **App keys run tide's helpers** (`browser1`, `google-calendar`, …)
-  through `runenv`, as tide does. Each has a macOS branch in scripts:
+- **App keys run tide for Linux's helpers** (`browser1`, `google-calendar`, …)
+  through `runenv`, as tide for Linux does. Each has a macOS branch in scripts:
   `chrome` opens Google Chrome with `open -na`, so the browsers and web apps
   work, `home` opens Finder, `notepad` TextEdit and `irc` HexChat
   *(unverified per key on a Mac)*. Each press starts its helper, so a web
@@ -1003,10 +1003,10 @@ tide. INFEASIBLE.md lists what can't be fixed.
   notification. Super+T opens a new kitty window, by bundle ID. Reversible:
   `keys.APPS`.
 - **Screenshots are saved and copied** (SPEC.md §10): macOS's own keys save
-  each to Screenshot's folder, and tilemo copies each new file there that
+  each to Screenshot's folder, and tide copies each new file there that
   macOS tagged as a screen capture to the clipboard, so a shot taken with
   macOS's keys directly is copied too. They keep macOS's names ("Screenshot … at ….png"), not
-  tide's `YYYY-MM-DD_HH-MM-SS.png`. Reversible: put Ctrl back in
+  tide for Linux's `YYYY-MM-DD_HH-MM-SS.png`. Reversible: put Ctrl back in
   `keys.SCREENSHOT` and drop the watcher for the clipboard alone.
 - **Do Not Disturb runs a Shortcuts shortcut** named "Toggle Do Not
   Disturb", which you make once; macOS has no public switch for Focus.
@@ -1030,7 +1030,7 @@ tide. INFEASIBLE.md lists what can't be fixed.
   Reversible: `M.notifications` in `hs_adapter.lua`.
 - **The focus guard guesses what you asked for from your input**
   (SPEC.md §14.1). A focus is yours if it's another window of the app you
-  were in, one tilemo asked for, one that follows a click, Return or a key
+  were in, one tide asked for, one that follows a click, Return or a key
   with Command within 1 s (or Command is still down, for Cmd+Tab), or one
   that moves on because the window you were in went away. An app key or
   the launcher grants its app's window 10 s, once. A click or Return also
@@ -1050,20 +1050,20 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **The menu bar chips are text:** `[3]` showing, `2` occupied, `4!` wanting attention. Reversible: draw them with
   `hs.canvas` into the status item's icon.
 - **Hammerspoon's console and preferences float, and its other windows are
-  left alone** by built-in rules, matched by title, so tilemo doesn't place
+  left alone** by built-in rules, matched by title, so tide doesn't place
   its own launcher and dashboard. Reversible: the rules in `rules.lua`.
 - **The dashboard is on Super+Shift+Space,** next to the launcher on
-  Super+Space; tide has no dashboard key to match. Reversible: one line in
+  Super+Space; tide for Linux has no dashboard key to match. Reversible: one line in
   `keys.lua`.
-- **With no clocks file, the clocks are tileco's,** Sydney, Los Angeles,
-  New York and London (SPEC.md §8), not tide's San Francisco, New York and
-  London; tide's `clocks.json` or `clocks.local.json` sets them on both.
-  tide's `hour24` and `dedupeLocal` aren't followed, since tileco's view is
+- **With no clocks file, the clocks are tide for Chrome's,** Sydney, Los Angeles,
+  New York and London (SPEC.md §8), not tide for Linux's San Francisco, New York and
+  London; tide for Linux's `clocks.json` or `clocks.local.json` sets them on both.
+  tide for Linux's `hour24` and `dedupeLocal` aren't followed, since tide for Chrome's view is
   always 24-hour and always hides local. Reversible: `DEFAULT_FILE` in
   `dashboard/settings.js`.
 - **The dashboard has no search;** the launcher stays `hs.chooser`, with
-  tileco's scopes (Launch, Tabs, Attention) moved between with Tab. The
-  alternative is tileco's whole launcher page in the webview, which needs a
+  tide for Chrome's scopes (Launch, Tabs, Attention) moved between with Tab. The
+  alternative is tide for Chrome's whole launcher page in the webview, which needs a
   stand-in for the Chrome APIs it calls. Reversible: add the page later.
 
 ## Check the Floating section on a real Mac
