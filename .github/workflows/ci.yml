@@ -2,15 +2,38 @@ name: ci
 
 on:
   pull_request:
+    # `edited` so a retarget re-runs `lanes` against the new base.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
+  # Sorts the diff into the code or docs lane (.github/lanes.conf; the
+  # engine is mikelward/lanes). Pushes to main are always code.
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.lane.outputs.docs_only }}
+      base_sha: ${{ steps.lane.outputs.base_sha }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: mikelward/lanes@main
+        id: lane
+        with:
+          mode: classify
+          pr: ${{ github.event.pull_request.number }}
+
   test:
     runs-on: ubuntu-24.04
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,9 +65,33 @@ jobs:
   # runner comes with Accessibility granted; tests/ covers the rest.
   hammerspoon:
     runs-on: macos-15
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - run: brew install --cask hammerspoon
       - run: ci/hs-smoke.sh
+
+  # The one check to require: it passes when every heavy job passed, or when
+  # the diff rode the docs lane and they skipped.
+  lanes:
+    name: lanes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [classify, test, hammerspoon]
+    if: always()
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: mikelward/lanes@main
+        with:
+          mode: gate
+          pr: ${{ github.event.pull_request.number }}
+          classify-result: ${{ needs.classify.result }}
+          base-sha: ${{ needs.classify.outputs.base_sha }}
+          results: >-
+            test=${{ needs.test.result }}
+            hammerspoon=${{ needs.hammerspoon.result }}
