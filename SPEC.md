@@ -1640,7 +1640,13 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     badges (tide for Chrome §3.5).
   - Helpers run through the login shell's environment. Apps started from a
     key inherit launchd's short `PATH`, which tide for Linux met as "PATH missing in
-    keybinds" (tide for Linux §17).
+    keybinds" (tide for Linux §17). With mikelward/scripts, its
+    `~/scripts/runenv` sets the environment up; without it, your login
+    shell does, as `$SHELL -l -c 'exec "$@"'` (`/bin/zsh` when `$SHELL`
+    is unset; `loginenv.lua`). Start at login and the picker's `rbw` run
+    the same way.
+  - The helpers themselves (`browser1`, `google-chat` and the rest) are
+    scripts'. Without scripts, those keys say the command wasn't found.
 - **Keyboard's Shortcuts,** in tide's settings window, list every binding
   that registered, and every key that didn't, as tide for Linux's Keyboard page does
   (§15, tide for Linux §16).
@@ -2394,7 +2400,7 @@ three tabs. V as in paste. `Super+;` opens it on Characters and
     `~/.config/tide`, each an object of name to text, the local file's
     name winning.
   - **Logins** come from `rbw`, the unofficial Bitwarden client, run
-    through `~/scripts/runenv` for the login environment's PATH: `rbw
+    in the login environment for its PATH, as helpers are (§7.2): `rbw
     list --fields id,name,user,folder,type` for the rows, one each for a
     login's username, password and 2FA code, and `rbw get --field` or
     `rbw code` for the value. Cards, notes and identities have no rows.

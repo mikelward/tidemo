@@ -6,6 +6,7 @@ local atomic = require("tide.atomic")
 local bar = require("tide.bar")
 local brand = require("tide.brand")
 local kitty = require("tide.kitty")
+local loginenv = require("tide.loginenv")
 local notices = require("tide.notices")
 local rules = require("tide.rules")
 local saved = require("tide.saved")
@@ -561,6 +562,15 @@ function M.new()
         end
     end
 
+    -- The argv, for /usr/bin/env, that runs `words` in the login
+    -- environment: through scripts' runenv, or else the login shell
+    -- (loginenv.lua).
+    function a.login_argv(words)
+        return loginenv.argv(os.getenv("HOME"), os.getenv("SHELL"), function(path)
+            return hs.fs.attributes(path) ~= nil
+        end, words)
+    end
+
     -- Start an app key's app: by bundle ID, or one of tide's helpers
     -- through runenv, which gives it the login environment (tide §17,
     -- "PATH missing in keybinds"). `fresh` asks a running app for a new
@@ -592,9 +602,11 @@ function M.new()
             return
         end
         local args = env_words(env)
-        local runenv = (os.getenv("HOME") or "") .. "/scripts/runenv"
-        args[#args + 1] = runenv
+        local words = {}
         for word in spec.run:gmatch("%S+") do
+            words[#words + 1] = word
+        end
+        for _, word in ipairs(a.login_argv(words)) do
             args[#args + 1] = word
         end
         local started = run("/usr/bin/env", args, function(code, err)
@@ -605,7 +617,7 @@ function M.new()
             end
         end)
         if not started then
-            a.notify("Couldn't run " .. spec.run .. " with " .. runenv)
+            a.notify("Couldn't run " .. spec.run)
         end
     end
 
