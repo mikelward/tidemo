@@ -1,0 +1,672 @@
+#!/bin/bash
+# Tests for install/tide-setup, tide's macOS installer.
+#
+# It runs against a throwaway HOME with Homebrew, defaults, make and the other
+# macOS tools mocked, and the assertions look at what it asked them to do, so
+# these run on Linux CI too. The sandbox PATH holds only the mocks and a few
+# system utilities, never /usr/bin, so a run on a Mac can't reach the real
+# defaults and change the developer's shortcuts.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SETUP_SCRIPT="$SCRIPT_DIR/tide-setup"
+
+TESTS_RUN=0
+TESTS_PASSED=0
+TESTS_FAILED=0
+
+setup() {
+    TEST_TMPDIR="$(mktemp -d)"
+    CALLS="$TEST_TMPDIR/calls"
+    mkdir -p "$TEST_TMPDIR/bin" "$TEST_TMPDIR/home"
+
+    # Every command records its argv; defaults fails a write where
+    # defaults_write_fails is staged.
+    cat > "$TEST_TMPDIR/bin/defaults" <<MOCK
+#!/bin/sh
+printf "%s\\n" "defaults \$*" >> "$CALLS"
+if test "\$1" = write && test -f "$TEST_TMPDIR/defaults_write_fails"; then
+    echo "defaults: could not write domain" >&2
+    exit 1
+fi
+exit 0
+MOCK
+
+    # brew records the environment that keeps it from asking. brew list
+    # answers from brew-casks, one "name version" line per cask it has a
+    # record of; brew_fails.<formula> fails that install.
+    cat > "$TEST_TMPDIR/bin/brew" <<MOCK
+#!/bin/sh
+printf "%s\\n" "brew \$* [HOMEBREW_NO_ASK=\${HOMEBREW_NO_ASK:-unset}]" >> "$CALLS"
+if test "\$1" = list; then
+    for _arg; do _cask="\$_arg"; done
+    grep "^\$_cask " "$TEST_TMPDIR/brew-casks" 2>/dev/null || exit 1
+    exit 0
+fi
+for _arg; do _last="\$_arg"; done
+if test -f "$TEST_TMPDIR/brew_fails.\$_last"; then
+    echo "Error: no bottle for \$_last"
+    exit 1
+fi
+exit 0
+MOCK
+
+    # pgrep says Amethyst and Rectangle aren't running, nor System Settings;
+    # running.<name> says one is, and pgrep_fails.<name> that pgrep can't say.
+    cat > "$TEST_TMPDIR/bin/pgrep" <<MOCK
+#!/bin/sh
+printf "%s\\n" "pgrep \$*" >> "$CALLS"
+test -f "$TEST_TMPDIR/pgrep_fails.\$2" && exit 3
+test -f "$TEST_TMPDIR/running.\$2" && exit 0
+exit 1
+MOCK
+
+    cat > "$TEST_TMPDIR/bin/make" <<MOCK
+#!/bin/sh
+printf "%s\\n" "make \$*" >> "$CALLS"
+test -f "$TEST_TMPDIR/make_fails" && exit 2
+echo "Add to init.lua: (make's own note)"
+exit 0
+MOCK
+
+    cat > "$TEST_TMPDIR/bin/open" <<MOCK
+#!/bin/sh
+printf "%s\\n" "open \$*" >> "$CALLS"
+exit 0
+MOCK
+
+    cat > "$TEST_TMPDIR/bin/activateSettings" <<MOCK
+#!/bin/sh
+printf "%s\\n" "activateSettings \$*" >> "$CALLS"
+exit 0
+MOCK
+    ACTIVATE_SETTINGS="$TEST_TMPDIR/bin/activateSettings"
+
+    fake_arch arm64
+    chmod +x "$TEST_TMPDIR"/bin/*
+
+    mkdir -p "$TEST_TMPDIR/sysbin"
+    for cmd in awk cat dirname grep mkdir mktemp mv rm sed tail tr wc; do
+        ln -sf "$(command -v "$cmd")" "$TEST_TMPDIR/sysbin/$cmd"
+    done
+
+    APPLICATIONS_DIR="$TEST_TMPDIR/Applications"
+    USER_APPLICATIONS_DIR="$TEST_TMPDIR/home/Applications"
+    mkdir -p "$APPLICATIONS_DIR"
+    SETUP_TODO=
+    SETUP_PROBLEMS=
+}
+
+teardown() {
+    rm -rf "$TEST_TMPDIR"
+}
+
+fake_arch() {
+    printf '#!/bin/sh\necho %s\n' "$1" > "$TEST_TMPDIR/bin/uname"
+    chmod +x "$TEST_TMPDIR/bin/uname"
+}
+
+# Install a fake NAME.app in the sandboxed /Applications.
+add_app() {
+    mkdir -p "$APPLICATIONS_DIR/$1.app/Contents/MacOS"
+    printf 'app\n' > "$APPLICATIONS_DIR/$1.app/Contents/Info.plist"
+}
+
+# Put a do-nothing NAME on PATH, as an installed command.
+add_command() {
+    printf '#!/bin/sh\nexit 0\n' > "$TEST_TMPDIR/bin/$1"
+    chmod +x "$TEST_TMPDIR/bin/$1"
+}
+
+# A machine with everything installed already.
+stage_installed() {
+    add_app Hammerspoon
+    add_command blueutil
+    add_command m1ddc
+}
+
+# Runs the installer in the sandbox, with the commands named in $MISSING
+# taken off PATH.
+run_setup() {
+    rm -rf "$TEST_TMPDIR/path"
+    mkdir -p "$TEST_TMPDIR/path"
+    for f in "$TEST_TMPDIR"/bin/*; do
+        case " ${MISSING:-} " in
+            *" ${f##*/} "*) continue ;;
+        esac
+        cp "$f" "$TEST_TMPDIR/path/"
+    done
+    set +e
+    output="$(HOME="$TEST_TMPDIR/home" \
+        XDG_STATE_HOME="$TEST_TMPDIR/home/.local/state" \
+        ACTIVATE_SETTINGS="$ACTIVATE_SETTINGS" \
+        APPLICATIONS_DIR="$APPLICATIONS_DIR" \
+        USER_APPLICATIONS_DIR="$USER_APPLICATIONS_DIR" \
+        SETUP_TODO="$SETUP_TODO" \
+        SETUP_PROBLEMS="$SETUP_PROBLEMS" \
+        SETUP_COMMAND="${SETUP_COMMAND:-}" \
+        PATH="$TEST_TMPDIR/path:$TEST_TMPDIR/sysbin" \
+        "$SETUP_SCRIPT" "$@" </dev/null 2>&1)"
+    status=$?
+    set -e
+}
+
+fail() {
+    printf "  FAIL: %s\n" "$1"
+    printf "  output: %s\n" "$output"
+    TEST_FAILED=1
+    return 1
+}
+
+assert_status() {
+    test "$status" -eq "$1" || fail "expected exit status $1, got $status"
+}
+
+assert_output_contains() {
+    case "$output" in
+        *"$1"*) ;;
+        *) fail "output does not contain '$1'" ;;
+    esac
+}
+
+assert_output_lacks() {
+    case "$output" in
+        *"$1"*) fail "output unexpectedly contains '$1'" ;;
+    esac
+}
+
+# The output with its lines joined, so a sentence matches however it wraps.
+assert_says() {
+    case "$(printf '%s\n' "$output" | tr '\n' ' ' | tr -s ' ')" in
+        *"$1"*) ;;
+        *) fail "output does not say '$1'" ;;
+    esac
+}
+
+assert_called() {
+    grep -qF -- "$1" "$CALLS" 2>/dev/null ||
+        fail "expected call '$1' not found; calls: $(cat "$CALLS" 2>/dev/null)"
+}
+
+assert_not_called() {
+    if grep -qF -- "$1" "$CALLS" 2>/dev/null; then
+        fail "unexpected call '$1' found"
+    fi
+}
+
+assert_file_contains() {
+    grep -qF -- "$2" "$1" 2>/dev/null || fail "'$1' does not contain '$2'"
+}
+
+assert_file_lacks() {
+    if grep -qF -- "$2" "$1" 2>/dev/null; then
+        fail "'$1' unexpectedly contains '$2'"
+    fi
+}
+
+# One whole symbolic hotkey entry: ID, enabled, and its three parameters.
+assert_hotkey() {
+    _want="-dict-add $1 <dict> <key>enabled</key><$2/> <key>value</key><dict> <key>parameters</key><array> <integer>$3</integer> <integer>$4</integer> <integer>$5</integer> </array>"
+    tr -s ' \n\t' '   ' < "$CALLS" | grep -qF -- "$_want" ||
+        fail "expected hotkey write '$_want' not found"
+}
+
+# --- Options ---
+
+test_help() {
+    MISSING=defaults run_setup --help
+    assert_status 0 &&
+    assert_output_contains "Usage: tide-setup" &&
+    assert_output_contains "--no-install"
+}
+
+test_unknown_option() {
+    run_setup --bogus
+    assert_status 1 &&
+    assert_output_contains "Unknown option: --bogus" &&
+    assert_not_called "defaults write"
+}
+
+test_needs_defaults() {
+    MISSING=defaults run_setup
+    assert_status 1 &&
+    assert_output_contains "defaults is required"
+}
+
+# --- A clean run ---
+
+test_clean_run() {
+    stage_installed
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "tide installed" &&
+    assert_output_lacks "Warning" &&
+    assert_not_called "brew install"
+}
+
+# --- Hammerspoon and the helpers ---
+
+test_installs_hammerspoon() {
+    run_setup
+    assert_status 0 &&
+    assert_called "brew install --cask hammerspoon [HOMEBREW_NO_ASK=1]"
+}
+
+test_does_not_reinstall_hammerspoon() {
+    add_app Hammerspoon
+    run_setup
+    assert_status 0 &&
+    assert_not_called "brew install --cask hammerspoon"
+}
+
+test_stale_hammerspoon_record_names_the_fix() {
+    printf 'hammerspoon 1.1.0\n' > "$TEST_TMPDIR/brew-casks"
+    run_setup --ignore-errors
+    assert_status 0 &&
+    assert_not_called "brew install --cask hammerspoon" &&
+    assert_output_contains "Homebrew lists hammerspoon 1.1.0 as installed but Hammerspoon is missing" &&
+    assert_output_contains "run 'brew uninstall --cask --force hammerspoon' and rerun tide-setup"
+}
+
+test_setup_command_names_what_to_rerun() {
+    printf 'hammerspoon 1.1.0\n' > "$TEST_TMPDIR/brew-casks"
+    SETUP_COMMAND=setup run_setup --ignore-errors
+    assert_output_contains "and rerun setup;"
+}
+
+test_no_install_skips_hammerspoon() {
+    run_setup --no-install --ignore-errors
+    assert_status 0 &&
+    assert_not_called "brew install" &&
+    assert_output_contains "Hammerspoon is not installed and --no-install was given" &&
+    assert_output_contains "blueutil is not installed and --no-install was given; tide's bar won't show whether Bluetooth is on until it is" &&
+    assert_called "make -C $REPO_DIR install"
+}
+
+test_missing_brew_warns() {
+    MISSING=brew run_setup --ignore-errors
+    assert_status 0 &&
+    assert_output_contains "Homebrew not found, so Hammerspoon can't be installed" &&
+    assert_output_contains "Homebrew not found, so blueutil can't be installed" &&
+    assert_output_contains "tide installed with 3 problem(s)"
+}
+
+test_failed_hammerspoon_install_is_counted() {
+    touch "$TEST_TMPDIR/brew_fails.hammerspoon"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not install Hammerspoon; nothing will tile" &&
+    assert_output_contains "Error: no bottle for hammerspoon" &&
+    assert_output_contains "tide installed with 1 problem(s)"
+}
+
+test_installs_blueutil() {
+    run_setup
+    assert_status 0 &&
+    assert_called "brew install blueutil"
+}
+
+test_does_not_reinstall_blueutil() {
+    add_command blueutil
+    run_setup
+    assert_status 0 &&
+    assert_not_called "brew install blueutil"
+}
+
+test_failed_blueutil_install_is_counted() {
+    touch "$TEST_TMPDIR/brew_fails.blueutil"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not install blueutil; tide's bar won't show whether Bluetooth is on until it is"
+}
+
+test_installs_m1ddc_on_apple_silicon() {
+    run_setup
+    assert_status 0 &&
+    assert_called "brew install m1ddc" &&
+    assert_not_called "brew install ddcctl"
+}
+
+test_installs_ddcctl_on_intel() {
+    fake_arch x86_64
+    run_setup
+    assert_status 0 &&
+    assert_called "brew install ddcctl" &&
+    assert_not_called "brew install m1ddc"
+}
+
+test_does_not_reinstall_m1ddc() {
+    add_command m1ddc
+    run_setup
+    assert_status 0 &&
+    assert_not_called "brew install m1ddc"
+}
+
+test_failed_ddc_install_is_counted() {
+    touch "$TEST_TMPDIR/brew_fails.m1ddc"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not install m1ddc; tide's bar won't show a monitor's speaker volume until it is"
+}
+
+# brew's own output is kept in the log, not shown; --verbose shows it.
+test_brew_output_goes_to_the_log() {
+    run_setup
+    assert_status 0 &&
+    assert_file_contains "$TEST_TMPDIR/home/.local/state/setup/setup.log" "+ brew install --cask hammerspoon"
+}
+
+# --- tide itself ---
+
+# It installs the checkout it runs from: no clone and no pull.
+test_installs_this_checkout() {
+    run_setup
+    assert_status 0 &&
+    assert_called "make -C $REPO_DIR install" &&
+    assert_output_contains "Installing tide from $REPO_DIR" &&
+    assert_output_lacks "make's own note" &&
+    assert_not_called "git "
+}
+
+test_failed_make_install_is_counted() {
+    touch "$TEST_TMPDIR/make_fails"
+    stage_installed
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not install tide from $REPO_DIR" &&
+    assert_output_contains "tide installed with 1 problem(s)"
+}
+
+test_missing_make_is_reported() {
+    MISSING="make" run_setup
+    assert_status 0 &&
+    assert_output_contains "make not found, so tide can't be installed" &&
+    assert_output_contains "xcode-select --install"
+}
+
+test_writes_hammerspoon_init() {
+    run_setup
+    assert_status 0 &&
+    assert_file_contains "$TEST_TMPDIR/home/.hammerspoon/init.lua" 'tide = require("tide")' &&
+    assert_file_contains "$TEST_TMPDIR/home/.hammerspoon/init.lua" 'tide.start({})'
+}
+
+test_leaves_an_existing_init_alone() {
+    mkdir -p "$TEST_TMPDIR/home/.hammerspoon"
+    printf '%s\n' 'hs.alert.show("mine")' > "$TEST_TMPDIR/home/.hammerspoon/init.lua"
+    run_setup
+    assert_status 0 &&
+    assert_file_contains "$TEST_TMPDIR/home/.hammerspoon/init.lua" 'hs.alert.show("mine")' &&
+    assert_file_lacks "$TEST_TMPDIR/home/.hammerspoon/init.lua" 'require("tide")' &&
+    assert_output_contains "doesn't load tide, so it was left alone" &&
+    assert_output_contains 'tide = require("tide")'
+}
+
+test_accepts_an_init_that_loads_tide() {
+    mkdir -p "$TEST_TMPDIR/home/.hammerspoon"
+    printf '%s\n' "local t = require 'tide'" 't.start({})' \
+        > "$TEST_TMPDIR/home/.hammerspoon/init.lua"
+    run_setup --verbose
+    assert_status 0 &&
+    assert_output_contains "it already loads tide" &&
+    assert_output_lacks "doesn't load tide"
+}
+
+# tide keeps require("tilemo") and require("timo") as shims.
+test_accepts_an_init_that_loads_an_old_name() {
+    mkdir -p "$TEST_TMPDIR/home/.hammerspoon"
+    printf '%s\n' 'timo = require("timo")' 'timo.start({})' \
+        > "$TEST_TMPDIR/home/.hammerspoon/init.lua"
+    run_setup --verbose
+    assert_status 0 &&
+    assert_output_contains "it already loads tide"
+}
+
+test_does_not_count_a_commented_out_require() {
+    mkdir -p "$TEST_TMPDIR/home/.hammerspoon"
+    printf '%s\n' '-- tide = require("tide")' > "$TEST_TMPDIR/home/.hammerspoon/init.lua"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "doesn't load tide, so it was left alone"
+}
+
+test_does_not_replace_a_dangling_init_symlink() {
+    mkdir -p "$TEST_TMPDIR/home/.hammerspoon"
+    ln -s "$TEST_TMPDIR/nowhere/init.lua" "$TEST_TMPDIR/home/.hammerspoon/init.lua"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not read $TEST_TMPDIR/home/.hammerspoon/init.lua" || return 1
+    test -L "$TEST_TMPDIR/home/.hammerspoon/init.lua" || fail "the init.lua symlink was replaced"
+}
+
+# --- Keys ---
+
+test_moves_spotlight_back_to_command_space() {
+    run_setup
+    assert_status 0 &&
+    assert_hotkey 64 true 32 49 1048576 &&
+    assert_hotkey 65 true 32 49 1572864
+}
+
+test_turns_desktop_switching_off_at_stock_keys() {
+    run_setup
+    assert_status 0 &&
+    assert_hotkey 118 false 49 18 262144 &&
+    assert_hotkey 122 false 53 23 262144 &&
+    assert_hotkey 126 false 57 25 262144
+}
+
+test_turns_move_a_space_off() {
+    run_setup
+    assert_status 0 &&
+    assert_hotkey 79 false 65535 123 8650752 &&
+    assert_hotkey 81 false 65535 124 8650752
+}
+
+test_hands_mission_control_keys_to_the_overview() {
+    run_setup
+    assert_status 0 &&
+    assert_hotkey 32 false 65535 126 8650752 &&
+    assert_hotkey 33 false 65535 125 8650752
+}
+
+test_applies_the_keys_now() {
+    run_setup
+    assert_status 0 &&
+    assert_called "activateSettings -u"
+}
+
+test_missing_activate_settings_says_to_log_out() {
+    ACTIVATE_SETTINGS="$TEST_TMPDIR/nowhere"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "not found; log out and back in for tide's keys to work"
+}
+
+test_warns_when_system_settings_is_open() {
+    touch "$TEST_TMPDIR/running.System Settings"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "System Settings is running and can overwrite these shortcuts"
+}
+
+# Without --ignore-errors a failed write stops the run, naming it.
+test_failed_write_stops_the_run() {
+    touch "$TEST_TMPDIR/defaults_write_fails"
+    run_setup
+    assert_status 1 &&
+    assert_output_contains "Error: failed (exit 1): defaults write com.apple.symbolichotkeys" &&
+    assert_output_contains "tide-setup stopped early"
+}
+
+test_ignore_errors_goes_on_past_a_failed_write() {
+    touch "$TEST_TMPDIR/defaults_write_fails"
+    run_setup --ignore-errors
+    assert_status 0 &&
+    assert_called "defaults write NSGlobalDomain _HIHideMenuBar -bool false" &&
+    assert_output_contains "problem(s)"
+}
+
+# --- The rest ---
+
+test_keeps_the_menu_bar_shown() {
+    run_setup
+    assert_status 0 &&
+    assert_called "defaults write NSGlobalDomain _HIHideMenuBar -bool false" &&
+    assert_output_contains "The menu bar stays shown, under tide's bar"
+}
+
+test_warns_about_an_installed_amethyst() {
+    add_app Amethyst
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "Amethyst is installed at $APPLICATIONS_DIR/Amethyst.app; quit it and remove it from System Settings > General > Login Items" &&
+    test -d "$APPLICATIONS_DIR/Amethyst.app"
+}
+
+test_warns_about_a_running_rectangle() {
+    touch "$TEST_TMPDIR/running.Rectangle"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "Rectangle is running; quit it" &&
+    assert_output_contains "Ctrl+Option+arrows"
+}
+
+test_unknown_tiler_state_is_reported() {
+    touch "$TEST_TMPDIR/pgrep_fails.Amethyst"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not tell whether Amethyst is running (pgrep exited 3)"
+}
+
+test_ends_with_what_to_do() {
+    run_setup
+    assert_status 0 &&
+    assert_says "Still to do by hand" &&
+    assert_says "1. Turn on Accessibility for Hammerspoon" &&
+    assert_says "choose Reload Config" &&
+    assert_says "2. Log out and back in, once the steps above are done, for the menu bar setting to take effect"
+}
+
+# A fresh install isn't running, so it's started; a running one is left.
+test_starts_hammerspoon() {
+    add_app Hammerspoon
+    run_setup
+    assert_status 0 &&
+    assert_called "open -a $APPLICATIONS_DIR/Hammerspoon.app"
+}
+
+test_leaves_a_running_hammerspoon() {
+    add_app Hammerspoon
+    touch "$TEST_TMPDIR/running.Hammerspoon"
+    run_setup
+    assert_status 0 &&
+    assert_not_called "open -a"
+}
+
+test_says_to_open_hammerspoon_without_an_icon() {
+    run_setup
+    assert_says "If there's no icon, open Hammerspoon from Applications."
+}
+
+# --- Under setup ---
+
+# setup lists what's left with its own, so the installer hands it over.
+test_hands_what_to_do_to_setup() {
+    SETUP_TODO="$TEST_TMPDIR/todo"
+    run_setup
+    assert_status 0 &&
+    assert_output_lacks "Still to do by hand" &&
+    assert_file_contains "$SETUP_TODO" "todo	Turn on Accessibility for Hammerspoon. tide runs in it, and can't tile without it.	In System Settings" &&
+    assert_file_contains "$SETUP_TODO" "logout	the menu bar setting"
+}
+
+# Its warnings go to setup's list, and setup repeats them, not it.
+test_adds_warnings_to_setups_list() {
+    SETUP_PROBLEMS="$TEST_TMPDIR/problems"
+    : > "$SETUP_PROBLEMS"
+    add_app Amethyst
+    run_setup
+    assert_status 0 &&
+    assert_file_contains "$SETUP_PROBLEMS" "Warning: Amethyst is installed" &&
+    assert_output_lacks "the warnings and errors from this run, again"
+}
+
+test_repeats_its_warnings_on_its_own() {
+    add_app Amethyst
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "tide-setup: the warnings and errors from this run, again:"
+}
+
+run_test() {
+    name="$1"
+    func="$2"
+    TESTS_RUN=$((TESTS_RUN + 1))
+    setup
+    TEST_FAILED=
+    MISSING=
+    if "$func" && test -z "$TEST_FAILED"; then
+        echo "ok $TESTS_RUN $name"
+        TESTS_PASSED=$((TESTS_PASSED + 1))
+    else
+        echo "not ok $TESTS_RUN $name"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
+    fi
+    teardown
+}
+
+run_test "--help prints usage, even off macOS" test_help
+run_test "an unknown option is a usage error" test_unknown_option
+run_test "defaults is required" test_needs_defaults
+run_test "an installed machine runs clean" test_clean_run
+run_test "Hammerspoon is installed" test_installs_hammerspoon
+run_test "Hammerspoon isn't reinstalled" test_does_not_reinstall_hammerspoon
+run_test "a stale Hammerspoon record names the fix" test_stale_hammerspoon_record_names_the_fix
+run_test "SETUP_COMMAND names what to rerun" test_setup_command_names_what_to_rerun
+run_test "--no-install installs nothing with brew" test_no_install_skips_hammerspoon
+run_test "no Homebrew is warned about" test_missing_brew_warns
+run_test "a failed Hammerspoon install is counted" test_failed_hammerspoon_install_is_counted
+run_test "blueutil is installed" test_installs_blueutil
+run_test "blueutil isn't reinstalled" test_does_not_reinstall_blueutil
+run_test "a failed blueutil install is counted" test_failed_blueutil_install_is_counted
+run_test "m1ddc is installed on Apple silicon" test_installs_m1ddc_on_apple_silicon
+run_test "ddcctl is installed on Intel" test_installs_ddcctl_on_intel
+run_test "m1ddc isn't reinstalled" test_does_not_reinstall_m1ddc
+run_test "a failed DDC tool install is counted" test_failed_ddc_install_is_counted
+run_test "brew's output goes to the log" test_brew_output_goes_to_the_log
+run_test "it installs this checkout" test_installs_this_checkout
+run_test "a failed make install is counted" test_failed_make_install_is_counted
+run_test "no make is reported" test_missing_make_is_reported
+run_test "it writes init.lua" test_writes_hammerspoon_init
+run_test "an init.lua of your own is left alone" test_leaves_an_existing_init_alone
+run_test "an init.lua that loads tide is accepted" test_accepts_an_init_that_loads_tide
+run_test "an init.lua that loads an old name is accepted" test_accepts_an_init_that_loads_an_old_name
+run_test "a commented-out require doesn't count" test_does_not_count_a_commented_out_require
+run_test "a dangling init.lua symlink is left alone" test_does_not_replace_a_dangling_init_symlink
+run_test "Spotlight goes back to Cmd+Space" test_moves_spotlight_back_to_command_space
+run_test "desktop switching is off, at its stock keys" test_turns_desktop_switching_off_at_stock_keys
+run_test "move a Space is off" test_turns_move_a_space_off
+run_test "Mission Control's keys go to the overview" test_hands_mission_control_keys_to_the_overview
+run_test "the keys apply now" test_applies_the_keys_now
+run_test "no activateSettings says to log out" test_missing_activate_settings_says_to_log_out
+run_test "an open System Settings is warned about" test_warns_when_system_settings_is_open
+run_test "a failed write stops the run" test_failed_write_stops_the_run
+run_test "--ignore-errors goes on past a failed write" test_ignore_errors_goes_on_past_a_failed_write
+run_test "the menu bar stays shown" test_keeps_the_menu_bar_shown
+run_test "an installed Amethyst is warned about, not removed" test_warns_about_an_installed_amethyst
+run_test "a running Rectangle is warned about" test_warns_about_a_running_rectangle
+run_test "an unknown tiler state is reported" test_unknown_tiler_state_is_reported
+run_test "it ends with what to do by hand" test_ends_with_what_to_do
+run_test "Hammerspoon is started" test_starts_hammerspoon
+run_test "a running Hammerspoon is left alone" test_leaves_a_running_hammerspoon
+run_test "it says to open Hammerspoon when there's no icon" test_says_to_open_hammerspoon_without_an_icon
+run_test "under setup, what to do goes to setup" test_hands_what_to_do_to_setup
+run_test "under setup, warnings go to setup's list" test_adds_warnings_to_setups_list
+run_test "on its own, it repeats its warnings" test_repeats_its_warnings_on_its_own
+
+echo
+echo "$TESTS_RUN tests, $TESTS_PASSED passed, $TESTS_FAILED failed"
+test "$TESTS_FAILED" -eq 0

@@ -337,7 +337,7 @@ function M.new()
     end
 
     -- Whether the menu bar is set to hide always ("Automatically hide and
-    -- show the menu bar": Always; scripts' setup-macos sets Never). Read
+    -- show the menu bar": Always; tide's installer sets Never). Read
     -- once, and again after the displays change, as they do when the
     -- setting does: the menu bar's strip comes or goes *(unverified on a
     -- Mac that the screen watcher fires for it)*. Never set, defaults

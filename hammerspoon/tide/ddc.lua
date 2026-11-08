@@ -10,7 +10,7 @@
 --     displays' UUIDs in its numbering; then `-d <n> -v ? -m ?` and
 --     `-d <n> -v <value>` or `-m <1|2>`.
 --
--- scripts' setup-macos --wm tide installs the one for the Mac. m1ddc
+-- tide's installer (install/tide-setup) installs the one for the Mac. m1ddc
 -- comes first, since ddcctl's IOFramebuffer calls don't reach displays on
 -- Apple silicon. Pure Lua: finding, running and logging come from the
 -- caller, and every run is asynchronous, one at a time.

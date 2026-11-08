@@ -64,7 +64,7 @@ It brings tide for Linux's desktop to macOS:
 - an overview in place of Mission Control: Ctrl+Up shows every
   workspace's windows as cards grouped by workspace, Ctrl+Down this
   workspace's; click one, or type to filter and press Return, to go to it
-  (SPEC.md §6.9). `setup-macos` frees the two keys;
+  (SPEC.md §6.9). The installer frees the two keys;
 - a settings window, from the launcher or the dashboard, with tide for Linux's
   Clocks, Start at login and Clipboard settings, sharing tide for Linux's
   `~/.config/tide/clocks*.json`, `startup*.json` and `clipboard*.json`, and
@@ -101,17 +101,35 @@ It brings tide for Linux's desktop to macOS:
   installed or isn't running, since without it a mouse wheel notch
   scrolls a line or so (§10).
 
-With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
-`setup` (or `setup-macos`) does all of this: it installs Hammerspoon and
-tide, pulling an existing checkout first so each run keeps it current,
-writes the `init.lua` below if there isn't one, frees the keys tide needs
-(SPEC.md §7.3), and stops the menu bar hiding, so tide's bar covers it. `--wm amethyst` sets up Amethyst
-instead. Grant Hammerspoon Accessibility,
-and add conf's `tide:` Karabiner rule for a Super key that leaves Option
-alone (§7.1). By hand:
+To install, clone this repo and run its installer:
 
-1. Install [Hammerspoon](https://www.hammerspoon.org) and grant it
-   Accessibility.
+```bash
+git clone https://github.com/mikelward/tidemo.git ~/tidemo
+```
+
+```bash
+~/tidemo/install/tide-setup
+```
+
+It installs [Hammerspoon](https://www.hammerspoon.org) and the bar's
+helpers, `blueutil` and `m1ddc` (or `ddcctl` on Intel), with
+[Homebrew](https://brew.sh); runs `make install`, which copies tide into
+`~/.hammerspoon/tide`; writes the `init.lua` below if there isn't one;
+frees the keys tide needs (SPEC.md §7.3); and stops the menu bar hiding,
+so tide's bar covers it. It ends with what's left for you: turn on
+Accessibility for Hammerspoon, reload its config, and log out. Add a
+Karabiner rule like conf's `tide:` one for a Super key that leaves Option
+alone (§7.1); without one, Super is Option.
+
+With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
+`setup` (or `setup-macos`) clones or pulls tide, runs its installer, and
+adds its owner's choices: the PC keyboard's modifier rotation and Caps
+Lock as Compose, Karabiner's rules, LinearMouse and macOS's settings.
+`--wm amethyst` sets up Amethyst instead.
+
+By hand:
+
+1. Install Hammerspoon and grant it Accessibility.
 2. `make install`, then add to `~/.hammerspoon/init.lua`:
 
    ```lua
@@ -124,9 +142,13 @@ alone (§7.1). By hand:
    it, so it no longer slides in when the pointer reaches the top; the
    Apple logo's **Show Menu Bar** brings it back until Esc, Return, or a
    click below it. Until it's set, tide says so when it starts.
-4. Reload Hammerspoon's config.
+4. Free tide's keys in System Settings › Keyboard › Keyboard Shortcuts:
+   turn off Mission Control's "Mission Control", "Application windows",
+   "Move left a space", "Move right a space" and "Switch to Desktop 1"
+   to 9.
+5. Reload Hammerspoon's config.
 
-To update, `git pull` and `make install` again (or run `setup`): tide
+To update, `git pull` and run the installer again (or `make install`, or `setup`): tide
 reloads itself a second after the new copy lands in
 `~/.hammerspoon/tide`, so there's no reload to do by hand.
 
@@ -136,7 +158,7 @@ the workspaces in the menu bar instead.
 A workspace that isn't showing parks its windows off screen, as AeroSpace
 does, so a switch is instant: all but a 1 pt sliver of each goes past a
 corner of its display. Mission Control would then show every workspace's
-windows, so `setup-macos` turns it off and tide's overview takes its
+windows, so tide turns it off and its overview takes its
 keys, and Cmd+Tab to a parked window brings its workspace along.
 `tide.start({ hide = "minimize" })` minimizes them instead, as tide
 used to: Mission Control shows only the workspace on screen, but every
@@ -228,7 +250,9 @@ falls back to Option, and says so once (SPEC.md §7.1).
 
 `make test lint` runs everything in plain Lua 5.4, against a fake of macOS
 (`tests/fake.lua`). The dashboard and bar pages' tests also need Node, and
-skip with a note without it.
+skip with a note without it. It runs the installer's tests too
+(`install/tide-setup_test`, or `make test-install` on its own), in bash
+with Homebrew, `defaults` and `make` mocked, so they run off a Mac.
 
 CI also runs `ci/hs-smoke.sh` on a macOS runner. It installs Hammerspoon from
 Homebrew, checks that every `hs.*` name tide uses exists in it, then starts

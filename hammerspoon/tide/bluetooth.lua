@@ -1,6 +1,6 @@
 -- Whether Bluetooth is on, for the bar (SPEC.md §8), as tide's bar shows it.
 -- Hammerspoon has no module for it, so tide asks blueutil (Homebrew,
--- `brew install blueutil`, which scripts' setup-macos --wm tide
+-- `brew install blueutil`, which tide's installer
 -- installs): `blueutil -p` prints 1 or 0. Without it, or when it fails, the
 -- icon hides and the log says why, once. Pure Lua: finding, running and
 -- logging come from the caller.

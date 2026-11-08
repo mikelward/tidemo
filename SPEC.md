@@ -88,9 +88,9 @@ checked against a source or a Mac is marked *(unverified)*.
 - **With Accessibility:** a `CGEventTap` sees every key before apps do. That
   allows remapping, held-modifier tricks, and taking a key from the system.
 - **What the system owns:** Spotlight, Mission Control and the Spaces keys
-  live in `com.apple.symbolichotkeys`, which can be rewritten. `setup-macos`
-  already does that (scripts `docs/MACOS.md`, "How desktop switching
-  works").
+  live in `com.apple.symbolichotkeys`, which can be rewritten. tide's
+  installer does that (§7.3), as `setup-macos` did before it (scripts
+  `docs/MACOS.md`, "How desktop switching works").
 - **So unlike chromeOS,** where an extension's keys work only while Chrome
   has focus (tide for Chrome §2.2), every tide for Linux key can work everywhere on a Mac.
 
@@ -811,7 +811,7 @@ API: the same Accessibility move a retile makes.
   takes the frame it had before the park.
 - **The costs, plainly:**
   - Mission Control shows every workspace's windows, not just the one on
-    screen. So `setup-macos` turns it off, its keys, gestures and hot
+    screen. So tide turns it off, its keys, gestures and hot
     corners (§6.6), and tide's overview takes its place: Ctrl+Up shows
     every workspace's windows grouped by workspace, Ctrl+Down this
     workspace's (§6.9).
@@ -1240,9 +1240,10 @@ The checklist (§10) sets these, and undoes `setup-macos`'s nine Spaces:
   Option, the second would fight Super+drag (§5.3).
 - **"Click wallpaper to reveal desktop"** set to "Only in Stage Manager".
 - **Mission Control and App Exposé off,** since parked windows would
-  crowd them (§6): `setup-macos` turns off their keys, Ctrl+Up and
-  Ctrl+Down (symbolic hotkeys 32 and 33, `configure_shortcuts_tide` in
-  scripts), the trackpad's swipes for them, and the hot corners. tide's
+  crowd them (§6): tide's installer turns off their keys, Ctrl+Up and
+  Ctrl+Down (symbolic hotkeys 32 and 33, `install/tide-setup`), and tide's
+  macOS settings turn off the trackpad's swipes for them and the hot
+  corners (§15). tide's
   overview takes the two keys (§6.9). The swipe left and right between
   Spaces goes too, for tide's own (§7.2).
 
@@ -1333,7 +1334,7 @@ memory, not counted)*.
 
 **Built** (2026-11-05), only the tests have run it. Parking keeps every
 workspace on one Space, so Mission Control would show them all mixed
-together (§6). `setup-macos` turns it off (§6.6), and tide has its own.
+together (§6). tide turns it off (§6.6), and has its own.
 
 - **Ctrl+Up shows every workspace's windows; Ctrl+Down only this
   workspace's,** in place of App Exposé. They're plain Control, not Super,
@@ -1376,9 +1377,9 @@ together (§6). `setup-macos` turns it off (§6.6), and tide has its own.
   `tide.update(state)`, and the page posts `{ activate: id }`,
   `{ show: name }` or `{ close: true }` to the `tide` message handler.
 - **The keys need macOS to let go of them.** `RegisterEventHotKey` fails
-  silently on a key the system still holds (§2.2). `setup-macos` frees
+  silently on a key the system still holds (§2.2). tide's installer frees
   Ctrl+Up and Ctrl+Down by turning off symbolic hotkeys 32 and 33
-  (mikelward/scripts, `configure_shortcuts_tide`, §7.3). On a Mac that
+  (`install/tide-setup`, §7.3). On a Mac that
   hasn't run it, Mission Control keeps them.
 - **Unchecked:** *(unverified on a Mac)* the page's look, that the keys
   reach tide once setup has run, that a click on another window closes
@@ -1443,8 +1444,8 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+End` | the workspace you used last other than "in" and this one: from "in" where `Super+Tab` goes, from another the one before it | hotkey |
 | `Super+A` | the switcher, on its Attention tab (§14.2) | hotkey |
 | `Super+Shift+Space` | dashboard (§8) | hotkey |
-| `Ctrl+Up` | the overview: every workspace's windows, grouped by workspace, in place of Mission Control (§6.9) | hotkey, once `setup-macos` frees it (§7.3) |
-| `Ctrl+Down` | the overview of this workspace's windows, in place of App Exposé (§6.9) | hotkey, once `setup-macos` frees it (§7.3) |
+| `Ctrl+Up` | the overview: every workspace's windows, grouped by workspace, in place of Mission Control (§6.9) | hotkey, once tide's installer frees it (§7.3) |
+| `Ctrl+Down` | the overview of this workspace's windows, in place of App Exposé (§6.9) | hotkey, once tide's installer frees it (§7.3) |
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
 | `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
 | `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
@@ -1673,10 +1674,12 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 ### 7.3 Taking keys from the system and the old setup
 
 `RegisterEventHotKey` fails silently on a key someone else holds (§2.2), so
-`setup-macos` has to free these first:
+tide's installer, `install/tide-setup`, frees these first, each off at its
+stock keys:
 
 - **symbolichotkeys:**
-  - 118–126 (Option+1…9, "Switch to Desktop N"), set by `setup-macos` now;
+  - 118–126 ("Switch to Desktop N"), which the Amethyst setup put on
+    Option+1…9;
   - 64 (Spotlight on Option+Space): Spotlight moves back to Cmd+Space,
     physical Ctrl+Space;
   - 79 and 81 (Ctrl+Option+arrows, move a Space left and right);
@@ -1930,8 +1933,8 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
   - Bluetooth: on or off, as tide for Linux's: one glyph, faint while off and in the
     text color while on. A click opens Bluetooth settings.
     - Hammerspoon has no module for it (there is no `hs.bluetooth`), so
-      tide asks `blueutil -p` (Homebrew's `blueutil`, which scripts'
-      `setup-macos --wm tide` installs), found at `/opt/homebrew/bin` or
+      tide asks `blueutil -p` (Homebrew's `blueutil`, which tide's
+      installer installs), found at `/opt/homebrew/bin` or
       `/usr/local/bin`, since Hammerspoon's PATH has neither.
     - It runs through `hs.task`, never waiting on it, one run at a time:
       as tide starts, on wake, and every 30 s, and again when the
@@ -1977,8 +1980,8 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
       popover and a scroll set the monitor's own volume and mute. The change shows at
       once, then goes to the monitor.
       - The tool is Homebrew's `m1ddc` on Apple silicon or `ddcctl` on
-        Intel, found at `/opt/homebrew/bin` or `/usr/local/bin`; scripts'
-        `setup-macos --wm tide` installs the one for the Mac. `m1ddc`
+        Intel, found at `/opt/homebrew/bin` or `/usr/local/bin`; tide's
+        installer installs the one for the Mac. `m1ddc`
         comes first: `ddcctl`'s `IOFramebuffer` calls don't reach displays
         on Apple silicon.
       - The output's display is the one with the device's name, as macOS
@@ -2817,8 +2820,8 @@ scripting addition (§6).
 
 - **Not the Mac App Store:** controlling other apps' windows isn't allowed
   in the sandbox (§2.1).
-- **Hammerspoon (B):** free and open source. tide would be a config
-  repository plus a `setup-macos` step, with no signing.
+- **Hammerspoon (B):** free and open source. tide is a config
+  repository with its own installer, `install/tide-setup`, and no signing.
 - **A native app (C):** needs a Developer ID and notarization, at $99 a year
   for the Apple Developer Program, or users clear Gatekeeper by hand.
   Homebrew can ship it as a cask.
@@ -3781,7 +3784,10 @@ Each one names a workaround, or says there is none.
   conf's. A renamed command keeps its old name as the key the switcher
   remembers its use by.
 
-- **tide** (this repo): the spec, then the code.
+- **tide** (this repo): the spec, the code, and its installer,
+  `install/tide-setup`: Hammerspoon, blueutil and the DDC tool, `make
+  install`, `init.lua`, the keys in §7.3 and the menu bar. It needs
+  neither scripts nor conf.
 - **conf:**
   - Karabiner's rules (`config/karabiner/`), updated for §7.1 and §7.3, with
     physical Alt+Tab going to tide (§7.2);
@@ -3791,10 +3797,10 @@ Each one names a workaround, or says there is none.
     for `TIDE_WORKSPACE` in new kitty windows (§6.3);
   - `amethyst.yml` retired;
   - the Hammerspoon config, if tide starts as route B (§3).
-- **scripts:** `setup-macos`. It installs tide, frees the keys in §7.3,
-  removes Amethyst and Rectangle, applies the Mission Control settings
-  (§6.6), turning Mission Control's keys, gestures and hot corners off for
-  tide's overview (§6.9), and stops making nine Spaces.
+- **scripts:** `setup-macos`. It clones or pulls tide, runs its
+  installer, then adds its owner's choices: the modifier rotation and
+  Caps Lock as Compose, Karabiner and LinearMouse, and macOS's settings
+  in `macos.json` (§6.6, §15).
 - **tide for Linux:** the layout geometry and its test fixtures, shared so tide
   doesn't keep its own copy, and the picker's character list (§9.1),
   which `make check-tide` compares.

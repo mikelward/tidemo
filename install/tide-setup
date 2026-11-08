@@ -1,0 +1,656 @@
+#!/bin/bash
+# tide's installer for macOS: installs tide from this checkout, as a
+# Hammerspoon config. Run it from a clone of github.com/mikelward/tidemo, as
+# yourself, not root: nothing here needs an administrator. It:
+#
+# - installs Hammerspoon, which tide runs in, with Homebrew;
+# - installs blueutil, so the bar can show whether Bluetooth is on, and
+#   m1ddc (Apple silicon) or ddcctl (Intel), so it can show and set a
+#   monitor's own speaker volume over DDC (SPEC.md §8);
+# - runs this checkout's `make install`, which copies tide into
+#   ~/.hammerspoon/tide;
+# - writes ~/.hammerspoon/init.lua to start tide, where there's none; an
+#   init.lua of your own is left alone, with the two lines to add;
+# - frees the keys tide takes from macOS (SPEC.md §7.3): Spotlight goes back
+#   to Cmd+Space and Finder search to Cmd+Option+Space, and Switch to Desktop
+#   1-9, move left or right a Space, Mission Control and App Exposé are
+#   turned off, each at its stock keys;
+# - keeps the menu bar shown, for tide's bar to cover (SPEC.md §8);
+# - warns about Amethyst and Rectangle, which would fight tide;
+# - starts Hammerspoon, if it isn't running;
+# - ends with what only you can do: grant Hammerspoon Accessibility and log
+#   out.
+#
+# mikelward/scripts' `setup` runs this through its setup-macos, which adds
+# its owner's own choices after it: the modifier rotation and Caps Lock as
+# Compose, Karabiner's rules, LinearMouse and macOS's settings in
+# ~/.config/tide/macos.json.
+#
+# Usage:
+#     install/tide-setup [--no-install] [--ignore-errors]
+#                        [-v | --verbose] [-h | --help]
+#
+# --no-install installs nothing new with Homebrew; it still installs tide
+# from this checkout, as it is. `git pull` it first for the latest.
+# --ignore-errors keeps going past failures. --verbose shows what Homebrew
+# prints, rather than keeping it in ~/.local/state/setup/setup.log (or, under
+# setup, $SETUP_LOG), and what was already so.
+#
+# Under setup, $SETUP_COMMAND names what its messages say to rerun,
+# $SETUP_PROBLEMS collects its warnings, and $SETUP_TODO collects what's
+# left for you to do, so setup lists it with its own: one line a step, tab
+# separated, "todo" and its paragraphs, "optional" and its text, or "logout"
+# and what needs it.
+
+INSTALL=yes
+IGNORE_ERRORS=no
+VERBOSE=no
+
+# What messages say to rerun.
+SETUP_COMMAND="${SETUP_COMMAND:-tide-setup}"
+
+# The checkout this runs from, which it installs.
+TIDEMO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# Homebrew's ask mode is on by default, so the cask installs below would stop
+# to confirm a plan the caller already asked for. A brew install leaves
+# what's installed at its version, and checks for updates at most weekly.
+export HOMEBREW_NO_ASK=1
+export HOMEBREW_NO_INSTALL_UPGRADE=1
+export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
+export HOMEBREW_AUTO_UPDATE_SECS="${HOMEBREW_AUTO_UPDATE_SECS:-604800}"
+
+# activateSettings applies the symbolic hotkey writes without a logout. It
+# lives at an absolute path, overridable so the tests can mock it.
+ACTIVATE_SETTINGS="${ACTIVATE_SETTINGS:-/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings}"
+
+# Where applications live. Overridable: the tests can't write to the real
+# /Applications.
+APPLICATIONS_DIR="${APPLICATIONS_DIR:-/Applications}"
+USER_APPLICATIONS_DIR="${USER_APPLICATIONS_DIR:-$HOME/Applications}"
+
+# Steps that warned, so the closing line doesn't claim success over them.
+WARNINGS=0
+
+# What a machine without Hammerspoon or tide loses, for the warnings below.
+TIDE_MISSING_EFFECT="nothing will tile and tide's workspace keys will do nothing"
+BLUEUTIL_MISSING_EFFECT="tide's bar won't show whether Bluetooth is on"
+DDC_MISSING_EFFECT="tide's bar won't show a monitor's speaker volume"
+
+# --- Reporting ---
+
+# Every warning and error goes to $SETUP_PROBLEMS too, so the run ends by
+# repeating them all. The outermost of setup and its helpers makes the file
+# and repeats it as it exits; one it runs inherits the file and adds to it.
+note_problem() {
+    test -n "${SETUP_PROBLEMS:-}" || return 0
+    printf '%s\n' "$1" >>"$SETUP_PROBLEMS" ||
+        printf "Warning: couldn't add that to %s, so the end of the run won't repeat it\n" "$SETUP_PROBLEMS" >&2
+}
+
+PROBLEMS_OWNER=no
+start_problem_recap() {
+    test -z "${SETUP_PROBLEMS:-}" || return 0
+    if ! SETUP_PROBLEMS=$(mktemp "${TMPDIR:-/tmp}/setup-problems-XXXXXX"); then
+        SETUP_PROBLEMS=
+        warn "couldn't make a file to collect warnings in, so the end of the run won't repeat them"
+        return 0
+    fi
+    export SETUP_PROBLEMS
+    PROBLEMS_OWNER=yes
+}
+
+# recap_problems STATUS, from the EXIT trap: repeats every warning and error,
+# says if the run stopped early, and keeps STATUS as the exit status.
+recap_problems() {
+    test "$PROBLEMS_OWNER" = yes || return "$1"
+    if test -s "$SETUP_PROBLEMS"; then
+        printf '\n%s: the warnings and errors from this run, again:\n' "tide-setup" >&2
+        sed 's/^/  /' "$SETUP_PROBLEMS" >&2
+    fi
+    if test "$1" -ne 0; then
+        printf '%s stopped early, with exit status %s\n' "tide-setup" "$1" >&2
+    fi
+    rm -f "$SETUP_PROBLEMS"
+    return "$1"
+}
+
+info() {
+    printf "%s\n" "$*"
+}
+
+# detail: an info line that only --verbose shows, for what was already so.
+detail() {
+    test "$VERBOSE" = yes || return 0
+    info "$@"
+}
+
+warn() {
+    printf "Warning: %s\n" "$*" >&2
+    note_problem "Warning: $*"
+    WARNINGS=$((WARNINGS + 1))
+}
+
+error() {
+    printf "Error: %s\n" "$*" >&2
+    note_problem "Error: $*"
+    exit 1
+}
+
+# What only you can do -- grant a permission, log out -- collected as the
+# run goes and listed last, where it won't scroll away. Under setup, it goes
+# to $SETUP_TODO instead, for setup to list with its own. Each of todo's
+# arguments is a paragraph of the step. needs_logout names what the log-out
+# step, always the last, is for.
+TODO_STEPS=""
+TODO_COUNT=0
+LOGOUT_FOR=""
+
+# Adds the line KIND, then each argument, tab separated, to $SETUP_TODO.
+hand_todo() {
+    _ht_line=$1
+    shift
+    for _ht_part in "$@"; do
+        _ht_line="$_ht_line	$_ht_part"
+    done
+    printf '%s\n' "$_ht_line" >>"$SETUP_TODO" ||
+        warn "couldn't add a step to $SETUP_TODO, so the end of the run won't list it: $*"
+}
+
+# Each line of stdin as a paragraph wrapped at 76 columns: the first after
+# $1, the rest indented to match it.
+wrap_text() {
+    awk -v first="$1" -v width=76 '
+        function spaces(n,    s) { s = ""; while (n-- > 0) s = s " "; return s }
+        BEGIN { pad = spaces(length(first)); lead = first }
+        {
+            line = lead
+            words = 0
+            n = split($0, w, " ")
+            for (i = 1; i <= n; i++) {
+                if (words > 0 && length(line) + 1 + length(w[i]) > width) {
+                    print line
+                    line = pad w[i]
+                } else {
+                    line = (words > 0 ? line " " : line) w[i]
+                }
+                words++
+            }
+            print line
+            lead = pad
+        }'
+}
+
+todo() {
+    if test -n "${SETUP_TODO:-}"; then
+        hand_todo todo "$@"
+        return 0
+    fi
+    TODO_COUNT=$((TODO_COUNT + 1))
+    _todo_lead="  $TODO_COUNT. "
+    for _todo_part in "$@"; do
+        TODO_STEPS="$TODO_STEPS
+$(printf '%s\n' "$_todo_part" | wrap_text "$_todo_lead")"
+        _todo_lead="     "
+    done
+    TODO_STEPS="$TODO_STEPS
+"
+}
+
+needs_logout() {
+    if test -n "${SETUP_TODO:-}"; then
+        hand_todo logout "$1"
+        return 0
+    fi
+    LOGOUT_FOR="${LOGOUT_FOR:+$LOGOUT_FOR, }$1"
+}
+
+print_todo() {
+    if test -n "$LOGOUT_FOR"; then
+        # "a, b, c" as "a, b and c".
+        _logout_for=$(printf '%s' "$LOGOUT_FOR" | sed 's/\(.*\), /\1 and /')
+        todo "Log out and back in, once the steps above are done, for $_logout_for to take effect: Apple menu > Log Out."
+    fi
+    test "$TODO_COUNT" -eq 0 && return 0
+    info ""
+    info "Still to do by hand -- this script can't:"
+    printf '%s' "$TODO_STEPS"
+}
+
+is_command() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Runs a step, and makes its failure visible: an error that stops the run,
+# or with --ignore-errors a warning that's counted.
+try() {
+    "$@" && return 0
+    _status=$?
+    if test "$IGNORE_ERRORS" = yes; then
+        warn "failed (exit $_status): $*"
+        return 0
+    fi
+    error "failed (exit $_status): $*"
+}
+
+# Write stdin to FILE through a temporary file, so a failure part-way leaves
+# the previous file, and inside the command try checks, so a target that
+# can't be opened is reported.
+write_file() {
+    _dest="$1"
+    _tmp="$_dest.tmp.$$"
+    if test -d "$_dest"; then
+        printf "%s is a directory, not a file\n" "$_dest" >&2
+        return 1
+    fi
+    if ! cat > "$_tmp"; then
+        rm -f "$_tmp"
+        return 1
+    fi
+    if ! mv "$_tmp" "$_dest"; then
+        rm -f "$_tmp"
+        return 1
+    fi
+}
+
+# Whether APP is running, as pgrep's own exit status: 0 running, 1 not
+# running, anything else a pgrep failure.
+app_running() {
+    pgrep -x "$1" >/dev/null
+}
+
+# Whether DIR is a usable .app, rather than what a half-finished install
+# leaves: a directory with the right name and no Info.plist or Contents/MacOS.
+is_usable_app() {
+    test -f "$1/Contents/Info.plist" && test -d "$1/Contents/MacOS"
+}
+
+# Where NAME.app is, in either Applications directory, or fails.
+app_path() {
+    for _dir in "$APPLICATIONS_DIR" "$USER_APPLICATIONS_DIR"; do
+        if is_usable_app "$_dir/$1.app"; then
+            printf '%s' "$_dir/$1.app"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# --- Homebrew ---
+
+# Homebrew's own output goes to one log per run, and the run shows a line a
+# step. setup starts the log and passes it on; --verbose shows it instead,
+# as - does.
+start_setup_log() {
+    test -z "${SETUP_LOG:-}" || return 0
+    if test "$VERBOSE" = yes; then
+        SETUP_LOG=-
+        export SETUP_LOG
+        return 0
+    fi
+    SETUP_LOG="${XDG_STATE_HOME:-$HOME/.local/state}/setup/setup.log"
+    # printf, not :, which is a special builtin: dash exits when its
+    # redirection fails, even under if.
+    if ! mkdir -p "${SETUP_LOG%/*}" || ! printf "" > "$SETUP_LOG"; then
+        warn "couldn't make $SETUP_LOG to keep the installers' output in, so it's shown instead"
+        SETUP_LOG=-
+    fi
+    export SETUP_LOG
+}
+
+# brew_logged ARGS...: runs brew ARGS with its output added to the log. A
+# failure shows the end of what brew said this time; the caller says what's
+# lost.
+brew_logged() {
+    start_setup_log
+    if test "$SETUP_LOG" = -; then
+        brew "$@"
+        return
+    fi
+    _bl_start=$(($(wc -l < "$SETUP_LOG") + 1))
+    printf '+ brew %s\n' "$*" >> "$SETUP_LOG"
+    brew "$@" >> "$SETUP_LOG" 2>&1 && return 0
+    _bl_status=$?
+    printf "'brew %s' exited with status %s; the end of what it said (all of it is in %s):\n" \
+        "$*" "$_bl_status" "$SETUP_LOG" >&2
+    tail -n "+$((_bl_start + 1))" "$SETUP_LOG" | tail -n 5 | sed 's/^/    /' >&2
+    return "$_bl_status"
+}
+
+# Whether Homebrew still lists cask $1 though its app, $2, is missing. If so,
+# this warns with the command that clears the record, then $3. brew install
+# skips a cask it thinks is current, so it can't repair that itself.
+stale_cask_record() {
+    if ! _listed=$(brew list --cask --versions "$1" 2>/dev/null); then
+        return 1
+    fi
+    warn "Homebrew lists $_listed as installed but $2 is missing, so brew can't reinstall it; run 'brew uninstall --cask --force $1' and rerun $SETUP_COMMAND; $3"
+}
+
+# The cask installs into /Applications without an administrator's password.
+install_hammerspoon() {
+    if app_path Hammerspoon >/dev/null; then
+        return 0
+    fi
+    if test "$INSTALL" = no; then
+        warn "Hammerspoon is not installed and --no-install was given; $TIDE_MISSING_EFFECT until it is"
+        return 0
+    fi
+    if ! is_command brew; then
+        warn "Homebrew not found, so Hammerspoon can't be installed; $TIDE_MISSING_EFFECT until it is"
+        return 0
+    fi
+    if stale_cask_record hammerspoon Hammerspoon "until then, $TIDE_MISSING_EFFECT"; then
+        return 0
+    fi
+    info "Installing Hammerspoon"
+    brew_logged install --cask hammerspoon \
+        || warn "could not install Hammerspoon; $TIDE_MISSING_EFFECT until it is"
+}
+
+# The DDC tool for this Mac: m1ddc on Apple silicon, ddcctl on Intel, whose
+# IOFramebuffer calls don't reach displays on Apple silicon.
+ddc_tool() {
+    if test "$(uname -m)" = arm64; then
+        echo m1ddc
+    else
+        echo ddcctl
+    fi
+}
+
+# Installs Homebrew formula $1, a command tide runs, saying what's lost ($2)
+# while it's missing.
+install_brew_tool() {
+    _tool=$1
+    _effect=$2
+    if is_command "$_tool"; then
+        return 0
+    fi
+    if test "$INSTALL" = no; then
+        warn "$_tool is not installed and --no-install was given; $_effect until it is"
+        return 0
+    fi
+    if ! is_command brew; then
+        warn "Homebrew not found, so $_tool can't be installed; $_effect until it is"
+        return 0
+    fi
+    info "Installing $_tool"
+    brew_logged install "$_tool" \
+        || warn "could not install $_tool; $_effect until it is"
+}
+
+# --- tide ---
+
+# Copies tide into ~/.hammerspoon/tide with this checkout's own `make
+# install`, so what lands there is whatever its Makefile says.
+install_tide() {
+    if ! is_command make; then
+        warn "make not found, so tide can't be installed from $TIDEMO_DIR; $TIDE_MISSING_EFFECT until it is (xcode-select --install)"
+        return 0
+    fi
+    info "Installing tide from $TIDEMO_DIR"
+    make -C "$TIDEMO_DIR" install >/dev/null \
+        || warn "could not install tide from $TIDEMO_DIR; $TIDE_MISSING_EFFECT until it is"
+}
+
+# Hammerspoon runs ~/.hammerspoon/init.lua and nothing else, so tide only
+# starts if that file loads it. Written only when there's no file at all: an
+# existing one is someone's own config. One that doesn't load tide gets the
+# lines to add instead.
+configure_hammerspoon_init() {
+    _hs_dir="$HOME/.hammerspoon"
+    _hs_init="$_hs_dir/init.lua"
+    # -L as well as -e, so a dangling symlink counts as someone's file.
+    if test -e "$_hs_init" || test -L "$_hs_init"; then
+        # require("tide"), require 'tide' and require "tide" all load it, as
+        # do its old names, tilemo and timo, which tide keeps as shims; one
+        # after a -- is commented out and doesn't.
+        if grep -qE "^[^-]*require[[:space:]]*[(]?[[:space:]]*[\"'](tide|tilemo|timo)[\"']" "$_hs_init"; then
+            _hs_status=0
+        else
+            _hs_status=$?
+        fi
+        case "$_hs_status" in
+            0)
+                detail "Skipping $_hs_init: it already loads tide"
+                ;;
+            1)
+                warn "$_hs_init exists and doesn't load tide, so it was left alone; add these two lines to it, or $TIDE_MISSING_EFFECT: tide = require(\"tide\") and tide.start({})"
+                ;;
+            *)
+                warn "could not read $_hs_init (grep exited $_hs_status); make sure it loads tide with tide = require(\"tide\") and tide.start({})"
+                ;;
+        esac
+        return 0
+    fi
+    info "Writing $_hs_init to start tide"
+    try mkdir -p "$_hs_dir"
+    try write_file "$_hs_init" <<'LUA'
+tide = require("tide")
+tide.start({})
+LUA
+}
+
+# --- Keys ---
+
+# System Settings holds the shortcuts in memory while it's open and can write
+# its copy back over these when it closes.
+warn_if_settings_app_running() {
+    if ! is_command pgrep; then
+        warn "pgrep not found; quit System Settings before this run, or it can overwrite the shortcuts written below"
+        return 0
+    fi
+    # Both names: the app was renamed in macOS 13.
+    for _settings_app in "System Settings" "System Preferences"; do
+        if app_running "$_settings_app"; then
+            _settings_running=0
+        else
+            _settings_running=$?
+        fi
+        case "$_settings_running" in
+            0)
+                warn "$_settings_app is running and can overwrite these shortcuts when it closes; quit it and rerun $SETUP_COMMAND if tide's keys don't register"
+                ;;
+            1) ;;
+            *)
+                warn "could not tell whether $_settings_app is running (pgrep exited $_settings_running); quit it before this run if it's open"
+                ;;
+        esac
+    done
+}
+
+# Write one symbolic hotkey: ID, enabled (true or false), then its three
+# parameters (ASCII code, virtual keycode, modifier flags). Always the whole
+# entry: -dict-add replaces it, so a disabled hotkey written without its
+# parameters shows blank in System Settings, with nothing to turn back on.
+write_symbolic_hotkey() {
+    try defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys -dict-add "$1" '
+        <dict>
+            <key>enabled</key><'"$2"'/>
+            <key>value</key><dict>
+                <key>parameters</key><array>
+                    <integer>'"$3"'</integer>
+                    <integer>'"$4"'</integer>
+                    <integer>'"$5"'</integer>
+                </array>
+                <key>type</key><string>standard</string>
+            </dict>
+        </dict>'
+}
+
+# tide registers its keys with RegisterEventHotKey, which fails silently on a
+# key the system already holds (SPEC.md §7.3), so those are let go first.
+# Each goes back to its stock binding rather than merely off, so turning it
+# back on in System Settings gets the macOS default, not a blank.
+free_tide_keys() {
+    info "Freeing the keys tide takes from macOS"
+    warn_if_settings_app_running
+
+    # Spotlight on Cmd+Space (1048576 is Command), and Finder search at its
+    # stock Cmd+Option+Space. Option+Space is tide's Super without the
+    # Karabiner rule.
+    write_symbolic_hotkey 64 true 32 49 1048576
+    write_symbolic_hotkey 65 true 32 49 1572864
+
+    # Switch to Desktop 1-9 (118-126) off, at their stock Ctrl+1..9 (262144
+    # is Control): tide's workspaces are its own, on Super+1..9. The number
+    # keys' keycodes aren't sequential.
+    set -- \
+        118 49 18 \
+        119 50 19 \
+        120 51 20 \
+        121 52 21 \
+        122 53 23 \
+        123 54 22 \
+        124 55 26 \
+        125 56 28 \
+        126 57 25
+    while test $# -ge 3; do
+        write_symbolic_hotkey "$1" false "$2" "$3" 262144
+        shift 3
+    done
+
+    # Move left/right a Space (79 and 81) off, at their stock Ctrl+arrows
+    # (8650752 is Control plus the arrow keys' function-key flag): tide takes
+    # Ctrl+Option+arrow, what a Karabiner rule can put on Win+arrow.
+    write_symbolic_hotkey 79 false 65535 123 8650752
+    write_symbolic_hotkey 81 false 65535 124 8650752
+
+    # Mission Control (32) and App Exposé (33) off, at their stock Ctrl+Up
+    # and Ctrl+Down: tide parks hidden workspaces' windows on one Space, so
+    # Mission Control would show every workspace at once, and tide takes both
+    # keys for its own overview (SPEC.md §6.9).
+    write_symbolic_hotkey 32 false 65535 126 8650752
+    write_symbolic_hotkey 33 false 65535 125 8650752
+
+    if test -x "$ACTIVATE_SETTINGS"; then
+        "$ACTIVATE_SETTINGS" -u \
+            || warn "could not apply the shortcut settings to this session; log out and back in for tide's keys to work"
+    else
+        warn "$ACTIVATE_SETTINGS not found; log out and back in for tide's keys to work"
+    fi
+}
+
+# --- Other tilers ---
+
+# Warn about another tiler, NAME, installed or running: two tilers fight over
+# the same windows. Warned rather than removed, which is the user's call.
+warn_if_other_tiler() {
+    _tiler="$1"
+    _tiler_why="$2"
+    if _tiler_path=$(app_path "$_tiler"); then
+        warn "$_tiler is installed at $_tiler_path; quit it and remove it from System Settings > General > Login Items, since $_tiler_why"
+        return 0
+    fi
+    is_command pgrep || return 0
+    if app_running "$_tiler"; then
+        _tiler_running=0
+    else
+        _tiler_running=$?
+    fi
+    case "$_tiler_running" in
+        0)
+            warn "$_tiler is running; quit it and remove it from System Settings > General > Login Items, since $_tiler_why"
+            ;;
+        1) ;;
+        *)
+            warn "could not tell whether $_tiler is running (pgrep exited $_tiler_running); quit it if it is, since $_tiler_why"
+            ;;
+    esac
+}
+
+usage() {
+    cat <<'USAGE'
+Usage: tide-setup [--no-install] [--ignore-errors] [-v | --verbose] [-h | --help]
+
+Install tide for macOS from this checkout.
+
+Options:
+  --no-install     Don't install Hammerspoon or tide's helpers; install tide
+                   from this checkout and set up what's already there
+  --ignore-errors  Keep going past failures instead of stopping at the first
+  -v, --verbose    Show what Homebrew prints, and what was already so
+  -h, --help       Show this help and exit
+USAGE
+}
+
+# --- Main ---
+
+while test $# -gt 0; do
+    case "$1" in
+        --install) INSTALL=yes ;;
+        --no-install) INSTALL=no ;;
+        --ignore-errors) IGNORE_ERRORS=yes ;;
+        -v|--verbose) VERBOSE=yes ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            warn "Unknown option: $1"
+            usage >&2
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+start_problem_recap
+trap 'recap_problems "$?"' EXIT
+
+if test "$IGNORE_ERRORS" = no; then
+    set -e
+fi
+
+# Every key and setting below is a `defaults` write.
+is_command defaults || error "defaults is required (tide-setup sets up macOS)"
+
+install_hammerspoon
+install_brew_tool blueutil "$BLUEUTIL_MISSING_EFFECT"
+install_brew_tool "$(ddc_tool)" "$DDC_MISSING_EFFECT"
+install_tide
+configure_hammerspoon_init
+free_tide_keys
+
+warn_if_other_tiler Amethyst "it and tide would both tile the same windows"
+# Rectangle's default shortcuts sit on Ctrl+Option+arrows (SPEC.md §7.3).
+warn_if_other_tiler Rectangle "its default shortcuts sit on Ctrl+Option+arrows, which tide needs"
+
+# tide draws its bar along the top, over the menu bar (SPEC.md §8). An
+# auto-hidden menu bar slides in over it whenever the pointer reaches the
+# top, so keep it shown. Apps read it at launch, hence the logout.
+try defaults write NSGlobalDomain _HIHideMenuBar -bool false
+info "The menu bar stays shown, under tide's bar, after the next login"
+needs_logout "the menu bar setting"
+
+# Hammerspoon starts tide, so start it now: a fresh install isn't running,
+# and nothing else would start it before the next login.
+start_hammerspoon() {
+    _hs_app=$(app_path Hammerspoon) || return 0
+    is_command pgrep || return 0
+    if app_running Hammerspoon; then
+        return 0
+    elif test $? -ne 1; then
+        return 0
+    fi
+    if ! is_command open; then
+        warn "open not found, so Hammerspoon isn't started; open it from Applications"
+        return 0
+    fi
+    info "Starting Hammerspoon"
+    open -a "$_hs_app" || warn "could not start Hammerspoon; open it from Applications"
+}
+start_hammerspoon
+
+# No defaults key grants it: macOS asks a person.
+todo "Turn on Accessibility for Hammerspoon. tide runs in it, and can't tile without it." \
+    "In System Settings > Privacy & Security > Accessibility, turn on Hammerspoon. If it isn't in the list, click + under the list, choose Hammerspoon in Applications, and turn it on." \
+    "Then click Hammerspoon's icon in the menu bar and choose Reload Config, so tide starts again with it. If there's no icon, open Hammerspoon from Applications."
+
+if test "$WARNINGS" -eq 0; then
+    info "tide installed"
+else
+    printf "tide installed with %s problem(s); see the warnings above\n" "$WARNINGS" >&2
+fi
+
+test -n "${SETUP_TODO:-}" || print_todo
