@@ -202,7 +202,7 @@ t.test("the settings window's messages add, move and remove rules", function()
     t.eq(why:find("isn't a Lua pattern", 1, true) ~= nil, true, why)
 end)
 
-t.test("showing an open settings window again redraws Floating now", function()
+t.test("showing an open settings window again redraws Floating now, its search empty", function()
     local _, _, tide = setup()
     local pushed = 0
     local view = {}
@@ -227,9 +227,12 @@ t.test("showing an open settings window again redraws Floating now", function()
     function view.hswindow()
         return nil
     end
+    local opened = 0
     function view.evaluateJavaScript(_, js)
         if js:find("tide.update(", 1, true) == 1 then
             pushed = pushed + 1
+        elseif js == "tide.opened()" then
+            opened = opened + 1
         end
     end
     _G.hs.inspect = tostring
@@ -261,6 +264,10 @@ t.test("showing an open settings window again redraws Floating now", function()
     t.eq(view.level_, 3, "at the floating level")
     settings.show("floating")
     t.eq(pushed, 2, "no fill, but Floating now is redrawn")
+    t.eq(opened, 0, "a page asked for empties the search as it shows it")
+    -- With no page asked for, the page empties its search itself.
+    settings.show()
+    t.eq(opened, 1)
 end)
 
 t.done("floating_hs")

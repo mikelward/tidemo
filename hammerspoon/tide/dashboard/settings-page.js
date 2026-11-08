@@ -20,7 +20,10 @@
 // The sidebar, update()'s `sidebar`, lists the pages under their groups, as
 // tide's settings panel does, and one page shows at a time.
 // tide.reveal(id) shows a page, or the part of one, for the launcher's
-// rows.
+// rows. The search over the sidebar keeps the pages a query finds, by
+// each row's `terms` and its parts', with tide's own matcher, and shows a
+// page found only by a part scrolled to it; tide.opened() empties it when
+// the window comes forward again.
 
 import { barredClock, editableClocks, editedClocks, inBar, movedClock, relabeledClock, withClock, withoutClock } from "./tide-clocks.js";
 import { editableStartup, editedStartup, movedCommand, withCommand, withoutCommand } from "./tide-startup.js";
@@ -51,6 +54,7 @@ import {
 } from "./tide-dnd.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { steppedPointer } from "./linearmouse.js";
+import { matches, searchedRows } from "./tide-settingssearch.js";
 
 const send = (msg) => window.webkit?.messageHandlers?.tide?.postMessage(msg);
 
@@ -1658,6 +1662,7 @@ function renderShortcuts(shortcuts) {
 // can't change them itself (SPEC.md §1, §15): tide lists them as
 // { section, name, label }, and opens what a name stands for.
 function renderLinks(links) {
+  pageLinks = links;
   const drawn = new Set();
   for (const l of links) {
     const row = document.getElementById(`${l.section}-links`);
@@ -1710,19 +1715,52 @@ function renderSetup(setup) {
   document.getElementById("setup-summary").textContent = left === 0 ? "All done." : `${left} of ${items.length} still to do.`;
 }
 
+// Every page's buttons to System Settings or a helper, as renderLinks()
+// had them: a page's first is what Enter opens, as tide's advanced row.
+let pageLinks = [];
+
 // The sidebar (SPEC.md §15), as tide's settings panel's: each group's
 // heading, which can't be chosen, then its pages, with one page showing at
-// a time. tide sends it as { rows: [{ heading } or { page, label }],
-// parts: { id: page } }, a part being a heading within a page.
+// a time. tide sends it as { rows: [{ heading } or { page, label, terms,
+// parts: [{ id, terms }] }], parts: { id: page } }, a part being a heading
+// within a page. The search field over it keeps only the pages its query
+// finds.
 let sidebarRows = [];
+// The rows the search keeps, as drawn.
+let keptRows = [];
 let sidebarParts = {};
 let sidebarDrawn = "";
 let shownPage = "displays";
+// The part the page showing was scrolled to, or "" at its top.
+let shownPart = "";
 // A reveal() that came before the sidebar, done once it's drawn.
 let pendingReveal = null;
 const sidebarButtons = new Map();
 
-const pageIds = () => sidebarRows.filter((r) => typeof r.page === "string").map((r) => r.page);
+const isPage = (r) => typeof r.page === "string";
+const pageIds = () => sidebarRows.filter(isPage).map((r) => r.page);
+const keptIds = () => keptRows.filter(isPage).map((r) => r.page);
+// What a search finds a page by itself: its terms, or its name for a row
+// with none.
+const ownTerms = (r) => (Array.isArray(r.terms) ? r.terms.map(String) : [String(r.label ?? r.page)]);
+// The parts on a page's row, as { id, terms }.
+const partsOf = (r) =>
+  (Array.isArray(r.parts) ? r.parts : [])
+    .filter((p) => typeof p?.id === "string" && Array.isArray(p.terms))
+    .map((p) => ({ id: p.id, terms: p.terms.map(String) }));
+// What a search finds a page by: its own terms and its parts'.
+export const termsOf = (r) => [...ownTerms(r), ...partsOf(r).flatMap((p) => p.terms)];
+
+// The part of page row `row` that `query` finds it by, when its own terms
+// don't, so the page shows scrolled there; else "". The query's words may
+// be the page's and the part's together, as "keyboard short" is. tide's
+// searchedSection.
+export function searchedPart(row, query) {
+  const own = ownTerms(row);
+  if (matches(query, own)) return "";
+  return partsOf(row).find((p) => matches(query, [...own, ...p.terms]))?.id ?? "";
+}
+const searchField = () => document.getElementById("settings-search");
 
 // Show page `id`, or the first page for one the sidebar doesn't have.
 function showPage(id) {
@@ -1738,6 +1776,7 @@ function showPage(id) {
 
 // To page `id`, at its top.
 function turnTo(id) {
+  shownPart = "";
   showPage(id);
   const content = document.getElementById("content");
   if (content) content.scrollTop = 0;
@@ -1747,13 +1786,31 @@ function turnTo(id) {
 function reveal(id) {
   const page = sidebarParts[id] ?? id;
   turnTo(page);
-  if (page !== id) document.getElementById(id)?.scrollIntoView?.({ block: "start" });
+  if (page !== id) {
+    document.getElementById(id)?.scrollIntoView?.({ block: "start" });
+    shownPart = id;
+  }
 }
 
-// The page `step` pages on from the one showing, passing over the headings
-// and stopping at either end, as tide's Up and Down do.
+// The part of page `id` the search found it by, if only by one; else "".
+function foundPart(id) {
+  const row = sidebarRows.find((r) => isPage(r) && r.page === id);
+  const part = row ? searchedPart(row, searchField().value ?? "") : "";
+  return sidebarParts[part] === id ? part : "";
+}
+
+// Page `id`, scrolled to the part the search found it by, if only by one.
+function show(id) {
+  const part = foundPart(id);
+  if (part !== "") reveal(part);
+  else turnTo(id);
+}
+
+// The page `step` pages on from the one showing, among those the search
+// keeps, passing over the headings and stopping at either end, as tide's
+// Up and Down do.
 function movedPage(step) {
-  const ids = pageIds();
+  const ids = keptIds();
   const i = Math.max(0, ids.indexOf(shownPage));
   return ids[Math.max(0, Math.min(ids.length - 1, i + step))];
 }
@@ -1767,25 +1824,7 @@ function renderSidebar(sidebar) {
   sidebarDrawn = drawn;
   sidebarRows = rows;
   sidebarParts = parts;
-  const nav = document.getElementById("sidebar");
-  nav.replaceChildren();
-  sidebarButtons.clear();
-  for (const row of rows) {
-    if (typeof row.page === "string") {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = String(row.label ?? row.page);
-      // Its icon, as on tide's sidebar.
-      b.setAttribute("data-icon", row.page);
-      b.addEventListener("click", () => turnTo(row.page));
-      sidebarButtons.set(row.page, b);
-      nav.append(b);
-    } else {
-      const h = document.createElement("h3");
-      h.textContent = String(row.heading ?? "");
-      nav.append(h);
-    }
-  }
+  drawSidebar();
   if (pendingReveal !== null) {
     const id = pendingReveal;
     pendingReveal = null;
@@ -1795,8 +1834,122 @@ function renderSidebar(sidebar) {
   }
 }
 
+// The sidebar's rows that the search keeps, or a note that it keeps none.
+function drawSidebar() {
+  keptRows = searchedRows(sidebarRows, searchField().value ?? "", (r) => !isPage(r), termsOf);
+  const nav = document.getElementById("sidebar");
+  nav.replaceChildren();
+  sidebarButtons.clear();
+  if (keptRows.length === 0 && sidebarRows.length > 0) {
+    const none = document.createElement("p");
+    none.className = "none";
+    none.textContent = "No settings match";
+    nav.append(none);
+  }
+  for (const row of keptRows) {
+    if (isPage(row)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = String(row.label ?? row.page);
+      // Its icon, as on tide's sidebar.
+      b.setAttribute("data-icon", row.page);
+      // The keyboard stays in the search, as on tide.
+      b.addEventListener("click", () => {
+        show(row.page);
+        searchField().focus?.();
+      });
+      sidebarButtons.set(row.page, b);
+      nav.append(b);
+    } else {
+      const h = document.createElement("h3");
+      h.textContent = String(row.heading ?? "");
+      nav.append(h);
+    }
+  }
+  for (const [p, b] of sidebarButtons) b.setAttribute("aria-current", p === shownPage ? "page" : "false");
+}
+
+// A query typed: the sidebar keeps what it finds, and the first page kept
+// shows if the one showing isn't. With none kept, the page showing stays.
+// A page found only by a part scrolls to it.
+function searched() {
+  drawSidebar();
+  const ids = keptIds();
+  if (ids.length > 0 && !ids.includes(shownPage)) {
+    show(ids[0]);
+  } else {
+    // The page showing stays where it is, unless now found by a part.
+    const part = foundPart(shownPage);
+    if (part !== "" && part !== shownPart) reveal(part);
+  }
+}
+
+// The search empty, every page back, and the keyboard in the field, as the
+// window opens.
+function startSearch() {
+  const field = searchField();
+  if (field.value !== "") {
+    field.value = "";
+    drawSidebar();
+  }
+  field.focus?.();
+}
+
+{
+  const field = searchField();
+  field.addEventListener("input", searched);
+  field.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      // Up and Down move among the pages kept, as they do off the field.
+      e.preventDefault?.();
+      const next = movedPage(e.key === "ArrowUp" ? -1 : 1);
+      if (next) show(next);
+      e.handled = true;
+    } else if (e.key === "Enter" && !e.isComposing) {
+      // Enter mid-search would open what the query never named, so only
+      // an empty field opens the page's settings, as on tide.
+      if (field.value === "") openPageLink();
+      e.handled = true;
+    } else if (e.key === "Escape" && field.value !== "") {
+      // Escape clears a query first, and closes the window only once
+      // it's empty.
+      field.value = "";
+      searched();
+      e.handled = true;
+    }
+  });
+  field.focus?.();
+}
+
 // Typing in a field, where Up and Down are the field's.
 const editing = (t) => ["INPUT", "TEXTAREA", "SELECT"].includes(t?.tagName) || t?.isContentEditable === true;
+
+// The page showing's first button out, to System Settings or a helper, as
+// Enter opens tide's advanced app. A page with none opens nothing.
+function openPageLink() {
+  const link = pageLinks.find((l) => l?.section === shownPage);
+  if (link) send({ open: link.name });
+}
+
+// A key typed off any field goes to the search, as tide's field keeps the
+// keyboard: a character joins the query, and Backspace takes one off.
+// Space and Enter on a button are the button's.
+function typedToSearch(e) {
+  if (editing(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.isComposing) return false;
+  const field = searchField();
+  if (e.key === "Backspace") {
+    if (field.value === "") return false;
+    field.value = field.value.slice(0, -1);
+  } else if (typeof e.key === "string" && e.key.length === 1 && !(e.key === " " && e.target?.tagName === "BUTTON")) {
+    field.value += e.key;
+  } else {
+    return false;
+  }
+  e.preventDefault?.();
+  field.focus?.();
+  searched();
+  return true;
+}
 
 // Back in the window, perhaps from Privacy & Security: ask for the
 // permissions as they are now, as tileco's keys list does.
@@ -1806,13 +1959,23 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !e.handled && colorsOpen) {
     // A wallpaper's colors close first, as tide's do.
     closeColors(true);
+  } else if (e.key === "Escape" && !e.handled && searchField().value !== "") {
+    // From anywhere in the window, Escape clears a query before it closes.
+    searchField().value = "";
+    searched();
+    searchField().focus?.();
   } else if (e.key === "Escape" && !e.handled) {
     send({ close: true });
   } else if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !editing(e.target)) {
     // Up and Down change the page, as on tide.
     e.preventDefault?.();
     const next = movedPage(e.key === "ArrowUp" ? -1 : 1);
-    if (next) turnTo(next);
+    if (next) show(next);
+  } else if (e.key === "Enter" && !e.handled && !e.isComposing && !editing(e.target) && e.target?.tagName !== "BUTTON") {
+    // Off the field, Enter is the field's, as on tide.
+    if (searchField().value === "") openPageLink();
+  } else if (!e.handled) {
+    typedToSearch(e);
   }
 });
 
@@ -1936,7 +2099,12 @@ window.tide = {
     if (input.value === "") input.value = entry ?? "";
   },
   reveal(id) {
+    startSearch();
     if (sidebarRows.length === 0) pendingReveal = id;
     else reveal(id);
+  },
+  // The window brought forward again, with no page asked for.
+  opened() {
+    startSearch();
   },
 };

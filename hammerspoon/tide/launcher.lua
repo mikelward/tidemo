@@ -598,8 +598,10 @@ M.SETTINGS_SECTIONS = {
     { id = "mouse", group = "hardware", name = "Mouse", covers = "pointer speed scrolling left-handed linearmouse" },
     { id = "trackpad", group = "hardware", name = "Trackpad", covers = "touchpad tap to click scrolling gestures" },
     { id = "keyboard", group = "hardware", name = "Keyboard",
-      covers = "keys shortcuts bindings repeat layouts karabiner rules ctrl+tab" },
+      covers = "keys repeat layouts karabiner rules ctrl+tab" },
     -- Keyboard's Shortcuts, as tide's launcher has its own row for them.
+    -- Keyboard's own covers leave its words out, so a search for them
+    -- shows Keyboard scrolled to them, as on tide.
     { id = "shortcuts", page = "keyboard", name = "Keyboard shortcuts", covers = "keys bindings hotkeys" },
     { id = "power", group = "hardware", name = "Power", covers = "battery energy sleep lid" },
     { id = "layouts", group = "windows", name = "Layouts", covers = "tile columns master ultrawide new windows",
@@ -626,15 +628,25 @@ M.SETTINGS_SECTIONS = {
 }
 
 -- The sidebar as the settings page takes it: `rows`, top to bottom, each
--- group's heading ({ heading }) then its pages ({ page, label }); and
--- `parts`, each part of a page by the page it's on.
+-- group's heading ({ heading }) then its pages ({ page, label, terms,
+-- parts }); and `parts`, each part of a page by the page it's on. A page's
+-- `terms` are what its search finds it by, its name and what it covers;
+-- its row's `parts`, when it has any, are each part on it as { id, terms },
+-- which find it too, so "shortcuts" finds Keyboard and shows its Shortcuts.
 function M.settings_sidebar()
     local rows, parts = {}, {}
     for _, g in ipairs(M.SETTINGS_GROUPS) do
         rows[#rows + 1] = { heading = g.label }
         for _, s in ipairs(M.SETTINGS_SECTIONS) do
             if s.group == g.id then
-                rows[#rows + 1] = { page = s.id, label = s.name }
+                local row = { page = s.id, label = s.name, terms = { s.name, s.covers } }
+                for _, part in ipairs(M.SETTINGS_SECTIONS) do
+                    if part.page == s.id then
+                        row.parts = row.parts or {}
+                        row.parts[#row.parts + 1] = { id = part.id, terms = { part.name, part.covers } }
+                    end
+                end
+                rows[#rows + 1] = row
             end
         end
     end

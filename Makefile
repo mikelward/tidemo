@@ -5,8 +5,8 @@
 #   make install  copy the Hammerspoon modules to ~/.hammerspoon/tide
 #   make check-tide   compare the copies of tide for Linux's geometry, direction,
 #                 clocks, startup, clipboard, steps, layouts, input, fuzzy,
-#                 workspaces and bar settings modules and character list with
-#                 a tide checkout (TIDE=../tide by default)
+#                 workspaces, bar settings and settings search modules and
+#                 character list with a tide checkout (TIDE=../tide by default)
 #   make check-tideco   compare the dashboard's copies of tide for Chrome's clock
 #                 modules and launcher page with a tideco checkout
 #                 (TIDECO=../tideco by default)
@@ -78,6 +78,7 @@ check-tide:
 	cmp $(TIDE)/shell/lib/workspacenames.mjs hammerspoon/tide/dashboard/tide-workspacenames.js
 	cmp $(TIDE)/shell/lib/workspacepage.mjs hammerspoon/tide/dashboard/tide-workspacepage.js
 	cmp $(TIDE)/shell/lib/barsettings.mjs hammerspoon/tide/dashboard/tide-barsettings.js
+	cmp $(TIDE)/shell/lib/settingssearch.mjs hammerspoon/tide/dashboard/tide-settingssearch.js
 	cmp $(TIDE)/shell/chars/chars.tsv hammerspoon/tide/chars.tsv
 	cmp $(TIDE)/shell/icons/tide-symbolic.svg hammerspoon/tide/icons/tide-symbolic.svg
 	$(LUA) ci/check_chip_colors.lua $(TIDE)/theme/palette.json hammerspoon/tide/dashboard/bar.html

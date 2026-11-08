@@ -618,6 +618,26 @@ t.test("the settings sidebar groups the pages under tide's headings", function()
     t.eq(sidebar.parts, { shortcuts = "keyboard" })
 end)
 
+t.test("a sidebar page's search terms are its own, and its parts' apart", function()
+    local pages = {}
+    for _, row in ipairs(launcher.settings_sidebar().rows) do
+        if row.page then
+            pages[row.page] = row
+        end
+    end
+    t.eq(pages.displays.terms, { "Displays", "screens monitors resolution arrangement" })
+    t.eq(pages.displays.parts, nil, "a page with no parts has none")
+    local keyboard = launcher.SETTINGS_SECTIONS[7]
+    t.eq(keyboard.id, "keyboard")
+    t.eq(pages.keyboard.terms, { "Keyboard", keyboard.covers })
+    t.eq(pages.keyboard.parts, { { id = "shortcuts", terms = { "Keyboard shortcuts", "keys bindings hotkeys" } } })
+    -- "shortcuts" finds Keyboard only by its Shortcuts, as on tide, so the
+    -- search shows Keyboard scrolled to them.
+    t.eq(keyboard.covers:find("shortcut", 1, true), nil)
+    -- Headings have none: a query never keeps one for itself.
+    t.eq(launcher.settings_sidebar().rows[1], { heading = "Hardware" })
+end)
+
 t.test("the sidebar's pages are the window's, in its order", function()
     -- A page left out of every group, or a group's pages apart, would show
     -- in the sidebar out of the window's order, or not at all.
