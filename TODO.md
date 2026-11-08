@@ -1186,5 +1186,10 @@ sign, and that holding a key repeats.
   has `AXStackingIdentifier` and an "App, title, body" `AXDescription`
   (SPEC.md §14.2). If neither names the app, try the banner's children.
 - That a Chrome banner's body leads with its site.
+- That a banner shows fully below tide's bar, not under it (SPEC.md §8),
+  on a plain display and a notched one, with one banner and several, and
+  that Notification Center's history, opened from the clock, still looks
+  right. If the log says "couldn't move a notification banner", the move
+  needs another element than the banner's window.
 - That conf's `command_on_bell` gets `KITTY_WINDOW_ID`, and that `kitten @
   ls`'s `platform_window_id` is the window's `hs.window:id()`.

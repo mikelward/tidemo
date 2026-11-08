@@ -30,6 +30,39 @@ t.test("a browser's notification names its site; another app's doesn't", functio
     t.eq(notices.sender("Mail, ann.example.com, hi", "com.apple.mail").site, nil, "not a browser")
 end)
 
+-- A 1440-wide display whose bar is 36 tall, over a 24-tall menu bar.
+local BARS = { main = { x = 0, y = 0, w = 1440, h = 36 } }
+
+t.test("a banner under the bar moves down below it", function()
+    local banner = { x = 1070, y = 30, w = 360, h = 70 }
+    local dy = notices.clearance(banner, BARS)
+    t.eq(banner.y + dy, 36 + notices.BANNER_GAP)
+end)
+
+t.test("a banner already below the bar stays", function()
+    t.eq(notices.clearance({ x = 1070, y = 36 + notices.BANNER_GAP, w = 360, h = 70 }, BARS), 0)
+    t.eq(notices.clearance({ x = 1070, y = 400, w = 360, h = 70 }, BARS), 0)
+end)
+
+t.test("a banner moved once isn't moved again", function()
+    local banner = { x = 1070, y = 30, w = 360, h = 70 }
+    banner.y = banner.y + notices.clearance(banner, BARS)
+    t.eq(notices.clearance(banner, BARS), 0)
+end)
+
+t.test("only a showing bar on the banner's display counts", function()
+    local banner = { x = 1070, y = 30, w = 360, h = 70 }
+    t.eq(notices.clearance(banner, { main = { x = 0, y = 0, w = 1440, h = 36, hidden = true } }), 0, "hidden")
+    t.eq(notices.clearance(banner, { other = { x = 1440, y = 0, w = 1920, h = 36 } }), 0, "another display")
+    t.eq(notices.clearance(banner, {}), 0, "no bar")
+    t.eq(notices.clearance(nil, BARS), 0, "no frame")
+end)
+
+t.test("over a notch, the taller bar sets how far", function()
+    local bars = { mac = { x = 0, y = 0, w = 1512, h = 38 }, ext = { x = 1512, y = 0, w = 1920, h = 36 } }
+    t.eq(notices.clearance({ x = 1140, y = 40, w = 360, h = 70 }, bars), 38 + notices.BANNER_GAP - 40)
+end)
+
 -- A Chrome window on Mail and one on Chat, and Notes focused.
 local function setup()
     local a = fake.new()

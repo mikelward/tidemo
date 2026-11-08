@@ -1039,7 +1039,9 @@ end
 -- notification's host or nil. Watched through Accessibility, which says
 -- when its window or a banner in it appears *(unverified on macOS 26:
 -- which of these notifications fire)*. A banner hidden by a Focus never
--- shows, so it marks nothing. `log` hears what went wrong. Returns what to
+-- shows, so it marks nothing. `log` hears what went wrong. `bars()`, when
+-- given, returns tide's bars' frames: a banner under one has its window
+-- moved down below it (notices.clearance, SPEC.md §8). Returns what to
 -- keep alive, started again when Notification Center restarts.
 local NC = "com.apple.notificationcenterui"
 
@@ -1054,21 +1056,53 @@ local function app_bundle(name)
     return nil
 end
 
-function M.notifications(on_notice, log)
+function M.notifications(on_notice, log, bars)
     local keep = { seen = {} }
     local function attr(el, name)
         local ok, v = pcall(el.attributeValue, el, name)
         return ok and v or nil
     end
+    -- How far each window holding a banner must move down to clear the
+    -- bars, the most any of its banners needs.
+    local function frame_of(el)
+        local p, z = attr(el, "AXPosition"), attr(el, "AXSize")
+        if p and z then
+            return { x = p.x, y = p.y, w = z.w, h = z.h }
+        end
+        return nil
+    end
+    local function clear(moves)
+        for win, dy in pairs(moves) do
+            local p = attr(win, "AXPosition")
+            local ok, err = false, "no position"
+            if p then
+                ok, err = pcall(win.setAttributeValue, win, "AXPosition", { x = p.x, y = p.y + dy })
+            end
+            -- Said once, not on every banner after.
+            if not ok and not keep.move_failed then
+                keep.move_failed = true
+                log("couldn't move a notification banner below the bar: " .. tostring(err))
+            end
+        end
+    end
     -- Every banner showing, each new one reported once: a banner is told
     -- apart by its text, kept while it shows.
     local function scan(root)
         local showing = {}
-        local function walk(el, depth)
+        local frames = bars and bars() or {}
+        local moves = {}
+        local function walk(el, depth, win)
             if depth > 6 then
                 return
             end
+            if not win and attr(el, "AXRole") == "AXWindow" then
+                win = el
+            end
             if notices.is_banner(attr(el, "AXSubrole")) then
+                local dy = win and notices.clearance(frame_of(el), frames) or 0
+                if dy > 0 then
+                    moves[win] = math.max(moves[win] or 0, dy)
+                end
                 local desc = attr(el, "AXDescription")
                 local stacking = attr(el, "AXStackingIdentifier")
                 local key = tostring(stacking) .. "\0" .. tostring(desc)
@@ -1085,11 +1119,12 @@ function M.notifications(on_notice, log)
                 return
             end
             for _, child in ipairs(attr(el, "AXChildren") or {}) do
-                walk(child, depth + 1)
+                walk(child, depth + 1, win)
             end
         end
         walk(root, 0)
         keep.seen = showing
+        clear(moves)
     end
     local function attach()
         local app = hs.application.get(NC)

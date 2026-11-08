@@ -1701,6 +1701,16 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     it, and choosing a menu item, by a click or a drag, brings the bars back *(unverified on a
     Mac that macOS lets a window sit over a menu bar that shows; CI's
     smoke test checks the bar's frame there)*.
+  - **Notification banners move down below the bar.** macOS puts a
+    banner just below its menu bar, and the bar, taller than the menu bar,
+    covered the banner's top. No setting moves banners, so tide moves
+    Notification Center's window through Accessibility, as it reads each
+    banner (§14.2): a banner whose top is under a showing bar goes down to
+    8 points below the bar's bottom (`notices.clearance`). Hiding the bars
+    for Show Menu Bar moves nothing. If macOS refuses the move, the log
+    says so once and the banner stays where it was *(unverified on a Mac:
+    that Notification Center's window moves, and stays moved for the next
+    banner)*.
   - **Covering needs the setting.** While macOS still hides the menu bar,
     it slides in over everything at the top edge, tide's bar included,
     and no window level stops that. So tide says so at start and in
