@@ -3233,9 +3233,35 @@ Each one names a workaround, or says there is none.
       rows come from, so a new page names its group.
     - A launcher row opens the window on its page. Keyboard shortcuts' row
       opens Keyboard, scrolled to them.
-    - The window is 760 by 710 points, tall enough for every page and
-      heading, as tide for Linux's card is, or the display's height, where the
-      sidebar scrolls.
+    - **Search:** a "Search settings" field atop the sidebar, with a
+      magnifier, has the keyboard, and starts empty each time the window
+      opens or a launcher row shows a page. A key typed off any other
+      field goes to it, and a click on a page leaves the keyboard in it,
+      as tide for Linux's field keeps the keyboard.
+      - As you type, the sidebar keeps only the pages the query finds, by
+        their names and what they cover, and those of their parts, so
+        "shortcuts" finds Keyboard; a heading left with no page hides.
+      - If the page showing isn't kept, the first kept shows. A page found
+        only by a part shows scrolled to it, as tide for Linux's does:
+        "shortcuts" shows Keyboard's Shortcuts. So does moving to one with
+        Up, Down or a click while searching. Keyboard's own words leave
+        out its Shortcuts' for this.
+      - Up and Down move among the pages kept. Escape clears the field
+        first, then closes the window. Enter opens the page's first
+        button out, as tide for Linux's opens its app, only with the field
+        empty: mid-search it would open what the query never named.
+      - Finding nothing says "No settings match" and leaves the page
+        showing.
+      - The matcher is tide for Linux's `shell/lib/settingssearch.mjs`,
+        copied unchanged (`dashboard/tide-settingssearch.js`, checked by
+        `make check-tide`), so a query finds the same pages on each
+        desktop. Each sidebar row's `terms` and its `parts`' come from
+        `launcher.settings_sidebar()`; `searchedPart` in
+        `dashboard/settings-page.js` picks the part to scroll to, as tide
+        for Linux's `searchedSection` does.
+    - The window is 760 by 744 points, tall enough for the search field and
+      every page and heading, as tide for Linux's card is, or the display's
+      height, where the sidebar scrolls under the field.
   - **Built: it looks as tide for Linux's panel does** (tide for Linux's
     `shell/SettingsWindow.qml`, and its mock, `docs/mocks/settings.png`):
     - **Colors:** tide for Linux's palette, light and dark. `make check-tide` checks

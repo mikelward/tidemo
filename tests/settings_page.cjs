@@ -917,6 +917,218 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(showing(), ["displays"]);
 }
 
+// The search over the sidebar keeps the pages a query finds, by their
+// terms, with tide's matcher.
+{
+  const sidebar = {
+    rows: [
+      { heading: "Hardware" },
+      { page: "displays", label: "Displays", terms: ["Displays", "screens monitors"] },
+      {
+        page: "keyboard", label: "Keyboard", terms: ["Keyboard", "keys"],
+        parts: [{ id: "shortcuts", terms: ["Keyboard shortcuts", "bindings hotkeys"] }],
+      },
+      { page: "network", label: "Network", terms: ["Network", "wifi wi-fi internet"] },
+      { heading: "General" },
+      { page: "clocks", label: "Clocks", terms: ["Clocks", "time zones"] },
+      { page: "startup", label: "Start at login", terms: ["Start at login", "autostart"] },
+    ],
+    parts: { shortcuts: "keyboard" },
+  };
+  const field = ids["settings-search"];
+  const nav = () => ids.sidebar.children;
+  const listed = () => nav().map((c) => c.textContent);
+  const showing = () => ["displays", "keyboard", "network", "clocks", "startup"].filter((p) => !ids[`page-${p}`].hidden);
+  const type = (q) => {
+    field.value = q;
+    field.listeners.input();
+  };
+  // Escape and the arrows in the field, then on to the window's own keys,
+  // as a key bubbles up from it.
+  const press = (k) => {
+    const e = { key: k, target: { tagName: "INPUT" }, preventDefault() {} };
+    field.listeners.keydown(e);
+    docListeners.keydown(e);
+  };
+  sandbox.tide.update({ clockFiles: [], sidebar });
+  sandbox.tide.reveal("clocks");
+  // The keyboard's in it as the window opens, and it's empty.
+  assert.strictEqual(sandbox.document.activeElement, field);
+  assert.strictEqual(listed().length, 7, "every page and heading");
+  // A part's terms find its page, and a heading left with none hides.
+  type("shortcuts");
+  assert.deepStrictEqual(listed(), ["Hardware", "Keyboard"]);
+  // The page showing isn't kept: the first kept shows.
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  assert.deepStrictEqual(nav().filter((c) => c.attrs["aria-current"] === "page").map((c) => c.textContent), ["Keyboard"]);
+  // "wifi" finds Wi-Fi, and a query matching more keeps them in order.
+  type("wifi");
+  assert.deepStrictEqual(listed(), ["Hardware", "Network"]);
+  type("s");
+  assert.deepStrictEqual(listed(), ["Hardware", "Displays", "Keyboard", "General", "Start at login"]);
+  assert.deepStrictEqual(showing(), ["displays"], "Network isn't kept");
+  // A page showing that's kept stays, first or not.
+  type("ke");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  type("s");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  // Up and Down in the field move among the pages kept, past headings.
+  press("ArrowDown");
+  assert.deepStrictEqual(showing(), ["startup"], "over Network and Clocks, which aren't kept");
+  press("ArrowDown");
+  assert.deepStrictEqual(showing(), ["startup"], "stopping at the end");
+  press("ArrowUp");
+  press("ArrowUp");
+  assert.deepStrictEqual(showing(), ["displays"]);
+  press("ArrowUp");
+  assert.deepStrictEqual(showing(), ["displays"], "stopping at the top");
+  press("ArrowDown");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  // Nothing found: the sidebar says so, and the page showing stays.
+  type("zzz");
+  assert.deepStrictEqual(listed(), ["No settings match"]);
+  assert.strictEqual(nav()[0].className, "none");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  // Escape with a query clears it, every page back, and the window stays.
+  sent.length = 0;
+  press("Escape");
+  assert.strictEqual(field.value, "");
+  assert.strictEqual(listed().length, 7);
+  assert.deepStrictEqual(showing(), ["keyboard"], "clearing keeps the page showing");
+  assert.deepStrictEqual(sent, []);
+  // From another of the window's fields too, Escape clears a query first.
+  type("clocks");
+  sent.length = 0;
+  docListeners.keydown({ key: "Escape", target: { tagName: "INPUT" }, preventDefault() {} });
+  assert.strictEqual(field.value, "");
+  assert.strictEqual(listed().length, 7);
+  assert.deepStrictEqual(sent, [], "a query outside the field still clears before the window closes");
+  // With it empty, Escape closes the window, as it did.
+  press("Escape");
+  assert.deepStrictEqual(sent, [{ close: true }]);
+  // Clearing by hand shows every page too, keeping the page showing.
+  type("clocks");
+  assert.deepStrictEqual(showing(), ["clocks"]);
+  type("");
+  assert.strictEqual(listed().length, 7);
+  assert.deepStrictEqual(showing(), ["clocks"]);
+  // A reveal from the launcher, or the window brought forward, starts it
+  // empty with the keyboard in it.
+  type("key");
+  sandbox.document.activeElement = null;
+  sandbox.tide.reveal("startup");
+  assert.strictEqual(field.value, "");
+  assert.strictEqual(listed().length, 7);
+  assert.deepStrictEqual(showing(), ["startup"]);
+  assert.strictEqual(sandbox.document.activeElement, field);
+  type("key");
+  sandbox.document.activeElement = null;
+  sandbox.tide.opened();
+  assert.strictEqual(field.value, "");
+  assert.strictEqual(listed().length, 7);
+  assert.strictEqual(sandbox.document.activeElement, field);
+  // A page found only by a part shows scrolled to it, as tide's does; one
+  // found by its own terms stays at its top.
+  let scrolledTo = [];
+  sandbox.document.getElementById("shortcuts").scrollIntoView = () => scrolledTo.push("shortcuts");
+  type("short");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  assert.deepStrictEqual(scrolledTo, ["shortcuts"]);
+  // Typing on, still found by it, leaves the page where it is.
+  type("shortc");
+  assert.deepStrictEqual(scrolledTo, ["shortcuts"]);
+  type("");
+  type("key");
+  assert.deepStrictEqual(scrolledTo, ["shortcuts"], "Keyboard's own terms find it");
+  // The page showing, kept, scrolls to the part a query finds it by.
+  type("");
+  nav().find((c) => c.textContent === "Displays").listeners.click();
+  press("ArrowDown");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  type("hotkeys");
+  assert.deepStrictEqual(scrolledTo, ["shortcuts", "shortcuts"]);
+  // So do Up and Down, and a click, onto a page found only by a part.
+  type("s");
+  scrolledTo = [];
+  press("ArrowUp");
+  assert.deepStrictEqual(showing(), ["displays"]);
+  assert.deepStrictEqual(scrolledTo, []);
+  press("ArrowDown");
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  assert.deepStrictEqual(scrolledTo, ["shortcuts"]);
+  press("ArrowUp");
+  nav().find((c) => c.textContent === "Keyboard").listeners.click();
+  assert.deepStrictEqual(showing(), ["keyboard"]);
+  assert.deepStrictEqual(scrolledTo, ["shortcuts", "shortcuts"]);
+  assert.strictEqual(sandbox.document.activeElement, field, "a click keeps the keyboard in the field");
+  // Off the field too, Up and Down do.
+  press("ArrowUp");
+  docListeners.keydown({ key: "ArrowDown", target: { tagName: "BODY" }, preventDefault() {} });
+  assert.deepStrictEqual(scrolledTo, ["shortcuts", "shortcuts", "shortcuts"]);
+  // The decision alone: a page's own terms first, then each part's.
+  const { searchedPart, termsOf } = vm.runInContext('modules["./settings-page.js"]', sandbox);
+  const keyboard = sidebar.rows[2];
+  assert.strictEqual(searchedPart(keyboard, "shortcuts"), "shortcuts");
+  assert.strictEqual(searchedPart(keyboard, "keyboard short"), "shortcuts", "every word in one part");
+  assert.strictEqual(searchedPart(keyboard, "keys bindings"), "shortcuts", "a page's word and a part's together");
+  assert.strictEqual(searchedPart(keyboard, "keyboard"), "", "its own name finds it");
+  assert.strictEqual(searchedPart(keyboard, ""), "", "nothing typed finds every page by its own");
+  assert.strictEqual(searchedPart(keyboard, "zzz"), "");
+  assert.strictEqual(searchedPart(sidebar.rows[1], "screens"), "", "a page with no parts");
+  assert.deepStrictEqual([...termsOf(keyboard)], ["Keyboard", "keys", "Keyboard shortcuts", "bindings hotkeys"]);
+  assert.strictEqual(searchedPart({ page: "x", parts: [{ id: 3 }, null] }, "x"), "", "a malformed part is passed over");
+  type("");
+
+  // Enter opens the page's first button out, as tide's opens its app, but
+  // only with the field empty: mid-search it would open what the query
+  // never named.
+  sandbox.tide.update({
+    clockFiles: [], sidebar,
+    links: [{ section: "keyboard", name: "keyboard", label: "Keyboard settings" },
+      { section: "keyboard", name: "karabiner", label: "Karabiner settings" }],
+  });
+  sent.length = 0;
+  press("Enter");
+  assert.deepStrictEqual(sent, [{ open: "keyboard" }]);
+  type("k");
+  press("Enter");
+  assert.deepStrictEqual(sent, [{ open: "keyboard" }]);
+  type("");
+  // Off the field, the same; a button's Enter is its own.
+  const body = (k, extra = {}) => docListeners.keydown({ key: k, target: { tagName: "BODY" }, preventDefault() {}, ...extra });
+  body("Enter");
+  docListeners.keydown({ key: "Enter", target: { tagName: "BUTTON" }, preventDefault() {} });
+  assert.deepStrictEqual(sent, [{ open: "keyboard" }, { open: "keyboard" }]);
+  // A page with none opens nothing.
+  sandbox.tide.reveal("clocks");
+  sent.length = 0;
+  press("Enter");
+  assert.deepStrictEqual(sent, []);
+  // Typed off any field, a key goes to the search, as tide's field keeps
+  // the keyboard; a shortcut, a field's own key and a button's Space don't.
+  sandbox.document.activeElement = null;
+  body("w");
+  body("i");
+  assert.strictEqual(field.value, "wi");
+  assert.strictEqual(sandbox.document.activeElement, field);
+  assert.deepStrictEqual(listed(), ["Hardware", "Network"]);
+  assert.deepStrictEqual(showing(), ["network"]);
+  body("Backspace");
+  assert.strictEqual(field.value, "w");
+  body("c", { metaKey: true });
+  docListeners.keydown({ key: "x", target: { tagName: "INPUT" }, preventDefault() {} });
+  docListeners.keydown({ key: " ", target: { tagName: "BUTTON" }, preventDefault() {} });
+  assert.strictEqual(field.value, "w");
+  press("Escape");
+  assert.strictEqual(field.value, "");
+
+  // A row with no terms is found by its name.
+  sandbox.tide.update({ clockFiles: [], sidebar: { rows: [{ page: "clocks", label: "Clocks" }], parts: {} } });
+  type("clo");
+  assert.deepStrictEqual(listed(), ["Clocks"]);
+  type("");
+}
+
 // An app or site typed at the Muted list's foot goes to tide, which
 // checks it with the mute module and mutes it, or says why not.
 {

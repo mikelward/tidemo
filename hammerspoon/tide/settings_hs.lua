@@ -182,7 +182,7 @@ function M.switch_launcher(tide, value)
 end
 
 -- The window's height, in points, on a display tall enough for it.
-M.HEIGHT = 710
+M.HEIGHT = 744
 
 -- `tide` is the started tide module: its wm, adapter, shortcuts,
 -- clock_dir, clock_files, layout_files, workspace_files, workspace_base,
@@ -712,7 +712,16 @@ function M.new(tide)
             end
             -- Floating now may have changed since it drew.
             push()
-            reveal(section)
+            if section then
+                reveal(section)
+            else
+                -- Its search empty again, as when it opens.
+                view:evaluateJavaScript("tide.opened()", function(_, err)
+                    if dashboard.js_failed(err) then
+                        tide.adapter.log("settings: " .. hs.inspect(err))
+                    end
+                end)
+            end
             fill_in(fill)
             return
         end
@@ -724,8 +733,9 @@ function M.new(tide)
             return
         end
         -- Wide enough for the sidebar beside a page, and tall enough for
-        -- every page and heading in it, as tide's card is: 703 points of
-        -- them, at tide's 32 a page. A shorter display's sidebar scrolls.
+        -- the search field and every page and heading under it, as tide's
+        -- card is: 737 points of them, at tide's 32 a row. A shorter
+        -- display's sidebar scrolls, the field staying at its top.
         local w, h = 760, math.min(M.HEIGHT, s.area.h)
         local frame = { x = s.area.x + (s.area.w - w) / 2, y = s.area.y + (s.area.h - h) / 2, w = w, h = h }
         view = hs.webview.new(frame, { developerExtrasEnabled = false }, content)

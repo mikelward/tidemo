@@ -57,6 +57,13 @@ so on macOS 26; ticks survive a reload. What's left:
   as tide for Linux's sidebar has. **Check on a Mac:** every page and
   heading fits the window without scrolling the sidebar, and Up and Down
   change the page.
+- **Done: the sidebar's search** (SPEC.md §15). Only
+  `tests/settings_page.cjs` and `tests/launcher_test.lua` cover it. **Check
+  on a Mac** that the field has the keyboard as the window opens and after
+  a launcher row, stays atop the sidebar as it scrolls with its magnifier
+  showing, that a key typed after clicking a page lands in it, that
+  "shortcuts" shows Keyboard scrolled to its Shortcuts, and that Escape
+  clears it before closing the window.
 
 ## Keep the Mac as you set it
 
@@ -473,6 +480,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
   tide. Its toggles keep their words, such as "History on", rather than
   tide for Linux's bare On and Off. Reversible: the `brand` paragraph in
   `dashboard/settings.html`.
+- **The settings search's Enter opens a page's first button out**
+  (SPEC.md §15, 2026-11-08), such as Keyboard's System Settings pane before
+  Karabiner's, where tide for Linux's page has one app; a page with none,
+  such as Layouts, opens nothing. The window grew 34 points to 744 for the
+  field, as tide for Linux's card does. Reversible: `openPageLink` in
+  `dashboard/settings-page.js`, and `M.HEIGHT` in `settings_hs.lua`.
 - **The Setup checklist is General's last page** in the settings window's
   sidebar (2026-11-02), since tide for Linux has no such page and General is "the
   rest". Reversible: its `group` in `launcher.SETTINGS_SECTIONS`.
