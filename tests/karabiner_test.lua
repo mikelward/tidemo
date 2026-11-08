@@ -106,6 +106,14 @@ local function machine(files, opts)
         resolve = function(path)
             return (opts.links or {})[path] or path
         end,
+        remove = function(path)
+            m.removed = (m.removed or 0) + 1
+            if opts.links then
+                opts.links[path] = nil
+            end
+            m.files[path] = nil
+            return true
+        end,
         running = function()
             return m.running
         end,
@@ -344,6 +352,167 @@ t.test("conf's lock screen rule goes on above tide's, and the doctor names it wh
     t.eq(#lines, 1)
     t.eq(lines[1]:match("^conf's Karabiner rules that are off: Ctrl%+U clears the password at the lock screen") ~= nil, true,
         lines[1])
+end)
+
+-- The Super key: tide's two rules, as installed beside karabiner.lua.
+local OPTION_RULE = read_file("hammerspoon/tide/karabiner/tide-option.json")
+local WIN_RULE = read_file("hammerspoon/tide/karabiner/tide.json")
+local OPTION = json.decode(OPTION_RULE).rules[1].description
+local WIN = json.decode(WIN_RULE).rules[1].description
+
+local function super_machine(opts)
+    local assets = conf_assets()
+    assets["tide.json"] = WIN_RULE
+    local files = with_assets(EMPTY_CONFIG, assets)
+    files[karabiner.SUPER_DIR .. "/tide-option.json"] = OPTION_RULE
+    files[karabiner.SUPER_DIR .. "/tide.json"] = WIN_RULE
+    local m = machine(files, opts)
+    m.k.check()
+    return m
+end
+
+local function has(list, x)
+    for _, v in ipairs(list) do
+        if v == x then
+            return true
+        end
+    end
+    return false
+end
+
+t.test("the Super key in use is the tide rule that's on", function()
+    local m = super_machine()
+    t.eq(m.k.super(), "win")
+    t.eq(m.k.set(WIN, false), true)
+    t.eq(m.k.super(), "none")
+end)
+
+t.test("choosing left Option puts its rule in Karabiner's folder, on, and the Win rule off", function()
+    local m = super_machine()
+    t.eq(m.k.set_super("option"), true)
+    t.eq(m.files[ASSETS .. "/tide.json"], OPTION_RULE)
+    t.eq(m.k.super(), "option")
+    t.eq(has(enabled(m), OPTION), true)
+    t.eq(has(enabled(m), WIN), false)
+    -- And back.
+    t.eq(m.k.set_super("win"), true)
+    t.eq(m.k.super(), "win")
+    t.eq(has(enabled(m), OPTION), false)
+end)
+
+t.test("choosing plain Option turns tide's rule off and leaves its file", function()
+    local m = super_machine()
+    t.eq(m.k.set_super("none"), true)
+    t.eq(m.k.super(), "none")
+    t.eq(has(enabled(m), WIN), false)
+    t.eq(m.files[ASSETS .. "/tide.json"], WIN_RULE)
+    -- Off stays off: a later check doesn't turn it on again.
+    m.k.check(true)
+    t.eq(m.k.super(), "none")
+end)
+
+t.test("a linked rule is replaced, not written through", function()
+    local target = "/Users/me/conf/config/karabiner/assets/complex_modifications/tide.json"
+    local m = super_machine({ links = { [ASSETS .. "/tide.json"] = target } })
+    t.eq(m.k.set_super("option"), true)
+    t.eq(m.removed, 1)
+    t.eq(m.files[target], nil)
+    t.eq(m.files[ASSETS .. "/tide.json"], OPTION_RULE)
+end)
+
+-- The installer run again with another --super swaps tide.json under
+-- tide: the rule it replaced, still on, goes, and the new one goes on,
+-- though turned off before, so only one key is Super.
+t.test("a Super rule swapped under tide replaces the one that was on", function()
+    local m = super_machine()
+    t.eq(m.k.super(), "win")
+    m.settings[karabiner.SEEN_KEY] = { OPTION, WIN, TAB, ARROWS, TERMINAL }
+    m.notices = {}
+    m.files[ASSETS .. "/tide.json"] = OPTION_RULE
+    m.k.check()
+    t.eq(has(enabled(m), WIN), false)
+    t.eq(has(enabled(m), OPTION), true)
+    t.eq(m.k.super(), "option")
+    t.eq(#m.notices, 1, table.concat(m.notices, " | "))
+    t.eq(m.notices[1]:find("tide's Super key rule is now \"tide: left Option+key", 1, true) ~= nil, true, m.notices[1])
+    t.eq(m.notices[1]:find("in place of \"tide: Win+key", 1, true) ~= nil, true, m.notices[1])
+    -- And it stays as it is: nothing more to do at the next check.
+    local writes = #m.writes
+    m.k.check(true)
+    t.eq(#m.writes, writes)
+end)
+
+-- The installer's --super none removes tide.json: the rule it was, still
+-- on, goes, so Super is plain Option.
+t.test("a Super rule whose file is gone goes off", function()
+    local m = super_machine()
+    t.eq(m.k.super(), "win")
+    m.notices = {}
+    m.files[ASSETS .. "/tide.json"] = nil
+    m.k.check()
+    t.eq(has(enabled(m), WIN), false)
+    t.eq(m.k.super(), "none")
+    t.eq(#m.notices, 1, table.concat(m.notices, " | "))
+    t.eq(m.notices[1]:find("whose file is gone, so Super is plain Option", 1, true) ~= nil, true, m.notices[1])
+end)
+
+-- An old conf checkout's tilemo.json is the Win rule too: the Keyboard
+-- page shows it, and choosing another key turns it off.
+t.test("an old tilemo.json rule is the Super key in use, and a choice turns it off", function()
+    local OLD = "tilemo: Win+key sends Ctrl+Option+Command"
+    local assets = conf_assets()
+    assets["tide.json"] = nil
+    assets["tilemo.json"] = rule_file("tilemo", OLD, "left_command")
+    local files = with_assets(EMPTY_CONFIG, assets)
+    files[karabiner.SUPER_DIR .. "/tide-option.json"] = OPTION_RULE
+    local m = machine(files)
+    m.k.check()
+    t.eq(has(enabled(m), OLD), true)
+    t.eq(m.k.super(), "win")
+    t.eq(m.k.set_super("option"), true)
+    t.eq(has(enabled(m), OLD), false)
+    t.eq(m.k.super(), "option")
+    m.k.check(true)
+    t.eq(has(enabled(m), OLD), false, "it stays off")
+    t.eq(m.k.set_super("none"), true)
+    t.eq(m.k.super(), "none")
+end)
+
+-- A rule file caught mid-write isn't a file gone: its rule stays on, and
+-- the Super key with it, once the file is whole again.
+t.test("a Super rule whose file can't be read stays on", function()
+    local m = super_machine()
+    m.files[ASSETS .. "/tide.json"] = '{"title": "tide", "rules": ['
+    local s = m.k.check()
+    t.eq(has(enabled(m), WIN), true)
+    t.eq(s.problem:find("tide.json isn't JSON", 1, true) ~= nil, true, s.problem)
+    m.files[ASSETS .. "/tide.json"] = WIN_RULE
+    m.k.check()
+    t.eq(m.k.super(), "win")
+end)
+
+-- Another rule of yours stays, tide's Super rule or not.
+t.test("only tide's own rules are replaced", function()
+    local m = super_machine()
+    local config = json.decode(m.files[CONFIG])
+    table.insert(config.profiles[1].complex_modifications.rules, { description = "Mine: Caps Lock is Escape", manipulators = {} })
+    m.files[CONFIG] = json.encode(config)
+    m.files[ASSETS .. "/tide.json"] = OPTION_RULE
+    m.k.check()
+    t.eq(has(enabled(m), "Mine: Caps Lock is Escape"), true)
+    t.eq(has(enabled(m), WIN), false)
+end)
+
+t.test("an unknown Super key, or a missing rule file, says why", function()
+    local m = super_machine()
+    local ok, why = m.k.set_super("capslock")
+    t.eq(ok, nil)
+    t.eq(why, "there's no Super key called capslock")
+    m.files[karabiner.SUPER_DIR .. "/tide-option.json"] = nil
+    ok, why = m.k.set_super("option")
+    t.eq(ok, nil)
+    t.eq(why:find("install tide again", 1, true) ~= nil, true, why)
+    t.eq(m.k.super(), "win", "the rule in use stays on")
 end)
 
 t.done("karabiner")

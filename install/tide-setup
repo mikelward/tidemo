@@ -487,8 +487,8 @@ install_karabiner() {
 # checkout's, is replaced by the file, never written through.
 install_super_rule() {
     case "$SUPER" in
-        win) _sr_src="$TIDEMO_DIR/karabiner/tide.json" ;;
-        option) _sr_src="$TIDEMO_DIR/karabiner/tide-option.json" ;;
+        win) _sr_src="$TIDEMO_DIR/hammerspoon/tide/karabiner/tide.json" ;;
+        option) _sr_src="$TIDEMO_DIR/hammerspoon/tide/karabiner/tide-option.json" ;;
         *) return 0 ;;
     esac
     info "Installing tide's Karabiner rule for Super ($SUPER)"
@@ -502,6 +502,13 @@ install_super_rule() {
 configure_super() {
     if test "$SUPER" = none; then
         info "Leaving Karabiner out (--super none): Super is plain Option"
+        # A rule an earlier run installed goes, and tide turns its enabled
+        # copy off as it next checks (karabiner.lua). Only tide's: a file of
+        # another name, or a rule not tide's, stays.
+        if test -L "$KARABINER_RULE" || { test -f "$KARABINER_RULE" && grep -qE '"description": *"(tide|tilemo|timo):' "$KARABINER_RULE"; }; then
+            info "Removing tide's Karabiner rule, $KARABINER_RULE"
+            try rm -f "$KARABINER_RULE"
+        fi
         return 0
     fi
     install_karabiner

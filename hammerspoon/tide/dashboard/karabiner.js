@@ -167,7 +167,10 @@ export function withRule(configText, rules, description, on, order) {
 // that's off turned on, once, so a new rule from conf starts on and one you
 // turn off stays off. { text, updated, enabled }: text is null when nothing
 // changed, and the others name what did. Or an { error }.
-export function synced(configText, rules, seen, order) {
+// `superFile` is tide's Super rule's file, and `superPrefixes` what a tide
+// rule's description starts with, old names included (karabiner.lua).
+// `unread` is whether a rule file couldn't be read (assetRules' errors).
+export function synced(configText, rules, seen, order, superFile, superPrefixes, unread) {
   const p = parse(configText);
   if (p.error) return p;
   const r = profileRules(p.config);
@@ -176,6 +179,25 @@ export function synced(configText, rules, seen, order) {
   const known = new Set(Array.isArray(seen) ? seen : []);
   const updated = [];
   const enabled = [];
+  // tide's Super rule is one file, tide.json, which the installer or the
+  // Keyboard page swaps for another key's (karabiner.lua's SUPER_CHOICES),
+  // or the installer's --super none removes. An enabled tide rule with no
+  // file is a key replaced or given up: left on, two keys would be Super,
+  // Command+C included, or Super would stay off plain Option. It goes, and
+  // the file's rule, if any, takes its place, on, though turned off before.
+  const prefixes = Array.isArray(superPrefixes) ? superPrefixes : [];
+  const isTide = (d) => prefixes.some((prefix) => String(d).startsWith(prefix));
+  const superRule = rules.find((x) => x.file === superFile && isTide(x.description));
+  const replaced = [];
+  // Not while a file can't be read, such as one caught mid-write: its rule
+  // would look gone, and once turned off, stay off.
+  for (let i = unread ? -1 : list.length - 1; i >= 0; i--) {
+    const d = isObject(list[i]) ? list[i].description : undefined;
+    if (isTide(d) && !rules.some((x) => x.description === d)) {
+      list.splice(i, 1);
+      replaced.push(d);
+    }
+  }
   for (const rule of rules) {
     const i = list.findIndex((x) => isObject(x) && x.description === rule.description);
     if (i >= 0) {
@@ -183,10 +205,15 @@ export function synced(configText, rules, seen, order) {
         list[i] = Object.assign({}, list[i], copyOf(rule.rule));
         updated.push(rule.description);
       }
+    } else if (superRule && rule === superRule && replaced.length > 0) {
+      list.splice(slot(list, order, rule.description), 0, copyOf(rule.rule));
     } else if (!known.has(rule.description)) {
       list.splice(slot(list, order, rule.description), 0, copyOf(rule.rule));
       enabled.push(rule.description);
     }
   }
-  return { text: updated.length + enabled.length > 0 ? text(p.config) : null, updated, enabled };
+  return {
+    text: updated.length + enabled.length + replaced.length > 0 ? text(p.config) : null,
+    updated, enabled, replaced: replaced.map(label), super: replaced.length > 0 && superRule ? superRule.label : undefined,
+  };
 }

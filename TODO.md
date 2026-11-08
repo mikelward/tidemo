@@ -145,12 +145,12 @@ owner's extras.
   them bundle IDs where an app does the job, or leave them unbound
   without scripts.
 - **Done: Super without conf.** tide ships its Karabiner rules
-  (`karabiner/`), and the installer installs Karabiner and one of them:
+  (`hammerspoon/tide/karabiner/`), and the installer installs Karabiner and one of them:
   left Option by default, the Win key under the rotation (`--super win`),
   or none. conf's copy of the Win rule then goes. **Check on a Mac:** left
   Option+key reaches tide as Super, a lone tap opens the launcher, right
-  Option still types accents, and a change of `--super` leaves only the
-  new rule on in Karabiner (tide may keep the old description's copy on).
+  Option still types accents, and the Keyboard page's Super key row
+  swaps the rule, leaving only the new one on in Karabiner.
 - **Caps Lock as Compose** is setup-macos's: one `hidutil` map holds it
   with the modifier rotation, and a second writer would replace the
   first. tide could set it as it starts, merged with what's there

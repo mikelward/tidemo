@@ -1,4 +1,4 @@
--- tide's two Karabiner rules, karabiner/: tide.json makes the physical Win
+-- tide's two Karabiner rules, hammerspoon/tide/karabiner/: tide.json makes the physical Win
 -- key Super under setup-macos's modifier rotation, and tide-option.json
 -- makes left Option Super on a Mac keyboard without it (SPEC.md §7.1).
 
@@ -6,7 +6,7 @@ local t = require("t")
 local json = require("json")
 
 local function load(name)
-    local f = assert(io.open("karabiner/" .. name, "rb"))
+    local f = assert(io.open("hammerspoon/tide/karabiner/" .. name, "rb"))
     local text = f:read("a")
     f:close()
     local d = json.decode(text)

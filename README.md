@@ -77,7 +77,8 @@ It brings tide for Linux's desktop to macOS:
   order, under its sidebar's groups, Hardware, Windows and General: where the settings are macOS's or a helper's, its buttons open
   the System Settings pane, LinearMouse or Karabiner (§1, §15). A field
   atop the sidebar searches the pages. Its
-  Keyboard section turns conf's Karabiner rules, such as Ctrl+Tab's next
+  Keyboard section picks the Super key (left Option, the Win key with the
+  PC keyboard rotation, or plain Option), turns conf's Karabiner rules, such as Ctrl+Tab's next
   tab, on and off itself, keeps them up to date with conf, and turns a new
   one on once. Its Shortcuts list changes a shortcut's keys with a click
   and the keys you press, or starts every key from dwm, i3, sway, xmonad

@@ -610,6 +610,27 @@ test_super_none_leaves_karabiner_out() {
     fi
 }
 
+# Rerun with --super none, the rule an earlier run installed goes, so tide
+# turns its enabled copy off.
+test_super_none_removes_an_earlier_rule() {
+    run_setup --super option
+    assert_file_contains "$RULE" "tide:" || return 1
+    run_setup --super none
+    assert_status 0 &&
+    assert_output_contains "Removing tide's Karabiner rule" || return 1
+    if test -e "$RULE" || test -L "$RULE"; then
+        fail "the rule is still there"
+    fi
+}
+
+test_super_none_leaves_a_rule_not_tides() {
+    mkdir -p "${RULE%/*}"
+    printf '{"rules": [{"description": "Mine: Caps Lock is Escape"}]}\n' > "$RULE"
+    run_setup --super none
+    assert_status 0 &&
+    assert_file_contains "$RULE" "Mine: Caps Lock is Escape"
+}
+
 test_super_unknown_is_a_usage_error() {
     run_setup --super capslock
     assert_status 1 &&
@@ -761,6 +782,8 @@ run_test "Super defaults to left Option" test_super_defaults_to_left_option
 run_test "--super win installs the rotation's rule" test_super_win_installs_the_rotation_rule
 run_test "--super=win is accepted" test_super_equals_syntax
 run_test "--super none leaves Karabiner out" test_super_none_leaves_karabiner_out
+run_test "--super none removes an earlier run's rule" test_super_none_removes_an_earlier_rule
+run_test "--super none leaves a rule that isn't tide's" test_super_none_leaves_a_rule_not_tides
 run_test "an unknown --super is a usage error" test_super_unknown_is_a_usage_error
 run_test "--super without a value is a usage error" test_super_without_a_value_is_a_usage_error
 run_test "an installed Karabiner isn't reinstalled" test_installed_karabiner_isnt_reinstalled_or_explained

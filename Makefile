@@ -53,6 +53,8 @@ install:
 	cp hammerspoon/tide/compose.tsv hammerspoon/tide/LICENSE-X11 $(HAMMERSPOON_DIR)/tide/
 	mkdir -p $(HAMMERSPOON_DIR)/tide/icons
 	cp hammerspoon/tide/icons/*.png $(HAMMERSPOON_DIR)/tide/icons/
+	mkdir -p $(HAMMERSPOON_DIR)/tide/karabiner
+	cp hammerspoon/tide/karabiner/*.json $(HAMMERSPOON_DIR)/tide/karabiner/
 	mkdir -p $(HAMMERSPOON_DIR)/tide/dashboard
 	cp hammerspoon/tide/dashboard/* $(HAMMERSPOON_DIR)/tide/dashboard/
 	mkdir -p $(HAMMERSPOON_DIR)/tilemo $(HAMMERSPOON_DIR)/timo

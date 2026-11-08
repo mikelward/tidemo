@@ -1694,6 +1694,28 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["launcher-choice"].children[2].textContent, "tileco's launcher");
 }
 
+// The Keyboard page's Super key: the one in use, with ‹ and › to the
+// others, which asks tide to swap its Karabiner rule.
+{
+  const choices = [
+    { value: "option", label: "Left Option" },
+    { value: "win", label: "Win, with the PC keyboard rotation" },
+    { value: "none", label: "Option, without Karabiner" },
+  ];
+  sandbox.tide.update({ clockFiles: [], keyboard: { super: { value: "option", choices }, rules: [], problem: "" } });
+  const row = ids["super-choice"].children;
+  assert.deepStrictEqual(row.map((c) => c.textContent), ["Super key", "‹", "Left Option", "›"]);
+  sent.length = 0;
+  row[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ superKey: "win" }]);
+  sent.length = 0;
+  row[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ superKey: "none" }], "‹ wraps round to the last");
+  // Without Karabiner's rules to switch, there's no row.
+  sandbox.tide.update({ clockFiles: [], keyboard: { rules: [], problem: "" } });
+  assert.strictEqual(ids["super-choice"].children.length, 0);
+}
+
 // The Appearance page's Menu bar switch: on unless tide says it's off,
 // and a click asks for the other.
 {

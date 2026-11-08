@@ -1403,7 +1403,12 @@ together (§6). tide turns it off (§6.6), and has its own.
     Command, so copy and paste stay under the same finger (scripts
     `docs/MACOS.md`, "Modifier rotation").
   - **`--super none` leaves Karabiner out,** and Super is plain Option,
-    the fallback below.
+    the fallback below. It removes a rule an earlier run installed, and
+    tide turns off a tide rule whose file is gone.
+  - **The Keyboard page changes it** (§15): its Super key row steps
+    through the three, turning the rule in use off and the chosen one on,
+    copied into Karabiner's folder from tide's install. Which one is in
+    use is read from karabiner.json, not kept apart.
 - **Option already means things on a Mac,** which plain Option bindings
   would take away:
   - Option+Backspace deletes a word, and Option+Up and Down move by
@@ -1418,7 +1423,7 @@ together (§6). tide turns it off (§6.6), and has its own.
   the physical key before the rotation (conf `config/karabiner/README.md`),
   so Option's own meanings stay intact. Depending on Karabiner is accepted,
   but tide must work without it.
-  - **tide ships both rules,** in `karabiner/`: `tide.json` for the Win key
+  - **tide ships both rules,** in `hammerspoon/tide/karabiner/`: `tide.json` for the Win key
     under the rotation, and `tide-option.json` for left Option without it.
     The installer installs Karabiner and copies the one `--super` names to
     Karabiner's folder as `tide.json`; tide turns it on as it starts
