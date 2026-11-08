@@ -73,7 +73,19 @@ function M.new(tide)
         end
     end
 
-    -- Hidden, not deleted: the next open shows it again.
+    -- `fn(...)`, an error logged with `what` rather than raised, so one
+    -- step failing can't leave the launcher over the screen, taking Esc,
+    -- with no way to close it. Whether it ran.
+    local function try(what, fn, ...)
+        local ok, err = xpcall(fn, debug.traceback, ...)
+        if not ok then
+            tide.adapter.log("dashboard launcher: " .. what .. ": " .. tostring(err))
+        end
+        return ok
+    end
+
+    -- Hidden, not deleted: the next open shows it again. Each step on its
+    -- own (try), so it's hidden and Esc given back whatever fails.
     local function close(refocus)
         if not visible then
             return
@@ -82,16 +94,16 @@ function M.new(tide)
         pending = nil
         self.opened = nil
         if esc_key then
-            esc_key:delete()
+            try("giving back Esc", esc_key.delete, esc_key)
             esc_key = nil
         end
-        tide.wm:hold("launcher", false)
-        tide.wm:own_window("launcher", nil)
+        try("letting focus follow the mouse again", tide.wm.hold, tide.wm, "launcher", false)
+        try("saying its window is gone", tide.wm.own_window, tide.wm, "launcher", nil)
         if view then
-            view:hide()
+            try("hiding it", view.hide, view)
         end
         if refocus and before then
-            tide.wm:focus_unburied(before)
+            try("going back to the window you were in", tide.wm.focus_unburied, tide.wm, before)
         end
     end
 
@@ -178,7 +190,10 @@ function M.new(tide)
         local body = msg.body or {}
         -- Out of the page's own callback before deleting the page.
         tide.adapter.after(0, function()
-            handle(body)
+            -- A row or key that fails still closes it, and says why.
+            if not try("handling " .. hs.inspect(body), handle, body) then
+                close(false)
+            end
         end)
     end)
 
@@ -303,7 +318,9 @@ function M.new(tide)
         typed = false
         esc_key = hs.hotkey.bind({}, "escape", function()
             if typed then
-                push("tide.escape()")
+                if not try("handing Esc to the page", push, "tide.escape()") then
+                    close(true)
+                end
             else
                 close(true)
             end

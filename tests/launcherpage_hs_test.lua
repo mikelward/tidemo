@@ -257,4 +257,37 @@ t.test("while it's open the launcher is one of tide's own windows, and closing s
     t.eq(s.own.launcher, nil)
 end)
 
+-- A step that fails as it closes must not leave it over the screen with
+-- Esc taken: then nothing, not Esc, Enter or a click, could close it.
+t.test("Esc hides the launcher even when a step of closing fails, and says why", function()
+    local s = stub()
+    local page = loaded(s)
+    page.show("launch")
+    s.tide.wm.hold = function()
+        error("hold broke")
+    end
+    s.key("escape").fn()
+    t.eq(page.is_open(), false)
+    t.eq(s.views[1].shown, false, "hidden")
+    t.eq(s.key("escape"), nil, "Esc is given back")
+    t.eq(s.own.launcher, nil, "the steps after it still ran")
+    t.eq(s.logged:match("^dashboard launcher: letting focus follow the mouse again: .*hold broke") ~= nil, true,
+        s.logged)
+end)
+
+t.test("a message from the page that fails closes the launcher, and says why", function()
+    local s = stub()
+    local page = loaded(s)
+    page.show("launch")
+    s.tide.presenter = {
+        toggle_keep_awake = function()
+            error("no caffeinate")
+        end,
+    }
+    s.send({ command = "keep-awake" })
+    t.eq(page.is_open(), false)
+    t.eq(s.views[1].shown, false)
+    t.eq(s.logged:match("^dashboard launcher: handling .*no caffeinate") ~= nil, true, s.logged)
+end)
+
 t.done("launcherpage_hs")
