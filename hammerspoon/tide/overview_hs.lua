@@ -8,6 +8,7 @@
 local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
 local overview = require("tide.overview")
+local jsonsafe = require("tide.jsonsafe")
 
 local M = {}
 
@@ -78,8 +79,14 @@ function M.new(tide)
     end
 
     -- Fills the page with what it shows now.
+    local encode = jsonsafe.encoder(function(v)
+        return hs.json.encode(v)
+    end, log, "overview")
     local function push(v)
-        local state = hs.json.encode(overview.state(tide.wm, scope, icon_of, before))
+        local state = encode(overview.state(tide.wm, scope, icon_of, before))
+        if not state then
+            return
+        end
         v:evaluateJavaScript("tide.update(" .. state .. ")", function(_, err)
             if dashboard.js_failed(err) then
                 log("overview: " .. hs.inspect(err))

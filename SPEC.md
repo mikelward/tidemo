@@ -1797,9 +1797,13 @@ stock keys:
     and other apps' status items (a VPN, an IT agent, Zoom). The Apple
     logo opens tide's copy of the Apple menu (below); the app's menus
     and status items still need the pointer at the top edge.
-  - **The pointer is kept off the bar's top row,** one point down
-    (`bar.off_top`), so the hidden menu bar no longer slides over the bar
-    each time the pointer reaches the top edge. macOS shows it only for the
+  - **The pointer is kept off the bar's top row while the menu bar
+    hides,** one point down (`bar.off_top`, `bar.keeps_off_top`), so the
+    hidden menu bar no longer slides over the bar each time the pointer
+    reaches the top edge. With the menu bar shown, as the installer sets
+    it, nothing slides in, and the pointer is left alone: moving it down on
+    every move along the top made it drag. The page hears where the
+    pointer is, for hover, at most 30 times a second (`bar.throttle`). macOS shows it only for the
     top row, and offers no setting to stop that. Top hot corners and
     anything else that needs the very top edge are lost on displays with a
     shown bar; under a full-screen window, where the bar hides, the menu bar

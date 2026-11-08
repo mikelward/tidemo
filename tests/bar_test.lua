@@ -688,6 +688,54 @@ t.test("the session menu locks, logs out, sleeps, restarts and shuts down, in th
     t.eq(ran, { "lock", "logout", "sleep", "restart", "shutdown" })
 end)
 
+-- Only a hidden menu bar slides in at the top edge: with it shown, as the
+-- installer sets it, the pointer is left alone there.
+t.test("the pointer is kept off the top row only while the menu bar hides", function()
+    t.eq(bar.keeps_off_top(nil, true), true)
+    t.eq(bar.keeps_off_top(true, true), true)
+    t.eq(bar.keeps_off_top(true, false), false, "menu bar shown")
+    t.eq(bar.keeps_off_top(false, true), false, "Menu bar kept hidden off")
+end)
+
+-- The pointer's moves reach the page at most so often, ending where the
+-- pointer stopped.
+t.test("pointer moves are rate-limited and the last one always lands", function()
+    local clock, timers, sent = 0, {}, {}
+    local function after(s, fn)
+        timers[#timers + 1] = { at = clock + s, fn = fn }
+    end
+    local function run_due()
+        local due = {}
+        for i = #timers, 1, -1 do
+            if timers[i].at <= clock then
+                due[#due + 1] = table.remove(timers, i).fn
+            end
+        end
+        for _, fn in ipairs(due) do
+            fn()
+        end
+    end
+    local move = bar.throttle(after, function()
+        return clock
+    end, 0.03, function(x, y)
+        sent[#sent + 1] = x .. "," .. y
+    end)
+    move(1, 1)
+    t.eq(sent, { "1,1" }, "the first at once")
+    clock = 0.01
+    move(2, 1)
+    clock = 0.02
+    move(3, 1)
+    t.eq(sent, { "1,1" }, "held back")
+    t.eq(#timers, 1, "one wait, not one per move")
+    clock = 0.03
+    run_due()
+    t.eq(sent, { "1,1", "3,1" }, "then the latest")
+    clock = 0.1
+    move(4, 2)
+    t.eq(sent, { "1,1", "3,1", "4,2" }, "at once again after a pause")
+end)
+
 t.test("the pointer is kept off a bar's top row, so the hidden menu bar stays hidden", function()
     local frames = { A = { x = 0, y = 0, w = 1512, h = 36 }, B = { x = 1512, y = 0, w = 1920, h = 36, hidden = true } }
     t.eq(bar.off_top(frames, 100, 0), 1, "one point down")
