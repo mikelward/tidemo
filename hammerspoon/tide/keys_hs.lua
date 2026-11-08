@@ -53,6 +53,7 @@ function M.new(tide)
         -- Your own app keys (appkeys.lua), first, so one on tide's keys
         -- takes them. A file that's wrong is said once, and keeps none.
         local apps, apps_err = appkeys.load(tide.clock_dir, a.read, a.decode)
+        self.apps, self.apps_error = apps or {}, apps_err
         if not apps then
             apps = {}
             if apps_err ~= reported_apps then
@@ -239,6 +240,59 @@ function M.new(tide)
     end
 
     -- The settings window's Shortcuts state, for update().
+    -- The settings window's edits to your app keys (appkeys.lua): written
+    -- to apps.local.json and bound at once. What can't be one is said on
+    -- the page, writing nothing.
+    local function bundle_of(name)
+        return a.bundle_of_app and a.bundle_of_app(name) or nil
+    end
+
+    local function edit_apps(fn)
+        local new, why = appkeys.edit(tide.clock_dir, a.read, a.decode, mute.quote, a.write_file, fn)
+        if not new then
+            self.apps_refused = tostring(why)
+            refresh()
+            return nil, why
+        end
+        self.apps_refused = ""
+        self.load()
+        refresh()
+        return true
+    end
+
+    function self.add_app(hypr, app, new)
+        local why = appkeys.check(hypr, app, bundle_of)
+        if why then
+            self.apps_refused = why
+            refresh()
+            return nil, why
+        end
+        return edit_apps(function(list)
+            list[#list + 1] = { keys = hypr:match("^%s*(.-)%s*$"), app = app:match("^%s*(.-)%s*$"), new = new == true }
+            return list
+        end)
+    end
+
+    function self.remove_app(i)
+        return edit_apps(function(list)
+            if not list[i] then
+                return nil, "that app key is gone already"
+            end
+            table.remove(list, i)
+            return list
+        end)
+    end
+
+    function self.app_new(i, on)
+        return edit_apps(function(list)
+            if not list[i] then
+                return nil, "that app key is gone already"
+            end
+            list[i].new = on == true
+            return list
+        end)
+    end
+
     function self.page()
         local presets = {}
         for i, n in ipairs(keymaps.NAMES) do
@@ -259,7 +313,13 @@ function M.new(tide)
             local mac = shortcuts.from_hypr(pending.keys)
             pending = { label = mac and keys.keys_label(mac, {}, true) or pending.keys, does = pending.clash.does }
         end
+        local apps = {}
+        for i, e in ipairs(self.apps or {}) do
+            local mac = shortcuts.from_hypr(e.keys)
+            apps[i] = { label = mac and keys.keys_label(mac, {}, true) or e.keys, app = e.app, new = e.new == true }
+        end
         return {
+            apps = { rows = apps, refused = self.apps_refused or "", error = self.apps_error or "" },
             rows = rows,
             preset = self.state.preset,
             presets = presets,

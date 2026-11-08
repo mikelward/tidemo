@@ -1694,6 +1694,40 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["launcher-choice"].children[2].textContent, "tileco's launcher");
 }
 
+// Your app keys: each row's keys and app, New window and Remove, and the
+// add row, which sends what's typed and is cleared once it's in.
+{
+  const shortcuts = (apps) => ({ binds: [], failed: [], yours: { rows: [], presets: [], apps } });
+  sandbox.tide.update({ clockFiles: [], shortcuts: shortcuts({ rows: [{ label: "Super+M", app: "Spotify", new: false }], refused: "", error: "" }) });
+  const row = ids["app-keys-list"].children[0].children;
+  assert.deepStrictEqual(row.map((c) => c.textContent), ["Super+M", "Spotify", "Bring forward", "Remove"]);
+  sent.length = 0;
+  row[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { appNew: { index: 1, on: true } } }]);
+  sent.length = 0;
+  row[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { appRemove: 1 } }]);
+  sent.length = 0;
+  ids["app-keys-keys"].value = " Super+S ";
+  ids["app-keys-app"].value = "Safari";
+  ids["app-keys-add-button"].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { appAdd: { keys: "Super+S", app: "Safari", new: false } } }]);
+  sent.length = 0;
+  ids["app-keys-app"].listeners.keydown({ key: "Enter" });
+  assert.deepStrictEqual(sent, [{ keys: { appAdd: { keys: "Super+S", app: "Safari", new: false } } }], "Enter adds too");
+  // Refused: the fields stay, and the page says why.
+  sandbox.tide.update({ clockFiles: [], shortcuts: shortcuts({ rows: [{ label: "Super+M", app: "Spotify", new: false }], refused: "no app is called Safri", error: "" }) });
+  assert.strictEqual(ids["app-keys-error"].textContent, "no app is called Safri");
+  assert.strictEqual(ids["app-keys-app"].value, "Safari");
+  // Added: the list has it, and the fields are cleared.
+  sandbox.tide.update({ clockFiles: [], shortcuts: shortcuts({ rows: [
+    { label: "Super+M", app: "Spotify", new: false }, { label: "Super+S", app: "Safari", new: true }], refused: "", error: "" }) });
+  assert.strictEqual(ids["app-keys-list"].children.length, 2);
+  assert.strictEqual(ids["app-keys-list"].children[1].children[2].textContent, "New window");
+  assert.strictEqual(ids["app-keys-keys"].value, "");
+  assert.strictEqual(ids["app-keys-error"].textContent, "");
+}
+
 // The Keyboard page's Super key: the one in use, with ‹ and › to the
 // others, which asks tide to swap its Karabiner rule.
 {

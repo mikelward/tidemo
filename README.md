@@ -23,6 +23,7 @@ It brings tide for Linux's desktop to macOS:
 - app keys: Super+T a terminal (kitty, iTerm2 or Terminal), Super+G
   Chrome or Safari, Super+F Safari, Super+I Messages, Super+C Calendar,
   Super+Y Music, Super+H Finder and Super+N TextEdit, or with mikelward/scripts its helpers; and your own,
+  added on the settings window's Keyboard page, under Your app keys, or
   in `~/.config/tide/apps.json`:
 
   ```json

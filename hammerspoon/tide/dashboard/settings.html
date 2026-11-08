@@ -341,6 +341,20 @@ body.settings {
 }
 /* A shortcut you can change: its keys, a button that records new ones,
    then what it does, then Off and Reset. */
+.settings #app-keys-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.settings #app-keys-list li span.keys {
+  min-width: 8em;
+}
+.settings #app-keys-list li span.app {
+  flex: 1;
+}
+.settings #app-keys-add input {
+  flex: 1;
+}
 .settings #keys-named li {
   grid-template-columns: 170px 1fr auto;
   gap: 10px;
@@ -710,6 +724,11 @@ body.settings {
 <p class="row" id="keys-ask" hidden></p>
 <ul id="keys-named"></ul>
 <p class="error" id="keys-error" role="alert"></p>
+<h2 id="app-keys">Your app keys</h2>
+<p class="note">Super and a key to open an app, or bring its window forward. Yours win over tide's keys.</p>
+<ul id="app-keys-list"></ul>
+<p class="row" id="app-keys-add"><input id="app-keys-keys" placeholder="Super+M" aria-label="Keys" spellcheck="false"><input id="app-keys-app" placeholder="App, such as Spotify" aria-label="App" spellcheck="false"><button id="app-keys-add-button" type="button">Add</button></p>
+<p class="error" id="app-keys-error" role="alert"></p>
 <ul id="shortcut-list"></ul>
 <p class="error" id="shortcuts-error" role="alert"></p>
 <ul id="shortcut-failed"></ul>

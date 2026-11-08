@@ -1659,6 +1659,7 @@ function renderKeyboard(keyboard) {
 function renderShortcuts(shortcuts) {
   const yours = shortcuts?.yours && typeof shortcuts.yours === "object" ? shortcuts.yours : null;
   renderYours(yours);
+  renderAppKeys(yours?.apps);
   const list = document.getElementById("shortcut-list");
   list.replaceChildren();
   const binds = Array.isArray(shortcuts?.binds) ? shortcuts.binds : [];
@@ -1741,6 +1742,53 @@ function renderYours(yours) {
   }
   const why = [yours.refused, yours.error].filter((t) => typeof t === "string" && t !== "");
   document.getElementById("keys-error").textContent = why.join(" ");
+}
+
+// Your app keys (appkeys.lua): yours.apps' rows, each { label, app, new },
+// with New window on or off and Remove, and a row to add one: its keys,
+// typed as Super+M, and an app's name or bundle ID. Each sends
+// { keys: { appAdd | appRemove | appNew } }, indexes counting from 1, and
+// tide answers with tide.update(), saying on the page what it refused.
+let appKeyCount = -1;
+function renderAppKeys(apps) {
+  const list = document.getElementById("app-keys-list");
+  list.replaceChildren();
+  const rows = Array.isArray(apps?.rows) ? apps.rows : [];
+  // One more than before: the add row's went in, so it's cleared.
+  if (appKeyCount >= 0 && rows.length > appKeyCount) {
+    document.getElementById("app-keys-keys").value = "";
+    document.getElementById("app-keys-app").value = "";
+  }
+  appKeyCount = rows.length;
+  rows.forEach((r, i) => {
+    const li = el("li");
+    const k = el("span", r.label);
+    k.className = "keys";
+    const app = el("span", r.app);
+    app.className = "app";
+    const fresh = button(r.new ? "New window" : "Bring forward", `${r.app}: ${r.new ? "a new window each time" : "bring its window forward"}`,
+      false, () => send({ keys: { appNew: { index: i + 1, on: !r.new } } }));
+    fresh.setAttribute("aria-pressed", String(r.new === true));
+    li.append(k, app, fresh, button("Remove", `Remove ${r.label}, ${r.app}`, false, () => send({ keys: { appRemove: i + 1 } })));
+    list.append(li);
+  });
+  const why = [apps?.refused, apps?.error].filter((t) => typeof t === "string" && t !== "");
+  document.getElementById("app-keys-error").textContent = why.join(" ");
+}
+
+// Sends the add row's keys and app. The fields stay as typed, so one tide
+// refuses can be fixed; a key added shows in the list above.
+function addAppKey() {
+  const keys = document.getElementById("app-keys-keys");
+  const app = document.getElementById("app-keys-app");
+  send({ keys: { appAdd: { keys: keys.value.trim(), app: app.value.trim(), new: false } } });
+}
+
+document.getElementById("app-keys-add-button").addEventListener("click", addAppKey);
+for (const id of ["app-keys-keys", "app-keys-app"]) {
+  document.getElementById(id).addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addAppKey();
+  });
 }
 
 // Each section's buttons to where its settings are changed, when tide

@@ -89,4 +89,56 @@ t.test("a file that's wrong names itself and what's wrong", function()
     t.eq(why, "apps.json: apps[1]: unknown setting colour")
 end)
 
+-- The settings window's edits, written to apps.local.json.
+t.test("an edit writes the list in effect, changed, to apps.local.json", function()
+    local disk = { ["apps.json"] = json.encode({ apps = { { keys = "SUPER + M", app = "Spotify" } } }) }
+    local written
+    local function write(path, text)
+        written = path
+        disk[path:match("[^/]+$")] = text
+        return true
+    end
+    local new = appkeys.edit(DIR, files(disk), json.decode, json.encode, write, function(list)
+        list[#list + 1] = { keys = "Super+S", app = "Safari", new = true }
+        return list
+    end)
+    t.eq(written, DIR .. "/apps.local.json")
+    t.eq(#new, 2)
+    t.eq(appkeys.load(DIR, files(disk), json.decode), {
+        { keys = "SUPER + M", app = "Spotify", new = false },
+        { keys = "Super+S", app = "Safari", new = true },
+    })
+    -- Removing the last leaves an empty list, which keeps apps.json's out.
+    appkeys.edit(DIR, files(disk), json.decode, json.encode, write, function()
+        return {}
+    end)
+    t.eq(appkeys.load(DIR, files(disk), json.decode), {})
+end)
+
+t.test("an edit that fails, or a file that's wrong, writes nothing", function()
+    local wrote = false
+    local function write()
+        wrote = true
+        return true
+    end
+    local _, why = appkeys.edit(DIR, files({ ["apps.json"] = "[1]" }), json.decode, json.encode, write, function(l)
+        return l
+    end)
+    t.eq(why, "apps.json: not a JSON object. Fix the file to change your app keys here")
+    _, why = appkeys.edit(DIR, files({}), json.decode, json.encode, write, function()
+        return nil, "no"
+    end)
+    t.eq(why, "no")
+    t.eq(wrote, false)
+end)
+
+t.test("what can't be an app key says why", function()
+    t.eq(appkeys.check("Super+M", "Spotify", bundle_of), nil)
+    t.eq(appkeys.check("Super+M", "com.example.app", bundle_of), nil, "a bundle ID needs no lookup")
+    t.eq(appkeys.check("", "Spotify", bundle_of), "type the keys, such as Super+M")
+    t.eq(appkeys.check("Super+M", " ", bundle_of), "type an app's name, such as Spotify")
+    t.eq(appkeys.check("Ctrl+M", "Spotify", bundle_of), "Ctrl+M: a Mac binding needs Super")
+    t.eq(appkeys.check("Super+M", "Nope", bundle_of), "no app is called Nope")
+end)
+
 t.done("appkeys")

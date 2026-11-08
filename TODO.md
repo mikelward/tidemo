@@ -140,6 +140,8 @@ owner's extras.
   (`loginenv.lua`). **Check on a Mac:** with no `~/scripts`, a Start at
   login command with Homebrew's PATH starts, and the Fill tab lists
   `rbw`'s logins.
+- **Done: your app keys in the settings window** (Keyboard › Your app
+  keys). **Check on a Mac:** one added there opens its app at once.
 - **Done: app keys without scripts,** each opening a Mac's own app when
   its helper is missing, and your own in `apps.json`. **Next:** the
   Shortcuts list still says what scripts' helper does ("IRC") for a key

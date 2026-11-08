@@ -1680,7 +1680,11 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     an app by its name or bundle ID, with `"new": true` for a new window
     each time (`appkeys.lua`). Keys are Hyprland's strings, as `keys.json`'s.
     Yours come first, so one on tide's keys takes them, and the Shortcuts
-    list says which of tide's it displaced. A file that's wrong is said
+    list says which of tide's it displaced. The settings window's Keyboard
+    page lists them under Your app keys, with New window or Bring forward
+    and Remove for each, and a row to add one: the keys, typed as Super+M,
+    and the app. Its changes go to `apps.local.json`, and what can't be
+    an app key is said there, writing nothing. A file that's wrong is said
     once, and none of its keys bind until it's fixed.
 - **Keyboard's Shortcuts,** in tide's settings window, list every binding
   that registered, and every key that didn't, as tide for Linux's Keyboard page does
