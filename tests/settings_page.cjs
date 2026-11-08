@@ -1381,6 +1381,79 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["shortcut-failed"].children.length, 0);
 }
 
+// Your keys for the named bindings: Start from's presets, each named
+// binding's keys, a button that records, Off and Reset, and the swap
+// question; the read-only list leaves the named ones out.
+{
+  const yours = (more) => ({
+    rows: [
+      { name: "terminal", does: "Terminal", label: "Super+T", off: false, changed: false },
+      { name: "lock", does: "Lock", label: "Off", off: true, changed: true },
+    ],
+    preset: "tide",
+    presets: [{ value: "tide", label: "tide" }, { value: "dwm", label: "dwm" }],
+    own: false,
+    recording: "",
+    refused: "",
+    error: "",
+    ...more,
+  });
+  const show = (y) => sandbox.tide.update({
+    clockFiles: [],
+    shortcuts: {
+      binds: [
+        { keys: "Super+T", does: "Terminal", submap: "", named: true },
+        { keys: "Super+1", does: "Workspace 1 on the bar", submap: "", named: false },
+      ],
+      failed: [],
+      yours: y,
+    },
+  });
+  sent.length = 0;
+  show(yours());
+  assert.deepStrictEqual(ids["shortcut-list"].children.map((li) => li.children[0].textContent), ["Super+1"]);
+  const named = ids["keys-named"].children;
+  assert.deepStrictEqual(named.map((li) => [li.children[0].textContent, li.children[1].textContent]),
+    [["Super+T", "Terminal"], ["Off", "Lock"]]);
+  assert.deepStrictEqual(named[0].children[2].children.map((b) => b.textContent), ["Off"]);
+  assert.deepStrictEqual(named[1].children[2].children.map((b) => b.textContent), ["Reset"]);
+  named[0].children[0].listeners.click();
+  named[1].children[2].children[0].listeners.click();
+  const presets = ids["keys-presets"].children;
+  assert.strictEqual(presets[1].getAttribute("aria-pressed"), "true");
+  presets[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { record: "terminal" } }, { keys: { reset: "lock" } }, { keys: { preset: "dwm" } }]);
+  // Recording: the row says so, and a second click stops it.
+  sent.length = 0;
+  show(yours({ recording: "terminal" }));
+  assert.strictEqual(ids["keys-named"].children[0].children[0].textContent, "Press keys…");
+  ids["keys-named"].children[0].children[0].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { stop: true } }]);
+  // Keys another shortcut has: swap or cancel.
+  sent.length = 0;
+  show(yours({ pending: { label: "Super+L", does: "Lock" } }));
+  const ask = ids["keys-ask"];
+  assert.strictEqual(ask.hidden, false);
+  assert.strictEqual(ask.children[0].textContent, "Super+L is Lock. Swap them?");
+  ask.children[1].listeners.click();
+  ask.children[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { swap: true } }, { keys: { cancel: true } }]);
+  // With keys of your own, a preset asks first.
+  sent.length = 0;
+  show(yours({ own: true }));
+  ids["keys-presets"].children[2].listeners.click();
+  assert.deepStrictEqual(sent, []);
+  assert.strictEqual(ids["keys-ask"].children[0].textContent, "Your own keys go. Start from dwm?");
+  ids["keys-ask"].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ keys: { preset: "dwm" } }]);
+  // Why a change didn't take.
+  show(yours({ refused: "hold Super with it" }));
+  assert.strictEqual(ids["keys-error"].textContent, "hold Super with it");
+  // Without them (an older tide), the presets hide.
+  show(undefined);
+  assert.strictEqual(ids["keys-presets"].hidden, true);
+}
+
 // The Mouse section: the Mac's own Speed and Acceleration, sent for
 // LinearMouse's config; then tide's Scroll speed and Natural scrolling
 // rows, each change written to input.local.json, keeping what else it says.

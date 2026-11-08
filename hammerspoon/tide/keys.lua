@@ -12,53 +12,57 @@ M.OPTION = { "alt" }
 
 -- Each binding: Super plus `key`, with Shift if `shift`, calling the
 -- window manager's `action` with `arg`. `repeating` keys repeat while held.
+-- `name` is conf's for the same binding (conf hyprland.lua's bind()), so
+-- your keys in keys.json and keys.local.json, which tide's Keyboard
+-- shortcuts write, reach both desktops (shortcuts.lua). A binding without
+-- one keeps its keys: the Super tap and Super+0…9.
 M.map = {
-    { key = "j", action = "focus", arg = 1 },
-    { key = "k", action = "focus", arg = -1 },
-    { key = "j", shift = true, action = "move", arg = 1 },
-    { key = "k", shift = true, action = "move", arg = -1 },
+    { key = "j", action = "focus", arg = 1, name = "focus_down" },
+    { key = "k", action = "focus", arg = -1, name = "focus_up" },
+    { key = "j", shift = true, action = "move", arg = 1, name = "move_down" },
+    { key = "k", shift = true, action = "move", arg = -1, name = "move_up" },
     -- Super+Return goes to a workspace by name, Super+Shift+Return moves
     -- the window to one; Alt+Tab swaps with the master (M.karabiner_only,
     -- SPEC.md §7.2).
-    { key = "return", action = "go_to" },
-    { key = "return", shift = true, action = "move_to" },
-    { key = "\\", action = "mfact", arg = 1, repeating = true },
-    { key = "/", action = "mfact", arg = -1, repeating = true },
-    { key = "=", action = "nmaster", arg = 1 },
-    { key = "-", action = "nmaster", arg = -1 },
-    { key = ".", action = "cycle", arg = 1 },
-    { key = ",", action = "cycle", arg = -1 },
-    { key = "`", action = "monocle" },
-    { key = "o", action = "monocle" },
-    { key = "up", action = "maximize" },
-    { key = "up", shift = true, action = "fullscreen" },
-    { key = "down", action = "restore" },
-    { key = "f", shift = true, action = "toggle_float" },
+    { key = "return", action = "go_to", name = "go_to_workspace" },
+    { key = "return", shift = true, action = "move_to", name = "move_to_workspace" },
+    { key = "\\", action = "mfact", arg = 1, repeating = true, name = "grow_master" },
+    { key = "/", action = "mfact", arg = -1, repeating = true, name = "shrink_master" },
+    { key = "=", action = "nmaster", arg = 1, name = "add_master" },
+    { key = "-", action = "nmaster", arg = -1, name = "remove_master" },
+    { key = ".", action = "cycle", arg = 1, name = "next_layout" },
+    { key = ",", action = "cycle", arg = -1, name = "previous_layout" },
+    { key = "`", action = "monocle", name = "monocle" },
+    { key = "o", action = "monocle", name = "monocle" },
+    { key = "up", action = "maximize", name = "maximize" },
+    { key = "up", shift = true, action = "fullscreen", name = "fullscreen" },
+    { key = "down", action = "restore", name = "restore" },
+    { key = "f", shift = true, action = "toggle_float", name = "float" },
     -- A PC keyboard's Insert arrives as the Mac's Help key.
-    { key = "help", action = "toggle_float" },
+    { key = "help", action = "toggle_float", name = "float" },
     -- tide's Super+Alt+F, which Super can't have here: Super's chord holds
     -- Option already (SPEC.md §7.2). The Floating settings, filled in for
     -- the focused window.
-    { key = "i", shift = true, action = "float_rule" },
+    { key = "i", shift = true, action = "float_rule", name = "floating_rule" },
     -- With Karabiner's rule, physical Win+Backspace arrives as Super+F19:
     -- on some Macs something below Hammerspoon takes the chord on
     -- Backspace itself, and a chord on a key no keyboard here has gets
     -- through, as the Super tap's F20 does (SPEC.md §7.2).
-    { key = "delete", karabiner_key = "f19", action = "close" },
+    { key = "delete", karabiner_key = "f19", action = "close", name = "close" },
     -- Super+Z, not Super+Delete, which a PC keyboard may send as Backspace
     -- (SPEC.md §6.7).
-    { key = "z", action = "minimize" },
-    { key = "r", shift = true, action = "resize_mode" },
+    { key = "z", action = "minimize", name = "minimize" },
+    { key = "r", shift = true, action = "resize_mode", name = "resize_mode" },
     -- Left and Right go between windows, across displays at the edge;
     -- PgUp and PgDn between workspaces (SPEC.md §7.2).
-    { key = "left", action = "select", arg = -1 },
-    { key = "right", action = "select", arg = 1 },
-    { key = "left", shift = true, action = "move_side", arg = -1 },
-    { key = "right", shift = true, action = "move_side", arg = 1 },
-    { key = "pageup", action = "step", arg = -1 },
-    { key = "pagedown", action = "step", arg = 1 },
-    { key = "pageup", shift = true, action = "move_ws", arg = -1 },
-    { key = "pagedown", shift = true, action = "move_ws", arg = 1 },
+    { key = "left", action = "select", arg = -1, name = "focus_left" },
+    { key = "right", action = "select", arg = 1, name = "focus_right" },
+    { key = "left", shift = true, action = "move_side", arg = -1, name = "move_left" },
+    { key = "right", shift = true, action = "move_side", arg = 1, name = "move_right" },
+    { key = "pageup", action = "step", arg = -1, name = "previous_workspace" },
+    { key = "pagedown", action = "step", arg = 1, name = "next_workspace" },
+    { key = "pageup", shift = true, action = "move_ws", arg = -1, name = "move_to_previous_workspace" },
+    { key = "pagedown", shift = true, action = "move_ws", arg = 1, name = "move_to_next_workspace" },
 }
 
 -- App keys (tide's, conf hyprland.lua). Each brings the app's window, and
@@ -71,60 +75,60 @@ M.map = {
 -- `does` is what the settings window's Shortcuts list says it does, in
 -- conf's words for the same key.
 M.APPS = {
-    { key = "t", does = "Terminal", spec = { bundle = "net.kovidgoyal.kitty", new = true } },
-    { key = "w", does = "Terminal on the workstation", spec = { run = "terminal_on_workstation" } },
-    { key = "g", does = "Browser", spec = { run = "browser1" } },
-    { key = "g", shift = true, does = "Browser, third profile", spec = { run = "browser3" } },
-    { key = "f", does = "Browser, second profile", spec = { run = "browser2" } },
-    { key = "c", does = "Google Chat", spec = { run = "google-chat", home_app = true } },
-    { key = "c", shift = true, does = "Google Calendar", spec = { run = "google-calendar", home_app = true } },
-    { key = "h", does = "Home folder", spec = { run = "home" } },
-    { key = "i", does = "IRC", spec = { run = "irc" } },
-    { key = "m", does = "Google Meet", spec = { run = "google-meet" } },
-    { key = "n", does = "Notepad", spec = { run = "notepad" } },
-    { key = "r", does = "Remote desktop", spec = { run = "remote-desktop" } },
-    { key = "y", does = "YouTube Music", spec = { run = "youtube-music", home_app = true } },
-    { key = "e", does = "Files", spec = { run = "kitty -e yazi" } },
+    { name = "terminal", key = "t", does = "Terminal", spec = { bundle = "net.kovidgoyal.kitty", new = true } },
+    { name = "terminal_on_workstation", key = "w", does = "Terminal on the workstation", spec = { run = "terminal_on_workstation" } },
+    { name = "browser", key = "g", does = "Browser", spec = { run = "browser1" } },
+    { name = "browser_third", key = "g", shift = true, does = "Browser, third profile", spec = { run = "browser3" } },
+    { name = "browser_second", key = "f", does = "Browser, second profile", spec = { run = "browser2" } },
+    { name = "chat", key = "c", does = "Google Chat", spec = { run = "google-chat", home_app = true } },
+    { name = "calendar", key = "c", shift = true, does = "Google Calendar", spec = { run = "google-calendar", home_app = true } },
+    { name = "home_folder", key = "h", does = "Home folder", spec = { run = "home" } },
+    { name = "irc", key = "i", does = "IRC", spec = { run = "irc" } },
+    { name = "meet", key = "m", does = "Google Meet", spec = { run = "google-meet" } },
+    { name = "notepad", key = "n", does = "Notepad", spec = { run = "notepad" } },
+    { name = "remote_desktop", key = "r", does = "Remote desktop", spec = { run = "remote-desktop" } },
+    { name = "music", key = "y", does = "YouTube Music", spec = { run = "youtube-music", home_app = true } },
+    { name = "files", key = "e", does = "Files", spec = { run = "kitty -e yazi" } },
 }
 for _, a in ipairs(M.APPS) do
-    M.map[#M.map + 1] = { key = a.key, shift = a.shift, action = "app", arg = a.spec, does = a.does }
+    M.map[#M.map + 1] = { key = a.key, shift = a.shift, action = "app", arg = a.spec, does = a.does, name = a.name }
 end
 
 -- tide's session keys: lock, and log out.
-M.map[#M.map + 1] = { key = "l", action = "lock" }
-M.map[#M.map + 1] = { key = "e", shift = true, action = "logout" }
+M.map[#M.map + 1] = { key = "l", action = "lock", name = "lock" }
+M.map[#M.map + 1] = { key = "e", shift = true, action = "logout", name = "quit" }
 
 -- The switcher, each key on its own tab (SPEC.md §9). Karabiner's rule
 -- sends a lone Super tap as Super+F20, which opens the launcher, as
 -- Super+Space does and tide's and tileco's taps do.
-M.map[#M.map + 1] = { key = "space", action = "launcher", arg = "launch" }
+M.map[#M.map + 1] = { key = "space", action = "launcher", arg = "launch", name = "launcher" }
 M.map[#M.map + 1] = { key = "f20", action = "launcher", arg = "launch" }
-M.map[#M.map + 1] = { key = "a", action = "launcher", arg = "attention" }
-M.map[#M.map + 1] = { key = "space", shift = true, action = "dashboard" }
+M.map[#M.map + 1] = { key = "a", action = "launcher", arg = "attention", name = "attention" }
+M.map[#M.map + 1] = { key = "space", shift = true, action = "dashboard", name = "dashboard" }
 -- Super+V: the picker, on its Clipboard tab (SPEC.md §7.2), V as in
 -- paste: Return pastes the row where you were. Terminal on the VM, which
 -- it was, has no key now; the switcher finds it.
-M.map[#M.map + 1] = { key = "v", action = "picker", arg = "clipboard" }
+M.map[#M.map + 1] = { key = "v", action = "picker", arg = "clipboard", name = "clipboard" }
 -- Super+Shift+V: its Fill tab, your snippets and Bitwarden's logins, one
 -- row per field; Return types it where you were (SPEC.md §9.1).
-M.map[#M.map + 1] = { key = "v", shift = true, action = "picker", arg = "fill", does = "Snippets and passwords" }
+M.map[#M.map + 1] = { key = "v", shift = true, action = "picker", arg = "fill", does = "Snippets and passwords", name = "fill" }
 -- Super+;: its Characters tab, emoji and symbols by name, as tide's. Not
 -- Windows's Super+., which is the next layout here.
-M.map[#M.map + 1] = { key = ";", action = "picker", arg = "characters", does = "Emoji and characters" }
+M.map[#M.map + 1] = { key = ";", action = "picker", arg = "characters", does = "Emoji and characters", name = "characters" }
 -- Super+Tab flips between home and the workspace you used last, and
 -- Super+End goes to the last one other than home (SPEC.md §7.2).
-M.map[#M.map + 1] = { key = "tab", action = "flip" }
-M.map[#M.map + 1] = { key = "end", action = "last" }
+M.map[#M.map + 1] = { key = "tab", action = "flip", name = "home_or_back" }
+M.map[#M.map + 1] = { key = "end", action = "last", name = "last_other_workspace" }
 -- tide's mic-mute key: the microphone, everywhere (SPEC.md §7.2).
-M.map[#M.map + 1] = { key = "m", shift = true, action = "mic_mute" }
+M.map[#M.map + 1] = { key = "m", shift = true, action = "mic_mute", name = "mute_microphone" }
 -- Super+S: keep awake; Super+P: presenter mode, Do Not Disturb and keep
 -- awake together (SPEC.md §10).
-M.map[#M.map + 1] = { key = "s", action = "keep_awake" }
-M.map[#M.map + 1] = { key = "p", action = "presenter" }
+M.map[#M.map + 1] = { key = "s", action = "keep_awake", name = "keep_awake" }
+M.map[#M.map + 1] = { key = "p", action = "presenter", name = "presenter" }
 -- Super+Home: "in" (SPEC.md §6.1).
-M.map[#M.map + 1] = { key = "home", action = "home" }
+M.map[#M.map + 1] = { key = "home", action = "home", name = "home" }
 -- Super+Print: a region, as Shift+Print is (SPEC.md §7.2).
-M.map[#M.map + 1] = { key = "f13", action = "screenshot", arg = "region" }
+M.map[#M.map + 1] = { key = "f13", action = "screenshot", arg = "region", name = "screenshot_region" }
 
 -- tide's Print keys, without Super. A PC keyboard's Print arrives as F13
 -- (SPEC.md §7.2).
@@ -336,8 +340,9 @@ end
 -- `skipped` as { chord, keys, does, why }: with Super on Option, Super+Print
 -- is Alt+Print, which stays tide's window screenshot (Shift+Print still
 -- takes a region). The overview's Ctrl+Up and Ctrl+Down come next. With
--- Karabiner's Super, its own combinations come too.
-function M.bindings(super)
+-- Karabiner's Super, its own combinations come too. `map` is M.map with
+-- your keys (shortcuts.apply), M.map itself by default.
+function M.bindings(super, map)
     local out, seen, skipped = {}, {}, {}
     local function add(mods, b, is_super)
         local sorted = {}
@@ -359,7 +364,7 @@ function M.bindings(super)
         seen[chord] = { keys = label, does = does ~= "" and does or "no description" }
         out[#out + 1] = {
             mods = mods, key = b.key, action = b.action, arg = b.arg, repeating = b.repeating,
-            keys = label, does = does,
+            keys = label, does = does, name = b.name,
         }
     end
     for _, b in ipairs(M.plain) do
@@ -368,7 +373,7 @@ function M.bindings(super)
     for _, b in ipairs(M.overview) do
         add(b.mods, b, false)
     end
-    for _, b in ipairs(M.map) do
+    for _, b in ipairs(map or M.map) do
         local mods = M.mods(super, b)
         if super == M.KARABINER and b.karabiner_key then
             -- Shown as the key you press, bound as the one Karabiner sends.
@@ -410,7 +415,7 @@ end
 function M.shortcuts(bound, failed)
     local binds = {}
     for _, b in ipairs(bound) do
-        binds[#binds + 1] = { keys = b.keys, does = b.does, submap = "" }
+        binds[#binds + 1] = { keys = b.keys, does = b.does, submap = "", named = b.name ~= nil }
     end
     for _, b in ipairs(M.resize) do
         binds[#binds + 1] = { keys = M.key_label(b.key), does = resize_does(b.d), submap = "Resize mode" }

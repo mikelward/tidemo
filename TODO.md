@@ -399,6 +399,22 @@ tide. INFEASIBLE.md lists what can't be fixed.
   value differs, so a change made in System Settings stays until tide's
   files change that setting again, rather than being put back at each
   start.
+- **A Mac shortcut is Super with Shift or not** (SPEC.md §7.2,
+  2026-11-08): Karabiner's Super already holds Ctrl, Option and Command, so
+  tide for Linux's keys with Ctrl or Alt as well can't be bound here, and a
+  notification says which. The alternative was mapping Alt to something
+  else, which would mean different keys on each desktop. It's
+  `from_hypr` in `hammerspoon/tide/shortcuts.lua`.
+- **A preset's keys a Mac can't bind keep tide's** (2026-11-08): bspwm's
+  `Super+Alt+Q` leaves Quit on `Super+Shift+E`, and dwm's `Super+Return`,
+  swap with the master, which has no Super key here, binds nothing. It's
+  `preset_keys` in `hammerspoon/tide/shortcuts.lua`.
+- **Recording turns tide's keys off and listens with an event tap**
+  (2026-11-08), rather than the page reading the key: the page's key
+  events give the physical key, not the layout's, and Hammerspoon binds
+  the layout's. It's `record` in `hammerspoon/tide/keys_hs.lua`.
+- **Untested on a Mac:** the recording, the rebinding and the page's
+  buttons ran only against the tests' stand-ins.
 
 - **The overview's window order** (SPEC.md §6.9, 2026-11-05): each
   display in turn, in `wm:screens()`' order, its tiles in stack order, then

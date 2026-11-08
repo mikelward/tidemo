@@ -232,8 +232,8 @@ end)
 t.test("the Shortcuts list is what registered, in order, then resize mode's keys", function()
     local list, skipped = keys.bindings(keys.OPTION)
     local s = keys.shortcuts({ list[1], list[2] }, skipped)
-    t.eq(s.binds[1], { keys = "Print", does = "Screenshot", submap = "" })
-    t.eq(s.binds[2], { keys = "Alt+Print", does = "Screenshot of the window", submap = "" })
+    t.eq(s.binds[1], { keys = "Print", does = "Screenshot", submap = "", named = false })
+    t.eq(s.binds[2], { keys = "Alt+Print", does = "Screenshot of the window", submap = "", named = false })
     t.eq(s.binds[3], { keys = "H", does = "Narrower", submap = "Resize mode" })
     t.eq(s.binds[#s.binds], { keys = "Return", does = "Leave resize mode", submap = "Resize mode" })
     t.eq(#s.binds, 2 + #keys.resize + #keys.resize_exit)
@@ -242,6 +242,19 @@ t.test("the Shortcuts list is what registered, in order, then resize mode's keys
         does = "Screenshot of a region",
         why = "the same keys as Alt+Print (Screenshot of the window)",
     } })
+end)
+
+t.test("the Shortcuts list marks the named bindings, which the page lists to change", function()
+    local list = keys.bindings(keys.KARABINER)
+    local s = keys.shortcuts(list, {})
+    local named = {}
+    for _, b in ipairs(s.binds) do
+        if b.named then
+            named[b.does] = true
+        end
+    end
+    t.eq(named["Lock"], true)
+    t.eq(named["Workspace 1 on the bar"], nil, "Super+1 can't change")
 end)
 
 t.test("doctor names each key that didn't register, and says nothing with none", function()
