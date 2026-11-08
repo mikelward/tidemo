@@ -48,6 +48,7 @@ local theme_hs = require("tide.theme_hs")
 local idle_hs = require("tide.idle_hs")
 local dndsched_hs = require("tide.dndsched_hs")
 local floating_hs = require("tide.floating_hs")
+local keys_hs = require("tide.keys_hs")
 local pinned_hs = require("tide.pinned_hs")
 local dashboard = require("tide.dashboard")
 local shots = require("tide.shots")
@@ -95,7 +96,7 @@ local function bind_all(self)
         h:delete()
     end
     self.hotkeys = {}
-    local list, skipped = keys.bindings(self.super)
+    local list, skipped = keys.bindings(self.super, self.keys_hs and self.keys_hs.map)
     -- What registered and what didn't, for the settings window's Shortcuts
     -- and tide doctor (SPEC.md §15).
     local bound, failed = {}, {}
@@ -351,6 +352,15 @@ function M.start(config)
     self.clock_dir = dashboard.clock_dir(os.getenv)
     self.floating = floating_hs.new(self, self.adapter.login)
     self.floating.load()
+    -- Your keys, from keys.json and keys.local.json (SPEC.md §15), read
+    -- before the first bind, and bound again as they change.
+    self.rebind = function()
+        if self.super then
+            bind_all(self)
+        end
+    end
+    self.keys_hs = keys_hs.new(self)
+    self.keys_hs.load()
     self.wm.floated_by_hand = function(id)
         self.floating.ask(id)
     end
@@ -623,6 +633,7 @@ function M.start(config)
     self.clock_watch = adapter_mod.watch_folder(self.clock_dir, function()
         load_layouts()
         self.floating.load()
+        self.keys_hs.load()
         load_patterns()
         load_muted()
         load_workspaces()

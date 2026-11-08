@@ -103,6 +103,52 @@ function M.encode_setup(tide)
         .. ',"left":' .. math.tointeger(page.left) .. "}"
 end
 
+-- The Shortcuts list's state (keys_hs.page) as JSON, its rows and presets
+-- lists.
+function M.encode_yours(page)
+    local copy = {}
+    for k, v in pairs(page) do
+        copy[k] = v
+    end
+    copy.rows, copy.presets = "__rows__", "__presets__"
+    return (hs.json.encode(copy):gsub('"__rows__"', function()
+        return M.list(page.rows, hs.json.encode)
+    end):gsub('"__presets__"', function()
+        return M.list(page.presets, hs.json.encode)
+    end))
+end
+
+-- One of the Shortcuts list's messages, { keys = { record = name } }, or
+-- stop, swap, cancel, reset, off or preset, through `k` (keys_hs.new).
+function M.keys_message(k, m, log)
+    if not k then
+        log("settings: the shortcuts aren't loaded")
+        return
+    end
+    local str = function(v)
+        return type(v) == "string" and v or ""
+    end
+    local ok, why = true, nil
+    if m.record then
+        k.record(str(m.record))
+    elseif m.stop then
+        k.stop()
+    elseif m.swap then
+        ok, why = k.swap()
+    elseif m.cancel then
+        k.cancel()
+    elseif m.reset then
+        ok, why = k.reset(str(m.reset))
+    elseif m.off then
+        ok, why = k.off(str(m.off))
+    elseif m.preset then
+        ok, why = k.start_from(str(m.preset))
+    end
+    if not ok then
+        log("settings: shortcuts: " .. tostring(why))
+    end
+end
+
 -- One of the Floating section's messages, { floatAdd = { app, title } },
 -- { floatMove = { index, app, title, step } } or { floatRemove = { index,
 -- app, title } }, through `floats` (floating_hs.new). Returns true, or nil
@@ -340,6 +386,9 @@ function M.new(tide)
             shortcuts = {
                 binds = "__shortcut_binds__",
                 failed = "__shortcut_failed__",
+                -- Your keys for the named ones (keys_hs.lua), which the
+                -- page can change.
+                yours = tide.keys_hs and "__shortcut_yours__" or nil,
             },
             -- The Setup checklist: each permission's state, and the ticks.
             setup = "__setup__",
@@ -379,6 +428,9 @@ function M.new(tide)
         end)
         json = json:gsub('"__shortcut_failed__"', function()
             return M.list(shortcuts.failed, hs.json.encode)
+        end)
+        json = json:gsub('"__shortcut_yours__"', function()
+            return M.encode_yours(tide.keys_hs.page())
         end)
         json = json:gsub('"__setup__"', function()
             return M.encode_setup(tide)
@@ -579,6 +631,10 @@ function M.new(tide)
                 if not mute.has(tide.wm.muted, body.unmute) or tide.toggle_mute(body.unmute) == nil then
                     push()
                 end
+            elseif type(body.keys) == "table" then
+                -- The Shortcuts list's changes (keys_hs.lua), which say how
+                -- they went in the next update().
+                M.keys_message(tide.keys_hs, body.keys, tide.adapter.log)
             elseif type(body.floatAdd) == "table" or type(body.floatMove) == "table"
                 or type(body.floatRemove) == "table" then
                 -- The Floating section's edits, which tide makes, since the
@@ -661,6 +717,9 @@ function M.new(tide)
                     tide.adapter.log("settings: no button named " .. body.open)
                 end
             elseif body.close and view then
+                if tide.keys_hs then
+                    tide.keys_hs.stop()
+                end
                 tide.wm:own_window("settings", nil)
                 view:delete()
                 view = nil
@@ -760,6 +819,10 @@ function M.new(tide)
         end)
         view:windowCallback(function(action)
             if action == "closing" then
+                -- A recording left running gives the keys back.
+                if tide.keys_hs then
+                    tide.keys_hs.stop()
+                end
                 tide.wm:own_window("settings", nil)
                 view = nil
                 bt.watch(false)

@@ -263,7 +263,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
 | Caps Lock as Compose | Caps Lock sends F18, and tide reads the keys after it from Linux's own Compose table (§10) | **yes** *(unverified on a Mac)*: not during Secure Input |
 | Setup checklist (tide for Chrome §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
-| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide for Linux §16) | tide reads the same files (§15); every page of tide for Linux's is a section, with buttons to macOS's panes and the helpers for what tide can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts and the Setup checklist are tide's own; Appearance is only a button |
+| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide for Linux §16) | tide reads the same files (§15); every page of tide for Linux's is a section, with buttons to macOS's panes and the helpers for what tide can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts (your keys and the presets, as tide for Linux's) and the Setup checklist are tide's own; Appearance is only a button |
 | `tide doctor` (tide for Linux §5.4) | `tide doctor` (§15) | **yes** |
 | Workspace swipe, three fingers (conf `hyprland.lua`) | the trackpad's touches through an event tap, with macOS's own swipe between Spaces off (§7.2) | **yes** *(unverified on a Mac)* |
 | kitty, Ubuntu Mono, shell config | native, through `setup` and `conf` | **yes** |
@@ -1643,6 +1643,30 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 - **Keyboard's Shortcuts,** in tide's settings window, list every binding
   that registered, and every key that didn't, as tide for Linux's Keyboard page does
   (§15, tide for Linux §16).
+- **Your keys are tide for Linux's,** so one change serves both desktops:
+  - Each binding with a counterpart in conf's has conf's name for it
+    (`keys.lua`'s `name`): `terminal`, `lock`, `focus_down` and the rest.
+    The Super tap and `Super+0…9` have none, and keep their keys, as on
+    tide for Linux.
+  - Your keys are in `keys.json` and `keys.local.json` in tide's folder,
+    as tide for Linux writes them: `{ "preset": "dwm", "keys": {
+    "terminal": ["SUPER + D"], "lock": [] } }`, Hyprland's key strings,
+    a binding's keys in place of the preset's, none turning it off
+    (`shortcuts.lua`).
+  - A Mac binding is Super plus a key, with Shift or not: Super already
+    holds Ctrl, Option and Command with Karabiner's rule. Keys with Ctrl
+    or Alt as well, or without Super, can't be one here, and a
+    notification says which. So do keys another binding has, or an
+    unnamed one's.
+  - A binding given another's keys takes them, and the other goes without,
+    as conf does. A name only Linux has, `screenshot_window` say, binds
+    nothing here.
+  - The presets are tide for Linux's (`keymaps.lua`, its `keymaps.mjs` as
+    Lua; `make check-tide` compares them). A preset's keys a Mac can't
+    bind, bspwm's `Super+Alt+Q` say, leave that binding tide's keys rather
+    than turning it off. dwm's `Super+Return` is swap with the master,
+    which has no Super key here (`Alt+Tab`), so it binds nothing and Go to
+    a workspace keeps `Super+Return`.
 
 ### 7.3 Taking keys from the system and the old setup
 
@@ -3518,7 +3542,26 @@ Each one names a workaround, or says there is none.
       puts a rule tide turned on back.
   - **Built: Keyboard's Shortcuts,** below the Karabiner rules, as tide for Linux's
     Keyboard page has its shortcuts below its settings (tide for Linux §16).
-    Read-only, as tide for Linux's are.
+    The named ones (§7.2) come first and can change, as tide for Linux's
+    do; the rest follow, read-only.
+    - **Start from** sets every key to another tiling window manager's
+      defaults, tide's own, dwm, i3, sway, xmonad or bspwm, as tide for
+      Linux's does. With keys of your own, it asks first, as they go.
+    - **A click on a binding's keys records new ones.** tide turns its own
+      keys off, so the keys pressed reach it, and takes the next key
+      pressed with Super (`hs.eventtap`, under the Accessibility grant tide
+      has). Hammerspoon's own name for the key on this layout is what it
+      binds, so Dvorak's keys are Dvorak's. Esc, a second click, closing
+      the window or 15 seconds with no key give the keys back.
+    - Keys another binding has are asked about: Swap gives that one this
+      one's old keys, Cancel changes nothing. Keys an unnamed binding has
+      (`Super+1`) can't be given.
+    - Off takes a binding's keys away; Reset, once its keys aren't the
+      preset's, gives them back.
+    - A change writes `keys.local.json`, with the preset always, so tide's
+      own overrides another in `keys.json`, and binds at once. A file
+      changed by hand, or by tide for Linux, is read again as the folder
+      changes, and the keys are bound again only when they've changed.
     - They come from `keys.lua`, as tide registered them as it started,
       or as Super last moved between Karabiner's and Option (§7.1): each
       binding's keys and what it does, in `keys.bindings`' order, then

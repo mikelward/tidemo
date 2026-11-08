@@ -339,6 +339,21 @@ body.settings {
 .settings #shortcut-list li span:last-child {
   color: var(--fg-dim);
 }
+/* A shortcut you can change: its keys, a button that records new ones,
+   then what it does, then Off and Reset. */
+.settings #keys-named li {
+  grid-template-columns: 170px 1fr auto;
+  gap: 10px;
+  min-height: 28px;
+  padding: 0 10px;
+}
+.settings #keys-named li button.keys {
+  justify-self: start;
+  font-weight: 600;
+}
+.settings #keys-named li span {
+  color: var(--fg-dim);
+}
 .settings #shortcut-failed li {
   grid-template-columns: 170px 1fr;
   gap: 10px;
@@ -689,7 +704,11 @@ body.settings {
 <ul id="karabiner-rules"></ul>
 <p class="error" id="keyboard-error" role="alert"></p>
 <h2 id="shortcuts">Shortcuts</h2>
-<p class="note">The keys tide has now, from its keys.lua, in its order. Super is Win with conf's Karabiner rules, and Option without them.</p>
+<p class="note">Super is Win with conf's Karabiner rules, and Option without them. Click a shortcut's keys to change them; tide shares them with tide for Linux.</p>
+<div class="row choice" id="keys-presets"></div>
+<p class="row" id="keys-ask" hidden></p>
+<ul id="keys-named"></ul>
+<p class="error" id="keys-error" role="alert"></p>
 <ul id="shortcut-list"></ul>
 <p class="error" id="shortcuts-error" role="alert"></p>
 <ul id="shortcut-failed"></ul>

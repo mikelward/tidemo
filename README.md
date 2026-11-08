@@ -79,7 +79,10 @@ It brings tide for Linux's desktop to macOS:
   atop the sidebar searches the pages. Its
   Keyboard section turns conf's Karabiner rules, such as Ctrl+Tab's next
   tab, on and off itself, keeps them up to date with conf, and turns a new
-  one on once. Its Mouse section has tide for Linux's Scroll speed and Natural
+  one on once. Its Shortcuts list changes a shortcut's keys with a click
+  and the keys you press, or starts every key from dwm, i3, sway, xmonad
+  or bspwm's, in the same files as tide for Linux, so one change serves
+  both (§7.2, §15). Its Mouse section has tide for Linux's Scroll speed and Natural
   scrolling, which tide sets in LinearMouse's config as it starts, after
   a device is plugged in or a wake, and when tide for Linux's settings change. Its
   last section, the Setup checklist, shows each permission's state and

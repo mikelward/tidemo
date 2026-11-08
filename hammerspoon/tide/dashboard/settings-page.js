@@ -1636,10 +1636,14 @@ function renderKeyboard(keyboard) {
 // order, with resize mode's prefixed; then each key that didn't register,
 // and why. Read-only, as tide's are.
 function renderShortcuts(shortcuts) {
+  const yours = shortcuts?.yours && typeof shortcuts.yours === "object" ? shortcuts.yours : null;
+  renderYours(yours);
   const list = document.getElementById("shortcut-list");
   list.replaceChildren();
   const binds = Array.isArray(shortcuts?.binds) ? shortcuts.binds : [];
   for (const b of binds) {
+    // The ones you can change are listed above, with their buttons.
+    if (yours && b.named) continue;
     const li = el("li");
     const does = typeof b.does === "string" ? b.does : "";
     if (does === "") li.className = "undescribed";
@@ -1656,6 +1660,66 @@ function renderShortcuts(shortcuts) {
     li.append(el("span", f.keys), el("span", f.does ? `${f.does}: ${f.why}` : f.why));
     out.append(li);
   }
+}
+
+// Your keys for tide's named bindings (SPEC.md §15), as tide's Keyboard
+// page has them (tide SPEC.md §16): Start from's presets, then each
+// binding, whose keys' button records new ones. Each sends { keys: {...} }:
+// record, stop, swap, cancel, reset, off or preset; tide does it, recording
+// the next key pressed itself, and answers with tide.update().
+let askingPreset = "";
+function renderYours(yours) {
+  const presets = document.getElementById("keys-presets");
+  const ask = document.getElementById("keys-ask");
+  const list = document.getElementById("keys-named");
+  presets.replaceChildren();
+  ask.replaceChildren();
+  list.replaceChildren();
+  document.getElementById("keys-error").textContent = "";
+  presets.hidden = yours === null;
+  ask.hidden = true;
+  if (yours === null) return;
+  const keys = (msg) => send({ keys: msg });
+  presets.append(el("span", "Start from"));
+  for (const p of Array.isArray(yours.presets) ? yours.presets : []) {
+    const b = button(p.label, `Start from ${p.label}'s keys`, false, () => {
+      if (yours.own) {
+        askingPreset = p.value;
+        renderYours(yours);
+      } else {
+        keys({ preset: p.value });
+      }
+    });
+    b.setAttribute("aria-pressed", yours.preset === p.value ? "true" : "false");
+    presets.append(b);
+  }
+  const chosen = (yours.presets || []).find((p) => p.value === askingPreset);
+  if (chosen) {
+    ask.hidden = false;
+    ask.append(el("span", `Your own keys go. Start from ${chosen.label}?`),
+      button("Start over", "Start over", false, () => { askingPreset = ""; keys({ preset: chosen.value }); }),
+      button("Cancel", "Cancel", false, () => { askingPreset = ""; renderYours(yours); }));
+  } else if (yours.pending && typeof yours.pending === "object") {
+    ask.hidden = false;
+    ask.append(el("span", `${yours.pending.label} is ${yours.pending.does}. Swap them?`),
+      button("Swap", "Swap", false, () => keys({ swap: true })),
+      button("Cancel", "Cancel", false, () => keys({ cancel: true })));
+  }
+  for (const r of Array.isArray(yours.rows) ? yours.rows : []) {
+    const li = el("li");
+    const recording = yours.recording === r.name;
+    const k = button(recording ? "Press keys…" : r.label, `Change ${r.does}'s keys`, false,
+      () => keys(recording ? { stop: true } : { record: r.name }));
+    k.className = r.off ? "keys off" : "keys";
+    const side = el("span");
+    side.className = "row";
+    if (!r.off) side.append(button("Off", `Turn ${r.does} off`, false, () => keys({ off: r.name })));
+    if (r.changed) side.append(button("Reset", `Reset ${r.does}'s keys`, false, () => keys({ reset: r.name })));
+    li.append(k, el("span", r.does), side);
+    list.append(li);
+  }
+  const why = [yours.refused, yours.error].filter((t) => typeof t === "string" && t !== "");
+  document.getElementById("keys-error").textContent = why.join(" ");
 }
 
 // Each section's buttons to where its settings are changed, when tide
