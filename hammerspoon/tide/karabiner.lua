@@ -8,6 +8,7 @@
 -- settings come from `deps`.
 
 local dashboard = require("tide.dashboard")
+local keys = require("tide.keys")
 local names = require("tide.names")
 
 local M = {}
@@ -43,7 +44,22 @@ M.CONF_FILES = {
 -- is turned on once, and one you turn off stays off.
 M.SEEN_KEY = "tide.karabiner_seen"
 -- dashboard/karabiner.js, beside this file.
-M.SOURCE_PATH = (debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or ".") .. "/dashboard/karabiner.js"
+local HERE = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
+M.SOURCE_PATH = HERE .. "/dashboard/karabiner.js"
+
+-- The Super key (SPEC.md §7.1): tide's rule for each, in karabiner/ beside
+-- this file, installed in Karabiner's folder as M.SUPER_FILE; "none" is
+-- plain Option, with tide's rule off. In the settings window's order.
+M.SUPER_DIR = HERE .. "/karabiner"
+M.SUPER_FILE = "tide.json"
+M.SUPER_CHOICES = {
+    { value = "option", label = "Left Option", file = "tide-option.json" },
+    { value = "win", label = "Win, with the PC keyboard rotation", file = "tide.json" },
+    { value = "none", label = "Option, without Karabiner" },
+}
+-- The left Option rule's description starts so; any other tide rule is the
+-- Win key's.
+M.OPTION_PREFIX = "tide: left Option"
 
 local js = names.js_string
 
@@ -181,7 +197,7 @@ function M.new(deps)
                 description: r.description, label: r.label, file: r.file, on: states ? states[i].on : false,
             }));
             if (CONFIG === null) return { rules: view(null), errors: a.errors, missing: true };
-            const s = K.synced(CONFIG, rules, SEEN, ORDER);
+            const s = K.synced(CONFIG, rules, SEEN, ORDER, SUPER_FILE, SUPER_PREFIXES, a.errors.length > 0);
             if (s.error) return { rules: view(null), errors: a.errors, error: s.error };
             const st = K.ruleStates(s.text ?? CONFIG, rules);
             // No text, not a null one, when nothing changed: a JSON null
@@ -189,11 +205,13 @@ function M.new(deps)
             // file has them now, for when the new text can't be saved.
             return {
                 rules: view(st.states), before: view(K.ruleStates(CONFIG, rules).states), errors: a.errors,
-                text: s.text ?? undefined, updated: s.updated, enabled: s.enabled,
+                text: s.text ?? undefined, updated: s.updated, enabled: s.enabled, replaced: s.replaced, super: s.super,
             };
         ]], list, {
             CONFIG = config and js(config) or "null",
             SEEN = js_list(seen(), js),
+            SUPER_FILE = js(M.SUPER_FILE),
+            SUPER_PREFIXES = js_list(keys.RULE_PREFIXES, js),
         })
         if not v then
             deps.log(err)
@@ -226,6 +244,12 @@ function M.new(deps)
                 if #(v.enabled or {}) > 0 then
                     deps.notify("tide turned on conf's Karabiner rules: " .. labels(v.enabled, by)
                         .. ". Switch them under Keyboard in tide's settings.")
+                end
+                if #(v.replaced or {}) > 0 then
+                    local old = "\"" .. table.concat(v.replaced, "\", \"") .. "\""
+                    deps.notify((v.super and ("tide's Super key rule is now \"" .. v.super .. "\", in place of " .. old .. ", which it turned off.")
+                        or ("tide turned off " .. old .. ", whose file is gone, so Super is plain Option."))
+                        .. " Choose the Super key under Keyboard in tide's settings.")
                 end
                 if #(v.updated or {}) > 0 then
                     deps.notify("tide brought Karabiner's copy up to date with conf: " .. labels(v.updated, by) .. ".")
@@ -273,6 +297,79 @@ function M.new(deps)
         remember({ { description = description } })
         self.check(true)
         return true
+    end
+
+    -- The Super key in use, as an M.SUPER_CHOICES value: which tide rule
+    -- is on, from the last check.
+    -- A tide rule, by its description, whatever its file: an old conf
+    -- checkout's tilemo.json is one too.
+    local function is_tide(description)
+        for _, prefix in ipairs(keys.RULE_PREFIXES) do
+            if description:sub(1, #prefix) == prefix then
+                return true
+            end
+        end
+        return false
+    end
+
+    function self.super()
+        for _, r in ipairs(self.state.rules) do
+            if is_tide(r.description) and r.on then
+                return r.description:sub(1, #M.OPTION_PREFIX) == M.OPTION_PREFIX and "option" or "win"
+            end
+        end
+        return "none"
+    end
+
+    -- Make `value`, an M.SUPER_CHOICES value, the Super key: the rule in use
+    -- goes off, and the chosen one goes into Karabiner's folder, on. A link
+    -- there, as an old conf checkout made, is replaced, not written through.
+    -- Returns true, or nil and why.
+    function self.set_super(value)
+        local choice
+        for _, c in ipairs(M.SUPER_CHOICES) do
+            if c.value == value then
+                choice = c
+            end
+        end
+        if not choice then
+            return nil, "there's no Super key called " .. tostring(value)
+        end
+        -- The chosen rule is read first, so a missing one changes nothing.
+        local text, description
+        if choice.file then
+            text = deps.read(M.SUPER_DIR .. "/" .. choice.file)
+            local rule = text and deps.decode(text)
+            description = type(rule) == "table" and type(rule.rules) == "table" and rule.rules[1]
+                and rule.rules[1].description
+            if type(description) ~= "string" then
+                return nil, "couldn't read tide's rule " .. M.SUPER_DIR .. "/" .. choice.file .. ": install tide again"
+            end
+        end
+        self.check(true)
+        for _, r in ipairs(self.state.rules) do
+            if is_tide(r.description) and r.on then
+                local ok, err = self.set(r.description, false)
+                if not ok then
+                    return nil, err
+                end
+            end
+        end
+        if not choice.file then
+            return true
+        end
+        local path = assets .. "/" .. M.SUPER_FILE
+        if deps.resolve(path) ~= path then
+            local ok, err = (deps.remove or os.remove)(path)
+            if not ok then
+                return nil, "couldn't replace the link " .. path .. ": " .. tostring(err)
+            end
+        end
+        local ok, err = deps.write(path, text)
+        if not ok then
+            return nil, "couldn't write " .. path .. ": " .. tostring(err)
+        end
+        return self.set(description, true)
     end
 
     -- tide doctor's lines: what's wrong, and conf's rules that are off.

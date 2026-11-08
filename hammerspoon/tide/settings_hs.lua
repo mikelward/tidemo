@@ -8,6 +8,7 @@
 
 local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
+local karabiner = require("tide.karabiner")
 local layout = require("tide.layout")
 local mute = require("tide.mute")
 local standing = require("tide.standing")
@@ -212,6 +213,15 @@ end
 
 -- The Switcher row's choice, `value`: tide switches at once. Returns
 -- true, or nil and why, which the log keeps with what was asked.
+-- The Super key's choices for the Keyboard page, as { value, label }.
+function M.super_choices()
+    local out = {}
+    for i, c in ipairs(karabiner.SUPER_CHOICES) do
+        out[i] = { value = c.value, label = c.label }
+    end
+    return out
+end
+
 function M.switch_launcher(tide, value)
     local ok, why
     if tide.set_launcher then
@@ -224,6 +234,27 @@ function M.switch_launcher(tide, value)
     end
     why = tostring(why)
     tide.adapter.log("settings: couldn't switch the launcher to " .. tostring(value) .. ": " .. why)
+    return nil, why
+end
+
+-- Make `value` the Super key (karabiner.lua's set_super), then have tide
+-- pick its modifiers and bind its keys again at once, rather than at the
+-- next Karabiner check. Returns true, or nil and why, which the log keeps.
+function M.choose_super(tide, value)
+    local ok, why
+    if tide.karabiner_rules then
+        ok, why = tide.karabiner_rules.set_super(value)
+    else
+        why = "tide can't switch Karabiner's rules on this Mac"
+    end
+    if ok then
+        if tide.recheck_super then
+            tide.recheck_super()
+        end
+        return true
+    end
+    why = tostring(why)
+    tide.adapter.log("settings: couldn't make " .. tostring(value) .. " the Super key: " .. why)
     return nil, why
 end
 
@@ -378,6 +409,11 @@ function M.new(tide)
             -- (macprefs.lua).
             macos = tide.macprefs and tide.macprefs.state() or nil,
             keyboard = {
+                -- The Super key, and the choices (karabiner.lua).
+                super = tide.karabiner_rules and {
+                    value = tide.karabiner_rules.super(),
+                    choices = M.super_choices(),
+                } or nil,
                 rules = "__karabiner_rules__",
                 problem = tide.karabiner_rules and tide.karabiner_rules.state.problem or "",
             },
@@ -679,6 +715,14 @@ function M.new(tide)
                     tide.adapter.notify("Couldn't switch the launcher: " .. why)
                 end
                 push()
+            elseif type(body.superKey) == "string" then
+                -- The Super key: tide swaps its Karabiner rule, and the page
+                -- shows the one in use after.
+                local _, why = M.choose_super(tide, body.superKey)
+                push()
+                if why and view then
+                    view:evaluateJavaScript("tide.keyboardError(" .. hs.json.encode({ why }):sub(2, -2) .. ")")
+                end
             elseif type(body.karabinerRule) == "table" and type(body.karabinerRule.description) == "string" then
                 -- A Keyboard switch: tide edits karabiner.json, and the
                 -- page shows the rules as they are after.

@@ -188,4 +188,41 @@ t.test("a launcher switch that fails says why, and the log keeps it", function()
     t.eq(#logged, 2)
 end)
 
+-- The Super key: tide binds its keys again at once, not at the next
+-- Karabiner check, and a choice that fails says why and changes nothing.
+t.test("a Super key choice rebinds tide's keys at once, and a failed one says why", function()
+    local settings_hs = require("tide.settings_hs")
+    local logged, rechecks, asked = {}, 0, {}
+    local tide = {
+        adapter = {
+            log = function(line)
+                logged[#logged + 1] = line
+            end,
+        },
+        karabiner_rules = {
+            set_super = function(value)
+                asked[#asked + 1] = value
+                if value == "capslock" then
+                    return nil, "there's no Super key called capslock"
+                end
+                return true
+            end,
+        },
+        recheck_super = function()
+            rechecks = rechecks + 1
+        end,
+    }
+    t.eq(settings_hs.choose_super(tide, "none"), true)
+    t.eq(rechecks, 1)
+    local ok, why = settings_hs.choose_super(tide, "capslock")
+    t.eq(ok, nil)
+    t.eq(why, "there's no Super key called capslock")
+    t.eq(rechecks, 1, "a failed choice binds nothing again")
+    t.eq(logged, { "settings: couldn't make capslock the Super key: there's no Super key called capslock" })
+    t.eq(asked, { "none", "capslock" })
+    tide.karabiner_rules = nil
+    ok, why = settings_hs.choose_super(tide, "win")
+    t.eq(why, "tide can't switch Karabiner's rules on this Mac")
+end)
+
 t.done("settings")

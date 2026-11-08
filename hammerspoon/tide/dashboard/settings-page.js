@@ -1616,7 +1616,28 @@ document.getElementById("menubar-hidden").addEventListener("click", () => {
   send({ keepMenuBarHidden: !menuBarHidden });
 });
 
+// The Super key (SPEC.md §7.1): keyboard.super's value and choices, with ‹
+// and › to the others, which send { superKey: value }; tide swaps its
+// Karabiner rule and answers with tide.update(), or tide.keyboardError(why).
+function renderSuper(sup) {
+  const box = document.getElementById("super-choice");
+  box.replaceChildren();
+  const choices = Array.isArray(sup?.choices) ? sup.choices : [];
+  const i = choices.findIndex((c) => c.value === sup.value);
+  if (i < 0) return;
+  const step = (d) => send({ superKey: choices[(i + d + choices.length) % choices.length].value });
+  const shown = el("span", choices[i].label);
+  shown.className = "value";
+  box.append(
+    el("span", "Super key"),
+    button("‹", "Previous: Super key", choices.length < 2, () => step(-1)),
+    shown,
+    button("›", "Next: Super key", choices.length < 2, () => step(1)),
+  );
+}
+
 function renderKeyboard(keyboard) {
+  renderSuper(keyboard?.super);
   const list = document.getElementById("karabiner-rules");
   list.replaceChildren();
   const rules = Array.isArray(keyboard?.rules) ? keyboard.rules : [];

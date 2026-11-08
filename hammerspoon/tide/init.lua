@@ -1086,6 +1086,12 @@ function M.start(config)
     if self.bar and self.adapter.hides_menu_bar and self.adapter.hides_menu_bar() then
         self.adapter.notify(checklist.MENU_BAR_NOTICE)
     end
+    -- The settings window's Super key choice: the rules and the keys again,
+    -- at once (settings_hs.choose_super).
+    self.recheck_super = function()
+        check_karabiner_rules(self)
+        choose_super(self, true)
+    end
     self.karabiner_timer = hs.timer.doEvery(M.KARABINER_CHECK, function()
         check_karabiner_rules(self)
         choose_super(self, false)
