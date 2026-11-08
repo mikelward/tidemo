@@ -56,6 +56,7 @@ local tap_mod = require("tide.tap")
 local swipe_mod = require("tide.swipe")
 local compose_mod = require("tide.compose")
 local compose_hs = require("tide.compose_hs")
+local capslock = require("tide.capslock")
 local bar = require("tide.bar")
 local selfreload = require("tide.selfreload")
 local bar_hs = require("tide.bar_hs")
@@ -907,10 +908,12 @@ function M.start(config)
             self.swipe:touches(list, dragging)
         end)
     end
-    -- Caps Lock as Compose, as on Linux (SPEC.md §10): setup-macos makes
-    -- it send F18.
+    -- Caps Lock as Compose, as on Linux (SPEC.md §10): tide makes it send
+    -- F18, added to the key mapping that's there (capslock.lua), and again
+    -- after a wake or a keyboard plugged in, below.
     if config.compose ~= false then
         self.compose = compose_hs.new(hs, self.adapter.log)
+        capslock.apply(self.adapter.run, self.adapter.log)
     end
     -- The current workspace's name, for scripts, written whenever it
     -- changes (SPEC.md §6.3). A failure is said once, until a write works.
@@ -1110,6 +1113,9 @@ function M.start(config)
         check_karabiner_rules(self)
         choose_super(self, false)
         check_linearmouse(self)
+        if self.compose then
+            capslock.apply(self.adapter.run, self.adapter.log)
+        end
     end))
     return self
 end

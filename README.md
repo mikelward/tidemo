@@ -140,8 +140,8 @@ turn on Accessibility for Hammerspoon, reload its config, and log out.
 With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
 `setup` (or `setup-macos`) clones or pulls tide, runs its installer, and
 adds its owner's choices: the PC keyboard's modifier rotation (with
-`--super win`) and Caps Lock as Compose, conf's other Karabiner rules,
-LinearMouse and macOS's settings.
+`--super win`), conf's other Karabiner rules, LinearMouse and macOS's
+settings.
 `--wm amethyst` sets up Amethyst instead.
 
 By hand:

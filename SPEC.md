@@ -2780,10 +2780,16 @@ that isn't one is left out, and the log says so.
   *(unverified units)*. US Dvorak is a native input source.
 - **Caps Lock as Compose,** as on Linux (`compose.lua`): Caps Lock, then
   ' and e, types é.
-  - macOS has no Compose key, so `setup-macos` makes Caps Lock send F18
-    in the same `hidutil` mapping as the modifiers, and tide binds F18.
-    It's F18, not F19, since Karabiner sends `Super+Backspace` as
-    `Super+F19` (§7.2).
+  - macOS has no Compose key, so tide makes Caps Lock send F18, and binds
+    F18 (`capslock.lua`). It's F18, not F19, since Karabiner sends
+    `Super+Backspace` as `Super+F19` (§7.2).
+  - macOS holds one key mapping for every keyboard (`hidutil`'s
+    `UserKeyMapping`), so tide reads it and adds Caps Lock's, keeping
+    what's there, such as `setup-macos`'s modifier rotation. It does so as
+    it starts and after a wake or a keyboard plugged in, since the
+    mapping doesn't survive a restart. A mapping that already has Caps
+    Lock, to F18 or anything else, is left alone. `compose = false`
+    leaves Caps Lock as it is.
   - The keys after it are held back from the app in front, by an event
     tap, and read as the characters they'd type, so Shift and the layout,
     Dvorak included, count as they do on Linux.
@@ -3843,8 +3849,8 @@ Each one names a workaround, or says there is none.
   - `amethyst.yml` retired;
   - the Hammerspoon config, if tide starts as route B (§3).
 - **scripts:** `setup-macos`. It clones or pulls tide, runs its
-  installer, then adds its owner's choices: the modifier rotation and
-  Caps Lock as Compose, Karabiner and LinearMouse, and macOS's settings
+  installer, then adds its owner's choices: the modifier rotation,
+  Karabiner and LinearMouse, and macOS's settings
   in `macos.json` (§6.6, §15).
 - **tide for Linux:** the layout geometry and its test fixtures, shared so tide
   doesn't keep its own copy, and the picker's character list (§9.1),

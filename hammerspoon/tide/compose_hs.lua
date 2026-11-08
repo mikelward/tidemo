@@ -1,5 +1,5 @@
 -- Caps Lock as Compose on Hammerspoon (SPEC.md §10): F18, which
--- setup-macos makes Caps Lock send, starts a sequence; the keys after it
+-- tide makes Caps Lock send (capslock.lua), starts a sequence; the keys after it
 -- are held back from the app in front while compose.lua reads them, and
 -- the character is typed once the sequence is whole. Esc, a click, or a
 -- key with Command or Control gives up. What it decides is compose.lua's.

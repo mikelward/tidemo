@@ -1,6 +1,6 @@
 -- Caps Lock as Compose, as on Linux (SPEC.md §10): Compose, then a few
 -- keys, types a character, such as ' and e for é, from the same table
--- Linux's Compose key reads (compose.tsv). setup-macos makes Caps Lock send
+-- Linux's Compose key reads (compose.tsv). tide makes Caps Lock send
 -- F18, which tide takes as Compose. Pure Lua.
 
 local M = {}
