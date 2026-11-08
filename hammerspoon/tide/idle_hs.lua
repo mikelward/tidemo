@@ -2,7 +2,9 @@
 -- idle time from hs.host.idleTime, looked at every few seconds, and each
 -- step: a dark veil over every display for the dim, macOS's lock, the
 -- displays off (`pmset displaysleepnow`), and sleep. Input lifts the dim
--- and starts the timeline again.
+-- and starts the timeline again. And, when this Mac's awake.local.json
+-- turns it on, a system-idle power assertion while plugged in, so macOS's
+-- own idle sleep doesn't take the Mac; it's let go on battery.
 
 local idle = require("tide.idle")
 
@@ -25,6 +27,9 @@ function M.new(tide)
     local timer
     local veils
     local said
+    local awake = { on = false }
+    local holding = false
+    local said_awake
 
     local function undim()
         for _, v in ipairs(veils or {}) do
@@ -88,8 +93,31 @@ function M.new(tide)
         end,
     }
 
+    -- Hold the Mac awake, or let it go, as the switch and the power
+    -- source say. tide's own assertion then counts as holding the system
+    -- awake, so the timeline doesn't sleep on AC either; on battery it's
+    -- gone before held() looks.
+    local function sync_awake()
+        local want = idle.holds_awake(awake.on, hs.battery.powerSource() == "Battery Power")
+        if want == holding then
+            return
+        end
+        local ok, err = pcall(hs.caffeinate.set, "systemIdle", want)
+        if not ok then
+            a.log("idle: couldn't " .. (want and "hold" or "let go of") .. " the Mac awake: " .. tostring(err))
+            return
+        end
+        holding = want
+    end
+
+    -- Kept on self: Hammerspoon stops a watcher Lua collects, and with the
+    -- timeline off nothing else notices the Mac being plugged in.
+    self.power_watcher = hs.battery.watcher.new(sync_awake)
+    self.power_watcher:start()
+
     local function look()
         timer = nil
+        sync_awake()
         local seconds = hs.host.idleTime()
         if seconds < last then
             done = {}
@@ -116,6 +144,12 @@ function M.new(tide)
             a.log("idle: " .. why)
         end
         said = why
+        awake = idle.load_awake(files.awake, hs.json.decode)
+        if awake.error ~= said_awake and awake.error then
+            a.log("idle: " .. awake.error)
+        end
+        said_awake = awake.error
+        sync_awake()
         if loaded.chosen and not timer then
             -- Started afresh: what an earlier run did is no longer done.
             done = {}
@@ -132,6 +166,11 @@ function M.new(tide)
 
     -- What's held awake now, for CI's smoke test.
     self.held = held
+
+    -- Whether tide holds the Mac awake now, for the tests.
+    function self.holding()
+        return holding
+    end
 
     -- Whether tide's timeline runs, for the page.
     function self.running()

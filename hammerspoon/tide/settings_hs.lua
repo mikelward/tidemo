@@ -673,6 +673,8 @@ function M.new(tide)
                 save(dashboard.NOTIFICATIONS_LOCAL_FILE, body.writeNotifications, "Do Not Disturb's schedule")
             elseif type(body.writeIdle) == "string" then
                 save(dashboard.IDLE_LOCAL_FILE, body.writeIdle, "the idle timings")
+            elseif type(body.writeAwake) == "string" then
+                save(dashboard.AWAKE_LOCAL_FILE, body.writeAwake, "Stay awake when plugged in")
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
             elseif type(body.pickWallpaper) == "string" and tide.wallpaper then
