@@ -165,6 +165,10 @@ By hand:
    to 9.
 5. Reload Hammerspoon's config.
 
+Each push to `main` is a release, `v` and the commit count (`make
+version`), tagged and published by CI. To install one, check out its tag
+(`git -C ~/tidemo checkout v262`, say) before running the installer.
+
 To update, `git pull` and run the installer again (or `make install`, or `setup`): tide
 reloads itself a second after the new copy lands in
 `~/.hammerspoon/tide`, so there's no reload to do by hand.
