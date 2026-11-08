@@ -112,15 +112,28 @@ function M.encode_yours(page)
         copy[k] = v
     end
     copy.rows, copy.presets = "__rows__", "__presets__"
+    local apps
+    if type(page.apps) == "table" then
+        apps = {}
+        for k, v in pairs(page.apps) do
+            apps[k] = v
+        end
+        apps.rows = "__app_rows__"
+        copy.apps = apps
+    end
     return (hs.json.encode(copy):gsub('"__rows__"', function()
         return M.list(page.rows, hs.json.encode)
     end):gsub('"__presets__"', function()
         return M.list(page.presets, hs.json.encode)
+    end):gsub('"__app_rows__"', function()
+        return M.list(page.apps.rows, hs.json.encode)
     end))
 end
 
 -- One of the Shortcuts list's messages, { keys = { record = name } }, or
--- stop, swap, cancel, reset, off or preset, through `k` (keys_hs.new).
+-- stop, swap, cancel, reset, off or preset, or your app keys' appAdd
+-- { keys, app, new }, appRemove index or appNew { index, on }, the index
+-- counting from 1, through `k` (keys_hs.new).
 function M.keys_message(k, m, log)
     if not k then
         log("settings: the shortcuts aren't loaded")
@@ -144,6 +157,12 @@ function M.keys_message(k, m, log)
         ok, why = k.off(str(m.off))
     elseif m.preset then
         ok, why = k.start_from(str(m.preset))
+    elseif type(m.appAdd) == "table" then
+        ok, why = k.add_app(str(m.appAdd.keys), str(m.appAdd.app), m.appAdd.new == true)
+    elseif type(m.appRemove) == "number" then
+        ok, why = k.remove_app(math.tointeger(m.appRemove) or 0)
+    elseif type(m.appNew) == "table" and type(m.appNew.index) == "number" then
+        ok, why = k.app_new(math.tointeger(m.appNew.index) or 0, m.appNew.on == true)
     end
     if not ok then
         log("settings: shortcuts: " .. tostring(why))

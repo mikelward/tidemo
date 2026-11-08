@@ -131,4 +131,38 @@ t.test("your app keys bind ahead of tide's, and a wrong file is said once", func
     t.eq(#k.map, before, "a wrong file keeps none of yours")
 end)
 
+-- The settings window's app keys: added, switched to a new window and
+-- removed, each written to apps.local.json and bound; what can't be one
+-- is said on the page and writes nothing.
+t.test("app keys from the settings window are written, bound and said on the page", function()
+    local tide, disk = fake_tide()
+    tide.adapter.bundle_of_app = function(name)
+        return name == "Spotify" and "com.spotify.client" or nil
+    end
+    local k = keys_hs.new(tide)
+    k.load()
+    t.eq(k.add_app("Super+M", "Spotify", false), true)
+    t.eq(json.decode(disk[DIR .. "/apps.local.json"]).apps, { { keys = "Super+M", app = "Spotify" } })
+    t.eq(k.map[1].arg.bundle, "com.spotify.client")
+    t.eq(k.page().apps.rows, { { label = "Super+M", app = "Spotify", new = false } })
+    local rebinds = 0
+    local rebind = tide.rebind
+    tide.rebind = function()
+        rebinds = rebinds + 1
+        rebind()
+    end
+    t.eq(k.app_new(1, true), true)
+    t.eq(k.page().apps.rows[1].new, true)
+    t.eq(rebinds, 1, "a new window alone binds again, so the hotkey has it")
+    t.eq(k.map[1].arg.new, true)
+    local ok = k.add_app("Super+K", "Nope", false)
+    t.eq(ok, nil)
+    t.eq(k.page().apps.refused, "no app is called Nope")
+    t.eq(#json.decode(disk[DIR .. "/apps.local.json"]).apps, 1, "nothing written")
+    t.eq(k.remove_app(1), true)
+    t.eq(k.page().apps.rows, {})
+    t.eq(k.page().apps.refused, "")
+    t.eq(k.remove_app(1), nil, "gone already")
+end)
+
 t.done("keys_hs_test")

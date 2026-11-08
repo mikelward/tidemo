@@ -81,6 +81,66 @@ function M.load(dir, read, decode)
     return list
 end
 
+-- The list as apps.local.json's text, entries in order.
+function M.text(list, quote)
+    local rows = {}
+    for i, e in ipairs(list) do
+        rows[i] = "    { \"keys\": " .. quote(e.keys) .. ", \"app\": " .. quote(e.app)
+            .. (e.new and ", \"new\": true" or "") .. " }"
+    end
+    if #rows == 0 then
+        return '{\n  "apps": []\n}\n'
+    end
+    return '{\n  "apps": [\n' .. table.concat(rows, ",\n") .. "\n  ]\n}\n"
+end
+
+-- Apply `fn` to the list in effect, which gives back the new list, or nil
+-- and why, and write apps.local.json whole. Returns the new list, or nil
+-- and why, writing nothing.
+function M.edit(dir, read, decode, quote, write, fn)
+    local list, err = M.load(dir, read, decode)
+    if not list then
+        return nil, err .. ". Fix the file to change your app keys here"
+    end
+    local copy = {}
+    for i, e in ipairs(list) do
+        copy[i] = { keys = e.keys, app = e.app, new = e.new }
+    end
+    local new, why = fn(copy)
+    if not new then
+        return nil, why
+    end
+    if #new > M.MAX then
+        return nil, "that's more than " .. M.MAX .. " app keys"
+    end
+    local path = dir .. "/" .. M.LOCAL_FILE
+    local ok, werr = write(path, M.text(new, quote))
+    if not ok then
+        return nil, "couldn't write " .. path .. ": " .. tostring(werr)
+    end
+    return new
+end
+
+-- Why `keys` and `app` can't be an app key, or nil when they can:
+-- `bundle_of` as M.bindings takes it.
+function M.check(keys, app, bundle_of)
+    if type(keys) ~= "string" or not keys:match("%S") then
+        return "type the keys, such as Super+M"
+    end
+    if type(app) ~= "string" or not app:match("%S") or app:match('[%c"\\/]') then
+        return "type an app's name, such as Spotify"
+    end
+    local _, why = shortcuts.from_hypr(keys)
+    if why then
+        return keys .. ": " .. why
+    end
+    app = app:match("^%s*(.-)%s*$")
+    if not is_bundle(app) and not bundle_of(app) then
+        return "no app is called " .. app
+    end
+    return nil
+end
+
 -- The entries as keys.lua map bindings, { key, shift, action = "app",
 -- arg = spec, does }, and what couldn't be one, each said once. `bundle_of`
 -- gives an app name's bundle ID, or nil when there's no such app.
