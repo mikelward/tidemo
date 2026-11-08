@@ -1642,8 +1642,9 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     key inherit launchd's short `PATH`, which tide for Linux met as "PATH missing in
     keybinds" (tide for Linux §17). With mikelward/scripts, its
     `~/scripts/runenv` sets the environment up; without it, your login
-    shell does, as `$SHELL -l -c 'exec "$@"'` (`/bin/zsh` when `$SHELL`
-    is unset; `loginenv.lua`). Start at login and the picker's `rbw` run
+    shell does, as `$SHELL -l -c 'exec "$@"'`, or `exec $argv` for fish
+    (`/bin/zsh` when `$SHELL` is unset or a shell such as nushell that
+    takes neither; `loginenv.lua`). Start at login and the picker's `rbw` run
     the same way.
   - The helpers themselves (`browser1`, `google-chat` and the rest) are
     scripts'. Without scripts, those keys say the command wasn't found.
