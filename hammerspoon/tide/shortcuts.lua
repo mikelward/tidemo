@@ -260,7 +260,7 @@ function M.apply(map, state)
             by_name[b.name] = by_name[b.name] or {}
             table.insert(by_name[b.name], b)
             first[b.name] = first[b.name] or i
-        else
+        elseif b.key then
             fixed[chord(b)] = true
         end
     end
@@ -323,7 +323,7 @@ function M.apply(map, state)
                     result[#result + 1] = r
                 end
             end
-        elseif not taken[chord(b)] then
+        elseif b.key and not taken[chord(b)] then
             result[#result + 1] = b
         end
     end
@@ -358,7 +358,7 @@ function M.preset_defaults(map, preset)
                 out[b.name] = given[b.name]
             else
                 out[b.name] = out[b.name] or {}
-                if not taken[chord(b)] then
+                if b.key and not taken[chord(b)] then
                     table.insert(out[b.name], M.to_hypr(b.key, b.shift))
                 end
             end

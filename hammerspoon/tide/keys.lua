@@ -188,6 +188,25 @@ M.resize = {
 }
 M.resize_exit = { "escape", "return" }
 
+-- Named bindings with no key of their own, as on tide: bound only once
+-- your keys give them one (shortcuts.lua). dwm's preset gives the layout
+-- used last Super+Space.
+M.keyless = {
+    { action = "last_layout", name = "last_layout" },
+}
+
+-- keys.lua's map with the keyless bindings after it, for shortcuts.lua.
+function M.named_map()
+    local out = {}
+    for _, b in ipairs(M.map) do
+        out[#out + 1] = b
+    end
+    for _, b in ipairs(M.keyless) do
+        out[#out + 1] = b
+    end
+    return out
+end
+
 -- The modifier list for one binding.
 function M.mods(super, binding)
     local out = {}
@@ -222,6 +241,7 @@ M.DOES = {
     mfact = by_sign("Shrink the master", "Grow the master"),
     nmaster = by_sign("Remove a master", "Add a master"),
     cycle = by_sign("Previous layout", "Next layout"),
+    last_layout = "The layout used last",
     monocle = "Monocle",
     maximize = "Maximize",
     fullscreen = "Full screen",
@@ -374,6 +394,11 @@ function M.bindings(super, map)
         add(b.mods, b, false)
     end
     for _, b in ipairs(map or M.map) do
+        -- A binding with no key (last_layout) is listed by shortcuts.lua
+        -- and bound only once you give it one.
+        if not b.key then
+            goto continue
+        end
         local mods = M.mods(super, b)
         if super == M.KARABINER and b.karabiner_key then
             -- Shown as the key you press, bound as the one Karabiner sends.
@@ -386,6 +411,7 @@ function M.bindings(super, map)
         else
             add(mods, b, true)
         end
+        ::continue::
     end
     if super == M.KARABINER then
         for _, b in ipairs(M.karabiner_only) do

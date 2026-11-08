@@ -1647,7 +1647,9 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
   - Each binding with a counterpart in conf's has conf's name for it
     (`keys.lua`'s `name`): `terminal`, `lock`, `focus_down` and the rest.
     The Super tap and `Super+0…9` have none, and keep their keys, as on
-    tide for Linux.
+    tide for Linux. The layout used last (`last_layout`: the mode before this one, so
+    two presses come back) has no key of its own, as there; dwm's preset
+    gives it `Super+Space`.
   - Your keys are in `keys.json` and `keys.local.json` in tide's folder,
     as tide for Linux writes them: `{ "preset": "dwm", "keys": {
     "terminal": ["SUPER + D"], "lock": [] } }`, Hyprland's key strings,

@@ -152,6 +152,30 @@ function M.nmaster(ws, delta)
     end
 end
 
+-- A workspace's mode changes to `mode`, keeping the one before as
+-- `last_mode`, for the layout used last (dwm's Super+Space).
+function M.set_mode(ws, mode)
+    if mode ~= ws.mode then
+        ws.last_mode = ws.mode
+    end
+    ws.mode = mode
+end
+
+-- The mode used before this one, so two presses come back; with none yet,
+-- nothing. Monocle's toggle still goes back to the mode before it.
+function M.last(ws)
+    local to = ws.last_mode
+    if not to then
+        return
+    end
+    if to == "monocle" then
+        ws.prev_mode = ws.mode
+    elseif ws.mode == "monocle" then
+        ws.prev_mode = nil
+    end
+    M.set_mode(ws, to)
+end
+
 -- Step through config.cycle; from monocle, step from the mode before it.
 function M.cycle(ws, delta, config)
     config = config or M.defaults
@@ -159,16 +183,17 @@ function M.cycle(ws, delta, config)
     local from = ws.mode == "monocle" and (ws.prev_mode or list[1]) or ws.mode
     local i = index_of(list, from) or 1
     ws.prev_mode = nil
-    ws.mode = list[(i - 1 + delta) % #list + 1]
+    M.set_mode(ws, list[(i - 1 + delta) % #list + 1])
 end
 
 function M.toggle_monocle(ws)
     if ws.mode == "monocle" then
-        ws.mode = ws.prev_mode or M.defaults.default_mode.normal
+        local back = ws.prev_mode or M.defaults.default_mode.normal
         ws.prev_mode = nil
+        M.set_mode(ws, back)
     else
         ws.prev_mode = ws.mode
-        ws.mode = "monocle"
+        M.set_mode(ws, "monocle")
     end
 end
 

@@ -97,6 +97,17 @@ t.test("your keys take a preset's from the binding it gave them to", function()
     t.eq(problems, {})
 end)
 
+t.test("a binding with no key of its own binds only once your keys or a preset give it one", function()
+    local map = { { key = "t", action = "app", name = "terminal" }, { action = "last_layout", name = "last_layout" } }
+    local none = shortcuts.apply(map, { preset = "tide", keys = {} })
+    t.eq(keys_of(none, "last_layout"), {})
+    local dwm = shortcuts.apply(map, { preset = "dwm", keys = {} })
+    t.eq(keys_of(dwm, "last_layout"), { "space" }, "dwm's Super+Space")
+    local rows = shortcuts.rows(map, none, { preset = "tide", keys = {} }, keys.does)
+    t.eq(rows[2], { name = "last_layout", does = "The layout used last", keys = {}, changed = false })
+    t.eq(#keys.bindings(keys.KARABINER, none) > 0, true, "binds without it")
+end)
+
 t.test("keys an unnamed binding has, or a Mac can't bind, are left out and said", function()
     local map, problems = shortcuts.apply(MAP, { preset = "tide", keys = {
         lock = { "SUPER + 1", "SUPER + CTRL + L" },
