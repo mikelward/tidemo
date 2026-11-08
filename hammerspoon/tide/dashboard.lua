@@ -70,12 +70,18 @@ end
 
 M.APPEARANCE_LOCAL_FILE = "appearance.local.json"
 
--- And the Idle settings' (idle.lua).
+-- And the Idle settings' (idle.lua), with this Mac's staying awake when
+-- plugged in.
 function M.idle_files(dir, read)
-    return { shared = read(dir .. "/idle.json"), ["local"] = read(dir .. "/idle.local.json") }
+    return {
+        shared = read(dir .. "/idle.json"),
+        ["local"] = read(dir .. "/idle.local.json"),
+        awake = read(dir .. "/awake.local.json"),
+    }
 end
 
 M.IDLE_LOCAL_FILE = "idle.local.json"
+M.AWAKE_LOCAL_FILE = "awake.local.json"
 
 -- And the Notifications settings' (dndsched.lua).
 function M.notification_files(dir, read)

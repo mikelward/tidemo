@@ -6,7 +6,7 @@ local t = require("t")
 local json = require("json")
 
 local function stub(files)
-    local s = { idle = 0, did = {}, timers = {}, logged = {}, veils = 0, battery = true, assertions = {} }
+    local s = { idle = 0, did = {}, timers = {}, logged = {}, veils = 0, battery = true, assertions = {}, set = {} }
     _G.hs = {
         json = { decode = json.decode },
         host = {
@@ -18,10 +18,24 @@ local function stub(files)
             powerSource = function()
                 return s.battery and "Battery Power" or "AC Power"
             end,
+            watcher = {
+                new = function(fn)
+                    s.power_changed = fn
+                    -- Hammerspoon stops a watcher Lua collects.
+                    return setmetatable({ start = function() end }, {
+                        __gc = function()
+                            s.watcher_collected = true
+                        end,
+                    })
+                end,
+            },
         },
         caffeinate = {
             currentAssertions = function()
                 return s.assertions
+            end,
+            set = function(kind, on)
+                s.set[#s.set + 1] = kind .. " " .. tostring(on)
             end,
             lockScreen = function()
                 s.did[#s.did + 1] = "lock"
@@ -153,6 +167,64 @@ t.test("taking the settings out stops it, and lifts a dim", function()
     t.eq(s.veils, 0)
     t.eq(s.timers[#s.timers].stopped, true)
     t.eq(s.idler.running(), false)
+end)
+
+t.test("with nothing set, the Mac isn't held awake", function()
+    local s = stub({})
+    s.battery = false
+    s.power_changed()
+    t.eq(s.set, {})
+    t.eq(s.idler.holding(), false)
+end)
+
+t.test("staying awake holds the Mac on AC and lets go on battery", function()
+    local s = stub({ awake = '{"pluggedIn": true}' })
+    t.eq(s.set, {}, "on battery, nothing held")
+    s.battery = false
+    s.power_changed()
+    t.eq(s.set, { "systemIdle true" })
+    s.power_changed()
+    t.eq(#s.set, 1, "once")
+    s.battery = true
+    s.power_changed()
+    t.eq(s.set, { "systemIdle true", "systemIdle false" })
+end)
+
+-- Regression: the watcher was a local nothing kept, so Lua collected it,
+-- which stops it, and plugging in no longer held the Mac awake.
+t.test("the power watcher lives as long as the timeline", function()
+    local s = stub({ awake = '{"pluggedIn": true}' })
+    collectgarbage("collect")
+    collectgarbage("collect")
+    t.eq(s.watcher_collected, nil)
+end)
+
+t.test("turning it off lets go at once", function()
+    local s = stub({ awake = '{"pluggedIn": true}' })
+    s.battery = false
+    s.power_changed()
+    s.tide.idle_files = {}
+    s.idler.reload()
+    t.eq(s.set, { "systemIdle true", "systemIdle false" })
+end)
+
+t.test("unplugged, the timeline lets go before it looks, so it can still sleep", function()
+    local s = stub({ shared = SET.shared, awake = '{"pluggedIn": true}' })
+    s.battery = false
+    s.power_changed()
+    s.battery = true
+    -- No watcher event yet: the look itself lets go.
+    s.look(200)
+    t.eq(s.set[#s.set], "systemIdle false")
+    t.eq(s.did[#s.did], "suspend")
+end)
+
+t.test("a file that's wrong is logged and leaves it off", function()
+    local s = stub({ awake = '{"pluggedIn": "yes"}' })
+    s.battery = false
+    s.power_changed()
+    t.eq(s.set, {})
+    t.eq(s.logged, { "idle: awake.local.json: pluggedIn must be true or false" })
 end)
 
 t.done("idle_hs")

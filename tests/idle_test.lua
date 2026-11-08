@@ -45,4 +45,21 @@ t.test("on AC there's no suspend unless set; an app holding things awake holds t
     t.eq(idle.due(d, 4000, {}, true, { system = true }), { "dim", "lock", "displaysOff" }, "a download")
 end)
 
+t.test("staying awake when plugged in is off unless this Mac's file turns it on", function()
+    t.eq(idle.load_awake(nil, json.decode), { on = false })
+    t.eq(idle.load_awake("{}", json.decode), { on = false })
+    t.eq(idle.load_awake('{"pluggedIn": true}', json.decode), { on = true })
+    t.eq(idle.load_awake('{"pluggedIn": 1}', json.decode),
+        { on = false, error = "awake.local.json: pluggedIn must be true or false" })
+    t.eq(idle.load_awake('{"nap": true}', json.decode),
+        { on = false, error = 'awake.local.json: unknown setting "nap"; expected pluggedIn' })
+    t.eq(idle.load_awake("[", json.decode).on, false)
+end)
+
+t.test("it holds the Mac awake on AC alone", function()
+    t.eq(idle.holds_awake(true, false), true)
+    t.eq(idle.holds_awake(true, true), false, "on battery it sleeps as it would")
+    t.eq(idle.holds_awake(false, false), false)
+end)
+
 t.done("idle")

@@ -575,12 +575,51 @@ function setIdle(key, value) {
   writeIdle(r.text);
 }
 
+// Stay awake when plugged in: this Mac's own switch, off unless its
+// awake.local.json says { "pluggedIn": true } ({ writeAwake: text }).
+// tide holds the Mac awake on AC; the screens still turn off.
+function awakeState() {
+  const text = idleText("awake");
+  if (text === null) return { on: false };
+  try {
+    const v = JSON.parse(text);
+    if (v === null || typeof v !== "object" || Array.isArray(v)) throw new Error();
+    const extra = Object.keys(v).find((k) => k !== "pluggedIn");
+    if (extra !== undefined) return { on: false, error: `awake.local.json: unknown setting "${extra}"` };
+    if (v.pluggedIn !== undefined && typeof v.pluggedIn !== "boolean") return { on: false, error: "awake.local.json: pluggedIn must be true or false" };
+    return { on: v.pluggedIn === true };
+  } catch {
+    return { on: false, error: "awake.local.json: expected an object of pluggedIn" };
+  }
+}
+
+function renderAwake() {
+  const { on, error } = awakeState();
+  keepingFocus(() => {
+    const row = document.getElementById("idle-awake");
+    row.replaceChildren();
+    const name = el("span", "Stay awake when plugged in");
+    name.className = "name";
+    const toggle = keyed(button(on ? "On" : "Off", `Stay awake when plugged in: ${on ? "on" : "off"}`, Boolean(error), () => {
+      const text = JSON.stringify({ pluggedIn: !on }, null, 2) + "\n";
+      idleFiles = { ...idleFiles, awake: text };
+      send({ writeAwake: text });
+      renderIdle();
+    }), "idle-awake");
+    toggle.setAttribute("aria-pressed", String(on));
+    row.append(name, toggle);
+  });
+  return error;
+}
+
 function renderIdle() {
+  const awakeError = renderAwake();
   const { idle, errors } = loadIdle(idleText("shared"), idleText("local"));
   const bad = errors.length > 0;
   const shared = idleText("shared");
   const on = [shared, idleText("local")].some((t) => t !== null && setsIdle(t));
-  document.getElementById("idle-error").textContent = bad ? `${errors.join("; ")}. Fix the file to change these here.` : "";
+  const said = [...errors, ...(awakeError ? [awakeError] : [])];
+  document.getElementById("idle-error").textContent = said.length > 0 ? `${said.join("; ")}. Fix the file to change these here.` : "";
   keepingFocus(() => {
     const row = document.getElementById("idle-timeline");
     row.replaceChildren();

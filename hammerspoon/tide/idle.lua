@@ -97,4 +97,37 @@ function M.due(idle, seconds, done, on_battery, held)
     return out
 end
 
+-- Staying awake when plugged in (SPEC.md §10): a Mac-only switch, off
+-- unless this Mac's awake.local.json turns it on, so macOS's own idle
+-- sleep doesn't take the Mac while it's on AC. The displays still turn
+-- off. Its own file, not idle.local.json, because tide's parser for that
+-- one (copied unchanged) takes only tide's own settings.
+M.AWAKE_FILE = "awake.local.json"
+
+-- Whether the file's text turns it on: { on, error }. No file, or one
+-- that's wrong, is off; a wrong one says why.
+function M.load_awake(text, decode)
+    if text == nil then
+        return { on = false }
+    end
+    local ok, t = pcall(decode, text)
+    if not ok or type(t) ~= "table" or t[1] ~= nil then
+        return { on = false, error = M.AWAKE_FILE .. ": expected an object of pluggedIn" }
+    end
+    for k, v in pairs(t) do
+        if k ~= "pluggedIn" then
+            return { on = false, error = string.format('%s: unknown setting "%s"; expected pluggedIn', M.AWAKE_FILE, k) }
+        elseif type(v) ~= "boolean" then
+            return { on = false, error = M.AWAKE_FILE .. ": pluggedIn must be true or false" }
+        end
+    end
+    return { on = t.pluggedIn == true }
+end
+
+-- Whether to hold the Mac awake now: on, and plugged in. On battery it
+-- sleeps as it would.
+function M.holds_awake(on, on_battery)
+    return on == true and not on_battery
+end
+
 return M

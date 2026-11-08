@@ -616,6 +616,26 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   sandbox.tide.update({ clockFiles: [], idleFiles: {} });
 }
 
+// Stay awake when plugged in: off with nothing set, whether tide's
+// timeline runs or not, and a click writes this Mac's awake.local.json.
+{
+  const lastAwake = () => JSON.parse(sent.filter((m) => m.writeAwake).at(-1).writeAwake);
+  const awake = () => ids["idle-awake"].children;
+  sandbox.tide.update({ clockFiles: [], idleFiles: {} });
+  assert.deepStrictEqual(awake().map((c) => c.textContent), ["Stay awake when plugged in", "Off"]);
+  const idleWrites = sent.filter((m) => m.writeIdle).length;
+  awake()[1].listeners.click();
+  assert.deepStrictEqual(lastAwake(), { pluggedIn: true });
+  assert.strictEqual(awake()[1].textContent, "On");
+  assert.strictEqual(sent.filter((m) => m.writeIdle).length, idleWrites, "the timeline's file untouched");
+  awake()[1].listeners.click();
+  assert.deepStrictEqual(lastAwake(), { pluggedIn: false });
+  sandbox.tide.update({ clockFiles: [], idleFiles: { awake: '{"pluggedIn": "yes"}' } });
+  assert.match(ids["idle-error"].textContent, /pluggedIn must be true or false/);
+  assert.strictEqual(awake()[1].disabled, true);
+  sandbox.tide.update({ clockFiles: [], idleFiles: {} });
+}
+
 // Appearance's wallpapers, light and dark, in tide's appearance files: the
 // one set shows, Enter sets a typed path, the choose button asks tide for
 // macOS's file dialog, and its answer is set as a typed one.

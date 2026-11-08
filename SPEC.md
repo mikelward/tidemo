@@ -3495,6 +3495,28 @@ Each one names a workaround, or says there is none.
       5 s while it runs. *(Unverified on a Mac: that the veil covers the
       menu bar and full-screen apps, and how `pmset displaysleepnow`
       behaves with an external display.)*
+  - **Built: Stay awake when plugged in**, the Idle page's first switch,
+    off by default. On, tide holds a system-idle power assertion
+    (`hs.caffeinate.set("systemIdle")`) while the Mac's on AC, so macOS's
+    own idle sleep doesn't take it; the displays still turn off. On
+    battery it lets go, at the power source's change or the timeline's
+    next look, whichever's first, so the Mac sleeps as it would.
+    - Why: a Mac that sleeps while a KVM or monitor input switch has its
+      keyboard and mouse elsewhere doesn't wake when they come back,
+      since a sleeping Mac doesn't wake for a newly attached USB device.
+      An always-on Mac (a remote session host) wants to stay awake.
+    - Opt-in, because it changes macOS's own behavior. `setup-macos` (in
+      mikelward/scripts) sets the same on Macs without a battery with
+      `pmset`, which lasts without tide.
+    - It's this Mac's alone, in `awake.local.json` (`{"pluggedIn": true}`),
+      not `idle.local.json`, whose parser is tide for Linux's, copied
+      unchanged. A file that's wrong leaves it off and says why.
+    - tide's own assertion counts as holding the system awake, so the
+      timeline doesn't sleep on AC while it's on, even with Sleep when
+      plugged in.
+    - **Cost and reliability:** none to install, no administrator. The
+      assertion lasts while Hammerspoon runs; a quit or crash lets macOS
+      sleep again.
   - **Built: Network and Power show what the bar reads** (`netpower.lua`,
     `netpower_hs.lua`), through the bar's own `bar.icons`, so the two
     agree.
@@ -3556,7 +3578,7 @@ Each one names a workaround, or says there is none.
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tide's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
-    | Idle | Use tide for Linux's idle settings On or Off, each step's time, and Sleep when plugged in (below); Lock settings |
+    | Idle | Stay awake when plugged in, Use tide for Linux's idle settings On or Off, each step's time, and Sleep when plugged in (below); Lock settings |
     | Start at login | Login Items settings, for macOS's own list |
 
     - A pane opens by its `x-apple.systempreferences:` ID, as the bar's
