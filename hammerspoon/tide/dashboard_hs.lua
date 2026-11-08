@@ -5,6 +5,7 @@
 
 local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
+local jsonsafe = require("tide.jsonsafe")
 
 local M = {}
 
@@ -51,8 +52,14 @@ function M.new(tide)
     end
 
     -- Fills the page with what it shows now.
+    local encode = jsonsafe.encoder(function(v)
+        return hs.json.encode(v)
+    end, tide.adapter.log, "dashboard")
     local function push(v)
-        local state = hs.json.encode(dashboard.state(tide.wm, tide.adapter, uuid, tide.clock_files, tide.good_clocks))
+        local state = encode(dashboard.state(tide.wm, tide.adapter, uuid, tide.clock_files, tide.good_clocks))
+        if not state then
+            return
+        end
         v:evaluateJavaScript("tide.update(" .. state .. ")", function(_, err)
             if dashboard.js_failed(err) then
                 tide.adapter.log("dashboard: " .. hs.inspect(err))

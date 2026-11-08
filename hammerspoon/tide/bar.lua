@@ -183,6 +183,43 @@ function M.off_top(frames, x, y)
     return nil
 end
 
+-- Whether to keep the pointer off the bars' top row: only while the
+-- Appearance page's "Menu bar kept hidden" is on (`keep`, on unless false)
+-- and macOS hides the menu bar (`hides`), since only a hidden menu bar
+-- slides in at the top edge. With it shown, as tide's installer sets it,
+-- moving the pointer there does nothing, and moving it down on every move
+-- along the top only made the pointer drag.
+function M.keeps_off_top(keep, hides)
+    return keep ~= false and hides == true
+end
+
+-- A rate limit for the pointer's moves over the bar (SPEC.md §8), so each
+-- move doesn't run the page's JavaScript: `send(...)` runs at once, then at
+-- most once per `interval` seconds, the last move held back until then by
+-- `after(seconds, fn)`, so the page always ends at where the pointer is.
+-- `now()` gives the time in seconds.
+function M.throttle(after, now, interval, send)
+    local last, pending, args = -math.huge, false, nil
+    local function fire()
+        pending = false
+        last = now()
+        send(table.unpack(args, 1, args.n))
+    end
+    return function(...)
+        args = table.pack(...)
+        if pending then
+            return
+        end
+        local wait = last + interval - now()
+        if wait <= 0 then
+            fire()
+        else
+            pending = true
+            after(wait, fire)
+        end
+    end
+end
+
 -- A bar item's tip, or the full title's, below bar `frame` and centered at
 -- `x` in it, `w` by `h`, kept on the bar's display with M.TIP_GAP to spare
 -- (SPEC.md §8).

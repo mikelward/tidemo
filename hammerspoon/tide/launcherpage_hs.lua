@@ -12,6 +12,7 @@ local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
 local launcher_hs = require("tide.launcher_hs")
 local launcherpage = require("tide.launcherpage")
+local jsonsafe = require("tide.jsonsafe")
 local names = require("tide.names")
 local saved = require("tide.saved")
 local wm_mod = require("tide.wm")
@@ -54,6 +55,15 @@ function M.new(tide)
     -- in the search, as the page last said.
     local esc_key, typed = nil, false
     local by_id, collect, found_tabs = {}, nil, {}
+    -- The feed as JSON, a value JSON can't hold left out and logged
+    -- (jsonsafe.lua) rather than the page left empty. "{}" if even that
+    -- fails, which the page reads as nothing found.
+    local safe = jsonsafe.encoder(function(v)
+        return hs.json.encode(v)
+    end, tide.adapter.log, "launcher page")
+    local function encode(v)
+        return safe(v) or "{}"
+    end
 
     local function log_js(what)
         return function(_, err)
@@ -92,7 +102,7 @@ function M.new(tide)
         for _, item in ipairs(items) do
             by_id[item.id] = item
         end
-        return hs.json.encode(launcherpage.feed(items, {
+        return encode(launcherpage.feed(items, {
             recency = self.recency,
             view = launcherpage.view(tide.wm, uuid),
             keep_awake = hs.caffeinate.get("displayIdle") and true or false,

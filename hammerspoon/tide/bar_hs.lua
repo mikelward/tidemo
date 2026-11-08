@@ -4,6 +4,7 @@
 -- tileco's modules. Not runnable outside Hammerspoon.
 
 local bar = require("tide.bar")
+local jsonsafe = require("tide.jsonsafe")
 local bluetooth = require("tide.bluetooth")
 local ddc = require("tide.ddc")
 local tray_hs = require("tide.tray_hs")
@@ -106,6 +107,11 @@ function M.new(tide)
     local self = { views = {}, icons = {}, errors = {} }
     local page = build()
     local log = tide.adapter.log
+    -- The state as JSON, a value JSON can't hold left out and logged
+    -- (jsonsafe.lua) rather than the whole update lost.
+    local encode = jsonsafe.encoder(function(v)
+        return hs.json.encode(v)
+    end, log, "bar")
     -- The last error from each source, so a lasting one is logged once.
     local failed = {}
 
@@ -614,8 +620,8 @@ function M.new(tide)
         local state = bar.state(tide.wm, v.uuid, title, self.icons, icon_of)
         state.clockFiles = tide.clock_files
         state.goodClocks = tide.good_clocks
-        local json = hs.json.encode(state)
-        if json == v.sent then
+        local json = encode(state)
+        if not json or json == v.sent then
             return
         end
         v.sent = json
@@ -627,18 +633,35 @@ function M.new(tide)
     -- tells the page where the pointer is instead, on every move over a
     -- bar, and that it left.
     local hovered
+    -- Where the pointer is, told to the page at most 30 times a second
+    -- (bar.throttle): running the page's JavaScript on every move slowed
+    -- the pointer along the top of the screen.
+    local tell
     function self.pointer(x, y)
         local frames = {}
         for uuid, v in pairs(self.views) do
             frames[uuid] = { x = v.frame.x, y = v.frame.y, w = v.frame.w, h = v.frame.h, hidden = v.hidden }
         end
-        -- Kept off the top row, so the hidden menu bar doesn't slide over
-        -- the bar; the Apple logo opens its own copy of the Apple menu
-        -- instead. The Appearance page's Menu bar switch turns it off.
-        local down = tide.keep_menu_bar_hidden ~= false and bar.off_top(frames, x, y)
+        -- Kept off the top row while the menu bar hides, so it doesn't
+        -- slide over the bar; the Apple logo opens its own copy of the
+        -- Apple menu instead. The Appearance page's Menu bar switch turns
+        -- it off, and a shown menu bar needs none of it (bar.keeps_off_top).
+        local hides = tide.adapter.hides_menu_bar and tide.adapter.hides_menu_bar()
+        local down = bar.keeps_off_top(tide.keep_menu_bar_hidden, hides) and bar.off_top(frames, x, y)
         if down then
             hs.mouse.absolutePosition({ x = x, y = down })
             y = down
+        end
+        tell = tell or bar.throttle(tide.adapter.after, hs.timer.secondsSinceEpoch, 1 / 30, function(fx, fy)
+            self.tell_pointer(fx, fy)
+        end)
+        tell(x, y)
+    end
+
+    function self.tell_pointer(x, y)
+        local frames = {}
+        for uuid, v in pairs(self.views) do
+            frames[uuid] = { x = v.frame.x, y = v.frame.y, w = v.frame.w, h = v.frame.h, hidden = v.hidden }
         end
         local uuid, px, py = bar.pointer_at(frames, x, y)
         local old = hovered and self.views[hovered]
