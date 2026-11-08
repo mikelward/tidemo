@@ -656,56 +656,233 @@ export function galleryFolders(home) {
     return ["/usr/share/backgrounds", "/usr/share/wallpapers", `${home}/Pictures/wallpapers`];
 }
 
-// Where the grid's Find more button sends you: Unsplash's desktop
-// wallpapers, landscape, free ones only (Unsplash+ asks you to pay).
-export const MORE_WALLPAPERS = "https://unsplash.com/s/photos/desktop?orientation=landscape&license=free";
+// Where the grid's buttons find more wallpapers, each opened in your
+// browser (SPEC.md §16), as [{ site, url }]:
+// - Unsplash's desktop wallpapers, landscape, free ones only (Unsplash+
+//   asks you to pay). It can't search by size.
+// - Wallhaven's, general and safe for work only, at least the size of
+//   your widest monitor in pixels, `screens` being previewScreens's, and
+//   of its shape when it's one Wallhaven names, else landscape or
+//   portrait. Its pictures are uploads, with licenses that vary.
+export const UNSPLASH = "https://unsplash.com/s/photos/desktop?orientation=landscape&license=free";
 
-// The command that opens MORE_WALLPAPERS in your browser.
-export function moreWallpapersCommand() {
-    return ["xdg-open", MORE_WALLPAPERS];
+// The shapes Wallhaven searches by.
+const WALLHAVEN_RATIOS = [[16, 9], [16, 10], [21, 9], [32, 9], [48, 9], [9, 16], [10, 16], [9, 18], [1, 1], [3, 2], [4, 3], [5, 4]];
+
+export function moreWallpapers(screens) {
+    let url = "https://wallhaven.cc/search?categories=100&purity=100&sorting=toplist";
+    const widest = screens.reduce((a, s) => (a === null || s.width > a.width || (s.width === a.width && s.height > a.height) ? s : a), null);
+    if (widest !== null && widest.width > 0 && widest.height > 0) {
+        url += `&atleast=${widest.width}x${widest.height}`;
+        // 3440×1440, called 21:9, is 2.39 to 21:9's 2.33.
+        const shape = widest.width / widest.height;
+        const ratio = WALLHAVEN_RATIOS.find(([w, h]) => Math.abs(shape / (w / h) - 1) <= 0.03);
+        url += ratio ? `&ratios=${ratio[0]}x${ratio[1]}` : `&ratios=${widest.width >= widest.height ? "landscape" : "portrait"}`;
+    }
+    return [{ site: "Unsplash", url: UNSPLASH }, { site: "Wallhaven", url }];
+}
+
+// The command that opens `url` in your browser.
+export function openCommand(url) {
+    return ["xdg-open", url];
 }
 
 // The pictures the grid can show: Qt decodes these, JPEG XL where
-// kimageformats is installed. One it can't decode isn't shown.
-const GALLERY_TYPES = ["jpg", "jpeg", "png", "webp", "jxl"];
+// kimageformats is installed and SVG with Qt's SVG plugin. One it can't
+// decode shows its name. tide-pick --list lists the same types.
+const GALLERY_TYPES = ["jpg", "jpeg", "png", "webp", "jxl", "svg"];
 
-// The command that lists every picture under `folders`, a line each,
-// passing over a folder that isn't there. One it can't read all of, a
-// subfolder it may not open say, is find's error and status, with what it
-// could read still listed.
+// The command that lists every picture under `folders` with its size:
+// tide-pick --list, which reads each one's header, passes over a folder
+// that isn't there, and fails, still listing what it could, when it can't
+// read all of one, a subfolder it may not open say.
 export function galleryCommand(folders) {
-    const names = GALLERY_TYPES.map(t => `-iname '*.${t}'`).join(" -o ");
-    return ["sh", "-c", `s=0; for d; do if test -d "$d"; then find -L "$d" -maxdepth 6 -type f \\( ${names} \\) -print || s=$?; fi; done; exit $s`, "sh"].concat(folders);
+    return ["tide-pick", "--list"].concat(folders);
 }
 
-// The grid's pictures from what galleryCommand printed, `text`, as
-// `{ path, name }` sorted by name. A Plasma wallpaper is a folder of the
-// same picture at several sizes (contents/images/WxH.ext): it's one
-// picture, its largest, named for its folder, and its dark set, preview
-// and the rest of contents/ aren't shown.
-export function galleryImages(text) {
+// The grid's pictures from what galleryCommand printed, `text`, a line
+// each of width, height and path, tab-separated, as `{ path, name, width,
+// height, collection, mode }` sorted by name; a size unknown is 0.
+// - collection is galleryCollection's.
+// - mode is "light" or "dark" for one of a light and dark pair, else "".
+// A Plasma wallpaper is a folder of the same picture at several sizes
+// (contents/images/WxH.ext), with its dark version in images_dark: it's
+// one picture, or a light one and a dark one, each its largest, named for
+// its folder. Its preview and the rest of contents/ aren't shown.
+export function galleryImages(text, home = "", distro = "") {
     const plain = new Map();
     const plasma = new Map();
     for (const line of String(text ?? "").split("\n")) {
-        const path = line.trim();
-        const type = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
-        if (!path.startsWith("/") || !GALLERY_TYPES.includes(type)) {
+        const fields = /^(\d+(?:\.\d+)?)\t(\d+(?:\.\d+)?)\t(\/.*)$/.exec(line);
+        if (!fields) {
             continue;
         }
-        const sized = /^(.*\/([^/]+))\/contents\/images\/(\d+)x(\d+)\.[^./]+$/.exec(path);
+        const width = Number(fields[1]);
+        const height = Number(fields[2]);
+        const path = fields[3];
+        const type = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
+        if (!GALLERY_TYPES.includes(type)) {
+            continue;
+        }
+        const sized = /^(.*\/([^/]+))\/contents\/(images|images_dark)\/(\d+)x(\d+)\.[^./]+$/.exec(path);
         if (sized) {
-            const area = Number(sized[3]) * Number(sized[4]);
-            const had = plasma.get(sized[1]);
+            const key = `${sized[1]}\n${sized[3]}`;
+            const area = Number(sized[4]) * Number(sized[5]);
+            const had = plasma.get(key);
             if (!had || area > had.area) {
-                plasma.set(sized[1], { path, name: sized[2], area });
+                plasma.set(key, { path, name: sized[2], width, height, folder: sized[1], dark: sized[3] === "images_dark", area });
             }
         } else if (!path.includes("/contents/")) {
             const base = path.slice(path.lastIndexOf("/") + 1);
-            plain.set(path, { path, name: base.slice(0, base.lastIndexOf(".")) });
+            plain.set(path, { path, name: base.slice(0, base.lastIndexOf(".")), width, height });
         }
     }
-    const all = [...plain.values(), ...[...plasma.values()].map(p => ({ path: p.path, name: p.name }))];
+    const all = [];
+    for (const p of plasma.values()) {
+        const paired = plasma.has(`${p.folder}\n${p.dark ? "images" : "images_dark"}`);
+        all.push({ path: p.path, name: p.name, width: p.width, height: p.height, mode: paired ? (p.dark ? "dark" : "light") : "" });
+    }
+    const modes = pictureModes([...plain.keys()]);
+    for (const p of plain.values()) {
+        all.push(Object.assign({}, p, { mode: modes.get(p.path) }));
+    }
+    for (const p of all) {
+        p.collection = galleryCollection(p.path, home, distro);
+    }
     return all.sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.path.localeCompare(b.path));
+}
+
+// A picture's pair, by its name, a size at its end aside: { base, mode }
+// for one named as the light or dark one of a pair (GNOME's -l and -d,
+// Ubuntu's -light, -dark and dimmed, Fedora's -day and -night), else null.
+function pairName(path) {
+    const stem = path.slice(0, path.lastIndexOf(".")).replace(/[-_ ]\d+x\d+$/, "");
+    const word = /^(.*[-_ ])(dark|dimmed|night|light|day)$/i.exec(stem);
+    if (word) {
+        return { base: word[1].toLowerCase(), mode: /^(light|day)$/i.test(word[2]) ? "light" : "dark" };
+    }
+    const letter = /^(.*-)([ld])$/.exec(stem);
+    return letter ? { base: `${letter[1]}\n`, mode: letter[2] === "l" ? "light" : "dark" } : null;
+}
+
+// Each picture's mode among `paths`: "light" or "dark" when it's named as
+// one of a pair and its partner is there too, else "", so a lone
+// city-night.jpg shows for either.
+function pictureModes(paths) {
+    const pairs = new Map();
+    for (const path of paths) {
+        const p = pairName(path);
+        if (p) {
+            pairs.set(p.base, (pairs.get(p.base) ?? new Set()).add(p.mode));
+        }
+    }
+    const modes = new Map();
+    for (const path of paths) {
+        const p = pairName(path);
+        modes.set(path, p && pairs.get(p.base).size === 2 ? p.mode : "");
+    }
+    return modes;
+}
+
+// Which collection a picture is in, for the grid's chips: Yours under
+// `home`'s ~/Pictures/wallpapers; Plasma's in /usr/share/wallpapers; one
+// in a folder of /usr/share/backgrounds by that folder (gnome is GNOME,
+// f40 Fedora 40); and one loose in it the distro's, `distro`, as Ubuntu
+// installs its own, or Other with none.
+export function galleryCollection(path, home, distro = "") {
+    if (home !== "" && path.startsWith(`${home}/Pictures/wallpapers/`)) {
+        return "Yours";
+    }
+    if (path.startsWith("/usr/share/wallpapers/")) {
+        return "Plasma";
+    }
+    const sub = /^\/usr\/share\/backgrounds\/(?:([^/]+)\/)?[^/]+$|^\/usr\/share\/backgrounds\/([^/]+)\//.exec(path);
+    if (!sub) {
+        return "Other";
+    }
+    const folder = sub[1] ?? sub[2];
+    if (folder === undefined) {
+        return distro || "Other";
+    }
+    if (/^gnome$/i.test(folder)) {
+        return "GNOME";
+    }
+    const fedora = /^f(\d+)$/i.exec(folder);
+    if (fedora) {
+        return `Fedora ${fedora[1]}`;
+    }
+    return folder.split(/[-_ ]+/).filter(w => w !== "").map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+}
+
+// The distro's name for the grid's chips, from /etc/os-release's `text`:
+// its NAME, less a trailing "Linux" or "GNU/Linux", so Fedora Linux is
+// Fedora; "" with none.
+export function distroName(text) {
+    const m = /^NAME=(?:"([^"\n]*)"|'([^'\n]*)'|([^\n]*))$/m.exec(String(text ?? ""));
+    const name = m ? (m[1] ?? m[2] ?? m[3] ?? "") : "";
+    return name.replace(/\s+(GNU\/)?Linux$/, "").trim();
+}
+
+// The collections among `images`, for the grid's chips, by name with
+// Yours last; none when there's only one.
+export function galleryCollections(images) {
+    const names = [...new Set(images.map(i => i.collection))];
+    if (names.length < 2) {
+        return [];
+    }
+    return names.sort((a, b) => (a === "Yours") - (b === "Yours") || a.localeCompare(b, "en", { sensitivity: "base" }));
+}
+
+// The grid's light and dark filter's choices, and the one it opens on for
+// a setting, `key`: Light for lightWallpaper, Dark for darkWallpaper.
+export const GALLERY_MODES = ["light", "dark", "any"];
+
+export function galleryModeFor(key) {
+    return key === "darkWallpaper" ? "dark" : key === "lightWallpaper" ? "light" : "any";
+}
+
+// The pictures `images` the grid shows with its filters: `mode` (one of
+// GALLERY_MODES) keeps a pair's picture for that mode, and every picture
+// that isn't one of a pair; `collection`, "" for all, keeps that one's.
+export function galleryFiltered(images, mode, collection) {
+    return images.filter(i => (mode === "any" || i.mode === "" || i.mode === mode) && (collection === "" || i.collection === collection));
+}
+
+// How far a picture's shape, width over height, may be from a monitor's
+// and still fit it: 2%, so 2560×1080 fits 3440×1440, trimming under 1%,
+// where 16:10 on 16:9 trims 10%.
+const SHAPE_TOLERANCE = 0.02;
+
+// Whether `image`, {width, height}, is the shape of one of `screens`,
+// previewScreens's. One whose size is unknown isn't.
+export function fitsScreens(image, screens) {
+    if (!(image?.width > 0 && image?.height > 0)) {
+        return false;
+    }
+    const shape = image.width / image.height;
+    return screens.some(s => s.width > 0 && s.height > 0 && Math.abs(shape / (s.width / s.height) - 1) <= SHAPE_TOLERANCE);
+}
+
+// The grid's rows, `columns` pictures to a row at most (SPEC.md §16): the
+// pictures your monitors' shape, then the rest, each in galleryImages's
+// order. Each row is { section, heading, images }, section "fits" or
+// "others"; heading is the section's, on its first row, and "" on the
+// rest, and on every row when all the pictures are in the one section.
+export function galleryRows(images, screens, columns) {
+    const fits = images.filter(i => fitsScreens(i, screens));
+    const others = images.filter(i => !fitsScreens(i, screens));
+    const both = fits.length > 0 && others.length > 0;
+    const headings = {
+        fits: screens.length > 1 ? "Fits one of your screens" : "Fits your screen",
+        others: "Other shapes",
+    };
+    const rows = [];
+    for (const [section, list] of [["fits", fits], ["others", others]]) {
+        for (let i = 0; i < list.length; i += columns) {
+            rows.push({ section, heading: both && i === 0 ? headings[section] : "", images: list.slice(i, i + columns) });
+        }
+    }
+    return rows;
 }
 
 // The command that prints the first of `paths` that's a regular file it
