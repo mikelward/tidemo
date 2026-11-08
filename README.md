@@ -85,6 +85,14 @@ It brings tide for Linux's desktop to macOS:
   links each to its list in Privacy & Security, and lists the Desktop &
   Dock, Lock Screen and Notifications settings to change, to tick off
   (§10, §15);
+- a macOS page in the settings window for macOS's own settings that
+  `setup-macos` used to set: Finder's hidden files, path bar and
+  extensions, the screenshot folder and thumbnail, the Spaces order, hot
+  corners and Mission Control's swipes, Stage Manager and window tiling,
+  animations, expanded dialogs, typing corrections and font smoothing.
+  They're kept in `~/.config/tide/macos.json` and `macos.local.json`, and
+  applied as the files change; one left out stays as System Settings has
+  it (§15);
 - a notification, and a line in the doctor, when LinearMouse isn't
   installed or isn't running, since without it a mouse wheel notch
   scrolls a line or so (§10).

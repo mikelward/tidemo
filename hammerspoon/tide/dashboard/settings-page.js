@@ -1509,6 +1509,93 @@ function renderLauncher(launcher) {
   );
 }
 
+// The macOS page: macOS's own settings that tide keeps (macprefs.lua),
+// update()'s `macos`, each group's rows. A row is a switch, a choice with
+// ‹ and ›, or a folder typed and set with Enter; one tide sets has a button
+// giving it back to macOS. A change sends { macSet: { name, value } }, a
+// reset { macReset: name }, and tide answers with tide.update().
+const MAC_CHOICE_LABELS = { off: "Off", light: "Light", medium: "Medium", strong: "Strong" };
+const MAC_WHEN = { "as apps reopen": "As apps reopen", "at next login": "At next login" };
+let macState = null;
+// What the page shows now, so the same again draws nothing and the keyboard
+// keeps its control, as Sound's does.
+let macDrawn = "";
+// A folder typed but not set yet, by setting: { base, text }, kept while
+// the setting's value is still `base`.
+const macDrafts = {};
+
+// `b` with a data-key, so a redraw puts the keyboard back on it.
+function keyed(b, key) {
+  b.setAttribute("data-key", key);
+  return b;
+}
+
+function macRow(r) {
+  const row = el("p");
+  row.className = "row";
+  const name = el("span", r.label);
+  name.className = "name";
+  row.append(name);
+  if (MAC_WHEN[r.when]) {
+    const when = el("span", MAC_WHEN[r.when]);
+    when.className = "note";
+    row.append(when);
+  }
+  if (r.kind === "bool") {
+    const toggle = keyed(button(r.value ? "On" : "Off", r.label, false, () => send({ macSet: { name: r.name, value: !r.value } })),
+      `mac-${r.name}`);
+    toggle.setAttribute("aria-pressed", String(r.value === true));
+    row.append(toggle);
+  } else if (r.kind === "choice") {
+    const choices = Array.isArray(r.choices) ? r.choices : [];
+    const at = Math.max(0, choices.indexOf(r.value));
+    const step = (d) => send({ macSet: { name: r.name, value: choices[(at + d + choices.length) % choices.length] } });
+    const shown = el("span", MAC_CHOICE_LABELS[r.value] ?? String(r.value));
+    shown.className = "value";
+    row.append(
+      keyed(button("‹", `Previous: ${r.label}`, choices.length < 2, () => step(-1)), `mac-${r.name}-prev`),
+      shown,
+      keyed(button("›", `Next: ${r.label}`, choices.length < 2, () => step(1)), `mac-${r.name}-next`),
+    );
+  } else {
+    const base = String(r.value ?? "");
+    const draft = macDrafts[r.name];
+    if (draft && draft.base !== base) delete macDrafts[r.name];
+    const input = keyed(el("input"), `mac-${r.name}`);
+    input.value = macDrafts[r.name]?.text ?? base;
+    input.spellcheck = false;
+    input.setAttribute("aria-label", r.label);
+    input.addEventListener("input", () => {
+      macDrafts[r.name] = { base, text: input.value };
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send({ macSet: { name: r.name, value: input.value.trim() } });
+    });
+    row.append(input);
+  }
+  if (r.set) {
+    row.append(keyed(button("Use macOS's", `Use macOS's ${r.label}`, false, () => send({ macReset: r.name })),
+      `mac-${r.name}-reset`));
+  }
+  return row;
+}
+
+function renderMac() {
+  const drawn = JSON.stringify(macState);
+  if (drawn === macDrawn) return;
+  macDrawn = drawn;
+  keepingFocus(() => {
+    const box = document.getElementById("mac-groups");
+    box.replaceChildren();
+    if (!macState || !Array.isArray(macState.groups)) return;
+    for (const g of macState.groups) {
+      box.append(el("h2", g.label));
+      for (const r of Array.isArray(g.rows) ? g.rows : []) box.append(macRow(r));
+    }
+  });
+  document.getElementById("mac-error").textContent = typeof macState?.error === "string" ? macState.error : "";
+}
+
 // The Appearance page's Menu bar switch: whether tide keeps the hidden
 // menu bar from sliding over its bar (SPEC.md §8). A click sends
 // { keepMenuBarHidden: on }, and tide answers with tide.update().
@@ -1773,6 +1860,10 @@ window.tide = {
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
     if (state.launcher && typeof state.launcher === "object") renderLauncher(state.launcher);
     if (state.menuBar && typeof state.menuBar === "object") renderMenuBar(state.menuBar);
+    if (isObject(state.macos)) {
+      macState = state.macos;
+      renderMac();
+    }
     if (state.shortcuts && typeof state.shortcuts === "object") renderShortcuts(state.shortcuts);
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";

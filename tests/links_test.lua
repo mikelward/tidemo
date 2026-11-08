@@ -67,11 +67,12 @@ local TIDE_ORDER = {
     "displays", "sound", "network", "bluetooth", "mouse", "trackpad", "keyboard", "power",
     "layouts", "workspaces", "floating",
     "appearance", "muted", "clipboard", "clocks", "idle", "startup",
-    -- Then tide's own Setup checklist, which tide has no page for.
-    "setup",
+    -- Then tide's own pages, which tide has none for: macOS's settings
+    -- tide keeps, and the Setup checklist.
+    "macos", "setup",
 }
 
-t.test("the settings window's sections are tide's pages, in tide's order, then the checklist", function()
+t.test("the settings window's sections are tide's pages, in tide's order, then tide's own", function()
     local html = read("hammerspoon/tide/dashboard/settings.html")
     local ids = {}
     for id in html:gmatch('<h1 id="([%w_-]+)"') do
