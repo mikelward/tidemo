@@ -146,8 +146,8 @@ Still to do:
 - **Caps Lock as Compose** is setup-macos's: one `hidutil` map holds it
   with the modifier rotation, and a second writer would replace the
   first. tide could set it as it starts, merged with what's there.
-- **Homebrew:** a tap whose formula runs the installer, after the first
-  tagged release.
+- **Homebrew:** a tap whose formula runs the installer, from CI's
+  releases (`v<commit count>`, `.github/workflows/release.yml`).
 
 ## Named workspaces
 

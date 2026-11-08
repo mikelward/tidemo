@@ -1,5 +1,7 @@
 # tidemo
 #
+#   make version  print the version: the commit count, as each release's tag
+#                 has it (v<version>)
 #   make test     run the tests (plain Lua 5.4 and bash, no Mac needed)
 #   make test-install  run only the installer's tests (install/tide-setup)
 #   make lint     check every Lua file parses
@@ -30,7 +32,18 @@ export LUA_PATH := hammerspoon/?.lua;hammerspoon/?/init.lua;tests/?.lua;;
 LUA_FILES := $(wildcard hammerspoon/tide/*.lua hammerspoon/tilemo/*.lua hammerspoon/timo/*.lua tests/*.lua ci/*.lua)
 TESTS := $(wildcard tests/*_test.lua)
 
-.PHONY: test test-install lint install check-tide check-geometry check-tideco mocks icons
+.PHONY: test test-install lint install check-tide check-geometry check-tideco mocks icons version unshallow-check
+
+# The version is the number of commits, so each push to main is a higher
+# one, released by CI as v<version> (.github/workflows/release.yml).
+version: unshallow-check
+	@git rev-list --count HEAD
+
+# A shallow clone counts only the commits it has, which would make a lower
+# version than one already released.
+unshallow-check:
+	@if test "$$(git rev-parse --is-shallow-repository)" != false; then \
+		echo "the history is shallow, so the commit count is wrong; run git fetch --unshallow" >&2; exit 1; fi
 
 test: test-install
 	@status=0; for t in $(TESTS); do $(LUA) $$t || status=1; done; exit $$status
