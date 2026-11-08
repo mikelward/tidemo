@@ -532,6 +532,8 @@ M.RULE_FEATURES = {
     {
         what = "Alt+Tab (swap with the master)",
         -- Physical Alt+Tab, sent as Ctrl+Option+Shift+Tab (keys.karabiner_only).
+        -- The Win rule's alone: in the left Option rule, Alt is Super.
+        only = "left_command",
         has = function(m)
             local f, t = m.from or {}, (m.to or {})[1] or {}
             return f.key_code == "tab" and same_set((f.modifiers or {}).mandatory, { "left_option" })
@@ -541,30 +543,42 @@ M.RULE_FEATURES = {
     {
         what = "the lone Super tap (the launcher)",
         -- The tap, sent as Super+F20.
-        has = function(m)
+        has = function(m, key)
             local a = (m.to_if_alone or {})[1] or {}
-            return (m.from or {}).key_code == "left_command" and a.key_code == "f20"
+            return (m.from or {}).key_code == key and a.key_code == "f20"
         end,
     },
     {
         what = "Super+Backspace (close the window)",
         -- Physical Win+Backspace, sent as Ctrl+Option+Command+F19 (M.map).
-        has = function(m)
+        has = function(m, key)
             local f, t = m.from or {}, (m.to or {})[1] or {}
-            return f.key_code == "delete_or_backspace" and same_set((f.modifiers or {}).mandatory, { "left_command" })
+            return f.key_code == "delete_or_backspace" and same_set((f.modifiers or {}).mandatory, { key })
                 and t.key_code == "f19" and same_set(t.modifiers, { "left_option", "left_command", "left_control" })
         end,
     },
     {
         what = "Super+Z (minimize)",
         -- Physical Win+Z, sent as Ctrl+Option+Command+Z.
-        has = function(m)
+        has = function(m, key)
             local f, t = m.from or {}, (m.to or {})[1] or {}
-            return f.key_code == "z" and same_set((f.modifiers or {}).mandatory, { "left_command" })
+            return f.key_code == "z" and same_set((f.modifiers or {}).mandatory, { key })
                 and t.key_code == "z" and same_set(t.modifiers, { "left_option", "left_command", "left_control" })
         end,
     },
 }
+
+-- The key a tide rule makes Super: left_option in the left Option rule,
+-- left_command (the PC keyboard's Win) in the rotation's, or an old one's.
+function M.rule_key(rule)
+    for _, m in ipairs(rule.manipulators or {}) do
+        local f = (m.from or {}).key_code
+        if f == "left_option" and ((m.to_if_alone or {})[1] or {}).key_code == "f20" then
+            return f
+        end
+    end
+    return "left_command"
+end
 
 -- What the installed tide rule is missing, as M.RULE_FEATURES' `what`s,
 -- in order; empty if it's up to date or there's no rule (karabiner_ready
@@ -576,26 +590,29 @@ function M.rule_gaps(read, home, decode)
     if not rule then
         return out
     end
+    local key = M.rule_key(rule)
     for _, feature in ipairs(M.RULE_FEATURES) do
-        local found = false
-        for _, m in ipairs(rule.manipulators or {}) do
-            found = found or feature.has(m)
-        end
-        if not found then
-            out[#out + 1] = feature.what
+        if not feature.only or feature.only == key then
+            local found = false
+            for _, m in ipairs(rule.manipulators or {}) do
+                found = found or feature.has(m, key)
+            end
+            if not found then
+                out[#out + 1] = feature.what
+            end
         end
     end
     return out
 end
 
 -- What a stale rule costs, said once per change, in a notification and by
--- tide.doctor(). tide brings Karabiner's copy up to date with conf's
--- file itself (karabiner.lua), so a copy still missing something means the
--- file is out of date too.
+-- tide.doctor(). tide brings Karabiner's copy up to date with its file
+-- itself (karabiner.lua), so a copy still missing something means the file
+-- is out of date too.
 function M.gaps_notice(gaps)
     return "tide's Karabiner rule is out of date, so " .. table.concat(gaps, " and ")
-        .. (#gaps == 1 and " doesn't" or " don't") .. " work. Update conf: git pull in your conf"
-        .. " checkout and run confinst, and tide brings Karabiner's copy of the \"" .. M.RULE_PREFIXES[1]
+        .. (#gaps == 1 and " doesn't" or " don't") .. " work. Update tide: git pull in your tidemo"
+        .. " checkout and run install/tide-setup, and tide brings Karabiner's copy of the \"" .. M.RULE_PREFIXES[1]
         .. "\" rule up to date."
 end
 
@@ -658,6 +675,6 @@ end
 -- What the fallback costs, said once when tide starts without Karabiner.
 M.FALLBACK_NOTICE = "Karabiner isn't running with tide's rules, so tide's keys"
     .. " are on Option. Option+Backspace, Option+arrows and Option accents"
-    .. " now belong to tide. Install conf's Karabiner rules to get them back."
+    .. " now belong to tide. Run tide's installer, install/tide-setup, for a Super key of its own."
 
 return M

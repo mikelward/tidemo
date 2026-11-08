@@ -97,6 +97,7 @@ MOCK
     mkdir -p "$APPLICATIONS_DIR"
     SETUP_TODO=
     SETUP_PROBLEMS=
+    RULE="$TEST_TMPDIR/home/.config/karabiner/assets/complex_modifications/tide.json"
 }
 
 teardown() {
@@ -123,6 +124,7 @@ add_command() {
 # A machine with everything installed already.
 stage_installed() {
     add_app Hammerspoon
+    add_app Karabiner-Elements
     add_command blueutil
     add_command m1ddc
 }
@@ -290,7 +292,8 @@ test_missing_brew_warns() {
     assert_status 0 &&
     assert_output_contains "Homebrew not found, so Hammerspoon can't be installed" &&
     assert_output_contains "Homebrew not found, so blueutil can't be installed" &&
-    assert_output_contains "tide installed with 3 problem(s)"
+    assert_output_contains "Homebrew not found, so Karabiner-Elements can't be installed" &&
+    assert_output_contains "tide installed with 4 problem(s)"
 }
 
 test_failed_hammerspoon_install_is_counted() {
@@ -545,9 +548,10 @@ test_ends_with_what_to_do() {
     run_setup
     assert_status 0 &&
     assert_says "Still to do by hand" &&
-    assert_says "1. Turn on Accessibility for Hammerspoon" &&
+    assert_says "1. Allow Karabiner-Elements, which makes the Super key" &&
+    assert_says "2. Turn on Accessibility for Hammerspoon" &&
     assert_says "choose Reload Config" &&
-    assert_says "2. Log out and back in, once the steps above are done, for the menu bar setting to take effect"
+    assert_says "3. Log out and back in, once the steps above are done, for the menu bar setting to take effect"
 }
 
 # A fresh install isn't running, so it's started; a running one is left.
@@ -569,6 +573,96 @@ test_leaves_a_running_hammerspoon() {
 test_says_to_open_hammerspoon_without_an_icon() {
     run_setup
     assert_says "If there's no icon, open Hammerspoon from Applications."
+}
+
+# --- Super ---
+
+# Without the rotation, left Option is Super: Karabiner is installed, which
+# asks for a password, and tide's Option rule copied into its folder.
+test_super_defaults_to_left_option() {
+    run_setup
+    assert_status 0 &&
+    assert_called "brew install --cask karabiner-elements" &&
+    assert_output_contains "asks for your password" &&
+    assert_file_contains "$RULE" '"description": "tide: left Option+key'
+}
+
+test_super_win_installs_the_rotation_rule() {
+    run_setup --super win
+    assert_status 0 &&
+    assert_file_contains "$RULE" '"description": "tide: Win+key'
+}
+
+test_super_equals_syntax() {
+    run_setup --super=win
+    assert_status 0 &&
+    assert_file_contains "$RULE" '"description": "tide: Win+key'
+}
+
+# Optional: no Karabiner, and Super stays plain Option.
+test_super_none_leaves_karabiner_out() {
+    run_setup --super none
+    assert_status 0 &&
+    assert_not_called "karabiner" &&
+    assert_output_contains "Super is plain Option" || return 1
+    if test -e "$RULE"; then
+        fail "a rule was written"
+    fi
+}
+
+test_super_unknown_is_a_usage_error() {
+    run_setup --super capslock
+    assert_status 1 &&
+    assert_output_contains "Unknown key for --super: 'capslock'" &&
+    assert_not_called "defaults write"
+}
+
+test_super_without_a_value_is_a_usage_error() {
+    run_setup --super
+    assert_status 1 &&
+    assert_output_contains "--super needs a value"
+}
+
+test_installed_karabiner_isnt_reinstalled_or_explained() {
+    add_app Karabiner-Elements
+    run_setup
+    assert_status 0 &&
+    assert_not_called "karabiner-elements" &&
+    assert_file_contains "$RULE" "tide:" || return 1
+    case "$output" in
+        *"Allow Karabiner-Elements"*) fail "it explained an installed Karabiner" ;;
+    esac
+}
+
+# Karabiner's .pkg asks for a password, which --no-sudo promises not to.
+test_no_sudo_skips_karabiner() {
+    run_setup --no-sudo
+    assert_status 0 &&
+    assert_not_called "karabiner-elements" &&
+    assert_output_contains "needs an administrator's password and --no-sudo was given" &&
+    assert_file_contains "$RULE" "tide:"
+}
+
+test_failed_karabiner_install_is_counted() {
+    touch "$TEST_TMPDIR/brew_fails.karabiner-elements"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not install Karabiner-Elements; Super is plain Option"
+}
+
+# An old conf checkout linked its rule here: the link is replaced, and
+# what it pointed at is left alone.
+test_replaces_a_linked_rule_without_writing_through() {
+    mkdir -p "${RULE%/*}" "$TEST_TMPDIR/conf"
+    printf 'conf\n' > "$TEST_TMPDIR/conf/tide.json"
+    ln -s "$TEST_TMPDIR/conf/tide.json" "$RULE"
+    run_setup
+    assert_status 0 &&
+    assert_file_contains "$RULE" "tide: left Option" &&
+    assert_file_contains "$TEST_TMPDIR/conf/tide.json" "conf" || return 1
+    if test -L "$RULE"; then
+        fail "the rule is still a link"
+    fi
 }
 
 # --- Under setup ---
@@ -663,6 +757,16 @@ run_test "it ends with what to do by hand" test_ends_with_what_to_do
 run_test "Hammerspoon is started" test_starts_hammerspoon
 run_test "a running Hammerspoon is left alone" test_leaves_a_running_hammerspoon
 run_test "it says to open Hammerspoon when there's no icon" test_says_to_open_hammerspoon_without_an_icon
+run_test "Super defaults to left Option" test_super_defaults_to_left_option
+run_test "--super win installs the rotation's rule" test_super_win_installs_the_rotation_rule
+run_test "--super=win is accepted" test_super_equals_syntax
+run_test "--super none leaves Karabiner out" test_super_none_leaves_karabiner_out
+run_test "an unknown --super is a usage error" test_super_unknown_is_a_usage_error
+run_test "--super without a value is a usage error" test_super_without_a_value_is_a_usage_error
+run_test "an installed Karabiner isn't reinstalled" test_installed_karabiner_isnt_reinstalled_or_explained
+run_test "--no-sudo skips Karabiner's install" test_no_sudo_skips_karabiner
+run_test "a failed Karabiner install is counted" test_failed_karabiner_install_is_counted
+run_test "a linked rule is replaced, not written through" test_replaces_a_linked_rule_without_writing_through
 run_test "under setup, what to do goes to setup" test_hands_what_to_do_to_setup
 run_test "under setup, warnings go to setup's list" test_adds_warnings_to_setups_list
 run_test "on its own, it repeats its warnings" test_repeats_its_warnings_on_its_own
