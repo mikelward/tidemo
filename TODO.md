@@ -18,7 +18,7 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
    with the workspaces, the title, tide for Chrome's clocks and its own status items.
    The menu bar item stays as the fallback (`bar = false`), and a large
    number shows briefly on each switch.
-8. **Done:** conf's Karabiner rule turns Win+key into
+8. **Done:** tide's Karabiner rule turns Super+key into
    Ctrl+Option+Command+key (description starting `tide:`), and
    tide's installer, `install/tide-setup`, installs Hammerspoon and tide,
    frees the keys in SPEC.md §7.3, and stops the menu bar hiding, for
@@ -143,9 +143,6 @@ Mac,** from a fresh clone with no `~/scripts`:
 
 Still to do:
 
-- **Caps Lock as Compose** is setup-macos's: one `hidutil` map holds it
-  with the modifier rotation, and a second writer would replace the
-  first. tide could set it as it starts, merged with what's there.
 - **Homebrew:** a tap whose formula runs the installer, from CI's
   releases (`v<commit count>`, `.github/workflows/release.yml`).
 
@@ -381,9 +378,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
   Accessibility, holds the button down from its first touch, so it never
   swipes.
 - **Built: Caps Lock as Compose** (SPEC.md §10, `compose.lua`), with
-  Caps Lock sending F18 from `setup-macos` (mikelward/scripts#408). Only the
-  tests have run it. **Check on a Mac:** that `hidutil`'s Caps Lock to F18
-  holds alongside Karabiner, with no Caps Lock light or delay; that
+  tide making Caps Lock send F18 itself, added to the key mapping that's
+  there (`capslock.lua`). Only the tests have run it. **Check on a Mac:**
+  that `hidutil property --get UserKeyMapping` prints what `capslock.parse`
+  reads; that Caps Lock to F18 holds alongside Karabiner and
+  setup-macos's rotation, after a restart and a wake, with no Caps Lock
+  light or delay; that
   `getCharacters()` gives Dvorak's characters, with Shift; that
   `keyStrokes` types é, ① and combining marks in kitty, Chrome and a
   native text field.
