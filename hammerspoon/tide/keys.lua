@@ -102,6 +102,29 @@ for _, a in ipairs(M.APPS) do
     M.map[#M.map + 1] = { key = a.key, shift = a.shift, action = "app", arg = a.spec, does = a.does, name = a.name }
 end
 
+-- `map` (M.map when nil) with each app key that will open one of its
+-- fallbacks (M.resolve_app) saying that app, by `app_name(bundle)`, in
+-- the Shortcuts list rather than what scripts' helper does. The rest are
+-- the same tables.
+function M.described(map, helper_exists, installed, app_name)
+    local out = {}
+    for i, b in ipairs(map or M.map) do
+        out[i] = b
+        if b.action == "app" and type(b.arg) == "table" and b.arg.fallback then
+            local r = M.resolve_app(b.arg, helper_exists, installed)
+            if r ~= b.arg then
+                local copy = {}
+                for k, v in pairs(b) do
+                    copy[k] = v
+                end
+                copy.does = app_name(r.bundle) or r.bundle
+                out[i] = copy
+            end
+        end
+    end
+    return out
+end
+
 -- The app key `spec` to open: itself, or when its helper (`run`'s first
 -- word, in ~/scripts) or its app (`bundle`) isn't there, the first of its
 -- `fallback` that's installed, as a bundle spec keeping `new` and

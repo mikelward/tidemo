@@ -96,7 +96,11 @@ local function bind_all(self)
         h:delete()
     end
     self.hotkeys = {}
-    local list, skipped = keys.bindings(self.super, self.keys_hs and self.keys_hs.map)
+    local map = self.keys_hs and self.keys_hs.map
+    if self.adapter.helper_exists and self.adapter.app_installed and self.adapter.app_name then
+        map = keys.described(map, self.adapter.helper_exists, self.adapter.app_installed, self.adapter.app_name)
+    end
+    local list, skipped = keys.bindings(self.super, map)
     -- What registered and what didn't, for the settings window's Shortcuts
     -- and tide doctor (SPEC.md §15).
     local bound, failed = {}, {}

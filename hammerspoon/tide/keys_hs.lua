@@ -30,8 +30,18 @@ function M.new(tide)
     local a = tide.adapter
     local reported_file, reported_problems, reported_apps
 
+    -- The named bindings, each app key saying the app it will open
+    -- (keys.described), as the Shortcuts list shows them.
+    local function named()
+        local map = keys.named_map()
+        if a.helper_exists and a.app_installed and a.app_name then
+            map = keys.described(map, a.helper_exists, a.app_installed, a.app_name)
+        end
+        return map
+    end
+
     local function rows_now()
-        self.rows = shortcuts.rows(keys.named_map(), self.map, self.state, keys.does)
+        self.rows = shortcuts.rows(named(), self.map, self.state, keys.does)
     end
 
     -- Read the files and bind what they say. A file that's wrong is said

@@ -124,46 +124,30 @@ choices to tide's `macos.json` (SPEC.md §15).
 
 ## Free-standing tide
 
-tide should install and run without mikelward/scripts or mikelward/conf,
-as tide for Linux now does: `setup-macos` runs tide's installer, then its
-owner's extras.
+tide installs and runs without mikelward/scripts or mikelward/conf: a
+clone's `install/tide-setup` does it, and `setup-macos` runs that, then
+its owner's extras. Only the tests have run any of it. **Check on a
+Mac,** from a fresh clone with no `~/scripts`:
 
-- **Done: the installer,** `install/tide-setup`: Hammerspoon, blueutil and
-  the DDC tool, `make install` from its own checkout, `init.lua`, the keys
-  in SPEC.md §7.3, the menu bar, the other tilers' warnings and the
-  Accessibility step, with its tests. Only the mocks have run it.
-  **Check on a Mac:** a fresh clone's `install/tide-setup` leaves tide
-  tiling once Accessibility is on, and `setup` still does all it did.
-- **Done: commands run without scripts' `runenv`.** App keys' helpers,
-  Start at login and the picker's `rbw` run through `~/scripts/runenv`
-  where it's installed, and otherwise through your login shell
-  (`loginenv.lua`). **Check on a Mac:** with no `~/scripts`, a Start at
-  login command with Homebrew's PATH starts, and the Fill tab lists
-  `rbw`'s logins.
-- **Done: your app keys in the settings window** (Keyboard › Your app
-  keys). **Check on a Mac:** one added there opens its app at once.
-- **Done: app keys without scripts,** each opening a Mac's own app when
-  its helper is missing, and your own in `apps.json`. **Next:** the
-  Shortcuts list still says what scripts' helper does ("IRC") for a key
-  that opens its fallback (Messages); and Meet, Remote desktop and
-  Terminal on the workstation have no fallback (FaceTime and Screen
-  Sharing would do for the first two). **Check on a
-  Mac:** with no `~/scripts`, Super+G opens Chrome, Super+I Messages,
-  Super+Y Music, and an `apps.json` key on Super+I opens its app in
-  Messages' place.
-- **Done: Super without conf.** tide ships its Karabiner rules
-  (`hammerspoon/tide/karabiner/`), and the installer installs Karabiner and one of them:
-  left Option by default, the Win key under the rotation (`--super win`),
-  or none. conf's copy of the Win rule then goes. **Check on a Mac:** left
-  Option+key reaches tide as Super, a lone tap opens the launcher, right
-  Option still types accents, and the Keyboard page's Super key row
-  swaps the rule, leaving only the new one on in Karabiner.
+- `install/tide-setup` installs Hammerspoon, Karabiner and tide, starts
+  Hammerspoon, and tide tiles once Accessibility is on; `setup` still
+  does all it did.
+- Left Option+key is Super, a lone tap opens the launcher, right Option
+  types accents, and the Keyboard page's Super key row swaps the rule,
+  leaving one on in Karabiner.
+- Super+G opens Chrome, Super+I Messages, Super+Y Music, and the
+  Shortcuts list names them; a key added under Your app keys opens its
+  app at once.
+- A Start at login command that needs Homebrew's PATH starts, and the
+  Fill tab lists `rbw`'s logins.
+
+Still to do:
+
 - **Caps Lock as Compose** is setup-macos's: one `hidutil` map holds it
   with the modifier rotation, and a second writer would replace the
-  first. tide could set it as it starts, merged with what's there
-  (macOS's settings, above).
-- **Later: releases.** Tagged versions, and a Homebrew tap whose formula
-  runs the installer.
+  first. tide could set it as it starts, merged with what's there.
+- **Homebrew:** a tap whose formula runs the installer, after the first
+  tagged release.
 
 ## Named workspaces
 

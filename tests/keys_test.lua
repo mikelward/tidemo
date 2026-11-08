@@ -578,4 +578,38 @@ t.test("with neither the helper nor a fallback installed, the key says why as be
     t.eq(keys.resolve_app(app_spec("meet"), no_helpers, installed({ "com.apple.Safari" })).run, "google-meet")
 end)
 
+-- The Shortcuts list says the app a key will open, not scripts' helper.
+t.test("an app key opening its fallback says that app", function()
+    local apps = installed({ "com.apple.MobileSMS" })
+    local map = keys.described(nil, no_helpers, apps, function(bundle)
+        return ({ ["com.apple.MobileSMS"] = "Messages" })[bundle]
+    end)
+    local by = {}
+    for _, b in ipairs(map) do
+        if b.name then
+            by[b.name] = b
+        end
+    end
+    t.eq(keys.does(by.irc), "Messages")
+    t.eq(keys.does(by.browser), "Browser", "nothing installed: as it was")
+    local original
+    for _, a in ipairs(keys.APPS) do
+        if a.name == "irc" then
+            original = a.does
+        end
+    end
+    t.eq(original, "IRC", "keys.APPS itself is unchanged")
+    -- With scripts' helper there, the helper's words.
+    map = keys.described(nil, function()
+        return true
+    end, apps, function()
+        return "Messages"
+    end)
+    for _, b in ipairs(map) do
+        if b.name == "irc" then
+            t.eq(keys.does(b), "IRC")
+        end
+    end
+end)
+
 t.done("keys")

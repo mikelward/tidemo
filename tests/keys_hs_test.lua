@@ -165,4 +165,27 @@ t.test("app keys from the settings window are written, bound and said on the pag
     t.eq(k.remove_app(1), nil, "gone already")
 end)
 
+-- Without scripts, the Shortcuts list's rows say the app a key opens.
+t.test("a row says the app its key opens without scripts' helper", function()
+    local tide = fake_tide()
+    tide.adapter.helper_exists = function()
+        return false
+    end
+    tide.adapter.app_installed = function(b)
+        return b == "com.apple.MobileSMS"
+    end
+    tide.adapter.app_name = function(b)
+        return b == "com.apple.MobileSMS" and "Messages" or nil
+    end
+    local k = keys_hs.new(tide)
+    k.load()
+    local does
+    for _, r in ipairs(k.page().rows) do
+        if r.name == "irc" then
+            does = r.does
+        end
+    end
+    t.eq(does, "Messages")
+end)
+
 t.done("keys_hs_test")
