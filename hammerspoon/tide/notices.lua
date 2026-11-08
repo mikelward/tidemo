@@ -83,4 +83,28 @@ function M.sender(description, stacking)
     return { app = app, name = name, site = site }
 end
 
+-- The gap kept between a bar's bottom edge and a banner pushed below it
+-- *(unverified: about what macOS leaves below its own menu bar)*.
+M.BANNER_GAP = 8
+
+-- How far down to move a banner at `frame` ({ x, y, w, h }) so tide's bar
+-- no longer covers it: macOS puts banners just below its menu bar, and
+-- tide's bar, over the menu bar, is taller (SPEC.md §8). `bars` are the
+-- bars' frames, as bar_hs's frames() gives them; a hidden one doesn't
+-- count. 0 when the banner is clear of every bar.
+function M.clearance(frame, bars)
+    if type(frame) ~= "table" or not (frame.x and frame.y and frame.w) then
+        return 0
+    end
+    local dy = 0
+    for _, b in pairs(bars or {}) do
+        local across = frame.x < b.x + b.w and frame.x + frame.w > b.x
+        local bottom = b.y + b.h
+        if not b.hidden and across and frame.y >= b.y and frame.y < bottom + M.BANNER_GAP then
+            dy = math.max(dy, bottom + M.BANNER_GAP - frame.y)
+        end
+    end
+    return dy
+end
+
 return M

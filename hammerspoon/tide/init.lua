@@ -382,9 +382,12 @@ function M.start(config)
         self.wm:retitled(id)
     end)
     -- Notifications and bells want attention (SPEC.md §14.2).
+    -- Banners under tide's bar move down below it (SPEC.md §8).
     self.notice_watch = adapter_mod.notifications(function(app, site)
         self.wm:notified(app, site)
-    end, self.adapter.log)
+    end, self.adapter.log, function()
+        return self.bar and self.bar.frames() or {}
+    end)
     adapter_mod.bells(function(id)
         self.wm:rang(id)
     end, self.adapter.log)
