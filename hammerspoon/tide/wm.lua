@@ -19,6 +19,7 @@
 -- goes empty.
 
 local attention = require("tide.attention")
+local keys_mod = require("tide.keys")
 local mute = require("tide.mute")
 local bar = require("tide.bar")
 local direction = require("tide.direction")
@@ -3949,6 +3950,9 @@ end
 -- launch asks for a workspace first where before_launch says, and starts
 -- with that workspace's TIDE_WORKSPACE.
 function A.app(self, spec, fresh)
+    if self.a.helper_exists and self.a.app_installed then
+        spec = keys_mod.resolve_app(spec, self.a.helper_exists, self.a.app_installed)
+    end
     local default = spec.name or (spec.bundle and self.a.app_name and self.a.app_name(spec.bundle)) or spec.run
     if fresh or spec.new then
         self:before_launch({ fresh = fresh, home_app = spec.home_app, default = default, app = spec.bundle }, function(env)

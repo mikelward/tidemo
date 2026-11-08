@@ -789,6 +789,31 @@ function M.new()
         return type(path) == "string" and path ~= "" and hs.fs.attributes(path) ~= nil
     end
 
+    -- The bundle ID of the app called `name`, in either Applications
+    -- folder or macOS's own, or nil (appkeys.lua).
+    function a.bundle_of_app(name)
+        -- The launcher's folders too (launcher.APP_DIRS, LONE_APPS): Finder
+        -- and Archive Utility are in CoreServices.
+        for _, dir in ipairs({ "/Applications", "/System/Applications", "/System/Applications/Utilities",
+            "/Applications/Utilities", (os.getenv("HOME") or "") .. "/Applications",
+            "/System/Library/CoreServices", "/System/Library/CoreServices/Applications" }) do
+            local path = dir .. "/" .. name .. ".app"
+            if hs.fs.attributes(path) then
+                local info = hs.application.infoForBundlePath(path)
+                if info and type(info.CFBundleIdentifier) == "string" then
+                    return info.CFBundleIdentifier
+                end
+            end
+        end
+        return nil
+    end
+
+    -- Whether one of scripts' helpers is there, as runenv runs it from
+    -- ~/scripts (keys.resolve_app).
+    function a.helper_exists(name)
+        return hs.fs.attributes((os.getenv("HOME") or "") .. "/scripts/" .. name, "mode") == "file"
+    end
+
     function a.bundle_running(bundle)
         return #(hs.application.applicationsForBundleID(bundle) or {}) > 0
     end

@@ -140,10 +140,15 @@ owner's extras.
   (`loginenv.lua`). **Check on a Mac:** with no `~/scripts`, a Start at
   login command with Homebrew's PATH starts, and the Fill tab lists
   `rbw`'s logins.
-- **Most app keys run scripts' helpers** (`browser1`, `google-chat` and
-  the rest), so without scripts they say the command wasn't found. Give
-  them bundle IDs where an app does the job, or leave them unbound
-  without scripts.
+- **Done: app keys without scripts,** each opening a Mac's own app when
+  its helper is missing, and your own in `apps.json`. **Next:** the
+  Shortcuts list still says what scripts' helper does ("IRC") for a key
+  that opens its fallback (Messages); and Meet, Remote desktop and
+  Terminal on the workstation have no fallback (FaceTime and Screen
+  Sharing would do for the first two). **Check on a
+  Mac:** with no `~/scripts`, Super+G opens Chrome, Super+I Messages,
+  Super+Y Music, and an `apps.json` key on Super+I opens its app in
+  Messages' place.
 - **Done: Super without conf.** tide ships its Karabiner rules
   (`hammerspoon/tide/karabiner/`), and the installer installs Karabiner and one of them:
   left Option by default, the Win key under the rotation (`--super win`),
@@ -426,6 +431,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
   macOS's press-and-hold does. macOS keeps its own.
 
 ## Decisions needing review
+
+- **Safari on Super+F, not Super+S** (2026-11-08, your call): Super+S
+  stays keep awake, as on tide for Linux. Super+I opens Messages in place
+  of scripts' IRC helper, and Super+Y Music in place of YouTube Music.
+- **Your app keys win over tide's** (2026-11-08): one on tide's keys
+  takes them, and the Shortcuts list says which of tide's it displaced.
 
 - **The installer's to-do list goes to setup's** (2026-11-08): under
   setup, `install/tide-setup` writes what's left for you to

@@ -20,6 +20,17 @@ It brings tide for Linux's desktop to macOS:
   on each, in the order you made them, with "in" first for the apps you keep open all day (§6). An empty one
   goes once you leave it. A state saved with timo's or tide's old numbered
   workspaces is read once into ones named "1" to "9";
+- app keys: Super+T a terminal (kitty, iTerm2 or Terminal), Super+G
+  Chrome or Safari, Super+F Safari, Super+I Messages, Super+C Calendar,
+  Super+Y Music, Super+H Finder and Super+N TextEdit, or with mikelward/scripts its helpers; and your own,
+  in `~/.config/tide/apps.json`:
+
+  ```json
+  { "apps": [ { "keys": "SUPER + M", "app": "Spotify" },
+              { "keys": "SUPER + SHIFT + S", "app": "Safari", "new": true } ] }
+  ```
+
+  (§7.2);
 - the switcher, with Tab moving between apps and commands, the workspaces,
   open tabs, and the windows wanting attention: Super+Space opens it on
   apps, a lone Super tap on apps too and Super+A on attention (§9);

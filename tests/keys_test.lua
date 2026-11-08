@@ -512,4 +512,70 @@ t.test("Super+Backspace closes the window, bound on F19 with Karabiner", functio
     t.eq(close((keys.bindings(keys.OPTION))), { { { "alt" }, "delete", "Super+Backspace" } })
 end)
 
+-- Without mikelward/scripts, an app key whose helper is missing opens a
+-- Mac's own app instead: the first of its fallbacks that's installed.
+local function app_spec(name)
+    for _, a in ipairs(keys.APPS) do
+        if a.name == name then
+            return a.spec
+        end
+    end
+end
+
+local function installed(list)
+    local set = {}
+    for _, b in ipairs(list) do
+        set[b] = true
+    end
+    return function(b)
+        return set[b] == true
+    end
+end
+
+local function no_helpers()
+    return false
+end
+
+t.test("without scripts, app keys open the Mac's own apps", function()
+    local apps = installed({ "com.apple.Safari", "com.apple.Music", "com.apple.MobileSMS", "com.apple.finder",
+        "com.apple.TextEdit", "com.apple.Terminal", "com.apple.iCal" })
+    t.eq(keys.resolve_app(app_spec("browser"), no_helpers, apps).bundle, "com.apple.Safari", "Super+G: Safari without Chrome")
+    t.eq(keys.resolve_app(app_spec("browser"), no_helpers, installed({ "com.google.Chrome", "com.apple.Safari" })).bundle,
+        "com.google.Chrome", "Super+G: Chrome first")
+    t.eq(keys.resolve_app(app_spec("browser_second"), no_helpers, apps).bundle, "com.apple.Safari", "Super+F: Safari")
+    t.eq(keys.resolve_app(app_spec("irc"), no_helpers, apps).bundle, "com.apple.MobileSMS", "Super+I: Messages")
+    local music = keys.resolve_app(app_spec("music"), no_helpers, apps)
+    t.eq(music.bundle, "com.apple.Music", "Super+Y: Music")
+    t.eq(music.home_app, true, "one of home's apps still")
+    t.eq(keys.resolve_app(app_spec("music"), no_helpers, installed({ "com.apple.iTunes" })).bundle, "com.apple.iTunes",
+        "Super+Y: iTunes on an older Mac")
+    t.eq(keys.resolve_app(app_spec("chat"), no_helpers, apps).bundle, "com.apple.iCal", "Super+C: Calendar")
+    t.eq(keys.resolve_app(app_spec("calendar"), no_helpers, apps).bundle, "com.apple.iCal", "Super+Shift+C: Calendar")
+    t.eq(keys.resolve_app(app_spec("home_folder"), no_helpers, apps).bundle, "com.apple.finder")
+    t.eq(keys.resolve_app(app_spec("notepad"), no_helpers, apps).bundle, "com.apple.TextEdit")
+end)
+
+t.test("Super+T opens kitty, iTerm2 or Terminal, whichever is installed first, a new window each time", function()
+    local term = keys.resolve_app(app_spec("terminal"), no_helpers, installed({ "com.googlecode.iterm2", "com.apple.Terminal" }))
+    t.eq(term.bundle, "com.googlecode.iterm2")
+    t.eq(term.new, true)
+    t.eq(keys.resolve_app(app_spec("terminal"), no_helpers, installed({ "com.apple.Terminal" })).bundle, "com.apple.Terminal")
+    t.eq(keys.resolve_app(app_spec("terminal"), no_helpers, installed({ "net.kovidgoyal.kitty", "com.apple.Terminal" })).bundle,
+        "net.kovidgoyal.kitty")
+end)
+
+t.test("with scripts' helper there, the key runs it", function()
+    local spec = keys.resolve_app(app_spec("browser"), function(w)
+        return w == "browser1"
+    end, installed({ "com.google.Chrome" }))
+    t.eq(spec.run, "browser1")
+    t.eq(spec.bundle, nil)
+end)
+
+t.test("with neither the helper nor a fallback installed, the key says why as before", function()
+    t.eq(keys.resolve_app(app_spec("browser"), no_helpers, installed({})).run, "browser1")
+    -- A key with no fallback is left as it is.
+    t.eq(keys.resolve_app(app_spec("meet"), no_helpers, installed({ "com.apple.Safari" })).run, "google-meet")
+end)
+
 t.done("keys")
