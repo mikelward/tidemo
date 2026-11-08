@@ -1,6 +1,7 @@
 # tidemo
 #
-#   make test     run the tests (plain Lua 5.4, no Mac needed)
+#   make test     run the tests (plain Lua 5.4 and bash, no Mac needed)
+#   make test-install  run only the installer's tests (install/tide-setup)
 #   make lint     check every Lua file parses
 #   make install  copy the Hammerspoon modules to ~/.hammerspoon/tide
 #   make check-tide   compare the copies of tide for Linux's geometry, direction,
@@ -29,10 +30,15 @@ export LUA_PATH := hammerspoon/?.lua;hammerspoon/?/init.lua;tests/?.lua;;
 LUA_FILES := $(wildcard hammerspoon/tide/*.lua hammerspoon/tilemo/*.lua hammerspoon/timo/*.lua tests/*.lua ci/*.lua)
 TESTS := $(wildcard tests/*_test.lua)
 
-.PHONY: test lint install check-tide check-geometry check-tideco mocks icons
+.PHONY: test test-install lint install check-tide check-geometry check-tideco mocks icons
 
-test:
+test: test-install
 	@status=0; for t in $(TESTS); do $(LUA) $$t || status=1; done; exit $$status
+
+# The installer's own tests mock Homebrew, defaults and make, so they run off
+# a Mac too.
+test-install:
+	install/tide-setup_test
 
 lint:
 	@for f in $(LUA_FILES); do $(LUAC) -p $$f || exit 1; done

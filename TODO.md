@@ -20,8 +20,9 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
    number shows briefly on each switch.
 8. **Done:** conf's Karabiner rule turns Win+key into
    Ctrl+Option+Command+key (description starting `tide:`), and
-   `setup-macos --wm tide` in scripts installs Hammerspoon and tide, frees
-   the keys in SPEC.md §7.3, and stops the menu bar hiding, for tide's bar to cover.
+   tide's installer, `install/tide-setup`, installs Hammerspoon and tide,
+   frees the keys in SPEC.md §7.3, and stops the menu bar hiding, for
+   tide's bar to cover; scripts' `setup-macos` runs it.
 
 ## Settings pages, for parity with tide for Linux
 
@@ -120,6 +121,36 @@ choices to tide's `macos.json` (SPEC.md §15).
   - Spotlight's services (`pbs`);
   - the menu bar's auto-hide, which bar_hs.lua already reads;
   - the lock screen's message, which needs an administrator's password.
+
+## Free-standing tide
+
+tide should install and run without mikelward/scripts or mikelward/conf,
+as tide for Linux now does: `setup-macos` runs tide's installer, then its
+owner's extras.
+
+- **Done: the installer,** `install/tide-setup`: Hammerspoon, blueutil and
+  the DDC tool, `make install` from its own checkout, `init.lua`, the keys
+  in SPEC.md §7.3, the menu bar, the other tilers' warnings and the
+  Accessibility step, with its tests. Only the mocks have run it.
+  **Check on a Mac:** a fresh clone's `install/tide-setup` leaves tide
+  tiling once Accessibility is on, and `setup` still does all it did.
+- **App keys and Start at login need scripts' `runenv`.** tide runs its
+  helper keys (`browser1`, `google-chat` and the rest) and Start at
+  login's commands through `~/scripts/runenv`, for the login
+  environment. Without scripts every one fails. Run them through the
+  login shell (`$SHELL -l -c`) when there's no runenv, and give the app
+  keys that are scripts' own helpers bundle IDs, or leave them unbound,
+  without scripts.
+- **Super without conf's Karabiner rule** is Option, which fights
+  Option's own characters. Ship the `tide:` rule here, installed where
+  there's none, as tide for Linux ships its Hyprland config, with conf's
+  copy changing only what its owner prefers.
+- **Caps Lock as Compose** is setup-macos's: one `hidutil` map holds it
+  with the modifier rotation, and a second writer would replace the
+  first. tide could set it as it starts, merged with what's there
+  (macOS's settings, above).
+- **Later: releases.** Tagged versions, and a Homebrew tap whose formula
+  runs the installer.
 
 ## Named workspaces
 
@@ -389,6 +420,15 @@ tide. INFEASIBLE.md lists what can't be fixed.
   macOS's press-and-hold does. macOS keeps its own.
 
 ## Decisions needing review
+
+- **The installer's to-do list goes to setup's** (2026-11-08): under
+  setup, `install/tide-setup` writes what's left for you to
+  `$SETUP_TODO`, a line a step, tab separated, and setup-macos lists it
+  with its own, so the run still ends with one list. On its own the
+  installer prints the list itself.
+- **The installer doesn't clone or pull** (2026-11-08), as tide for
+  Linux's doesn't: it installs the checkout it runs from. setup-macos
+  still clones and pulls, and `--no-install` there still means no pull.
 
 - **One macOS page for macOS's own settings** (2026-11-08), under
   General, rather than spreading them over Keyboard, Appearance and the
