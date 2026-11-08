@@ -428,7 +428,7 @@ t.test("a rule enabled before conf's update is missing Alt+Tab and the Super tap
     t.eq(gaps, { "Alt+Tab (swap with the master)", "the lone Super tap (the launcher)" })
     local notice = keys.gaps_notice(gaps)
     t.eq(notice:find("Alt+Tab (swap with the master) and the lone Super tap (the launcher) don't work", 1, true) ~= nil, true, notice)
-    t.eq(notice:find("git pull in your conf checkout and run confinst", 1, true) ~= nil, true, notice)
+    t.eq(notice:find("git pull in your tidemo checkout and run install/tide-setup", 1, true) ~= nil, true, notice)
     t.eq(notice:find('brings Karabiner\'s copy of the "tide:" rule up to date', 1, true) ~= nil, true, notice)
     read = env({ [CONFIG] = profiles(profile(true, rule("f20", false))) }, {})
     gaps = keys.rule_gaps(read, HOME, decode)
@@ -449,6 +449,36 @@ t.test("Alt+Tab's manipulator must send what tide binds", function()
     r.manipulators[4].to[1].modifiers = { "left_control" } -- the old Cmd+Tab
     local read = env({ [CONFIG] = profiles(profile(true, r)) }, {})
     t.eq(keys.rule_gaps(read, HOME, decode), { "Alt+Tab (swap with the master)" })
+end)
+
+-- tide's left Option rule, for a Mac without the rotation: Super is left
+-- Option, and Alt+Tab isn't its to miss.
+local function option_rule()
+    local r = rule("f20", false)
+    for _, m in ipairs(r.manipulators) do
+        if m.from.key_code == "left_command" then
+            m.from.key_code = "left_option"
+            m.to = { { key_code = "left_option" } }
+        end
+        local mods = m.from.modifiers and m.from.modifiers.mandatory
+        if mods and mods[1] == "left_command" then
+            mods[1] = "left_option"
+        end
+    end
+    r.description = "tide: left Option+key"
+    return r
+end
+
+t.test("tide's left Option rule is up to date without Alt+Tab", function()
+    local read = env({ [CONFIG] = profiles(profile(true, option_rule())) }, {})
+    t.eq(keys.rule_gaps(read, HOME, decode), {})
+end)
+
+t.test("a left Option rule's keys are checked from left Option", function()
+    local r = option_rule()
+    table.remove(r.manipulators, 3) -- Super+Z
+    local read = env({ [CONFIG] = profiles(profile(true, r)) }, {})
+    t.eq(keys.rule_gaps(read, HOME, decode), { "Super+Z (minimize)" })
 end)
 
 t.test("a rule without Win+Z is missing Super+Z, so minimize has no key", function()

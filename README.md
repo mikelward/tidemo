@@ -116,15 +116,19 @@ helpers, `blueutil` and `m1ddc` (or `ddcctl` on Intel), with
 [Homebrew](https://brew.sh); runs `make install`, which copies tide into
 `~/.hammerspoon/tide`; writes the `init.lua` below if there isn't one;
 frees the keys tide needs (SPEC.md §7.3); and stops the menu bar hiding,
-so tide's bar covers it. It ends with what's left for you: turn on
-Accessibility for Hammerspoon, reload its config, and log out. Add a
-Karabiner rule like conf's `tide:` one for a Super key that leaves Option
-alone (§7.1); without one, Super is Option.
+so tide's bar covers it. For the Super key, it installs
+[Karabiner-Elements](https://karabiner-elements.pqrs.org), which asks for
+your password, and tide's rule, which makes left Option Super (SPEC.md
+§7.1). `--super win` makes a PC keyboard's Win key Super instead, with
+`setup-macos`'s modifier rotation; `--super none` leaves Karabiner out, and
+Super is plain Option. It ends with what's left for you: allow Karabiner,
+turn on Accessibility for Hammerspoon, reload its config, and log out.
 
 With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
 `setup` (or `setup-macos`) clones or pulls tide, runs its installer, and
-adds its owner's choices: the PC keyboard's modifier rotation and Caps
-Lock as Compose, Karabiner's rules, LinearMouse and macOS's settings.
+adds its owner's choices: the PC keyboard's modifier rotation (with
+`--super win`) and Caps Lock as Compose, conf's other Karabiner rules,
+LinearMouse and macOS's settings.
 `--wm amethyst` sets up Amethyst instead.
 
 By hand:

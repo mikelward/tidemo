@@ -1394,9 +1394,16 @@ together (§6). tide turns it off (§6.6), and has its own.
 - **tide for Linux's map, everywhere.** tide for Linux and tide for Chrome differ where chromeOS can't
   bind a key (tide for Chrome §7.1), but macOS can bind all of tide for Linux's, so tide follows
   tide for Linux (tide for Linux §6.6).
-- **Super is the PC keyboard's Win key.** `setup-macos`'s rotation turns it
-  into Option, and Ctrl into Command, so copy and paste stay under the same
-  finger (scripts `docs/MACOS.md`, "Modifier rotation").
+- **Super is the key where the Win key sits,** whichever keyboard:
+  - **On a Mac keyboard, left Option,** beside Command, as tide's
+    installer sets it by default (`--super option`). Right Option still
+    types accents and moves by word.
+  - **Under `setup-macos`'s rotation, the PC keyboard's Win key**
+    (`--super win`). The rotation turns Win into Option and Ctrl into
+    Command, so copy and paste stay under the same finger (scripts
+    `docs/MACOS.md`, "Modifier rotation").
+  - **`--super none` leaves Karabiner out,** and Super is plain Option,
+    the fallback below.
 - **Option already means things on a Mac,** which plain Option bindings
   would take away:
   - Option+Backspace deletes a word, and Option+Up and Down move by
@@ -1406,12 +1413,21 @@ together (§6). tide turns it off (§6.6), and has its own.
     `config/karabiner/README.md`).
   - Option+`, E, I, N and U are dead keys for accents on US layouts
     *(unverified on Dvorak)*.
-- **Decided: Karabiner turns physical Win+key into a combination nothing
-  else uses** (Ctrl+Option+Command+key), and tide registers that. Karabiner
-  sees the physical key before the rotation (conf
-  `config/karabiner/README.md`), so Option's own meanings stay intact.
-  Depending on Karabiner is accepted, but tide must work without it.
-  - Karabiner needs an admin, once, and IT can block it (§11).
+- **Decided: Karabiner turns Super+key into a combination nothing else
+  uses** (Ctrl+Option+Command+key), and tide registers that. Karabiner sees
+  the physical key before the rotation (conf `config/karabiner/README.md`),
+  so Option's own meanings stay intact. Depending on Karabiner is accepted,
+  but tide must work without it.
+  - **tide ships both rules,** in `karabiner/`: `tide.json` for the Win key
+    under the rotation, and `tide-option.json` for left Option without it.
+    The installer installs Karabiner and copies the one `--super` names to
+    Karabiner's folder as `tide.json`; tide turns it on as it starts
+    (§15). Both descriptions start `tide:`.
+  - **The left Option rule leaves Alt+Tab out:** without the rotation,
+    physical Alt is left Option, so Super. Swap with the master stays on
+    tide's own keys.
+  - Karabiner needs an admin, once, and IT can block it (§11): the
+    installer's `--no-sudo` skips it, with a warning.
 - **Without Karabiner, tide falls back,** rather than leaving keys dead:
   - **How it tells:** at start, and whenever Karabiner starts or stops,
     tide checks that Karabiner is running and has tide's rules loaded
@@ -3780,7 +3796,7 @@ Each one names a workaround, or says there is none.
   points. `brand.lua` holds the name and the logo's files.
 - **The code is tide too:** the Lua modules (`require("tide")`), the
   `hs.settings` keys (`tide.*`), the workspace file's folder, the pages'
-  message handler and conf's `tide:` Karabiner rule.
+  message handler and tide's `tide:` Karabiner rules.
 - **What was tilemo's carries over.** `require("tilemo")` and
   `require("timo")` load tide, with a note in the console. At start,
   `hs.settings` keys starting `tilemo.` are copied to the same `tide.` ones
@@ -3796,8 +3812,8 @@ Each one names a workaround, or says there is none.
   install`, `init.lua`, the keys in §7.3 and the menu bar. It needs
   neither scripts nor conf.
 - **conf:**
-  - Karabiner's rules (`config/karabiner/`), updated for §7.1 and §7.3, with
-    physical Alt+Tab going to tide (§7.2);
+  - Karabiner's other rules (`config/karabiner/`), updated for §7.3; tide's
+    own, for Super, are here (§7.1);
   - the shell's shpool and tmux startup, which reads `TIDE_WORKSPACE`, and
     on a Mac reads tide's workspace file when it's missing (§6.3);
   - `kitty.conf`'s remote control socket, private to you, on a Mac only,

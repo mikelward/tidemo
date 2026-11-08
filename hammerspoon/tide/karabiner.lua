@@ -58,7 +58,7 @@ end
 -- What to say, in the section and the doctor, when the rules can't be
 -- switched.
 M.NO_CONFIG = "Karabiner-Elements hasn't written its settings yet: open it once, and allow what its Setup page lists."
-M.NO_RULES = "There are no Karabiner rules to switch: run confinst in your conf checkout, which links conf's rules into Karabiner's folder."
+M.NO_RULES = "There are no Karabiner rules to switch: run tide's installer, install/tide-setup, which adds tide's rule to Karabiner's folder."
 M.NOT_RUNNING = "Karabiner-Elements isn't running, so these rules do nothing: open it, and allow what its Setup page lists."
 
 -- `deps`: home; read(path) -> text or nil; list(dir) -> file names or nil;

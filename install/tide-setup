@@ -16,6 +16,11 @@
 #   1-9, move left or right a Space, Mission Control and App Exposé are
 #   turned off, each at its stock keys;
 # - keeps the menu bar shown, for tide's bar to cover (SPEC.md §8);
+# - gives tide its Super key (SPEC.md §7.1): installs Karabiner-Elements and
+#   tide's rule for it, which makes left Option+key (--super option, the
+#   default), or the PC keyboard's Win+key under setup-macos's modifier
+#   rotation (--super win), send Ctrl+Option+Command+key. --super none
+#   leaves Karabiner out, and Super is plain Option;
 # - warns about Amethyst and Rectangle, which would fight tide;
 # - starts Hammerspoon, if it isn't running;
 # - ends with what only you can do: grant Hammerspoon Accessibility and log
@@ -27,11 +32,14 @@
 # ~/.config/tide/macos.json.
 #
 # Usage:
-#     install/tide-setup [--no-install] [--ignore-errors]
+#     install/tide-setup [--no-install] [--no-sudo] [--ignore-errors]
+#                        [--super option|win|none]
 #                        [-v | --verbose] [-h | --help]
 #
 # --no-install installs nothing new with Homebrew; it still installs tide
 # from this checkout, as it is. `git pull` it first for the latest.
+# --no-sudo skips Karabiner-Elements' install, the one step that asks for
+# an administrator's password: its cask is a .pkg.
 # --ignore-errors keeps going past failures. --verbose shows what Homebrew
 # prints, rather than keeping it in ~/.local/state/setup/setup.log (or, under
 # setup, $SETUP_LOG), and what was already so.
@@ -43,8 +51,12 @@
 # and what needs it.
 
 INSTALL=yes
+SUDO=yes
 IGNORE_ERRORS=no
 VERBOSE=no
+# Which key is Super (--super): left Option, the physical Win key under
+# setup-macos's rotation, or none, plain Option without Karabiner.
+SUPER=option
 
 # What messages say to rerun.
 SETUP_COMMAND="${SETUP_COMMAND:-tide-setup}"
@@ -431,6 +443,75 @@ tide.start({})
 LUA
 }
 
+# --- Super ---
+
+# Where Karabiner reads rules from, and tide's rule's name there. One name
+# for either rule, so a change of --super replaces the other.
+KARABINER_ASSETS="$HOME/.config/karabiner/assets/complex_modifications"
+KARABINER_RULE="$KARABINER_ASSETS/tide.json"
+SUPER_MISSING_EFFECT="Super is plain Option, whose own characters and Option+arrow word moves tide's keys then take"
+KARABINER_INSTALLED=no
+
+# Karabiner-Elements, which makes the Super key. Its cask is a .pkg, which
+# asks for an administrator's password, so --no-sudo skips it.
+install_karabiner() {
+    if app_path Karabiner-Elements >/dev/null; then
+        return 0
+    fi
+    if test "$INSTALL" = no; then
+        warn "Karabiner-Elements is not installed and --no-install was given; $SUPER_MISSING_EFFECT until it is"
+        return 0
+    fi
+    if test "$SUDO" = no; then
+        warn "Karabiner-Elements' installer needs an administrator's password and --no-sudo was given; $SUPER_MISSING_EFFECT until it's installed"
+        return 0
+    fi
+    if ! is_command brew; then
+        warn "Homebrew not found, so Karabiner-Elements can't be installed; $SUPER_MISSING_EFFECT until it is"
+        return 0
+    fi
+    if stale_cask_record karabiner-elements Karabiner-Elements "until then, $SUPER_MISSING_EFFECT"; then
+        return 0
+    fi
+    info "Installing Karabiner-Elements, which asks for your password"
+    if brew_logged install --cask karabiner-elements; then
+        KARABINER_INSTALLED=yes
+    else
+        warn "could not install Karabiner-Elements; $SUPER_MISSING_EFFECT until it is"
+    fi
+}
+
+# Copies tide's rule for --super into Karabiner's folder. tide turns a rule
+# it hasn't seen on, once, as it starts, and keeps Karabiner's copy up to
+# date with the file (karabiner.lua). A link there, such as an old conf
+# checkout's, is replaced by the file, never written through.
+install_super_rule() {
+    case "$SUPER" in
+        win) _sr_src="$TIDEMO_DIR/karabiner/tide.json" ;;
+        option) _sr_src="$TIDEMO_DIR/karabiner/tide-option.json" ;;
+        *) return 0 ;;
+    esac
+    info "Installing tide's Karabiner rule for Super ($SUPER)"
+    try mkdir -p "$KARABINER_ASSETS"
+    if test -L "$KARABINER_RULE"; then
+        try rm -f "$KARABINER_RULE"
+    fi
+    try write_file "$KARABINER_RULE" < "$_sr_src"
+}
+
+configure_super() {
+    if test "$SUPER" = none; then
+        info "Leaving Karabiner out (--super none): Super is plain Option"
+        return 0
+    fi
+    install_karabiner
+    install_super_rule
+    if test "$KARABINER_INSTALLED" = yes; then
+        todo "Allow Karabiner-Elements, which makes the Super key: open it, and allow what its Setup page lists." \
+            "For Super+click and Super+drag, turn on Modify events beside your mouse or trackpad, under Devices."
+    fi
+}
+
 # --- Keys ---
 
 # System Settings holds the shortcuts in memory while it's open and can write
@@ -561,14 +642,19 @@ warn_if_other_tiler() {
 
 usage() {
     cat <<'USAGE'
-Usage: tide-setup [--no-install] [--ignore-errors] [-v | --verbose] [-h | --help]
+Usage: tide-setup [--no-install] [--no-sudo] [--ignore-errors]
+                  [--super option|win|none] [-v | --verbose] [-h | --help]
 
 Install tide for macOS from this checkout.
 
 Options:
   --no-install     Don't install Hammerspoon or tide's helpers; install tide
                    from this checkout and set up what's already there
+  --no-sudo        Don't install Karabiner-Elements, which asks for your password
   --ignore-errors  Keep going past failures instead of stopping at the first
+  --super KEY      The Super key: option (left Option, the default), win (a PC
+                   keyboard's Win key, with setup-macos's modifier rotation),
+                   or none (plain Option, without Karabiner)
   -v, --verbose    Show what Homebrew prints, and what was already so
   -h, --help       Show this help and exit
 USAGE
@@ -580,7 +666,19 @@ while test $# -gt 0; do
     case "$1" in
         --install) INSTALL=yes ;;
         --no-install) INSTALL=no ;;
+        --sudo) SUDO=yes ;;
+        --no-sudo) SUDO=no ;;
         --ignore-errors) IGNORE_ERRORS=yes ;;
+        --super)
+            if test $# -lt 2; then
+                warn "--super needs a value: option, win or none"
+                usage >&2
+                exit 1
+            fi
+            shift
+            SUPER="$1"
+            ;;
+        --super=*) SUPER="${1#--super=}" ;;
         -v|--verbose) VERBOSE=yes ;;
         -h|--help)
             usage
@@ -594,6 +692,15 @@ while test $# -gt 0; do
     esac
     shift
 done
+
+case "$SUPER" in
+    option|win|none) ;;
+    *)
+        warn "Unknown key for --super: '$SUPER' (expected option, win or none)"
+        usage >&2
+        exit 1
+        ;;
+esac
 
 start_problem_recap
 trap 'recap_problems "$?"' EXIT
@@ -611,6 +718,7 @@ install_brew_tool "$(ddc_tool)" "$DDC_MISSING_EFFECT"
 install_tide
 configure_hammerspoon_init
 free_tide_keys
+configure_super
 
 warn_if_other_tiler Amethyst "it and tide would both tile the same windows"
 # Rectangle's default shortcuts sit on Ctrl+Option+arrows (SPEC.md §7.3).
