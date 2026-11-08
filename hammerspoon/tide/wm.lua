@@ -3426,6 +3426,14 @@ function A.monocle(self)
     self:retile()
 end
 
+function A.last_layout(self)
+    local ws = self:current_part()
+    if ws then
+        layout.last(ws)
+        self:retile()
+    end
+end
+
 function set_big_on(self, id, kind)
     local w = self.windows[id]
     if not w or not w.ws or w.floating then
@@ -4113,7 +4121,7 @@ function A.layout(self, mode)
     local ws = self:current_part()
     if ws then
         ws.prev_mode = nil
-        ws.mode = mode
+        layout.set_mode(ws, mode)
         self:retile()
     end
 end

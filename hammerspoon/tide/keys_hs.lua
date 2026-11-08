@@ -19,7 +19,7 @@ M.RECORD_SECONDS = 15
 function M.new(tide)
     local self = {
         state = shortcuts.NO_KEYS,
-        map = keys.map,
+        map = keys.named_map(),
         rows = {},
         recording = "",
         pending = nil,
@@ -30,7 +30,7 @@ function M.new(tide)
     local reported_file, reported_problems
 
     local function rows_now()
-        self.rows = shortcuts.rows(keys.map, self.map, self.state, keys.does)
+        self.rows = shortcuts.rows(keys.named_map(), self.map, self.state, keys.does)
     end
 
     -- Read the files and bind what they say. A file that's wrong is said
@@ -48,7 +48,7 @@ function M.new(tide)
                 a.notify("The shortcuts stay as they were: " .. err)
             end
         end
-        local map, problems = shortcuts.apply(keys.map, self.state)
+        local map, problems = shortcuts.apply(keys.named_map(), self.state)
         -- Any file in the folder changing reads this again; the keys are
         -- bound again only when they've changed.
         local parts = {}
@@ -107,7 +107,7 @@ function M.new(tide)
     -- Keys tide's unnamed bindings have, as shortcuts.lua compares them.
     local function fixed_chords()
         local out = {}
-        for _, b in ipairs(keys.map) do
+        for _, b in ipairs(keys.named_map()) do
             if not b.name then
                 out[(b.shift and "shift+" or "") .. b.key] = true
             end
@@ -117,7 +117,7 @@ function M.new(tide)
 
     function self.give(name, hypr, swap)
         return self.edit(function(state)
-            return shortcuts.with_keys(state, keys.map, self.rows, name, hypr, swap, fixed_chords())
+            return shortcuts.with_keys(state, keys.named_map(), self.rows, name, hypr, swap, fixed_chords())
         end, { name = name, keys = hypr })
     end
 
@@ -131,7 +131,7 @@ function M.new(tide)
 
     function self.reset(name)
         return self.edit(function(state)
-            return shortcuts.with_default(state, name, keys.map)
+            return shortcuts.with_default(state, name, keys.named_map())
         end)
     end
 
