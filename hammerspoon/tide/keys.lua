@@ -73,25 +73,59 @@ M.map = {
 -- `home_app` marks one of the home workspace's apps, which launches from home without
 -- asking for a workspace (SPEC.md §7.2).
 -- `does` is what the settings window's Shortcuts list says it does, in
--- conf's words for the same key.
+-- conf's words for the same key. `fallback` is the apps, by bundle ID, to
+-- open instead, the first installed, when the helper isn't there
+-- (mikelward/scripts isn't installed) or the bundle isn't (M.resolve_app).
 M.APPS = {
-    { name = "terminal", key = "t", does = "Terminal", spec = { bundle = "net.kovidgoyal.kitty", new = true } },
+    { name = "terminal", key = "t", does = "Terminal", spec = { bundle = "net.kovidgoyal.kitty", new = true,
+        fallback = { "com.googlecode.iterm2", "com.apple.Terminal" } } },
     { name = "terminal_on_workstation", key = "w", does = "Terminal on the workstation", spec = { run = "terminal_on_workstation" } },
-    { name = "browser", key = "g", does = "Browser", spec = { run = "browser1" } },
+    { name = "browser", key = "g", does = "Browser", spec = { run = "browser1",
+        fallback = { "com.google.Chrome", "com.apple.Safari" } } },
     { name = "browser_third", key = "g", shift = true, does = "Browser, third profile", spec = { run = "browser3" } },
-    { name = "browser_second", key = "f", does = "Browser, second profile", spec = { run = "browser2" } },
-    { name = "chat", key = "c", does = "Google Chat", spec = { run = "google-chat", home_app = true } },
-    { name = "calendar", key = "c", shift = true, does = "Google Calendar", spec = { run = "google-calendar", home_app = true } },
-    { name = "home_folder", key = "h", does = "Home folder", spec = { run = "home" } },
-    { name = "irc", key = "i", does = "IRC", spec = { run = "irc" } },
+    { name = "browser_second", key = "f", does = "Browser, second profile", spec = { run = "browser2",
+        fallback = { "com.apple.Safari" } } },
+    { name = "chat", key = "c", does = "Google Chat", spec = { run = "google-chat", home_app = true,
+        fallback = { "com.apple.iCal" } } },
+    { name = "calendar", key = "c", shift = true, does = "Google Calendar", spec = { run = "google-calendar", home_app = true,
+        fallback = { "com.apple.iCal" } } },
+    { name = "home_folder", key = "h", does = "Home folder", spec = { run = "home", fallback = { "com.apple.finder" } } },
+    { name = "irc", key = "i", does = "IRC", spec = { run = "irc", fallback = { "com.apple.MobileSMS" } } },
     { name = "meet", key = "m", does = "Google Meet", spec = { run = "google-meet" } },
-    { name = "notepad", key = "n", does = "Notepad", spec = { run = "notepad" } },
+    { name = "notepad", key = "n", does = "Notepad", spec = { run = "notepad", fallback = { "com.apple.TextEdit" } } },
     { name = "remote_desktop", key = "r", does = "Remote desktop", spec = { run = "remote-desktop" } },
-    { name = "music", key = "y", does = "YouTube Music", spec = { run = "youtube-music", home_app = true } },
+    { name = "music", key = "y", does = "YouTube Music", spec = { run = "youtube-music", home_app = true,
+        fallback = { "com.apple.Music", "com.apple.iTunes" } } },
     { name = "files", key = "e", does = "Files", spec = { run = "kitty -e yazi" } },
 }
 for _, a in ipairs(M.APPS) do
     M.map[#M.map + 1] = { key = a.key, shift = a.shift, action = "app", arg = a.spec, does = a.does, name = a.name }
+end
+
+-- The app key `spec` to open: itself, or when its helper (`run`'s first
+-- word, in ~/scripts) or its app (`bundle`) isn't there, the first of its
+-- `fallback` that's installed, as a bundle spec keeping `new` and
+-- `home_app`. `helper_exists(word)` and `installed(bundle)` come from the
+-- adapter. With nothing installed, the spec as it is, which says why.
+function M.resolve_app(spec, helper_exists, installed)
+    if type(spec.fallback) ~= "table" then
+        return spec
+    end
+    local missing
+    if spec.run then
+        missing = not helper_exists(spec.run:match("%S+") or spec.run)
+    else
+        missing = spec.bundle and not installed(spec.bundle)
+    end
+    if not missing then
+        return spec
+    end
+    for _, bundle in ipairs(spec.fallback) do
+        if installed(bundle) then
+            return { bundle = bundle, new = spec.new, home_app = spec.home_app }
+        end
+    end
+    return spec
 end
 
 -- tide's session keys: lock, and log out.

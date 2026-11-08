@@ -101,4 +101,34 @@ t.test("Esc stops recording and changes nothing", function()
     t.eq(all(tide.hotkeys, true), true)
 end)
 
+-- Your own app keys, apps.json: bound with tide's, ahead of them, so one
+-- on tide's keys takes them; and bound again when the file changes.
+t.test("your app keys bind ahead of tide's, and a wrong file is said once", function()
+    local tide, disk, events = fake_tide()
+    tide.adapter.bundle_of_app = function(name)
+        return name == "Spotify" and "com.spotify.client" or nil
+    end
+    local k = keys_hs.new(tide)
+    k.load()
+    local before = #k.map
+    disk[DIR .. "/apps.json"] = json.encode({ apps = { { keys = "SUPER + I", app = "Spotify" } } })
+    events[#events + 1] = "--"
+    k.load()
+    t.eq(#k.map, before + 1)
+    t.eq(k.map[1].key, "i")
+    t.eq(k.map[1].arg.bundle, "com.spotify.client")
+    t.eq(events[#events], "rebind")
+    disk[DIR .. "/apps.json"] = "{\"apps\": 3}"
+    k.load()
+    k.load()
+    local said = 0
+    for _, e in ipairs(events) do
+        if e:find("Your app keys are off until this is fixed: apps.json: apps should be a list", 1, true) then
+            said = said + 1
+        end
+    end
+    t.eq(said, 1)
+    t.eq(#k.map, before, "a wrong file keeps none of yours")
+end)
+
 t.done("keys_hs_test")

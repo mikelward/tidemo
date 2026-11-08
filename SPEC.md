@@ -1668,7 +1668,20 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     takes neither; `loginenv.lua`). Start at login and the picker's `rbw` run
     the same way.
   - The helpers themselves (`browser1`, `google-chat` and the rest) are
-    scripts'. Without scripts, those keys say the command wasn't found.
+    scripts'. Without one, a key opens a Mac's own app, the first of its
+    `fallback` installed (`keys.resolve_app`): Super+G Chrome or Safari,
+    Super+F Safari, Super+I Messages, Super+C and Super+Shift+C
+    Calendar, Super+Y Music (iTunes on an older Mac), Super+H Finder and
+    Super+N TextEdit. Super+T opens kitty, iTerm2 or Terminal,
+    whichever is installed first. A key with neither says the command
+    wasn't found.
+  - **Your own app keys** are in `apps.json`, or `apps.local.json`, in
+    tide's folder: `{ "apps": [ { "keys": "SUPER + M", "app": "Spotify" } ] }`,
+    an app by its name or bundle ID, with `"new": true` for a new window
+    each time (`appkeys.lua`). Keys are Hyprland's strings, as `keys.json`'s.
+    Yours come first, so one on tide's keys takes them, and the Shortcuts
+    list says which of tide's it displaced. A file that's wrong is said
+    once, and none of its keys bind until it's fixed.
 - **Keyboard's Shortcuts,** in tide's settings window, list every binding
   that registered, and every key that didn't, as tide for Linux's Keyboard page does
   (§15, tide for Linux §16).

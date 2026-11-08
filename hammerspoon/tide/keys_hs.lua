@@ -7,6 +7,7 @@ local keys = require("tide.keys")
 local shortcuts = require("tide.shortcuts")
 local keymaps = require("tide.keymaps")
 local mute = require("tide.mute")
+local appkeys = require("tide.appkeys")
 
 local M = {}
 
@@ -27,7 +28,7 @@ function M.new(tide)
         error = nil,
     }
     local a = tide.adapter
-    local reported_file, reported_problems
+    local reported_file, reported_problems, reported_apps
 
     local function rows_now()
         self.rows = shortcuts.rows(keys.named_map(), self.map, self.state, keys.does)
@@ -49,11 +50,39 @@ function M.new(tide)
             end
         end
         local map, problems = shortcuts.apply(keys.named_map(), self.state)
+        -- Your own app keys (appkeys.lua), first, so one on tide's keys
+        -- takes them. A file that's wrong is said once, and keeps none.
+        local apps, apps_err = appkeys.load(tide.clock_dir, a.read, a.decode)
+        if not apps then
+            apps = {}
+            if apps_err ~= reported_apps then
+                reported_apps = apps_err
+                a.notify("Your app keys are off until this is fixed: " .. apps_err)
+            end
+        else
+            reported_apps = nil
+        end
+        local own, own_problems = appkeys.bindings(apps, a.bundle_of_app or function()
+            return nil
+        end)
+        if #own > 0 then
+            for _, b in ipairs(map) do
+                own[#own + 1] = b
+            end
+            map = own
+        end
+        for _, p in ipairs(own_problems) do
+            problems[#problems + 1] = p
+        end
         -- Any file in the folder changing reads this again; the keys are
         -- bound again only when they've changed.
         local parts = {}
         for i, b in ipairs(map) do
-            parts[i] = tostring(b.name) .. "=" .. (b.shift and "shift+" or "") .. b.key
+            local arg = type(b.arg) == "table" and b.arg or {}
+            -- An app key's bundle and new window too, so a change to
+            -- either binds again: a hotkey keeps the arg it was made with.
+            parts[i] = tostring(b.name or arg.bundle) .. (b.name and "" or (arg.new and "+new" or "")) .. "="
+                .. (b.shift and "shift+" or "") .. b.key
         end
         local signature = table.concat(parts, " ")
         local changed = signature ~= self.signature
