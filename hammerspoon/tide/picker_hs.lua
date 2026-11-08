@@ -32,15 +32,10 @@ function M.new(tide)
     -- late is dropped.
     local fill_entries, fill_loading, listing = {}, false, 0
 
-    -- rbw, run through runenv for the login environment's PATH, as the app
-    -- keys' helpers are (hs_adapter's launch).
+    -- rbw, run in the login environment for its PATH, as the app keys'
+    -- helpers are (hs_adapter's launch).
     local function rbw(args, done)
-        local runenv = (os.getenv("HOME") or "") .. "/scripts/runenv"
-        local full = { runenv }
-        for _, a in ipairs(args) do
-            full[#full + 1] = a
-        end
-        return tide.adapter.run("/usr/bin/env", full, done)
+        return tide.adapter.run("/usr/bin/env", tide.adapter.login_argv(args), done)
     end
 
     -- Read once, the first time the Characters tab shows.

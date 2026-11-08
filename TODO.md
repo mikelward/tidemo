@@ -134,12 +134,15 @@ owner's extras.
   Accessibility step, with its tests. Only the mocks have run it.
   **Check on a Mac:** a fresh clone's `install/tide-setup` leaves tide
   tiling once Accessibility is on, and `setup` still does all it did.
-- **App keys and Start at login need scripts' `runenv`.** tide runs its
-  helper keys (`browser1`, `google-chat` and the rest) and Start at
-  login's commands through `~/scripts/runenv`, for the login
-  environment. Without scripts every one fails. Run them through the
-  login shell (`$SHELL -l -c`) when there's no runenv, and give the app
-  keys that are scripts' own helpers bundle IDs, or leave them unbound,
+- **Done: commands run without scripts' `runenv`.** App keys' helpers,
+  Start at login and the picker's `rbw` run through `~/scripts/runenv`
+  where it's installed, and otherwise through your login shell
+  (`loginenv.lua`). **Check on a Mac:** with no `~/scripts`, a Start at
+  login command with Homebrew's PATH starts, and the Fill tab lists
+  `rbw`'s logins.
+- **Most app keys run scripts' helpers** (`browser1`, `google-chat` and
+  the rest), so without scripts they say the command wasn't found. Give
+  them bundle IDs where an app does the job, or leave them unbound
   without scripts.
 - **Super without conf's Karabiner rule** is Option, which fights
   Option's own characters. Ship the `tide:` rule here, installed where
