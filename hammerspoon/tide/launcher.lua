@@ -616,6 +616,10 @@ M.SETTINGS_SECTIONS = {
     { id = "idle", group = "general", name = "Idle", covers = "screensaver lock display off" },
     { id = "startup", group = "general", name = "Start at login", covers = "login items autostart apps at login",
       key = "Settings: start at login" },
+    -- tide's own, after tide's pages: macOS's settings tide keeps
+    -- (macprefs.lua).
+    { id = "macos", group = "general", name = "macOS",
+      covers = "finder hidden files path bar extensions screenshots folder thumbnail dock hot corners mission control spaces swipes stage manager tiling animations dialogs autocorrect smart quotes font smoothing" },
     -- tide's own, after tide's pages: tide has no checklist page.
     { id = "setup", group = "general", name = "Setup checklist",
       covers = "permissions privacy accessibility input monitoring automation mission control spaces minimize" },

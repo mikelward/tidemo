@@ -1426,4 +1426,72 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(sent, [{ keepMenuBarHidden: true }]);
 }
 
+// The macOS page: a switch, a choice and a folder, each sending the change;
+// one tide sets gives it back to macOS; when one shows is said if it's not
+// at once.
+{
+  sandbox.tide.update({ clockFiles: [], macos: { error: "", groups: [
+    { label: "Finder", rows: [
+      { name: "finder.showPathBar", label: "Show the path bar", kind: "bool", value: false, set: false, when: "now" },
+    ] },
+    { label: "Text", rows: [
+      { name: "text.smoothing", label: "Font smoothing", kind: "choice", value: "light", set: true,
+        when: "as apps reopen", choices: ["off", "light", "medium", "strong"] },
+      { name: "screenshots.folder", label: "Save screenshots to", kind: "folder", value: "~/Desktop", set: false, when: "now" },
+    ] },
+  ] } });
+  const box = ids["mac-groups"];
+  assert.deepStrictEqual(box.children.map((c) => c.tag), ["h2", "p", "h2", "p", "p"]);
+  const [, finder, , smoothing, folder] = box.children;
+  sent.length = 0;
+  const toggle = finder.children[1];
+  assert.strictEqual(toggle.textContent, "Off");
+  toggle.listeners.click();
+  assert.deepStrictEqual(sent, [{ macSet: { name: "finder.showPathBar", value: true } }]);
+  assert.strictEqual(finder.children.length, 2, "macOS's own: nothing to give back");
+  assert.strictEqual(smoothing.children[1].textContent, "As apps reopen");
+  assert.strictEqual(smoothing.children[3].textContent, "Light");
+  sent.length = 0;
+  smoothing.children[4].listeners.click();
+  smoothing.children[2].listeners.click();
+  smoothing.children[5].listeners.click();
+  assert.deepStrictEqual(sent, [
+    { macSet: { name: "text.smoothing", value: "medium" } },
+    { macSet: { name: "text.smoothing", value: "off" } },
+    { macReset: "text.smoothing" },
+  ]);
+  sent.length = 0;
+  const input = folder.children[1];
+  input.value = " ~/Pictures/Shots ";
+  input.listeners.keydown({ key: "Enter" });
+  assert.deepStrictEqual(sent, [{ macSet: { name: "screenshots.folder", value: "~/Pictures/Shots" } }]);
+
+  // The same again draws nothing, so the keyboard stays where it was and a
+  // folder being typed is kept; a change keeps the keyboard on its control.
+  const macos = (smoothingValue, folderValue) => ({ error: "", groups: [
+    { label: "Text", rows: [
+      { name: "text.smoothing", label: "Font smoothing", kind: "choice", value: smoothingValue, set: true,
+        when: "as apps reopen", choices: ["off", "light", "medium", "strong"] },
+      { name: "screenshots.folder", label: "Save screenshots to", kind: "folder", value: folderValue, set: false, when: "now" },
+    ] },
+  ] });
+  sandbox.tide.update({ clockFiles: [], macos: macos("light", "~/Desktop") });
+  let [, smoothRow, folderRow] = box.children;
+  smoothRow.children[4].focus();
+  folderRow.children[1].value = "~/Pic";
+  folderRow.children[1].listeners.input();
+  sandbox.tide.update({ clockFiles: [], macos: macos("light", "~/Desktop") });
+  assert.strictEqual(box.children[1], smoothRow, "unchanged: not drawn again");
+  sandbox.tide.update({ clockFiles: [], macos: macos("medium", "~/Desktop") });
+  [, smoothRow, folderRow] = box.children;
+  assert.strictEqual(smoothRow.children[3].textContent, "Medium");
+  assert.strictEqual(sandbox.document.activeElement, smoothRow.children[4], "the keyboard stays on ›");
+  assert.strictEqual(folderRow.children[1].value, "~/Pic", "what's typed is kept");
+  sandbox.tide.update({ clockFiles: [], macos: macos("medium", "~/Pictures") });
+  assert.strictEqual(box.children[2].children[1].value, "~/Pictures", "a new folder set replaces it");
+
+  sandbox.tide.update({ clockFiles: [], macos: { error: "macos.json doesn't parse", groups: [] } });
+  assert.strictEqual(ids["mac-error"].textContent, "macos.json doesn't parse");
+}
+
 console.log("settings page: ok");

@@ -42,6 +42,7 @@ local launcherpage = require("tide.launcherpage")
 local picker_hs = require("tide.picker_hs")
 local picker = require("tide.picker")
 local settings_hs = require("tide.settings_hs")
+local macprefs_hs = require("tide.macprefs_hs")
 local wallpaper_hs = require("tide.wallpaper_hs")
 local theme_hs = require("tide.theme_hs")
 local idle_hs = require("tide.idle_hs")
@@ -648,6 +649,9 @@ function M.start(config)
         if self.set_mouse then
             self.set_mouse("folder")
         end
+        if self.macprefs then
+            self.macprefs.load()
+        end
         -- Made after this watcher, with the picker.
         if self.load_clipboard then
             self.load_clipboard()
@@ -676,6 +680,36 @@ function M.start(config)
         self.adapter.log("couldn't watch the input source: " .. tostring(on_input_source))
     end
     self.settings = settings_hs.new(self)
+    -- macOS's own settings that tide keeps, from macos.json and
+    -- macos.local.json (SPEC.md §15), applied as they change.
+    self.macprefs = macprefs_hs.new({
+        dir = self.clock_dir,
+        home = os.getenv("HOME") or "",
+        read = self.adapter.read,
+        decode = self.adapter.decode,
+        encode = function(obj)
+            if next(obj) == nil then
+                return "{}\n"
+            end
+            return hs.json.encode(obj, true) .. "\n"
+        end,
+        write = self.adapter.write_file,
+        run = self.adapter.run,
+        get = function(k)
+            return hs.settings.get(k)
+        end,
+        set = function(k, v)
+            hs.settings.set(k, v)
+        end,
+        notify = self.adapter.notify,
+        log = self.adapter.log,
+        changed = function()
+            if self.settings then
+                self.settings.refresh()
+            end
+        end,
+    })
+    self.macprefs.load()
     -- Light or dark on tide's schedule, once a mode's set in its files.
     self.theme = theme_hs.new(self)
     -- tide's idle timeline, once its files set any of it.

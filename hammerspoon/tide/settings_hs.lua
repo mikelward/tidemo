@@ -1,7 +1,7 @@
 -- tide's settings window on Hammerspoon (SPEC.md §15): a section for each
 -- of tide's pages, dashboard.lua's settings page in an hs.webview. It writes
 -- tide's clocks.local.json, layouts.local.json, workspaces.local.json,
--- startup.local.json, clipboard.local.json and input.local.json, and tide hands the files back once they change on
+-- startup.local.json, clipboard.local.json, input.local.json and macos.local.json, and tide hands the files back once they change on
 -- disk, so the page shows what the bar and the next login do. What tide
 -- can't change itself, a section's buttons open (links.lua). Not runnable
 -- outside Hammerspoon.
@@ -328,6 +328,9 @@ function M.new(tide)
             } or nil,
             -- The Appearance page's Menu bar switch (bar_hs.lua).
             menuBar = { hidden = tide.keep_menu_bar_hidden ~= false },
+            -- The macOS page: macOS's own settings that tide keeps
+            -- (macprefs.lua).
+            macos = tide.macprefs and tide.macprefs.state() or nil,
             keyboard = {
                 rules = "__karabiner_rules__",
                 problem = tide.karabiner_rules and tide.karabiner_rules.state.problem or "",
@@ -602,6 +605,10 @@ function M.new(tide)
                     tide.adapter.notify(tostring(why))
                 end
                 push()
+            elseif tide.macprefs and tide.macprefs.handle(body) then
+                -- The macOS page: macos.local.json changed, which the
+                -- folder's watcher applies.
+                push()
             elseif type(body.keepMenuBarHidden) == "boolean" then
                 -- The Menu bar switch: kept in hs.settings, as tide's own,
                 -- and followed at once by the bar.
@@ -693,6 +700,11 @@ function M.new(tide)
     -- Open the window, or bring it forward, showing `section` if given,
     -- with the Floating section filled in by `fill` if given.
     function self.show(section, fill)
+        -- What macOS has now, for the macOS page's settings the files
+        -- leave out; the page redraws when it's in.
+        if tide.macprefs then
+            tide.macprefs.read_live()
+        end
         if view then
             local w = view:hswindow()
             if w then

@@ -3006,6 +3006,53 @@ Each one names a workaround, or says there is none.
     replaces the shared one.
   - tide already watches the folder, so a hand edit takes effect at
     once.
+- **macOS's own settings that tide keeps** (`macprefs.lua`) are in
+  `macos.json` and `macos.local.json`, tide's alone: tide for Linux has no
+  equivalent. Each is a setting in a group, such as
+  `{ "finder": { "showHiddenFiles": true }, "text": { "smoothing": "light" } }`,
+  and the local file's are laid over the shared one's, setting by setting.
+  - They're the settings `setup-macos` used to write with `defaults`:
+    Finder's hidden files, path bar, extensions and animations; the
+    screenshot folder and thumbnail; the Spaces order, the hot corners and
+    Mission Control's and App Exposé's swipes; Stage Manager, the two ways
+    of tiling a dragged window and clicking the wallpaper to show the
+    desktop; window animations; expanded Open, Save and Print dialogs and
+    saving new documents to iCloud; spelling correction, capitals, smart
+    quotes and dashes, and a double space's period; and font smoothing,
+    off, light, medium or strong. So tide can be published with them, and
+    `setup-macos` need only write its choices to the file.
+  - A setting the files leave out is macOS's own: tide doesn't touch it.
+    One taken out gives its keys back to macOS (`defaults delete`); a key
+    that's already gone is fine, and any other delete that fails is a
+    failed write, below. So
+    does `"macos"` as its value, which lets `macos.local.json` leave a
+    setting to macOS on one Mac though `macos.json` sets it.
+  - tide applies them as it starts and as the folder changes, with
+    `defaults write`, and restarts Finder, the Dock or SystemUIServer for
+    a setting of theirs. tide keeps what it set last (hs.settings), and
+    writes only a setting whose value in the files differs, so a change
+    made in System Settings since stays until the files change that
+    setting again.
+  - Some show only as each app opens again (animations, dialogs, typing,
+    font smoothing), and some at the next login (the swipes, Stage
+    Manager and tiling, as `setup-macos` had them *(unverified whether
+    restarting WindowManager would do)*). A change of the latter is a
+    notification saying to log out.
+  - A wrong setting or a file that doesn't parse is a notification naming
+    the file and the setting, and the last good settings stay. A write
+    that fails is a notification too, and the setting is recorded as half
+    done, so the next change runs it again whole, or gives every one of its
+    keys back to macOS once the files leave it out.
+  - **The settings window's macOS page** shows each, under its group: a
+    switch, ‹ and › through a choice, or a folder typed and set with
+    Enter, with when it shows if it's not at once. A setting the files
+    leave out shows what macOS has now, read with `defaults read` as the
+    window opens and after each change, and the keyboard stays on the
+    control it was on as the page redraws. One the files set has Use
+    macOS's, which takes it out of `macos.local.json`, or sets it to
+    `"macos"` there when `macos.json` sets it. A change is written to
+    `macos.local.json`, keeping its other settings, and the folder's
+    watcher applies it.
 - **Start at login** is tide for Linux's setting, `commands` in `startup.json` and
   `startup.local.json` (tide for Linux §16), so one list serves both desktops. It's
   empty by default.

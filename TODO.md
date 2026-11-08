@@ -85,6 +85,35 @@ the mouse wheel, is built:
 - tide for Linux's per-device settings need one name for a device on both desktops:
   `hyprctl devices` names differ from LinearMouse's product names.
 
+## macOS's settings, kept by tide
+
+The goal: every setting `setup-macos` changes is tide's, with a row in the
+settings window, so tide can be published and anyone gets what tide and
+`setup-macos` give today; `setup-macos` then only installs, and writes its
+choices to tide's `macos.json` (SPEC.md §15).
+
+- **Done: the macOS page,** with Finder, screenshots, the Dock and
+  Mission Control, windows, dialogs, typing and font smoothing, from
+  `macos.json` and `macos.local.json`. **Check on a Mac:** each switch
+  changes what it says, Finder, the Dock and SystemUIServer restart for
+  theirs, and Use macOS's gives a setting back; a change made in System
+  Settings stays until tide's files change it; Stage Manager and the
+  window tiling settings, which wait for a login here, may show without
+  one, in which case they can restart WindowManager instead.
+- **Next, in mikelward/scripts:** `setup-macos` writes its choices to
+  `~/.config/tide/macos.json` (or `conf`'s) instead of `defaults write`,
+  once this is merged.
+- **Then the rest of `setup-macos`'s settings:**
+  - the Dvorak input source turned on and chosen (`hs.keycodes`, and
+    `TISEnableInputSource` for one that's off);
+  - the modifier remap, set with `hidutil` as tide starts, in place of
+    setup's LaunchAgent;
+  - the symbolic hotkeys tide takes from macOS (Mission Control's,
+    Spotlight's, the input source's), applied with `activateSettings -u`;
+  - Spotlight's services (`pbs`);
+  - the menu bar's auto-hide, which bar_hs.lua already reads;
+  - the lock screen's message, which needs an administrator's password.
+
 ## Named workspaces
 
 SPEC.md now has named workspaces in place of the nine numbered ones, and
@@ -353,6 +382,16 @@ tide. INFEASIBLE.md lists what can't be fixed.
   macOS's press-and-hold does. macOS keeps its own.
 
 ## Decisions needing review
+
+- **One macOS page for macOS's own settings** (2026-11-08), under
+  General, rather than spreading them over Keyboard, Appearance and the
+  rest, while there are few: they share a file and a way of applying.
+  Move a row to its page if one fits better.
+- **A file's change is what tide applies** (2026-11-08): tide keeps what
+  it set last in hs.settings and writes a setting only when the files'
+  value differs, so a change made in System Settings stays until tide's
+  files change that setting again, rather than being put back at each
+  start.
 
 - **The overview's window order** (SPEC.md §6.9, 2026-11-05): each
   display in turn, in `wm:screens()`' order, its tiles in stack order, then
