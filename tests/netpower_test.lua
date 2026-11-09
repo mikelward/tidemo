@@ -34,6 +34,7 @@ t.test("the battery as the bar's hover says it, or none", function()
     t.eq(netpower.state({ battery = { percent = 84.4, remaining = 135 } }).power.battery, "Battery 84%, 2:15 left")
     t.eq(netpower.state({ battery = { percent = 100, charged = true } }).power.battery, "Battery 100%, charged")
     t.eq(netpower.state({}).power.battery, nil)
+    t.eq(netpower.state({ battery = { percent = 0 / 0 } }).power.battery, nil, "a Mac mini: no battery")
 end)
 
 t.test("the Wi-Fi switch, and nothing else, is these pages'", function()

@@ -444,9 +444,15 @@ end
 -- Each item's drawing state from the raw readings, by name.
 local ITEMS = {}
 
+-- A Mac with no battery, a Mac mini, has Hammerspoon say its percentage
+-- is NaN rather than nil: that's no battery, not "nan%".
+local function no_battery(p)
+    return type(p) == "number" and not (p >= 0 and p <= 100)
+end
+
 function ITEMS.battery(raw)
     local b = raw.battery
-    if b and b.percent then
+    if b and b.percent and not no_battery(b.percent) then
         local p = math.floor(b.percent + 0.5)
         return { percent = p, charging = b.charging or false, text = p .. "%", tip = battery_tip(b, p) }
     end
