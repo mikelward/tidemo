@@ -266,6 +266,18 @@ need Screen Recording (`hs.window:snapshot()` or ScreenCaptureKit), which
 tide never asks for now (SPEC.md §11.1), so off by default, with the
 setup checklist asking for the permission only once it's on.
 
+**Align with tide for Linux's overview** (its `TODO.md`, *An overview of
+every workspace*, planned 2026-11-09). tide for Linux plans the same
+cards, opened by `Super+W` and by a left-click on bare desktop, with
+thumbnails on Hyprland. Settle across both:
+
+- **Keys.** Ctrl+Up and Ctrl+Down here, `Super+W` there. Pick one set for
+  both, or say why they differ.
+- **A click on bare desktop.** A click on the desktop goes to Finder; see
+  whether an `hs.eventtap` click over no window can open the overview
+  without breaking Finder's desktop icons.
+- **This workspace only.** Ctrl+Down has no counterpart there yet.
+
 ## Mute: apps and sites that never want attention
 
 **Built** (SPEC.md §14.2, §15): `muted` in tide for Linux's `workspaces.json` and
