@@ -1557,6 +1557,18 @@ smoke_timer = hs.timer.doAfter(3, function()
             return
         end
         say("overview opened and closed")
+        -- The calls the overview's window pictures use are this
+        -- Hammerspoon's: CI's runner has no Screen Recording, so it takes
+        -- none.
+        if type(hs.window.snapshotForID) ~= "function" then
+            fail("overview: no hs.window.snapshotForID")
+        end
+        local recording = tide.adapter.screen_recording()
+        if type(recording) ~= "boolean" then
+            fail("overview: Screen Recording's state is %s, not true or false", tostring(recording))
+        else
+            say("Screen Recording reads %s", tostring(recording))
+        end
         check_failing_helper(function()
             check_settings_page(function()
                 check_screenshot(function()

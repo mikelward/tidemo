@@ -1,7 +1,9 @@
 -- The overview, in place of Mission Control (SPEC.md §6.9): every
 -- workspace's windows as cards, grouped by workspace, on Ctrl+Up, or the
--- current workspace's alone on Ctrl+Down. Pure Lua: what the page shows,
--- from wm; overview_hs.lua shows it in an hs.webview.
+-- current workspace's alone on Ctrl+Down, each with its app's icon, or
+-- with the window's picture once you turn pictures on. Pure Lua: what the
+-- page shows, from wm; overview_hs.lua takes the pictures and shows it in
+-- an hs.webview.
 
 local M = {}
 
@@ -11,6 +13,45 @@ M.MODULES = { "tide-fuzzy.js", "overview.js" }
 
 -- The two scopes, as the keys' `arg` gives them.
 M.SCOPES = { all = true, current = true }
+
+-- Where the settings window's Window pictures switch is kept, in
+-- hs.settings: off unless you turn it on, as pictures need Screen
+-- Recording, which tide doesn't otherwise ask for (SPEC.md §11.1).
+M.PICTURES_KEY = "tide.overview_pictures"
+
+-- The largest a window's picture is sent, in pixels: a card's 240 pt at
+-- 2x, 16:10.
+M.PICTURE = { w = 480, h = 300 }
+
+-- Whether the overview shows window pictures: only with the switch on
+-- (`setting`, as hs.settings has it) and Screen Recording `granted`, as
+-- macOS says; true, not just set. Otherwise it shows icons, as without.
+function M.pictures_on(setting, granted)
+    return setting == true and granted == true
+end
+
+-- Whether turning the switch on should have macOS ask for Screen
+-- Recording: only when macOS says it's off. macOS asks once, which puts
+-- Hammerspoon in Privacy & Security's list; after that the checklist's
+-- button opens the list.
+function M.should_ask(setting, granted)
+    return setting == true and granted == false
+end
+
+-- A `w` by `h` picture's size scaled down to fit `box` (M.PICTURE when
+-- nil), keeping its shape, as whole pixels and at least 1 by 1; one that
+-- fits already keeps its size. Nil for a size that isn't one.
+function M.fit(w, h, box)
+    box = box or M.PICTURE
+    if type(w) ~= "number" or type(h) ~= "number" or w <= 0 or h <= 0 then
+        return nil
+    end
+    local scale = math.min(1, box.w / w, box.h / h)
+    return {
+        w = math.max(1, math.floor(w * scale + 0.5)),
+        h = math.max(1, math.floor(h * scale + 0.5)),
+    }
+end
 
 -- The order of workspace `n`'s windows: on each display in turn, in
 -- wm:screens()' order, its tiles in the stack's order, then its floats,
@@ -130,16 +171,30 @@ function M.groups(wm, current_only)
     return out
 end
 
+-- Whether window `id` can have a picture: one macOS draws, on screen or
+-- parked off it, not one minimized or whose app is hidden, which macOS
+-- doesn't draw, so they keep the icon.
+local function drawn(wm, id)
+    local st = wm.a.state(id)
+    return st ~= nil and not st.minimized and not st.hidden and not wm.windows[id].mine
+end
+
 -- What the page shows, for tide.update(): the scope, the groups, the
 -- focused window's id, where the selection starts, and each app's icon as
--- a data URL, by bundle ID, from `icon_of(bundle)`, nil for none.
-function M.state(wm, scope, icon_of, focused)
+-- a data URL, by bundle ID, from `icon_of(bundle)`, nil for none. With
+-- `picture_of(id)`, given only while pictures are on (M.pictures_on),
+-- each card macOS draws carries its window's picture as a data URL,
+-- `picture`, unless that gives nil.
+function M.state(wm, scope, icon_of, focused, picture_of)
     local groups = M.groups(wm, scope == "current")
     local icons = {}
     for _, g in ipairs(groups) do
         for _, w in ipairs(g.windows) do
             if w.bundle ~= "" and icons[w.bundle] == nil and icon_of then
                 icons[w.bundle] = icon_of(w.bundle) or false
+            end
+            if picture_of and drawn(wm, w.id) then
+                w.picture = picture_of(w.id)
             end
         end
     end

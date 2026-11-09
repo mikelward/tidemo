@@ -742,6 +742,22 @@ function M.new()
         return hs.accessibilityState(false)
     end
 
+    -- Whether Hammerspoon has Screen Recording, for the overview's window
+    -- pictures. `ask` has macOS ask for it, which it does only once, and
+    -- which puts Hammerspoon in Privacy & Security's list. Nil when this
+    -- Hammerspoon can't say.
+    function a.screen_recording(ask)
+        if not hs.screenRecordingState then
+            return nil
+        end
+        local ok, v = pcall(hs.screenRecordingState, ask == true)
+        if not ok then
+            a.log("couldn't read Screen Recording: " .. tostring(v))
+            return nil
+        end
+        return v
+    end
+
     -- hs.urlevent.openURL refuses a URL without "://", which a System
     -- Settings pane's lacks, so open(1) opens it.
     function a.open_url(url)

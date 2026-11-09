@@ -32,7 +32,7 @@ M.PERMISSIONS = {
         id = "screen_recording",
         title = "Screen Recording",
         link = "privacy_screen_recording",
-        how = "tide doesn't use it: titles come through Accessibility, and screenshots use macOS's own keys. Leave it off.",
+        how = "Only for the overview's window pictures, which you turn on under Appearance: then turn Hammerspoon on here. Otherwise leave it off.",
         ref = "§11.1",
     },
     {
@@ -106,9 +106,11 @@ M.STATE_LABELS = {
 
 -- A permission's state from what tide knows, `facts`: `accessibility`,
 -- true or false as macOS says, nil if it couldn't be asked; `karabiner`,
--- true while Super comes from Karabiner. macOS gives Hammerspoon no way to
--- read Input Monitoring or Automation without asking for them, so those
--- are "unknown" where they're needed.
+-- true while Super comes from Karabiner; `pictures`, true while the
+-- overview's window pictures are on, and `screen_recording`, true or false
+-- as macOS says, nil if it couldn't be asked. macOS gives Hammerspoon no
+-- way to read Input Monitoring or Automation without asking for them, so
+-- those are "unknown" where they're needed.
 function M.permission_state(id, facts)
     facts = facts or {}
     if id == "accessibility" then
@@ -119,7 +121,12 @@ function M.permission_state(id, facts)
     elseif id == "input_monitoring" then
         return facts.karabiner and "not_needed" or "unknown"
     elseif id == "screen_recording" then
-        return "not_needed"
+        if not facts.pictures then
+            return "not_needed"
+        elseif facts.screen_recording == nil then
+            return "unknown"
+        end
+        return facts.screen_recording and "on" or "off"
     elseif id == "location" then
         -- hs.location.authorizationStatus()'s answer: "undefined" until
         -- macOS has asked, which leaves it off.
@@ -217,6 +224,10 @@ function M.doctor(facts)
     local lines = {}
     if M.permission_state("accessibility", facts) == "off" then
         lines[#lines + 1] = "Accessibility is off for Hammerspoon, so nothing tiles, focus doesn't follow the mouse and the mouse's drags do nothing:"
+            .. " turn it on in Privacy & Security, from the settings window's Setup checklist."
+    end
+    if M.permission_state("screen_recording", facts) == "off" then
+        lines[#lines + 1] = "The overview's window pictures are on, but Screen Recording is off for Hammerspoon, so it shows app icons:"
             .. " turn it on in Privacy & Security, from the settings window's Setup checklist."
     end
     if facts.menu_bar_hidden then

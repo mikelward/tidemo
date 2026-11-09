@@ -609,7 +609,7 @@ M.SETTINGS_SECTIONS = {
     { id = "workspaces", group = "windows", name = "Workspaces", covers = "standing workspaces home apps name patterns pinned apps ask for a name" },
     { id = "floating", group = "windows", name = "Floating", covers = "floating windows rules",
       key = "Settings: floating windows" },
-    { id = "appearance", group = "general", name = "Appearance", covers = "dark style light theme accent" },
+    { id = "appearance", group = "general", name = "Appearance", covers = "dark style light theme accent overview window pictures thumbnails" },
     { id = "muted", group = "general", name = "Notifications", covers = "muted apps and sites mute unmute",
       key = "Settings: muted apps and sites" },
     { id = "clipboard", group = "general", name = "Clipboard", covers = "clipboard history copies paste",

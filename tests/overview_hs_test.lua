@@ -8,7 +8,7 @@ local fake = require("fake")
 local wm_mod = require("tide.wm")
 
 local function stub()
-    local s = { views = {}, scripts = {}, icons = {} }
+    local s = { views = {}, scripts = {}, icons = {}, snapped = {} }
     s.hs = {
         inspect = tostring,
         json = {
@@ -18,6 +18,30 @@ local function stub()
             end,
         },
         drawing = { windowLevels = { modalPanel = 8 } },
+        -- Each window's picture, 2880 by 1800 but window 2's, which
+        -- macOS won't give, and window 3's, which fails.
+        window = {
+            snapshotForID = function(id)
+                s.snapped[#s.snapped + 1] = id
+                if id == 2 then
+                    return nil
+                elseif id == 3 then
+                    error("no window server")
+                end
+                local img = {}
+                function img:size()
+                    return { w = 2880, h = 1800 }
+                end
+                function img:setSize(size, absolute)
+                    s.sized = { size = size, absolute = absolute }
+                    return img
+                end
+                function img:encodeAsURLString(scale, kind)
+                    return "data:" .. kind .. "-" .. id .. (scale and "-scaled" or "")
+                end
+                return img
+            end,
+        },
         image = {
             imageFromAppBundle = function(bundle)
                 s.icons[#s.icons + 1] = bundle
@@ -91,6 +115,9 @@ local function stub()
         wm = wm,
         adapter = {
             focused = a.focused,
+            screen_recording = function()
+                return s.granted
+            end,
             log = function(line)
                 s.logged = line
             end,
@@ -172,6 +199,53 @@ t.test("each app's icon is read once, and an app with none sends none", function
     end
     t.eq(notes, 1)
     t.eq(#s.icons, 2)
+end)
+
+local function pictures(encoded)
+    local out = {}
+    for _, g in ipairs(encoded.groups) do
+        for _, w in ipairs(g.windows) do
+            out[w.id] = w.picture or false
+        end
+    end
+    return out
+end
+
+t.test("with pictures off, it takes none, Screen Recording or not", function()
+    local s = stub()
+    s.granted = true
+    open(s, "all")
+    t.eq(s.snapped, {})
+    t.eq(pictures(s.encoded), { false, false, false })
+end)
+
+t.test("with pictures on and Screen Recording, each window's is taken once each time it opens, made smaller", function()
+    local s = stub()
+    s.granted = true
+    s.tide.overview_pictures = true
+    open(s, "all")
+    t.eq(pictures(s.encoded), { "data:JPEG-1", false, false })
+    t.eq(s.sized, { size = { w = 480, h = 300 }, absolute = true })
+    t.eq(s.logged:find("^overview: couldn't take a picture of window 3: .*no window server$") ~= nil, true)
+    local first = #s.snapped
+    t.eq(first, 3)
+    -- The other scope in the same page takes no new ones.
+    s.overview.show("current")
+    t.eq(#s.snapped, first)
+    -- Closed and opened again, it takes them afresh.
+    s.overview.show("current")
+    open(s, "all")
+    t.eq(#s.snapped, 2 * first)
+end)
+
+t.test("with pictures on but no Screen Recording, it shows icons and says why", function()
+    local s = stub()
+    s.granted = false
+    s.tide.overview_pictures = true
+    open(s, "all")
+    t.eq(s.snapped, {})
+    t.eq(pictures(s.encoded), { false, false, false })
+    t.eq(s.logged, "overview: window pictures are on, but Screen Recording is off for Hammerspoon, so it shows icons")
 end)
 
 t.test("choosing a card activates its window, bringing its workspace", function()

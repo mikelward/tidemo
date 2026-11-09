@@ -1767,6 +1767,31 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(sent, [{ keepMenuBarHidden: true }]);
 }
 
+// The Appearance page's Overview switch: icons unless tide says pictures
+// are on, a click asks for the other, and pictures on without Screen
+// Recording say so.
+{
+  sandbox.tide.update({ clockFiles: [], overview: { pictures: false } });
+  const toggle = ids["overview-pictures"];
+  assert.strictEqual(toggle.textContent, "App icons");
+  assert.strictEqual(toggle.attrs["aria-pressed"], "false");
+  assert.strictEqual(ids["overview-access"].textContent, "");
+  sent.length = 0;
+  toggle.listeners.click();
+  assert.deepStrictEqual(sent, [{ overviewPictures: true }]);
+  sandbox.tide.update({ clockFiles: [], overview: { pictures: true, granted: false } });
+  assert.strictEqual(toggle.textContent, "Window pictures");
+  assert.strictEqual(toggle.attrs["aria-pressed"], "true");
+  assert.match(ids["overview-access"].textContent, /Screen Recording is off/);
+  sandbox.tide.update({ clockFiles: [], overview: { pictures: true, granted: true } });
+  assert.strictEqual(ids["overview-access"].textContent, "");
+  sandbox.tide.update({ clockFiles: [], overview: { pictures: true } });
+  assert.strictEqual(ids["overview-access"].textContent, "", "can't tell isn't off");
+  sent.length = 0;
+  toggle.listeners.click();
+  assert.deepStrictEqual(sent, [{ overviewPictures: false }]);
+}
+
 // The macOS page: a switch, a choice and a folder, each sending the change;
 // one tide sets gives it back to macOS; when one shows is said if it's not
 // at once.
