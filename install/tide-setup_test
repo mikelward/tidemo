@@ -501,7 +501,23 @@ test_failed_write_stops_the_run() {
     run_setup
     assert_status 1 &&
     assert_output_contains "Error: failed (exit 1): defaults write com.apple.symbolichotkeys" &&
-    assert_output_contains "tide-setup stopped early"
+    assert_output_contains "tide-setup FAILED: it stopped early, with exit status 1"
+}
+
+# The run ends saying, last, whether it worked, in color on a terminal or
+# with SETUP_COLOR=always.
+test_a_clean_run_says_it_finished() {
+    run_setup
+    assert_status 0 &&
+    { test "$(printf '%s\n' "$output" | tail -n 1)" = "tide-setup finished with no warnings or errors" ||
+        fail "the last line isn't the verdict"; }
+}
+
+test_the_verdict_is_colored_with_setup_color_always() {
+    touch "$TEST_TMPDIR/defaults_write_fails"
+    SETUP_COLOR=always run_setup
+    assert_output_contains "$(printf '\033[1;31mError:\033[0m failed (exit 1)')" &&
+    assert_output_contains "$(printf '\033[1;31mtide-setup FAILED: it stopped early')"
 }
 
 test_ignore_errors_goes_on_past_a_failed_write() {
@@ -769,6 +785,8 @@ run_test "the keys apply now" test_applies_the_keys_now
 run_test "no activateSettings says to log out" test_missing_activate_settings_says_to_log_out
 run_test "an open System Settings is warned about" test_warns_when_system_settings_is_open
 run_test "a failed write stops the run" test_failed_write_stops_the_run
+run_test "a clean run says, last, that it finished" test_a_clean_run_says_it_finished
+run_test "SETUP_COLOR=always colors errors and the verdict" test_the_verdict_is_colored_with_setup_color_always
 run_test "--ignore-errors goes on past a failed write" test_ignore_errors_goes_on_past_a_failed_write
 run_test "the menu bar stays shown" test_keeps_the_menu_bar_shown
 run_test "an installed Amethyst is warned about, not removed" test_warns_about_an_installed_amethyst
