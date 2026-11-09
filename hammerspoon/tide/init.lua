@@ -38,6 +38,7 @@ local adapter_mod = require("tide.hs_adapter")
 local ffm_mod = require("tide.ffm")
 local dashboard_hs = require("tide.dashboard_hs")
 local overview_hs = require("tide.overview_hs")
+local overview = require("tide.overview")
 local launcherpage = require("tide.launcherpage")
 local picker_hs = require("tide.picker_hs")
 local picker = require("tide.picker")
@@ -247,8 +248,15 @@ end
 function M.doctor()
     local lines = {}
     local hides = M.adapter and M.adapter.hides_menu_bar
+    -- Screen Recording matters only with the overview's pictures on.
+    local recording
+    if M.overview_pictures == true and M.adapter and M.adapter.screen_recording then
+        recording = M.adapter.screen_recording()
+    end
     for _, line in ipairs(checklist.doctor({
         accessibility = M.adapter and M.adapter.accessibility(),
+        pictures = M.overview_pictures == true,
+        screen_recording = recording,
         menu_bar_hidden = M.bar ~= nil and hides ~= nil and hides(),
     })) do
         lines[#lines + 1] = line
@@ -304,6 +312,9 @@ function M.start(config)
     -- key.
     -- The Appearance page's Menu bar switch, on unless turned off there.
     self.keep_menu_bar_hidden = hs.settings.get("tide.keep_menu_bar_hidden") ~= false
+    -- The Appearance page's Overview switch: window pictures on the
+    -- overview's cards, off unless turned on there (SPEC.md §6.9).
+    self.overview_pictures = hs.settings.get(overview.PICTURES_KEY) == true
     self.launcher_choice = launcherpage.choose(hs.settings.get(launcherpage.SETTINGS_KEY), config.launcher,
         self.adapter.log)
     local launcher_module = launcherpage.MODULE[self.launcher_choice]

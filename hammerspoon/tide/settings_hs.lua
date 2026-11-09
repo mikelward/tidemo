@@ -24,6 +24,7 @@ local displays_hs = require("tide.displays_hs")
 local bluetooth_hs = require("tide.bluetooth_hs")
 local netpower_hs = require("tide.netpower_hs")
 local inputsrc = require("tide.inputsrc")
+local overview = require("tide.overview")
 
 local M = {}
 
@@ -98,6 +99,10 @@ function M.encode_setup(tide)
         facts.accessibility = tide.adapter.accessibility()
     end
     facts.location = M.location_status(tide.adapter.log)
+    facts.pictures = tide.overview_pictures == true
+    if facts.pictures and tide.adapter.screen_recording then
+        facts.screen_recording = tide.adapter.screen_recording()
+    end
     local page = checklist.page(facts, hs.settings.get(checklist.SETTINGS_KEY))
     return '{"permissions":' .. M.list(page.permissions, hs.json.encode)
         .. ',"items":' .. M.list(page.items, hs.json.encode)
@@ -355,6 +360,10 @@ function M.new(tide)
         if not view then
             return
         end
+        local granted
+        if tide.adapter.screen_recording then
+            granted = tide.adapter.screen_recording()
+        end
         -- An empty list must reach the page as one, not as an object.
         local json = hs.json.encode({
             -- The Sound page's devices, volumes and mutes.
@@ -424,6 +433,12 @@ function M.new(tide)
             } or nil,
             -- The Appearance page's Menu bar switch (bar_hs.lua).
             menuBar = { hidden = tide.keep_menu_bar_hidden ~= false },
+            -- The Appearance page's Overview switch, and whether macOS
+            -- lets it take pictures: nil when it can't say.
+            overview = {
+                pictures = tide.overview_pictures == true,
+                granted = granted,
+            },
             -- The macOS page: macOS's own settings that tide keeps
             -- (macprefs.lua).
             macos = tide.macprefs and tide.macprefs.state() or nil,
@@ -725,6 +740,17 @@ function M.new(tide)
                 -- and followed at once by the bar.
                 tide.keep_menu_bar_hidden = body.keepMenuBarHidden
                 hs.settings.set(M.MENU_BAR_KEY, body.keepMenuBarHidden)
+                push()
+            elseif type(body.overviewPictures) == "boolean" then
+                -- The Overview switch: kept in hs.settings, as tide's own,
+                -- and followed the next time the overview opens. Turned
+                -- on without Screen Recording, macOS asks for it.
+                tide.overview_pictures = body.overviewPictures
+                hs.settings.set(overview.PICTURES_KEY, body.overviewPictures)
+                local granted = tide.adapter.screen_recording and tide.adapter.screen_recording()
+                if overview.should_ask(body.overviewPictures, granted) then
+                    tide.adapter.screen_recording(true)
+                end
                 push()
             elseif type(body.launcher) == "string" then
                 -- The Switcher row: tide switches at once, and the page

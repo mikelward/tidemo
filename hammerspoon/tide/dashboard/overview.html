@@ -73,6 +73,31 @@ body {
   width: 32px;
   height: 32px;
 }
+/* A card with its window's picture: the picture across the top, the
+   icon, smaller, beside the title under it. */
+.card.pictured {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "picture picture" "icon text";
+  gap: 8px 10px;
+  align-items: center;
+}
+.card.pictured .picture {
+  grid-area: picture;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  border-radius: 6px;
+  background: var(--raised);
+}
+.card.pictured .icon {
+  grid-area: icon;
+  width: 20px;
+  height: 20px;
+}
+.card.pictured .text {
+  grid-area: text;
+}
 .card .blank {
   border-radius: 6px;
   background: var(--raised);

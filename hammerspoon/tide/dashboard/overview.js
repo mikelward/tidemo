@@ -1,8 +1,9 @@
 // tide's overview page (SPEC.md §6.9), in place of Mission Control: each
 // workspace with windows as a group, headed by its name, and each window in
-// it as a card with its app's icon, its title and its app's name. tide
-// fills it with tide.update(state), state being overview.lua's: { scope,
-// groups: [{ name, current, windows: [{ id, app, bundle, title, mine }] }],
+// it as a card with its app's icon, its title and its app's name, and the
+// window's picture above them when tide sends one. tide fills it with
+// tide.update(state), state being overview.lua's: { scope, groups: [{ name,
+// current, windows: [{ id, app, bundle, title, mine, picture? }] }],
 // focused, icons: { bundle: data URL } }. It hears back through the
 // "tide" message handler, as the dashboard does: { activate: id },
 // { show: name } or { close: true }.
@@ -55,6 +56,15 @@ function card(w) {
   text.append(el("span", "name", String(w.title) || String(w.app)));
   text.append(el("span", "app", w.mine ? `${w.app} · minimized` : String(w.app)));
   b.append(text);
+  // The picture goes above the icon and title (the stylesheet's grid), and
+  // after them here, so a card's first two children are always those.
+  if (typeof w.picture === "string" && w.picture !== "") {
+    const pic = el("img", "picture");
+    pic.src = w.picture;
+    pic.alt = "";
+    b.append(pic);
+    b.classList.toggle("pictured", true);
+  }
   b.classList.toggle("minimized", !!w.mine);
   b.addEventListener("click", (e) => choose(e, { activate: w.id }));
   return b;

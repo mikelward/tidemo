@@ -3,7 +3,9 @@
 -- dashboard is (dashboard_hs.lua). Ctrl+Up shows every workspace's windows,
 -- Ctrl+Down the current workspace's. The same key again, Esc, a click on
 -- empty space or on another window closes it; the other key switches it to
--- that scope. Not runnable outside Hammerspoon.
+-- that scope. With pictures on and Screen Recording granted, each window's
+-- picture comes from hs.window.snapshotForID, once each time it opens. Not
+-- runnable outside Hammerspoon.
 
 local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
@@ -64,12 +66,41 @@ function M.new(tide)
         return url or nil
     end
 
+    -- The pictures for this opening of the overview, by window id: taken
+    -- the first time the page asks for one, so switching scope reuses
+    -- them, and an opening without pictures on takes none. A window
+    -- without one is kept as false, so it isn't asked again.
+    local pictures
+    local function picture_of(id)
+        local url = pictures[id]
+        if url == nil then
+            local ok, v = pcall(function()
+                local img = hs.window.snapshotForID(id)
+                if not img then
+                    return nil
+                end
+                local size = overview.fit(img:size().w, img:size().h)
+                if not size then
+                    return nil
+                end
+                return img:setSize(size, true):encodeAsURLString(false, "JPEG")
+            end)
+            if not ok then
+                log("overview: couldn't take a picture of window " .. tostring(id) .. ": " .. tostring(v))
+            end
+            url = ok and v or false
+            pictures[id] = url
+        end
+        return url or nil
+    end
+
     local function close(refocus)
         if not view then
             return
         end
         local v = view
         view = nil
+        pictures = nil
         tide.wm:hold("overview", false)
         tide.wm:own_window("overview", nil)
         v:delete()
@@ -83,7 +114,7 @@ function M.new(tide)
         return hs.json.encode(v)
     end, log, "overview")
     local function push(v)
-        local state = encode(overview.state(tide.wm, scope, icon_of, before))
+        local state = encode(overview.state(tide.wm, scope, icon_of, before, pictures and picture_of or nil))
         if not state then
             return
         end
@@ -143,6 +174,13 @@ function M.new(tide)
         end
         scope = which
         before = tide.adapter.focused()
+        -- Pictures only with the switch on and Screen Recording granted:
+        -- without it, macOS gives back the wallpaper, not the window.
+        local granted = tide.adapter.screen_recording and tide.adapter.screen_recording()
+        pictures = overview.pictures_on(tide.overview_pictures, granted) and {} or nil
+        if overview.should_ask(tide.overview_pictures, granted) then
+            log("overview: window pictures are on, but Screen Recording is off for Hammerspoon, so it shows icons")
+        end
         uuid = tide.wm:current_screen()
         local s = tide.wm:screen_by_uuid(uuid)
         if not s then
@@ -165,6 +203,7 @@ function M.new(tide)
                 close(false)
             elseif action == "closing" then
                 view = nil
+                pictures = nil
                 tide.wm:hold("overview", false)
                 tide.wm:own_window("overview", nil)
             end

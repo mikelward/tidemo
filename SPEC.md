@@ -150,8 +150,9 @@ checked against a source or a Mac is marked *(unverified)*.
   owner. Its window names need the **Screen Recording** permission
   *(unverified on macOS 26)*. Accessibility's `AXTitle` gives the same
   titles with the Accessibility grant alone, which is how yabai and
-  Amethyst read them *(unverified on macOS 26)*. So tide shouldn't need
-  Screen Recording at all.
+  Amethyst read them *(unverified on macOS 26)*. So tide doesn't need
+  Screen Recording to read them, only for the overview's window pictures,
+  which are off unless you turn them on (§6.9).
 - **Notifications:** no public API lets an app read other apps'
   notifications. Notification Center's banners are Accessibility elements,
   though, in `com.apple.notificationcenterui`, each saying its app and text,
@@ -1355,10 +1356,36 @@ together (§6). tide turns it off (§6.6), and has its own.
     Then any left over, such as a window on a display that went away.
   - A window you minimized is there, marked "minimized" (§6.7).
   - A window tide doesn't manage, such as picture-in-picture, isn't.
-- **No thumbnails.** They'd need Screen Recording, which tide never asks
-  for (§11.1). The icons come from each app's bundle
+- **Icons by default.** They come from each app's bundle
   (`hs.image.imageFromAppBundle`), read once per app and sent as data
-  URLs. Thumbnails as an opt-in setting are in `TODO.md`.
+  URLs, and need no permission.
+- **Window pictures, if you turn them on.** Tide Settings' Appearance page
+  has an Overview switch, "App icons" or "Window pictures", off by default
+  and kept in `hs.settings` (`tide.overview_pictures`) as tide's own.
+  Pictures need Screen Recording (§11.1), so turning them on has macOS ask
+  for it if it's off (`hs.screenRecordingState(true)`), and the Setup
+  checklist then shows its state (§15).
+  - With the switch on and Screen Recording granted, each card has its
+    window's picture across the top, with the app's icon, smaller, beside
+    the title under it. Otherwise every card has the icon, as before; with
+    the switch on and Screen Recording off, the page under the switch and
+    `tide doctor` say why.
+  - Each picture comes from `hs.window.snapshotForID`, once each time the
+    overview opens, only for the windows it shows; switching scope while
+    it's open reuses them. It's made no bigger than 480 by 300 pixels,
+    keeping its shape, and sent as a JPEG data URL.
+  - A window you minimized, or one whose app is hidden, keeps the icon:
+    macOS doesn't draw it. A parked window gets a picture
+    *(unverified on a Mac that the window server still has a parked or
+    covered window's contents; `snapshotForID` uses
+    `CGWindowListCreateImage`, which macOS 15 deprecates)*. A window macOS
+    gives no picture for keeps the icon, and the failure is logged.
+  - `overview.lua` decides, in plain Lua: whether pictures are on
+    (`pictures_on`), which windows get one, and each one's size (`fit`).
+    `overview_hs.lua` takes them.
+  - macOS may want Hammerspoon reopened before a new Screen Recording
+    grant takes effect *(unverified on macOS 26)*; until then the
+    checklist may say On while the pictures are blank.
 - **Choosing:**
   - A click on a card, or the arrow keys and Return, activates that window
     (Activate, §6.1): its workspace comes along, onto this display, and a
@@ -2828,7 +2855,7 @@ that isn't one is left out, and the log says so.
 |---|---|---|
 | Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags (§5.3), notification banners |
 | Input Monitoring | only for the lone Super tap, if done by an event tap (§7) *(unverified that Accessibility alone isn't enough)* | seeing Option go down and up |
-| Screen Recording | never: titles come through Accessibility (§2.5), screenshots use macOS's own keys (§10), and the overview shows app icons, not thumbnails (§6.9) | nothing tide needs |
+| Screen Recording | only when you turn on the overview's window pictures (§6.9); titles come through Accessibility (§2.5), and screenshots use macOS's own keys (§10) | the overview's window pictures |
 | Automation, per browser | the first time the switcher's Windows tab lists tabs (§9) | tab titles and addresses |
 | Automation, for System Events | the first time tide for Linux's light and dark schedule switches the Mac (§10) | setting macOS's appearance |
 | Location Services | when you press its Setup checklist button, the first time: tide looks for where the Mac is for a minute, so macOS asks and lists Hammerspoon in Privacy & Security *(unverified)*; after that the button opens the list | the Wi-Fi network's name, on the bar and the Network page (§8, §15) |
@@ -2859,7 +2886,7 @@ it's IT's call. tide for Chrome has the same section for chromeOS (tide for Chro
 | Feature | What MDM can do | If it's blocked |
 |---|---|---|
 | Accessibility, so all of tiling | grant it to a named app with a Privacy Preferences (PPPC) profile, or block it | **No workaround**: no tiling, no focus follows mouse, no mouse drags. Global keys and the launcher still work. |
-| Input Monitoring and Screen Recording | only let a standard user approve them, or block them; a profile can't switch them on silently *(unverified for Input Monitoring)* | Super+Space for the switcher (§7), or Karabiner's tap rule. tide shouldn't need Screen Recording (§2.5). |
+| Input Monitoring and Screen Recording | only let a standard user approve them, or block them; a profile can't switch them on silently *(unverified for Input Monitoring)* | Super+Space for the switcher (§7), or Karabiner's tap rule. tide needs Screen Recording only for the overview's window pictures (§6.9), and shows icons without it. |
 | Automation for browser tabs | grant it per app pair in the same profile, or block it | No tabs in the Windows tab. Apps, workspaces, windows and commands still work. |
 | Karabiner's system extension | allow or block it by team ID, and the rotation needs it too | Skip Karabiner (§11.2). |
 | Running tide or Hammerspoon at all | block apps by name or signature, with Gatekeeper rules or a tool such as Santa | **No workaround.** Ask IT to allow it. A Developer ID build (§12) is easier for IT to allow than an unsigned one. |
@@ -3285,7 +3312,10 @@ Each one names a workaround, or says there is none.
       - Input Monitoring: Not needed while Super comes from Karabiner (§7.1).
         Without it, Can't tell: Hammerspoon has no call that reads it
         without asking.
-      - Screen Recording: Not needed (§11.1), whatever it's set to.
+      - Screen Recording: Not needed (§11.1) while the overview's window
+        pictures are off, whatever it's set to. With them on, On or Off,
+        as `hs.screenRecordingState(false)` says, which shows no prompt;
+        Off is in red, and `tide doctor` names it.
       - Automation: Can't tell. macOS asks per browser the first time the
         switcher lists its tabs (§9), and there's no way to read it unasked.
     - **Settings** next, each with what to set and an Open button to its
@@ -3522,7 +3552,7 @@ Each one names a workaround, or says there is none.
     | Keyboard | the input sources, each a click to use (below), the Switcher, tide for Linux's or tide for Chrome's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tide's own (below) |
-    | Appearance | light or dark on tide for Linux's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, and the Menu bar switch; Appearance settings |
+    | Appearance | light or dark on tide for Linux's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, the Menu bar switch, and the Overview switch for window pictures (§6.9); Appearance settings |
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tide's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
@@ -3810,7 +3840,7 @@ Each one names a workaround, or says there is none.
 |---|---|
 | macOS switches off an event tap whose handler is too slow (`kCGEventTapDisabledByTimeout`), which would stop the Super tap, drags and focus follows mouse *(unverified how quickly)* | Keeps the handler short, re-enables the tap when told it was switched off, and `tide doctor` reports it. |
 | A macOS update, or a new tide build, resets Accessibility (scripts `docs/MACOS.md`) | The doctor and the checklist say so, and link the pane. |
-| Screen Recording asks again every so often since macOS 15 *(unverified on macOS 26)* | tide doesn't use it (§2.5). |
+| Screen Recording asks again every so often since macOS 15 *(unverified on macOS 26)* | Only the overview's window pictures use it, and they're off by default (§6.9). Turned on, the re-prompts are macOS's, and while Screen Recording is off the overview shows icons *(unverified how macOS 15 and 26 re-prompt Hammerspoon)*. |
 | Secure Input stops event taps seeing keys (§13) | Registered hotkeys still work; the tap rules don't. |
 | A hung app stalls Accessibility calls (§2.1) | A short timeout per call, and that app is skipped (§5.2). |
 | tide quits or crashes with workspaces hidden | Restores everything on quit, and reconciles at start (§6.5). |

@@ -140,6 +140,68 @@ t.test("the state carries each app's icon once, by bundle, and the focused windo
     t.eq(#overview.state(wm, "current").groups, 1)
 end)
 
+t.test("pictures are on only with the switch on and Screen Recording granted", function()
+    t.eq(overview.pictures_on(true, true), true)
+    t.eq(overview.pictures_on(true, false), false)
+    t.eq(overview.pictures_on(true, nil), false, "can't tell: icons")
+    t.eq(overview.pictures_on(false, true), false)
+    t.eq(overview.pictures_on(nil, true), false, "off unless turned on")
+    t.eq(overview.pictures_on("yes", true), false)
+end)
+
+t.test("turning pictures on has macOS ask only when Screen Recording is off", function()
+    t.eq(overview.should_ask(true, false), true)
+    t.eq(overview.should_ask(true, true), false)
+    t.eq(overview.should_ask(true, nil), false, "can't tell: don't ask")
+    t.eq(overview.should_ask(false, false), false)
+end)
+
+t.test("a picture is scaled down to fit, keeping its shape, never up", function()
+    t.eq(overview.fit(2880, 1800), { w = 480, h = 300 })
+    t.eq(overview.fit(1000, 2000), { w = 150, h = 300 }, "tall: by height")
+    t.eq(overview.fit(3000, 500), { w = 480, h = 80 }, "wide: by width")
+    t.eq(overview.fit(200, 100), { w = 200, h = 100 }, "small: as it is")
+    t.eq(overview.fit(100000, 1), { w = 480, h = 1 }, "at least a pixel")
+    t.eq(overview.fit(0, 100), nil)
+    t.eq(overview.fit(nil, 100), nil)
+    t.eq(overview.fit(80, 60, { w = 40, h = 40 }), { w = 40, h = 30 })
+end)
+
+t.test("with pictures on, each window macOS draws carries its picture; minimized and hidden keep the icon", function()
+    local a, wm = setup()
+    wm:show("in")
+    a.focus_ = 2
+    wm:act("minimize")
+    a.wins[3].hidden = true
+    local asked = {}
+    local st = overview.state(wm, "all", nil, 1, function(id)
+        asked[#asked + 1] = id
+        if id ~= 5 then
+            return "data:picture-" .. id
+        end
+    end)
+    local by = {}
+    for _, g in ipairs(st.groups) do
+        for _, w in ipairs(g.windows) do
+            by[w.id] = w
+        end
+    end
+    t.eq(by[1].picture, "data:picture-1")
+    t.eq(by[2].picture, nil, "minimized")
+    t.eq(by[3].picture, nil, "its app hidden")
+    t.eq(by[4].picture, "data:picture-4", "parked, on another workspace")
+    t.eq(by[5].picture, nil, "no picture taken")
+    table.sort(asked)
+    t.eq(asked, { 1, 4, 5 })
+    -- Pictures off: none asked, none sent.
+    st = overview.state(wm, "all", nil, 1)
+    for _, g in ipairs(st.groups) do
+        for _, w in ipairs(g.windows) do
+            t.eq(w.picture, nil)
+        end
+    end
+end)
+
 t.test("Ctrl+Up and Ctrl+Down ask for the overview, of every workspace or this one", function()
     local _, wm = setup()
     local asked = {}

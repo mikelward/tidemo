@@ -261,10 +261,26 @@ have run it. **Check on a Mac:**
   Control+Up outside terminals, opens the overview; if it does, the rule
   should send Command+Up instead, or tide should pick other keys.
 
-**Later, as an opt-in setting:** window thumbnails on the cards. They
-need Screen Recording (`hs.window:snapshot()` or ScreenCaptureKit), which
-tide never asks for now (SPEC.md §11.1), so off by default, with the
-setup checklist asking for the permission only once it's on.
+**Built, as an opt-in setting** (SPEC.md §6.9): window pictures on the
+cards, from `hs.window.snapshotForID`, once each time the overview opens,
+behind the Appearance page's Overview switch, off by default. Turning it
+on has macOS ask for Screen Recording, and the Setup checklist and `tide
+doctor` then show its state. Only the tests have run it, against
+stand-ins for Hammerspoon. **Check on a Mac:**
+
+- turning the switch on has macOS ask for Screen Recording once, and
+  Hammerspoon is then in Privacy & Security's list; whether Hammerspoon
+  must be reopened before pictures work;
+- `hs.screenRecordingState(false)` says On and Off as System Settings
+  does, and the checklist and the page under the switch follow it;
+- pictures show for a window on screen, one covered by another, and one
+  parked off screen on another workspace (`CGWindowListCreateImage`,
+  which `snapshotForID` uses, is deprecated in macOS 15: check it still
+  works on macOS 26);
+- how long taking a dozen pictures holds up the overview's opening, and
+  how big the update is;
+- how often macOS 15 and 26 ask again for Screen Recording, and that the
+  overview shows icons while it's off.
 
 **Align with tide for Linux's overview** (its `TODO.md`, *An overview of
 every workspace*, planned 2026-11-09). tide for Linux plans the same
@@ -483,6 +499,13 @@ tide. INFEASIBLE.md lists what can't be fixed.
   page; only the same key again closes it.
 - **Ctrl+Down with an empty current workspace** shows its header and "No
   windows on this workspace", rather than nothing or every workspace.
+- **The overview's window pictures** (SPEC.md §6.9, 2026-11-09): the
+  switch is on the Appearance page, under Menu bar, kept in
+  `hs.settings`, not in a file shared with tide for Linux, which has no
+  such setting yet. Pictures are at most 480 by 300 pixels, as JPEG, taken
+  as the page first fills rather than before it shows, so the page comes
+  up at once and fills a moment later. Turning the switch on asks macOS
+  for Screen Recording at once, rather than from the checklist's button.
 
 - **Parking is the default; the setting is `hide`,** `"park"` or
   `"minimize"` (SPEC.md §6, 2026-11-05), a start() option only: tide for Linux has

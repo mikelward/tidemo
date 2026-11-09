@@ -1616,6 +1616,27 @@ document.getElementById("menubar-hidden").addEventListener("click", () => {
   send({ keepMenuBarHidden: !menuBarHidden });
 });
 
+// The Appearance page's Overview switch: window pictures on the overview's
+// cards, or app icons (SPEC.md §6.9). A click sends { overviewPictures: on },
+// and tide answers with tide.update(); `granted` false says why the
+// overview still shows icons.
+let overviewPictures = false;
+function renderOverview(ov) {
+  const toggle = document.getElementById("overview-pictures");
+  const on = ov.pictures === true;
+  overviewPictures = on;
+  toggle.textContent = on ? "Window pictures" : "App icons";
+  toggle.setAttribute("aria-pressed", String(on));
+  document.getElementById("overview-access").textContent =
+    on && ov.granted === false
+      ? "Screen Recording is off for Hammerspoon, so the overview shows app icons. Turn it on under Setup checklist."
+      : "";
+}
+
+document.getElementById("overview-pictures").addEventListener("click", () => {
+  send({ overviewPictures: !overviewPictures });
+});
+
 // The Super key (SPEC.md §7.1): keyboard.super's value and choices, with ‹
 // and › to the others, which send { superKey: value }; tide swaps its
 // Karabiner rule and answers with tide.update(), or tide.keyboardError(why).
@@ -2156,6 +2177,7 @@ window.tide = {
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
     if (state.launcher && typeof state.launcher === "object") renderLauncher(state.launcher);
     if (state.menuBar && typeof state.menuBar === "object") renderMenuBar(state.menuBar);
+    if (isObject(state.overview)) renderOverview(state.overview);
     if (isObject(state.macos)) {
       macState = state.macos;
       renderMac();

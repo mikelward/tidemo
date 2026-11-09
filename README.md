@@ -76,7 +76,9 @@ It brings tide for Linux's desktop to macOS:
 - an overview in place of Mission Control: Ctrl+Up shows every
   workspace's windows as cards grouped by workspace, Ctrl+Down this
   workspace's; click one, or type to filter and press Return, to go to it
-  (SPEC.md §6.9). The installer frees the two keys;
+  (SPEC.md §6.9). The installer frees the two keys. The cards show app
+  icons, or each window's picture if you turn that on under Appearance,
+  which needs Screen Recording;
 - a settings window, from the launcher or the dashboard, with tide for Linux's
   Clocks, Start at login and Clipboard settings, sharing tide for Linux's
   `~/.config/tide/clocks*.json`, `startup*.json` and `clipboard*.json`, and

@@ -165,6 +165,34 @@ assert.strictEqual(groups()[0].children[1].textContent, "No windows on this work
 key("Enter");
 assert.strictEqual(took(), "[]");
 
+// A window with a picture shows it, with the icon and title still first;
+// one without, such as one you minimized, keeps the icon alone.
+sandbox.tide.update({
+  scope: "pictures",
+  focused: 1,
+  icons: { "com.apple.Notes": "data:image/png;base64,AAAA" },
+  groups: [
+    {
+      name: "in",
+      current: true,
+      windows: [
+        { id: 1, app: "Notes", bundle: "com.apple.Notes", title: "Shopping", mine: false, picture: "data:image/jpeg;base64,BBBB" },
+        { id: 3, app: "kitty", bundle: "net.kovidgoyal.kitty", title: "~", mine: true },
+      ],
+    },
+  ],
+});
+{
+  const [pictured, plain] = cardsOf(groups()[0]);
+  assert.ok(pictured.classList.contains("pictured"));
+  assert.strictEqual(pictured.children[0].src, "data:image/png;base64,AAAA", "the icon, beside the title");
+  assert.strictEqual(pictured.children[1].children[0].textContent, "Shopping");
+  assert.strictEqual(pictured.children[2].className, "picture");
+  assert.strictEqual(pictured.children[2].src, "data:image/jpeg;base64,BBBB");
+  assert.ok(!plain.classList.contains("pictured"));
+  assert.strictEqual(plain.children.length, 2);
+}
+
 // Lua's JSON can send an empty list as an object: an empty workspace's
 // windows, or no groups at all.
 sandbox.tide.update({ scope: "all", focused: null, icons: {}, groups: [{ name: "oc", current: true, windows: {} }] });
