@@ -504,6 +504,14 @@ t.test("the battery shows its rounded percentage and whether it's charging", fun
     t.eq(bar.icons({}).battery, nil)
 end)
 
+-- A Mac mini has no battery, and Hammerspoon says its percentage is NaN
+-- rather than nil: the bar showed "nan%".
+t.test("a Mac with no battery shows no battery, though macOS says NaN", function()
+    t.eq(bar.icons({ battery = { percent = 0 / 0 } }).battery, nil)
+    t.eq(bar.icons({ battery = { percent = math.huge } }).battery, nil)
+    t.eq(bar.icons({ battery = { percent = -1 } }).battery, nil)
+end)
+
 t.test("the battery's tip says how long until full or empty, when macOS knows", function()
     local tip = function(b)
         b.percent = b.percent or 50
