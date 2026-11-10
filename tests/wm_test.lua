@@ -986,6 +986,68 @@ t.test("focusing a parked window, as Cmd+Tab does, brings its workspace along", 
     t.eq(a.focus_, 1)
 end)
 
+t.test("closing a workspace's last window keeps you on it, empty", function()
+    local a, wm = setup(1)
+    a.add(2, { app = "com.example.other", pid = 200 })
+    wm:sync()
+    wm:send(1, "work")
+    wm:show("work", nil, true)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.parked[2], true)
+    -- Cmd+W on window 1, the last on "work": macOS focuses the next app's
+    -- window, parked on "in", before tide's sync forgets 1.
+    wm:modifiers(true)
+    a.drop(1)
+    a.focus_ = 2
+    wm:focused(2)
+    wm:modifiers(false)
+    t.eq(wm.current, "work", "the workspace you were on still shows")
+    t.eq(wm.parked[2], true, "the other app's window stays on its workspace")
+    t.eq(a.focus_, nil, "typing reaches no window you can't see")
+    wm:schedule()
+    a.tick()
+    t.eq(wm.current, "work")
+    t.eq(wm:find("work") ~= nil, true, "it's still listed")
+end)
+
+t.test("closing a window with others left on its workspace focuses one of them", function()
+    local a, wm = setup(2)
+    a.add(3, { app = "com.example.other", pid = 200 })
+    wm:sync()
+    wm:send(1, "work")
+    wm:send(2, "work")
+    wm:show("work", nil, true)
+    a.focus_ = 2
+    wm:focused(2)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.parked[3], true)
+    wm:modifiers(true)
+    a.drop(1)
+    a.focus_ = 3
+    wm:focused(3)
+    wm:modifiers(false)
+    t.eq(wm.current, "work")
+    t.eq(wm.parked[3], true)
+    t.eq(a.focus_, 2, "the window left on the workspace has the focus")
+end)
+
+t.test("an empty workspace stays listed until you switch away", function()
+    local a, wm = setup(1)
+    a.focus_ = 1
+    wm:focused(1)
+    wm:send(1, "2")
+    wm:show("2", nil, true)
+    a.drop(1)
+    wm:schedule()
+    a.tick()
+    t.eq(wm.current, "2")
+    t.eq(wm:find("2") ~= nil, true, "closing its last window doesn't remove it")
+    wm:show("in", nil, true)
+    t.eq(wm:find("2"), nil, "leaving it does")
+end)
+
 t.test("a late report of a focus from before a switch doesn't pull you back", function()
     local a, wm = setup(2)
     a.focus_ = 1

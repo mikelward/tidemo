@@ -3078,6 +3078,7 @@ function M:focused_window(id)
     if self.last_steal and self.last_steal.id == id then
         self.last_steal = nil
     end
+    local prev = self.history[1]
     remove_value(self.history, id)
     table.insert(self.history, 1, id)
     self.attention:focused(id, w.app, self.tab_hosts[id])
@@ -3117,9 +3118,37 @@ function M:focused_window(id)
     -- restored from the Dock does (M:unminimized).
     -- Only while it still has the focus: a late report of a focus from
     -- before a switch, its window parked since, mustn't pull you back.
+    -- Not when the window you were in just closed: macOS moving the focus
+    -- on to another app's window isn't you leaving, and leaving would
+    -- remove the workspace you're on if that was its last window
+    -- (SPEC.md §6.1). The focus goes to the last used window left there,
+    -- or with none, to no window.
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
-        self:activate(id)
+        if self:just_closed(prev) then
+            self.a.log("staying on " .. tostring(self.current) .. " after a close")
+            if not self:refocus_ws(self:current_ws()) then
+                self:unfocus_parked()
+            end
+        else
+            self:activate(id)
+        end
     end
+end
+
+-- Whether window `id`, one tide still knows, is gone: it closed, and the
+-- next sync will forget it. Listing the windows comes first: it drops
+-- what the adapter holds for windows that went *(unverified on a Mac
+-- that macOS reports the close before the focus that follows)*.
+function M:just_closed(id)
+    if id == nil or self.windows[id] == nil then
+        return false
+    end
+    for _, lid in ipairs(self.a.windows()) do
+        if lid == id then
+            return self.a.state(id) == nil
+        end
+    end
+    return true
 end
 
 -- Take tile `id` out of its workspace's layout and float it, placed as a
