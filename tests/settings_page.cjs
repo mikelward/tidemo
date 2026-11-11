@@ -1787,6 +1787,22 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(sent, [{ keepMenuBarHidden: true }]);
 }
 
+// The Bar page's Position row: Top unless tide says Bottom, named as
+// tide's Bar page names them, and ‹ or › asks for the other.
+{
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top" } });
+  const row = () => ids["bar-position"].children;
+  assert.deepStrictEqual(row().map((c) => c.textContent), ["Position", "‹", "Top", "›"]);
+  sent.length = 0;
+  row()[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ barPosition: "bottom" }]);
+  sandbox.tide.update({ clockFiles: [], bar: { position: "bottom" } });
+  assert.strictEqual(row()[2].textContent, "Bottom");
+  sent.length = 0;
+  row()[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ barPosition: "top" }], "‹ wraps round to Top");
+}
+
 // The Appearance page's Overview switch: icons unless tide says pictures
 // are on, a click asks for the other, and pictures on without Screen
 // Recording say so.

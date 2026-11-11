@@ -311,9 +311,11 @@ function M.new(adapter, config)
     local self = setmetatable({
         a = adapter,
         layout = config.layout or layout.defaults,
-        -- The height tide's bar takes from the top of each display, or 0
-        -- with the bar off (bar.lua).
+        -- The height tide's bar takes from each display, or 0 with the bar
+        -- off (bar.lua), and which edge it takes it from: "top" or
+        -- "bottom", the Bar page's Position row.
         top = config.top or 0,
+        bar_position = bar.position(config.bar_position),
         -- Where each display's bar window really ends, by uuid, when macOS
         -- moved it lower than tide put it (bar.place).
         bar_floor = {},
@@ -465,12 +467,12 @@ local function inside(box, x, y)
     return x >= box.x and x < box.x + box.w and y >= box.y and y < box.y + box.h
 end
 
--- The displays, each one's tiling area below tide's bar when it's on.
+-- The displays, each one's tiling area beside tide's bar when it's on.
 function M:screens()
     local out = {}
     for i, s in ipairs(self.a.screens()) do
         if self.top > 0 then
-            local _, area = bar.place(s, self.top, self.bar_floor[s.uuid])
+            local _, area = bar.place(s, self.top, self.bar_floor[s.uuid], self.bar_position)
             out[i] = { uuid = s.uuid, area = area, full = s.full, notch = s.notch }
         else
             out[i] = s

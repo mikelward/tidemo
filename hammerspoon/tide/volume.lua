@@ -50,13 +50,14 @@ function M.height(n)
     return math.min(M.MAX_HEIGHT, M.CHROME + M.ROW * n)
 end
 
--- Where the popover goes: just under bar `frame`, its right edge under the
--- speaker's (`right`, in the bar's own px), kept on the bar's display.
-function M.frame(frame, right, n)
+-- Where the popover goes: just under bar `frame`, or just above it for a
+-- bar along the bottom (`at`), its right edge under the speaker's
+-- (`right`, in the bar's own px), kept on the bar's display.
+function M.frame(frame, right, n, at)
     local w, h = M.WIDTH, M.height(n)
     local x = frame.x + (tonumber(right) or frame.w) - w
     x = math.max(frame.x, math.min(x, frame.x + frame.w - w))
-    return { x = x, y = frame.y + frame.h, w = w, h = h }
+    return { x = x, y = at == "bottom" and frame.y - h or frame.y + frame.h, w = w, h = h }
 end
 
 -- Does what a message from the page asks, through `act`: set_volume(v),

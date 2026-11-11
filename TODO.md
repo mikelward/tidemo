@@ -446,6 +446,28 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **The bar at the bottom keeps the Apple logo and its menu** (2026-11-11):
+  About This Mac, System Settings and the session's actions stay a corner
+  away, though the real Apple menu now shows at the top. Only Show Menu
+  Bar goes, as nothing covers the menu bar. Drop the logo there if it
+  feels doubled.
+- **The Bar page's Position is this Mac's own, in `hs.settings`**
+  (2026-11-11), as "Menu bar kept hidden" is, not `barPosition` in the
+  shared `appearance.json` that tide for Linux reads: what fits turns on
+  the menu bar and the Dock. The page's and row's names are tide for
+  Linux's.
+- **"Menu bar kept hidden" moved to the Bar page** (2026-11-11), from
+  Appearance: it's about the bar covering the menu bar, and sits under
+  Position, which decides whether it applies. The Bar page also has
+  buttons for macOS's Menu bar and Dock settings.
+- **No pointer nudging for a Dock that hides at the bottom**
+  (2026-11-11): tide says to move the Dock to a side or show it, at start,
+  in `tide doctor` and on choosing Bottom, rather than keeping the pointer
+  off the bottom row.
+- **The menu height for menus opened above a bottom bar is a guess**
+  (2026-11-11): 22 px an item, 11 a separator, 10 of padding
+  (`bar.menu_height`).
+
 - **Safari on Super+F, not Super+S** (2026-11-08, your call): Super+S
   stays keep awake, as on tide for Linux. Super+I opens Messages in place
   of scripts' IRC helper, and Super+Y Music in place of YouTube Music.
@@ -1219,6 +1241,24 @@ tide. INFEASIBLE.md lists what can't be fixed.
   tide for Chrome's scopes (Launch, Tabs, Attention) moved between with Tab. The
   alternative is tide for Chrome's whole launcher page in the webview, which needs a
   stand-in for the Chrome APIs it calls. Reversible: add the page later.
+
+## The Bar page chooses the status icons
+
+The Bar page should choose which status icons the bar shows and their
+order, as tide for Linux's will (tide TODO.md).
+
+## Check the bar at the bottom on a real Mac
+
+Only the tests have run these (SPEC.md §8):
+
+- Bar, Position: Bottom puts every display's bar just above a shown Dock, windows
+  tile between the menu bar and the bar, and Top puts it back, both
+  without a reload.
+- `hs.screen`'s frame leaves out a shown menu bar, so the top window isn't
+  under it; and how much room macOS keeps for a Dock that hides.
+- A Dock that hides at the bottom slides up over the bar, not under it.
+- The tips, the volume popover and the session and Apple logo menus open
+  just above the bar, with no gap or overlap.
 
 ## Check the Floating section on a real Mac
 

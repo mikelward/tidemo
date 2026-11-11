@@ -66,7 +66,7 @@ end)
 local TIDE_ORDER = {
     "displays", "sound", "network", "bluetooth", "mouse", "trackpad", "keyboard", "power",
     "layouts", "workspaces", "floating",
-    "appearance", "muted", "clipboard", "clocks", "idle", "startup",
+    "appearance", "bar", "muted", "clipboard", "clocks", "idle", "startup",
     -- Then tide's own pages, which tide has none for: macOS's settings
     -- tide keeps, and the Setup checklist.
     "macos", "setup",

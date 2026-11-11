@@ -374,6 +374,17 @@ function M.new()
     end
     a.hides_menu_bar = hides_menu_bar
 
+    -- The Dock's edge ("bottom", "left" or "right") and whether it hides
+    -- itself, for a bar along the bottom (checklist.dock_covers). Read
+    -- afresh each time: only `tide doctor`, start and the Bar page ask.
+    -- Unset, macOS's defaults: along the bottom, shown.
+    function a.dock()
+        local side, ok = hs.execute("/usr/bin/defaults read com.apple.dock orientation 2>/dev/null")
+        side = ok and (side or ""):match("^%s*(%a+)") or "bottom"
+        local hides, ok2 = hs.execute("/usr/bin/defaults read com.apple.dock autohide 2>/dev/null")
+        return { side = side, hides = (ok2 and (hides or ""):match("^%s*1") ~= nil) or false }
+    end
+
     function a.screens()
         if displays.list then
             return copy(displays.list)

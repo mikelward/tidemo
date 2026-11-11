@@ -1,6 +1,6 @@
 -- The bar on Hammerspoon: bar.lua's state in a borderless hs.webview along
--- the top of each display (SPEC.md §8), kept open and updated rather than
--- rebuilt. The page is built like the dashboard's, from the same copies of
+-- the top or bottom of each display (SPEC.md §8), kept open and updated
+-- rather than rebuilt. The page is built like the dashboard's, from the same copies of
 -- tileco's modules. Not runnable outside Hammerspoon.
 
 local bar = require("tide.bar")
@@ -393,7 +393,14 @@ function M.new(tide)
     }
     self.output_ops = popover_ops
 
-    -- A bar item's tip, or the full title's, below a bar (SPEC.md §8),
+    -- Which edge the bars run along, "top" or "bottom": the wm's, which the
+    -- Bar page's Position row sets (settings_hs.choose_bar_position).
+    local function at()
+        return tide.wm.bar_position
+    end
+
+    -- A bar item's tip, or the full title's, below a bar (above one along
+    -- the bottom) (SPEC.md §8),
     -- drawn as the tray's tips are: the page can't draw past its own strip.
     local TIP_MAX = 600
     -- The tip on screen, if any: its canvas, and the display and bar frame
@@ -415,7 +422,7 @@ function M.new(tide)
         local size = hs.drawing.getTextDrawingSize(text, { size = tray_hs.TIP_SIZE })
         local w, h = bar.tip_size(size.w, size.h, TIP_MAX)
         local c = tray_hs.colors()
-        local canvas = tray_hs.floating(hs.canvas.new(bar.tip_frame(v.frame, tonumber(t.x) or v.frame.w / 2, w, h)))
+        local canvas = tray_hs.floating(hs.canvas.new(bar.tip_frame(v.frame, tonumber(t.x) or v.frame.w / 2, w, h, at())))
         tip = { canvas = canvas, uuid = uuid, frame = { x = v.frame.x, y = v.frame.y, w = v.frame.w, h = v.frame.h } }
         canvas:appendElements({
             type = "rectangle",
@@ -434,9 +441,10 @@ function M.new(tide)
     end
 
     -- The session menu (bar.lua), macOS's own, under the icon on display
-    -- `uuid`'s bar. Log out, restart and shut down ask System Events, which
-    -- lets an app with unsaved work stop them, as on any Mac; the adapter
-    -- logs and says so when System Events refuses.
+    -- `uuid`'s bar, or above it along the bottom. Log out, restart and shut
+    -- down ask System Events, which lets an app with unsaved work stop
+    -- them, as on any Mac; the adapter logs and says so when System Events
+    -- refuses.
     local SESSION_RUN = {
         lock = tide.adapter.lock,
         logout = tide.adapter.logout,
@@ -444,7 +452,7 @@ function M.new(tide)
         restart = tide.adapter.restart,
         shutdown = tide.adapter.shutdown,
     }
-    local function show_session(uuid, at)
+    local function show_session(uuid, where)
         local v = uuid and self.views[uuid]
         if not v or v.hidden then
             return
@@ -455,20 +463,22 @@ function M.new(tide)
             log("bar: couldn't make the session menu")
             return
         end
-        self.session_menu:setMenu(bar.session_menu(function(id)
+        local menu = bar.session_menu(function(id)
             local ok, err = pcall(SESSION_RUN[id])
             if not ok then
                 log("bar: session " .. id .. " failed: " .. tostring(err))
                 tide.adapter.notify("Couldn't " .. id .. ": " .. tostring(err))
             end
-        end))
-        local x = v.frame.x + (tonumber(at.x) or v.frame.w)
-        self.session_menu:popupMenu({ x = x, y = v.frame.y + v.frame.h })
+        end)
+        self.session_menu:setMenu(menu)
+        local x = v.frame.x + (tonumber(where.x) or v.frame.w)
+        self.session_menu:popupMenu(bar.menu_point(v.frame, x, menu, at()))
     end
 
-    -- The volume popover under the speaker of display `uuid`'s bar, at its
-    -- right edge `at.right`, or closed if it's open.
-    local function show_sound(uuid, at)
+    -- The volume popover under the speaker of display `uuid`'s bar (above
+    -- it along the bottom), at its right edge `where.right`, or closed if
+    -- it's open.
+    local function show_sound(uuid, where)
         local v = uuid and self.views[uuid]
         if not v or v.hidden then
             return
@@ -483,7 +493,7 @@ function M.new(tide)
             end
             self.volume_popover = p
         end
-        self.volume_popover.toggle(v.frame, at.right)
+        self.volume_popover.toggle(v.frame, where.right, at())
     end
 
     -- Show Menu Bar: every bar hidden, so the menu bar it covers shows, until
@@ -522,7 +532,7 @@ function M.new(tide)
     end
 
     -- The Apple logo's menu (bar.lua's copy of the Apple menu), under the
-    -- logo at the left of display `uuid`'s bar.
+    -- logo at the left of display `uuid`'s bar, or above it along the bottom.
     local function open_apple_menu(uuid)
         local v = uuid and self.views[uuid]
         if not v or v.hidden then
@@ -534,7 +544,7 @@ function M.new(tide)
             log("bar: couldn't make the Apple menu")
             return
         end
-        self.apple_popup:setMenu(bar.apple_menu(tide.adapter.open_url, function(id)
+        local menu = bar.apple_menu(tide.adapter.open_url, function(id)
             if id == "menubar" then
                 show_menu_bar()
                 return
@@ -544,8 +554,9 @@ function M.new(tide)
                 log("bar: session " .. id .. " failed: " .. tostring(err))
                 tide.adapter.notify("Couldn't " .. id .. ": " .. tostring(err))
             end
-        end))
-        self.apple_popup:popupMenu({ x = v.frame.x + 4, y = v.frame.y + v.frame.h })
+        end, at())
+        self.apple_popup:setMenu(menu)
+        self.apple_popup:popupMenu(bar.menu_point(v.frame, v.frame.x + 4, menu, at()))
     end
 
     local function on_message(msg, from)
@@ -644,10 +655,10 @@ function M.new(tide)
         end
         -- Kept off the top row while the menu bar hides, so it doesn't
         -- slide over the bar; the Apple logo opens its own copy of the
-        -- Apple menu instead. The Appearance page's Menu bar switch turns
+        -- Apple menu instead. The Bar page's Menu bar switch turns
         -- it off, and a shown menu bar needs none of it (bar.keeps_off_top).
         local hides = tide.adapter.hides_menu_bar and tide.adapter.hides_menu_bar()
-        local down = bar.keeps_off_top(tide.keep_menu_bar_hidden, hides) and bar.off_top(frames, x, y)
+        local down = bar.keeps_off_top(tide.keep_menu_bar_hidden, hides, at()) and bar.off_top(frames, x, y)
         if down then
             hs.mouse.absolutePosition({ x = x, y = down })
             y = down
@@ -729,8 +740,9 @@ function M.new(tide)
     -- notch, it keeps the strip for the menu bar *(seen on a MacBook)*. Then
     -- windows tile below where the bar really is, not under it, and the log
     -- says so once per change. One frame read per display per redraw.
+    -- Along the bottom there's no strip to refuse, so no floor.
     local function check_floor(uuid, v, frame)
-        local got = try("the bar's frame", function()
+        local got = at() ~= "bottom" and try("the bar's frame", function()
             return v.view:frame()
         end)
         local floor
@@ -750,9 +762,9 @@ function M.new(tide)
         local present = {}
         for _, s in ipairs(tide.adapter.screens()) do
             present[s.uuid] = true
-            local frame = bar.place(s, bar.HEIGHT)
+            local frame = bar.place(s, bar.HEIGHT, nil, at())
             local v = self.views[s.uuid]
-            local level = bar.level(s)
+            local level = bar.level(s, at())
             if not v then
                 v = create(s.uuid, frame)
                 self.views[s.uuid] = v

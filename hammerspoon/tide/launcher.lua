@@ -610,6 +610,8 @@ M.SETTINGS_SECTIONS = {
     { id = "floating", group = "windows", name = "Floating", covers = "floating windows rules",
       key = "Settings: floating windows" },
     { id = "appearance", group = "general", name = "Appearance", covers = "dark style light theme accent overview window pictures thumbnails" },
+    -- tide's Bar page, with tide's keywords, and the menu bar's switch.
+    { id = "bar", group = "general", name = "Bar", covers = "panel taskbar top bottom position menu bar dock" },
     { id = "muted", group = "general", name = "Notifications", covers = "muted apps and sites mute unmute",
       key = "Settings: muted apps and sites" },
     { id = "clipboard", group = "general", name = "Clipboard", covers = "clipboard history copies paste",

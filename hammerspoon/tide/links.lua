@@ -73,6 +73,7 @@ M.SECTIONS = {
     { id = "keyboard", links = { { "keyboard", "Keyboard settings" }, { "karabiner", "Karabiner settings" } } },
     { id = "power", links = { { "battery", "Battery settings" } } },
     { id = "appearance", links = { { "appearance", "Appearance settings" } } },
+    { id = "bar", links = { { "control_center", "Menu bar settings" }, { "desktop_dock", "Dock settings" } } },
     { id = "muted", links = { { "notifications", "Notifications settings" } } },
     { id = "clocks", links = { { "date_time", "Date & Time settings" } } },
     { id = "idle", links = { { "lock_screen", "Lock settings" } } },

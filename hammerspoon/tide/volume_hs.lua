@@ -96,16 +96,17 @@ function M.new(tide, ops)
         end)
     end)
 
-    -- Under bar `frame` (a display's bar, in screen px), its right edge at
-    -- the speaker's `right`; closes it instead if it's open.
-    function self.toggle(frame, right)
+    -- Under bar `frame` (a display's bar, in screen px), or above it along
+    -- the bottom (`at`), its right edge at the speaker's `right`; closes it
+    -- instead if it's open.
+    function self.toggle(frame, right, at)
         if view then
             close(true)
             return
         end
         local state = ops.state()
         before = tide.adapter.focused()
-        local box = volume.frame(frame, right, #state.outputs)
+        local box = volume.frame(frame, right, #state.outputs, at)
         view = hs.webview.new(box, { developerExtrasEnabled = false }, content)
         view:windowStyle({ "borderless" })
         view:transparent(true)

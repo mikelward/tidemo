@@ -1839,9 +1839,77 @@ stock keys:
     anything else that needs the very top edge are lost on displays with a
     shown bar; under a full-screen window, where the bar hides, the menu bar
     shows as usual *(unverified that one point is enough on every macOS)*.
-    Tide Settings' Appearance page has the switch, "Menu bar kept hidden",
+    Tide Settings' Bar page has the switch, "Menu bar kept hidden"
+    (only for a bar at the top),
     on by default and kept in `hs.settings` as tide's own; off, the menu
     bar shows at the top edge as on any Mac.
+  - **Or along the bottom: Tide Settings' Bar page, Position: Top or
+    Bottom.** Top is the default. The Bar page sits after Appearance, as
+    tide for Linux's does, and holds the Menu bar switch too, with buttons
+    for macOS's Menu bar and Dock settings. Its search finds it by "bar",
+    "panel", "taskbar", "top", "bottom", "menu bar" and "dock". The names
+    are tide for Linux's (`barPosition` in its `appearance.json`,
+    `BAR_CHOICES` in its appearance module), but the choice is this Mac's
+    own, in `hs.settings`
+    (`bar.POSITION_KEY`), as "Menu bar kept hidden" is: what works best
+    turns on macOS's menu bar and Dock, which Linux doesn't have. A change
+    places the bars again and re-tiles at once, with no reload
+    (`settings_hs.choose_bar_position`).
+    - **Where it goes.** The bottom 36 px of `hs.screen`'s frame, the
+      visible frame (`bar.place` with `"bottom"`). macOS already leaves the
+      menu bar and a shown Dock out of that frame, so the bar sits just
+      above a bottom Dock, and windows tile between the menu bar and the
+      bar. A Dock on the left or right only narrows it.
+    - **The menu bar is left alone.** Nothing covers it, so the app's
+      menus, the Apple menu and other apps' status items (a VPN, Zoom)
+      stay one click away. That's the big win. Gone with the covering:
+      the notch handling (the bar is away from the notch, so a MacBook's
+      own display shows the title again), the floor read back from macOS,
+      Show Menu Bar (dropped from the Apple logo's menu), the pointer
+      kept off the top row, the banners moved down (banners at the top
+      never meet the bar), and the start and doctor notice asking for
+      Never. Any menu bar setting works, a hidden one included: it slides
+      in over windows, not over tide's bar.
+    - **The window level is floating** (`bar.level`), above every app's
+      windows. The Dock's level (`kCGDockWindowLevel`, 20) is above
+      floating (3) and below status (25), the level a top bar takes over
+      the menu bar. So a Dock that hides itself slides up over the bar,
+      not under it.
+    - **A Dock that hides at the bottom is the new nuisance.** It slides
+      up over the bar whenever the pointer reaches the bottom edge, as the
+      hidden menu bar did at the top. tide doesn't keep the pointer off
+      the bottom row: that made the pointer drag at the top, and the fix
+      is a setting. So at start, in `tide doctor` and on choosing Bottom,
+      tide says to put the Dock on the left or right, or show it
+      (`checklist.DOCK_NOTICE`, `checklist.dock_covers`, from `defaults
+      read com.apple.dock orientation` and `autohide`). With the Dock
+      hiding, macOS keeps a few points at the bottom edge for it, so the
+      bar may sit that much above the screen's bottom *(unverified on a
+      Mac)*.
+    - **The cost is height.** At the top the bar replaces the menu bar,
+      so windows lose 36 px, or the menu bar's height if taller. At the
+      bottom they lose the menu bar (24 px, 37 or more with a notch) plus
+      36 px, plus the Dock if it shows.
+    - **Tips, menus and popovers open upward** from a bottom bar: the
+      tips (`bar.tip_frame`), the volume popover (`volume.frame`), and the
+      session and Apple logo menus. `hs.menubar`'s `popupMenu` takes the
+      menu's top left, so tide puts it the menu's height above the bar
+      (`bar.menu_point`), from about 22 px an item and 11 a separator
+      *(unverified on macOS 26: a wrong guess leaves a gap or overlaps the
+      bar)*. The tray of minimized windows already sits at the bottom of
+      the tiling area, so it moves up with it.
+    - **The Apple logo stays.** Its menu has About This Mac, System
+      Settings and the session's actions, a corner away; the real Apple
+      menu is up at the top. A full-screen window hides the bar as at the
+      top.
+    - *(Unverified on a Mac: that `hs.screen`'s frame excludes a shown
+      menu bar there. On the owner's Mac, with the menu bar set to Never,
+      it once started at the top, menu bar and all; a bottom bar then
+      tiles windows under the menu bar, and macOS may push them down.)*
+    - **Verdict: the bottom is the better fit for macOS,** for anyone who
+      uses the app's menus or other apps' status items, at the cost of the
+      menu bar's height. The top keeps the most room and looks like tide
+      for Linux.
   - **Option 2 stays as the fallback,** with `bar = false` in `start()`: a
     menu bar item draws tide's logo, as a template image macOS tints for a
     light or dark menu bar, then the workspaces' names as text, current,
@@ -1904,10 +1972,12 @@ stock keys:
     `make check-tide`: a chip opens Workspaces, the title Floating, the
     clocks Clocks, the speaker and the mic Sound, keep awake and the session
     icon Idle, Presenting Notifications, and so on. The Apple logo, the
-    camera and the system monitor open the first page, as tide's logo,
-    sharing pill and system monitor do. WebKit's own menu stays away from
-    the items *(unverified on a Mac that the bar's webview gets the
-    right-click)*.
+    camera and the system monitor open the Bar page, as tide's logo,
+    sharing pill and system monitor do, and so does a right-click anywhere
+    else on the bar (tide's `bar` item). tide's page ids are tidemo's, but
+    for Notifications (`muted`, `bar.js`'s `PAGE_IDS`). WebKit's own menu
+    stays away from the bar *(unverified on a Mac that the bar's webview
+    gets the right-click)*.
 - **The bar on Hammerspoon** is built like the dashboard: one borderless
   `hs.webview` per display, from the same copies of tide for Chrome's modules and
   stylesheet, plus tide's `bar.js`. It stays open, and tide sends it new
@@ -3578,7 +3648,8 @@ Each one names a workaround, or says there is none.
     | Keyboard | the input sources, each a click to use (below), the Switcher, tide for Linux's or tide for Chrome's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tide's own (below) |
-    | Appearance | light or dark on tide for Linux's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, the Menu bar switch, and the Overview switch for window pictures (§6.9); Appearance settings |
+    | Appearance | light or dark on tide for Linux's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, and the Overview switch for window pictures (§6.9); Appearance settings |
+    | Bar | Position, Top or Bottom (§8), and the Menu bar switch; Menu bar settings, Dock settings |
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tide's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
