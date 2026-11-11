@@ -303,7 +303,31 @@ for (const tone of ["normal", "warn", "danger"]) {
 }
 sent.length = 0;
 
-// The session icon, always last, sends where it is, so tide can hang
+// The Bar page's icons: only those tide sends, in its order; an id the page
+// doesn't know draws nothing. Other apps' icons shows the menu bar.
+sandbox.tide.update({
+  uuid: "B", workspaces: ws, title: "", iconOrder: ["session", "battery", "nonsense", "tray"],
+  icons: { mic: { muted: false }, battery: { percent: 50, text: "50%" } },
+});
+{
+  const shown = ids.icons.children.map((c) => c.className);
+  assert.deepStrictEqual(shown, ["icon session", "icon battery", "icon tray"], "the mic and network are off");
+  const tray = ids.icons.children[2];
+  assert.strictEqual(tray.attrs["data-tip"], "Other apps' icons");
+  sent.length = 0;
+  tray.listeners.click();
+  assert.strictEqual(JSON.stringify(sent), JSON.stringify([{ uuid: "B", tray: true }]));
+}
+sent.length = 0;
+
+// Every icon off: tide's empty list comes through JSON as [] or {}, and
+// either draws none, not the bar's own order.
+for (const iconOrder of [[], {}]) {
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", iconOrder, icons: { battery: { percent: 50, text: "50%" } } });
+  assert.strictEqual(ids.icons.children.length, 0, `none for ${JSON.stringify(iconOrder)}`);
+}
+
+// The session icon, last unless moved, sends where it is, so tide can hang
 // macOS's menu under it.
 sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {} });
 {
@@ -706,6 +730,8 @@ sandbox.tide.update({
   assert.strictEqual(pages(named.battery), "power");
   assert.strictEqual(pages(named.sysmon), "bar");
   assert.strictEqual(pages(named.session), "idle");
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", iconOrder: ["tray"], icons: {} });
+  assert.strictEqual(pages(ids.icons.children[0]), "bar", "other apps' icons opens the Bar page");
   assert.strictEqual(pages(ids.bar), "bar", "the bar off every item opens the Bar page");
   sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: { awake: { on: true, presenting: true } } });
   assert.strictEqual(pages(ids.icons.children[0]), "muted", "Presenting opens Notifications, tide's muted page");

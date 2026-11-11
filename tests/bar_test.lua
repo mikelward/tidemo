@@ -237,6 +237,53 @@ t.test("a display with a notch tiles under the raised bar, and shows no title", 
     t.eq(opened, "A", "the +n chip opens the switcher's Workspaces")
 end)
 
+t.test("the Bar page lists every icon once, in the order you chose", function()
+    local ids = function(list)
+        local out = {}
+        for i, e in ipairs(list) do
+            out[i] = e.id .. (e.shown and "" or "-")
+        end
+        return table.concat(out, " ")
+    end
+    t.eq(ids(bar.icon_list(nil)),
+        "source awake camera mic bluetooth headphones volume network battery sysmon tray- session",
+        "the bar's own order, other apps' icons off")
+    t.eq(ids(bar.icon_list({
+        { id = "battery", shown = true },
+        { id = "source", shown = false },
+        { id = "nonsense", shown = true },
+        { id = "battery", shown = false },
+        "junk",
+    })),
+        "battery sysmon tray- session source- awake camera mic bluetooth headphones volume network",
+        "unknown and repeated ids are dropped; a missing one goes in after the icon it follows")
+    t.eq(ids(bar.icon_list({ { id = "session" }, { id = "mic", shown = "yes" } })),
+        "source awake camera session mic bluetooth headphones volume network battery sysmon tray-",
+        "a missing or odd shown is the icon's own")
+    t.eq(ids(bar.icon_list("top")), ids(bar.icon_list(nil)), "anything but a list is the default")
+    t.eq(bar.icon_list(nil)[1].label, "Keyboard")
+end)
+
+t.test("the bar draws the shown icons, other apps' only at the top", function()
+    local stored = {}
+    for i, e in ipairs(bar.icon_list(nil)) do
+        stored[i] = { id = e.id, shown = e.id == "tray" or (e.id ~= "mic" and e.id ~= "session" and e.shown) }
+    end
+    table.insert(stored, 1, table.remove(stored, 11))
+    t.eq(bar.shown_icons(stored, "top"),
+        { "tray", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" })
+    t.eq(bar.shown_icons(stored, "bottom"),
+        { "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" },
+        "along the bottom macOS's menu bar already shows them")
+end)
+
+t.test("the tray icon shows the menu bar on its display", function()
+    local _, wm = two_displays()
+    local on
+    bar.handle(wm, { uuid = "B", tray = true }, { tray = function(uuid) on = uuid end })
+    t.eq(on, "B")
+end)
+
 t.test("a right-click opens its item's settings page, or the first", function()
     local _, wm = two_displays()
     local shown = {}

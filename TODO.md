@@ -464,6 +464,15 @@ tide. INFEASIBLE.md lists what can't be fixed.
   (2026-11-11): tide says to move the Dock to a side or show it, at start,
   in `tide doctor` and on choosing Bottom, rather than keeping the pointer
   off the bottom row.
+- **The Bar page's icons are this Mac's own, in `hs.settings`**
+  (2026-11-11), as Position is, not shared with tide for Linux, whose Bar
+  page has no such list yet (tide TODO.md). Move them to a shared file once
+  tide's has one, with its names.
+- **The "system tray" is a way to macOS's menu bar** (2026-11-11): Other
+  apps' icons, three dots, off unless turned on, does Show Menu Bar, since
+  other apps' status items can't be drawn in tide's bar (INFEASIBLE.md).
+- **Order is changed with ↑ and ↓, not dragging** (2026-11-11), as
+  Tide Settings' other lists are.
 - **The menu height for menus opened above a bottom bar is a guess**
   (2026-11-11): 22 px an item, 11 a separator, 10 of padding
   (`bar.menu_height`).
@@ -1242,10 +1251,14 @@ tide. INFEASIBLE.md lists what can't be fixed.
   alternative is tide for Chrome's whole launcher page in the webview, which needs a
   stand-in for the Chrome APIs it calls. Reversible: add the page later.
 
-## The Bar page chooses the status icons
+## Check the Bar page's icons on a real Mac
 
-The Bar page should choose which status icons the bar shows and their
-order, as tide for Linux's will (tide TODO.md).
+Only the tests have run these (SPEC.md §8):
+
+- Turning an icon off, or moving it, redraws every display's bar at once,
+  and the list is the same after a reload.
+- Other apps' icons hides the bars so macOS's menu bar shows, and Esc or a
+  click below brings them back.
 
 ## Check the bar at the bottom on a real Mac
 

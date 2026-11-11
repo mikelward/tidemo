@@ -585,6 +585,8 @@ function M.new(tide)
                 tip = show_tip,
                 session = show_session,
                 menubar = open_apple_menu,
+                -- The tray icon: the menu bar, with other apps' icons.
+                tray = show_menu_bar,
                 -- The "+n" chip over a notch: every workspace, in the switcher.
                 workspaces = function()
                     tide.launcher.show("workspaces")
@@ -631,6 +633,8 @@ function M.new(tide)
         local state = bar.state(tide.wm, v.uuid, title, self.icons, icon_of)
         state.clockFiles = tide.clock_files
         state.goodClocks = tide.good_clocks
+        -- The Bar page's icons, shown and in order (bar.shown_icons).
+        state.iconOrder = bar.shown_icons(tide.bar_icons, tide.bar_position)
         local json = encode(state)
         if not json or json == v.sent then
             return

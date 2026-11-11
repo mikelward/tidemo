@@ -518,6 +518,10 @@ body.settings {
 .settings #idle-steps li.switch {
   grid-template-columns: 1fr auto;
 }
+/* A bar icon: its name, ↑, ↓, and On. */
+.settings #bar-icons li {
+  grid-template-columns: 1fr auto auto auto;
+}
 /* A time: its name, −, the time, and +; a place: its name and degrees. */
 .settings #theme-times li {
   grid-template-columns: 1fr auto 10em auto;
@@ -813,6 +817,9 @@ body.settings {
 <h1 id="bar">Bar</h1>
 <p class="note">At the top, the bar covers macOS's menu bar. At the bottom, the menu bar stays, with the app's menus, and the bar sits above the Dock.</p>
 <div class="row choice" id="bar-position"></div>
+<h2 id="bar-icons-title">Icons</h2>
+<p class="note">Which status icons the bar shows, left to right. Other apps' icons brings down macOS's menu bar, with the icons tide can't draw; along the bottom the menu bar already shows them.</p>
+<ul id="bar-icons"></ul>
 <h2 id="menubar">Menu bar</h2>
 <p class="note">With the bar at the top: while it's kept hidden, the pointer stops one point short of the top edge over the bar, so macOS's menu bar doesn't slide over it; the Apple logo at the bar's left opens the Apple menu. Off, the menu bar shows at the top edge as usual, and top hot corners work again.</p>
 <p class="row"><button type="button" id="menubar-hidden" aria-pressed="true"></button></p>

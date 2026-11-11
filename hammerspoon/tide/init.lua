@@ -317,6 +317,8 @@ function M.start(config)
     -- The Bar page's Position row: which edge the bar runs along, top
     -- unless set there (SPEC.md §8).
     self.bar_position = bar.position(hs.settings.get(bar.POSITION_KEY))
+    -- The Bar page's icons (bar.icon_list), or nil for the default.
+    self.bar_icons = hs.settings.get(bar.ICONS_KEY)
     -- The Appearance page's Overview switch: window pictures on the
     -- overview's cards, off unless turned on there (SPEC.md §6.9).
     self.overview_pictures = hs.settings.get(overview.PICTURES_KEY) == true
