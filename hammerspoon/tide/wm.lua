@@ -1392,6 +1392,11 @@ function M:forget(id, pos, at)
             table.remove(self.gone, 1)
         end
     end
+    -- The window you were in went: macOS moving the focus on for a moment
+    -- after isn't you leaving (M:focused_window).
+    if self.history[1] == id and w.ws and self:shown(w.ws) then
+        self.closed_at = at or self.a.now()
+    end
     self.windows[id] = nil
     if w.ws and self.workspaces[w.ws] then
         unplace(self, w, id)
@@ -3123,15 +3128,17 @@ function M:focused_window(id)
     -- Not when the window you were in just closed: macOS moving the focus
     -- on to another app's window isn't you leaving, and leaving would
     -- remove the workspace you're on if that was its last window
-    -- (SPEC.md §6.1). The focus goes to the last used window left there,
+    -- (SPEC.md §6.1), whether tide's sync has forgotten that window yet or
+    -- not. The focus goes to the last used window left there,
     -- or with none, to no window.
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
-        if self:just_closed(prev) then
+        if self:just_closed(prev) or self:closed_lately() then
             self.a.log("staying on " .. tostring(self.current) .. " after a close")
             if not self:refocus_ws(self:current_ws()) then
                 self:unfocus_parked()
             end
         else
+            self.a.log("following the focus to " .. tostring(w.ws))
             self:activate(id)
         end
     end
@@ -3151,6 +3158,13 @@ function M:just_closed(id)
         end
     end
     return true
+end
+
+-- Whether the window you were in closed within the last M.GRACE seconds,
+-- and tide has forgotten it already: the sync can come before macOS
+-- reports where the focus went.
+function M:closed_lately()
+    return self.closed_at ~= nil and self.a.now() - self.closed_at <= M.GRACE
 end
 
 -- Take tile `id` out of its workspace's layout and float it, placed as a
