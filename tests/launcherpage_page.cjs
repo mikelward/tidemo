@@ -229,6 +229,23 @@ const typedSaid = () => sent.filter((m) => m.typed !== undefined).map((m) => m.t
   await settle();
   assert.deepStrictEqual(choices().slice(-2), [{ close: true }, { settings: true }]);
 
+  // A right-click on the bar off its items, or on the logo, opens Tide
+  // Settings' Bar page; an item's own comes first.
+  const rightClick = async (id) => {
+    let stopped = false;
+    const e = { preventDefault: () => (stopped = true), get defaultPrevented() { return stopped; } };
+    ids[id].fire("contextmenu", e);
+    if (id !== "bar") ids.bar.fire("contextmenu", e);
+    await settle();
+  };
+  const clicked = choices().length;
+  await rightClick("bar");
+  await rightClick("logo");
+  await rightClick("clocks");
+  assert.deepStrictEqual(choices().slice(clicked).filter((m) => m.settings), [
+    { settings: "bar" }, { settings: "bar" }, { settings: "clocks" },
+  ]);
+
   // tide hears the clocks to keep, as from the dashboard.
   assert.ok(sent.some((m) => m.goodClocks));
 
