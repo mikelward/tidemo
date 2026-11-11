@@ -1011,6 +1011,26 @@ t.test("closing a workspace's last window keeps you on it, empty", function()
     t.eq(wm:find("work") ~= nil, true, "it's still listed")
 end)
 
+t.test("closing a workspace's last window keeps you on it when the sync comes first", function()
+    local a, wm = setup(1)
+    a.add(2, { app = "com.example.other", pid = 200 })
+    wm:sync()
+    wm:send(1, "work")
+    wm:show("work", nil, true)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.parked[2], true)
+    -- The close is synced before macOS reports the focus moving on.
+    a.drop(1)
+    wm:schedule()
+    a.tick()
+    a.focus_ = 2
+    wm:focused(2)
+    t.eq(wm.current, "work", "the workspace you were on still shows")
+    t.eq(wm.parked[2], true)
+    t.eq(wm:find("work") ~= nil, true, "it's still listed")
+end)
+
 t.test("closing a window with others left on its workspace focuses one of them", function()
     local a, wm = setup(2)
     a.add(3, { app = "com.example.other", pid = 200 })
