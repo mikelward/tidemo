@@ -1906,8 +1906,8 @@ stock keys:
     icon Idle, Presenting Notifications, and so on. The Apple logo, the
     camera and the system monitor open the first page, as tide's logo,
     sharing pill and system monitor do. WebKit's own menu stays away from
-    the items *(unverified on a Mac that the bar's webview gets the
-    right-click)*.
+    the whole bar: its Reload would load a blank page in the bar's place,
+    since tide builds the page from a string *(seen on a Mac)*.
 - **The bar on Hammerspoon** is built like the dashboard: one borderless
   `hs.webview` per display, from the same copies of tide for Chrome's modules and
   stylesheet, plus tide's `bar.js`. It stays open, and tide sends it new

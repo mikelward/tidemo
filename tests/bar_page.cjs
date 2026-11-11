@@ -671,8 +671,8 @@ sandbox.tide.update({
   assert.ok(!labels.includes("DEN"), "Denver is out of the bar");
 }
 // A right-click on an item opens its settings page, by tide's map with
-// tide's page ids (tide SPEC.md §7.1), and keeps WebKit's menu away;
-// off every item it does nothing.
+// tide's page ids (tide SPEC.md §7.1); off every item it does nothing.
+// WebKit's menu stays away everywhere: its Reload left the bar blank.
 {
   sandbox.tide.update({
     uuid: "B", workspaces: ws, title: "Doc", icons: {
@@ -686,7 +686,7 @@ sandbox.tide.update({
     let stopped = false;
     ids.bar.listeners.contextmenu({ target, preventDefault: () => (stopped = true) });
     const m = sent.filter((x) => x.settings !== undefined);
-    assert.strictEqual(stopped, m.length === 1, "WebKit's menu stays away only for an item");
+    assert.strictEqual(stopped, true, "WebKit's menu, with its Reload, stays away");
     return m.length ? m[0].settings : null;
   };
   const named = Object.fromEntries(ids.icons.children.map((c) => [c.className.replace("icon ", ""), c]));

@@ -547,13 +547,13 @@ document.getElementById("bar").addEventListener("dblclick", (e) => {
 // tide's logo opens the switcher on Launch, or closes it, as Super+Space
 // does (SPEC.md §8).
 document.getElementById("logo").addEventListener("click", () => send({ switcher: true }));
-// A right-click on an item opens its settings page, in place of WebKit's
-// menu; elsewhere on the bar it does nothing.
+// A right-click on an item opens its settings page; elsewhere on the bar it
+// does nothing. WebKit's menu never shows: its Reload loads a blank page in
+// place of the bar, which tide built from a string, not a file.
 document.getElementById("bar").addEventListener("contextmenu", (e) => {
-  const id = settingsPage(e.target);
-  if (id === null) return;
   e.preventDefault();
-  send({ settings: id });
+  const id = settingsPage(e.target);
+  if (id !== null) send({ settings: id });
 });
 // The Apple menu, which tide opens for real (bar_hs.lua).
 document.getElementById("apple").addEventListener("click", () => send({ menubar: true }));
