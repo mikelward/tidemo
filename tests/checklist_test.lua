@@ -116,6 +116,17 @@ t.test("tide doctor says when the menu bar is set to hide, with the fix", functi
     t.eq(#checklist.doctor({ accessibility = false, menu_bar_hidden = true }), 2, "both, not just the first")
 end)
 
+t.test("a bar along the bottom has only a Dock that hides there slide over it", function()
+    t.eq(checklist.dock_covers("bottom", { side = "bottom", hides = true }), true)
+    t.eq(checklist.dock_covers("bottom", { side = "left", hides = true }), false, "the Dock at the side")
+    t.eq(checklist.dock_covers("bottom", { side = "bottom", hides = false }), false, "shown: the bar sits above it")
+    t.eq(checklist.dock_covers("top", { side = "bottom", hides = true }), false, "a bar at the top")
+    t.eq(checklist.dock_covers("bottom", nil), false, "unread")
+    local lines = checklist.doctor({ accessibility = true, dock_covers = true })
+    t.eq(lines, { checklist.DOCK_NOTICE })
+    t.eq(lines[1]:find("left or right", 1, true) ~= nil, true, "with the fix")
+end)
+
 t.test("the checklist asks for the menu bar shown, from Control Center", function()
     local item
     for _, i in ipairs(checklist.ITEMS) do

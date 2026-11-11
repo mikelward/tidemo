@@ -1,6 +1,6 @@
 -- The bar (SPEC.md §8): what it shows, as plain data. Pure Lua; bar_hs.lua
--- draws it, one strip per display along the top, with the menu bar set to
--- hide.
+-- draws it, one strip per display along the top, covering the menu bar, or
+-- along the bottom, leaving the menu bar alone.
 --
 -- With the bar off, the menu bar item draws the same workspaces as text,
 -- by name (title()):
@@ -19,6 +19,17 @@ local M = {}
 
 -- tide's bar height (tide §7.1).
 M.HEIGHT = 36
+
+-- Which edge the bar runs along: the Bar page's Position row, kept in
+-- hs.settings under POSITION_KEY, top unless set (SPEC.md §8). The names
+-- are tide for Linux's appearance.json `barPosition`'s.
+M.POSITIONS = { "top", "bottom" }
+M.POSITION_KEY = "tide.bar_position"
+
+-- A stored position as one of M.POSITIONS: anything but "bottom" is top.
+function M.position(v)
+    return v == "bottom" and "bottom" or "top"
+end
 
 -- A long name is cut to this many characters, with an ellipsis (SPEC.md
 -- §8, a guess to confirm).
@@ -57,7 +68,14 @@ end
 -- the main menu's level out of the notch's strip (canvases and web views
 -- alike, on the owner's MacBook), so that bar is at the main menu's level,
 -- the lowest that stays there.
-function M.level(s)
+--
+-- Along the bottom (`at` "bottom") it's always floating: it covers no menu
+-- bar or notch, and floating is below the Dock's level, so a Dock that
+-- hides slides up over the bar rather than under it.
+function M.level(s, at)
+    if at == "bottom" then
+        return "floating"
+    end
     -- Over a menu bar macOS keeps showing (Automatically hide: Never), the
     -- bar covers it, at the status level, just above the menu bar's.
     if s.menu_bar then
@@ -113,8 +131,17 @@ end
 -- `floor`, when given, is where the bar's window really ends: macOS may
 -- refuse the strip and move the window down (bar_hs.lua reads it back), and
 -- windows then tile below it rather than under it.
-function M.place(s, h, floor)
+--
+-- With `at` "bottom", the strip is the bottom `h` of the area instead,
+-- above a Dock that shows, and windows tile above it: the menu bar and any
+-- notch keep their room, and `floor` doesn't apply.
+function M.place(s, h, floor, at)
     local area = s.area
+    if at == "bottom" then
+        local rest = math.max(0, area.h - h)
+        return { x = area.x, y = area.y + rest, w = area.w, h = math.min(h, area.h) },
+            { x = area.x, y = area.y, w = area.w, h = rest }
+    end
     local strip, below
     if (s.notch or s.menu_bar) and s.full and s.full.y < area.y then
         strip = { x = area.x, y = s.full.y, w = area.w, h = math.max(h, area.y - s.full.y) }
@@ -188,9 +215,10 @@ end
 -- and macOS hides the menu bar (`hides`), since only a hidden menu bar
 -- slides in at the top edge. With it shown, as tide's installer sets it,
 -- moving the pointer there does nothing, and moving it down on every move
--- along the top only made the pointer drag.
-function M.keeps_off_top(keep, hides)
-    return keep ~= false and hides == true
+-- along the top only made the pointer drag. A bar along the bottom (`at`)
+-- isn't in the menu bar's way, so it's never needed there.
+function M.keeps_off_top(keep, hides, at)
+    return at ~= "bottom" and keep ~= false and hides == true
 end
 
 -- A rate limit for the pointer's moves over the bar (SPEC.md §8), so each
@@ -220,14 +248,40 @@ function M.throttle(after, now, interval, send)
     end
 end
 
--- A bar item's tip, or the full title's, below bar `frame` and centered at
--- `x` in it, `w` by `h`, kept on the bar's display with M.TIP_GAP to spare
--- (SPEC.md §8).
+-- A bar item's tip, or the full title's, below bar `frame`, or above it
+-- for a bar along the bottom (`at`), centered at `x` in it, `w` by `h`,
+-- kept on the bar's display with M.TIP_GAP to spare (SPEC.md §8).
 M.TIP_GAP = 6
-function M.tip_frame(frame, x, w, h)
+function M.tip_frame(frame, x, w, h, at)
     local left = frame.x + x - w / 2
     left = math.max(frame.x + M.TIP_GAP, math.min(left, frame.x + frame.w - M.TIP_GAP - w))
-    return { x = math.floor(left), y = frame.y + frame.h + M.TIP_GAP, w = w, h = h }
+    local y = at == "bottom" and frame.y - M.TIP_GAP - h or frame.y + frame.h + M.TIP_GAP
+    return { x = math.floor(left), y = y, w = w, h = h }
+end
+
+-- A menu's height as macOS draws it, from hs.menubar's menu table, for
+-- opening it above a bar along the bottom: about 22 px an item, 11 a
+-- separator, and 10 of padding *(unverified on macOS 26; a guess too
+-- small overlaps the bar, too big leaves a gap)*.
+M.MENU_ROW = 22
+M.MENU_SEPARATOR = 11
+M.MENU_PAD = 10
+function M.menu_height(menu)
+    local h = M.MENU_PAD
+    for _, item in ipairs(menu) do
+        h = h + (item.title == "-" and M.MENU_SEPARATOR or M.MENU_ROW)
+    end
+    return h
+end
+
+-- Where hs.menubar's popupMenu puts the top left of `menu`, opened from bar
+-- `frame` at screen x `x`: just under the bar, or for a bar along the
+-- bottom (`at`), just above it, so it opens upward.
+function M.menu_point(frame, x, menu, at)
+    if at == "bottom" then
+        return { x = x, y = frame.y - M.menu_height(menu) }
+    end
+    return { x = x, y = frame.y + frame.h }
 end
 
 -- Whether a tip drawn under display `owner`'s bar, when its frame was
@@ -331,9 +385,10 @@ function M.state(wm, uuid, title, icons, icon_of)
     -- window.
     local f = wm.a.focused()
     local on = wm:screen_of(f) or wm:current_screen()
-    -- The notch sits where the title goes, so a display with one has none.
+    -- The notch sits where the title goes, so a display with one has none,
+    -- unless the bar is along the bottom, away from the notch.
     local notch = false
-    for _, s in ipairs(wm.a.screens()) do
+    for _, s in ipairs(wm.bar_position == "bottom" and {} or wm.a.screens()) do
         if s.uuid == uuid and s.notch then
             notch = true
         end
@@ -819,11 +874,16 @@ M.APPLE = {
 }
 
 -- The Apple logo's menu as hs.menubar's menu table: `open(target)` for an
--- entry that opens something, else `run(id)`, the session's.
-function M.apple_menu(open, run)
+-- entry that opens something, else `run(id)`, the session's. A bar along
+-- the bottom (`at`) covers no menu bar, so there's no Show Menu Bar.
+function M.apple_menu(open, run, at)
     local menu = {}
     for _, e in ipairs(M.APPLE) do
-        if e == "-" then
+        if at == "bottom" and type(e) == "table" and e.id == "menubar" then
+            -- Nor the separator after it.
+        elseif e == "-" and #menu == 0 then
+            -- A menu doesn't start with a separator.
+        elseif e == "-" then
             menu[#menu + 1] = { title = "-" }
         else
             menu[#menu + 1] = {

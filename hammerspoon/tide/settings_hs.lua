@@ -6,6 +6,7 @@
 -- can't change itself, a section's buttons open (links.lua). Not runnable
 -- outside Hammerspoon.
 
+local bar = require("tide.bar")
 local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
 local karabiner = require("tide.karabiner")
@@ -28,7 +29,7 @@ local overview = require("tide.overview")
 
 local M = {}
 
--- Where the Appearance page's Menu bar switch is kept: true (or unset) keeps
+-- Where the Bar page's Menu bar switch is kept: true (or unset) keeps
 -- the hidden menu bar from sliding over tide's bar (bar_hs.lua).
 M.MENU_BAR_KEY = "tide.keep_menu_bar_hidden"
 
@@ -282,6 +283,37 @@ function M.choose_super(tide, value)
     return nil, why
 end
 
+-- Put the bar along `value`'s edge ("top" or "bottom"), the Bar page's
+-- Position row: kept in `store` (hs.settings) as tide's own, and followed
+-- at once, the bars placed again and the windows tiled beside them, with
+-- no reload. Choosing Bottom with the Dock hiding itself there says it
+-- will slide over the bar (checklist.dock_covers). Returns true, or nil and
+-- why, which the log keeps.
+function M.choose_bar_position(tide, value, store)
+    if value ~= "top" and value ~= "bottom" then
+        local why = "the bar can't go along " .. tostring(value)
+        tide.adapter.log("settings: " .. why)
+        return nil, why
+    end
+    tide.bar_position = value
+    store.set(bar.POSITION_KEY, value)
+    if tide.wm then
+        tide.wm.bar_position = value
+        -- Where macOS moved a bar at the top; the bar finds it again.
+        tide.wm.bar_floor = {}
+    end
+    if tide.bar then
+        tide.bar.update()
+    end
+    if tide.wm then
+        tide.wm:retile()
+    end
+    if tide.bar and tide.adapter.dock and checklist.dock_covers(value, tide.adapter.dock()) then
+        tide.adapter.notify(checklist.DOCK_NOTICE)
+    end
+    return true
+end
+
 -- The window's height, in points, on a display tall enough for it.
 M.HEIGHT = 744
 
@@ -431,8 +463,10 @@ function M.new(tide)
                     { value = "dashboard", label = launcherpage.LABELS.dashboard },
                 },
             } or nil,
-            -- The Appearance page's Menu bar switch (bar_hs.lua).
+            -- The Bar page's Menu bar switch (bar_hs.lua).
             menuBar = { hidden = tide.keep_menu_bar_hidden ~= false },
+            -- The Bar page's Position row: which edge the bar runs along.
+            bar = { position = bar.position(tide.bar_position) },
             -- The Appearance page's Overview switch, and whether macOS
             -- lets it take pictures: nil when it can't say.
             overview = {
@@ -742,6 +776,14 @@ function M.new(tide)
                 -- and followed at once by the bar.
                 tide.keep_menu_bar_hidden = body.keepMenuBarHidden
                 hs.settings.set(M.MENU_BAR_KEY, body.keepMenuBarHidden)
+                push()
+            elseif type(body.barPosition) == "string" then
+                -- The Position row: placed again at once, and the page shows
+                -- where it went.
+                local ok, why = M.choose_bar_position(tide, body.barPosition, hs.settings)
+                if not ok then
+                    tide.adapter.notify(why)
+                end
                 push()
             elseif type(body.overviewPictures) == "boolean" then
                 -- The Overview switch: kept in hs.settings, as tide's own,

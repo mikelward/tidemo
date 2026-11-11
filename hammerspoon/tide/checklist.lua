@@ -57,7 +57,7 @@ M.ITEMS = {
         id = "menu_bar",
         title = "Keep the menu bar shown",
         link = "control_center",
-        how = "Set \"Automatically hide and show the menu bar\" to Never. tide's bar then covers it, so it doesn't slide in when the pointer reaches the top; the Apple logo's Show Menu Bar brings it up.",
+        how = "Set \"Automatically hide and show the menu bar\" to Never. tide's bar then covers it, so it doesn't slide in when the pointer reaches the top; the Apple logo's Show Menu Bar brings it up. With the bar at the bottom (Appearance), any setting works.",
         ref = "§8",
     },
     {
@@ -214,10 +214,25 @@ end
 
 -- What `tide doctor` says of the permissions: a line for each that's
 -- off and needed, none when they're fine.
--- Said at start, and by the doctor, while macOS hides the menu bar: tide's
--- bar can't cover a menu bar that slides in over everything.
+-- Said at start, and by the doctor, while macOS hides the menu bar and the
+-- bar is along the top: tide's bar can't cover a menu bar that slides in
+-- over everything.
 M.MENU_BAR_NOTICE = "The menu bar is set to hide, so it slides in over tide's bar whenever the pointer reaches the top:"
     .. " in System Settings, Control Center, set \"Automatically hide and show the menu bar\" to Never (or run setup and log out)."
+
+-- Said at start, by the doctor, and on choosing Bottom, while the bar is
+-- along the bottom and the Dock hides itself there: it slides up over the
+-- bar whenever the pointer reaches the bottom edge, as a hidden menu bar
+-- does at the top.
+M.DOCK_NOTICE = "The Dock hides itself at the bottom, so it slides up over tide's bar whenever the pointer reaches the bottom edge:"
+    .. " in System Settings, Desktop & Dock, put it on the left or right, or turn off \"Automatically hide and show the Dock\"."
+
+-- Whether a bar at `position` has the Dock sliding over it: along the
+-- bottom, with `dock` ({ side, hides }, the adapter's) hiding itself there.
+function M.dock_covers(position, dock)
+    return position == "bottom" and type(dock) == "table" and dock.hides == true
+        and (dock.side == nil or dock.side == "bottom")
+end
 
 function M.doctor(facts)
     facts = facts or {}
@@ -232,6 +247,9 @@ function M.doctor(facts)
     end
     if facts.menu_bar_hidden then
         lines[#lines + 1] = M.MENU_BAR_NOTICE
+    end
+    if facts.dock_covers then
+        lines[#lines + 1] = M.DOCK_NOTICE
     end
     return lines
 end

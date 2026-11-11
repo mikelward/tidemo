@@ -18,8 +18,9 @@ import { page as tidePage } from "./tide-barsettings.js";
 
 // Each bar item, by the selector its element matches and its name in
 // tide's map (tide-barsettings.js), first match winning. The Apple logo
-// opens the first page, as tide's logo does, and the camera too, as tide's
-// sharing pill does.
+// opens what tide's logo does, the Bar page, and the camera what tide's
+// sharing pill does, the Bar page too; the bar itself, off every item,
+// is last.
 const ITEMS = [
   ["#apple", "logo"],
   ["#logo", "logo"],
@@ -37,12 +38,13 @@ const ITEMS = [
   [".battery", "battery"],
   [".sysmon", "sysmon"],
   [".session", "session"],
+  ["#bar", "bar"],
 ];
 // tide's ids for tide's pages, where they differ.
 const PAGE_IDS = { notifications: "muted" };
 
 // The settings page a right-click on `target` opens (tide §7.1): tide's
-// id for it, "" for the first page, or null off every item.
+// id for it, "" for the first page, or null off the bar.
 export function settingsPage(target) {
   for (const [selector, item] of ITEMS) {
     const e = target?.closest?.(selector);
@@ -547,8 +549,8 @@ document.getElementById("bar").addEventListener("dblclick", (e) => {
 // tide's logo opens the switcher on Launch, or closes it, as Super+Space
 // does (SPEC.md §8).
 document.getElementById("logo").addEventListener("click", () => send({ switcher: true }));
-// A right-click on an item opens its settings page, in place of WebKit's
-// menu; elsewhere on the bar it does nothing.
+// A right-click on an item opens its settings page, and anywhere else on
+// the bar the Bar page, in place of WebKit's menu.
 document.getElementById("bar").addEventListener("contextmenu", (e) => {
   const id = settingsPage(e.target);
   if (id === null) return;

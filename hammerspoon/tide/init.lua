@@ -257,7 +257,9 @@ function M.doctor()
         accessibility = M.adapter and M.adapter.accessibility(),
         pictures = M.overview_pictures == true,
         screen_recording = recording,
-        menu_bar_hidden = M.bar ~= nil and hides ~= nil and hides(),
+        menu_bar_hidden = M.bar ~= nil and M.bar_position ~= "bottom" and hides ~= nil and hides(),
+        dock_covers = M.bar ~= nil and M.adapter ~= nil and M.adapter.dock ~= nil
+            and checklist.dock_covers(M.bar_position, M.adapter.dock()),
     })) do
         lines[#lines + 1] = line
     end
@@ -310,8 +312,11 @@ function M.start(config)
     -- (SPEC.md §9.2): the one chosen under Keyboard in tide's settings, or
     -- else start()'s, where a bad value is an error now, not on the first
     -- key.
-    -- The Appearance page's Menu bar switch, on unless turned off there.
+    -- The Bar page's Menu bar switch, on unless turned off there.
     self.keep_menu_bar_hidden = hs.settings.get("tide.keep_menu_bar_hidden") ~= false
+    -- The Bar page's Position row: which edge the bar runs along, top
+    -- unless set there (SPEC.md §8).
+    self.bar_position = bar.position(hs.settings.get(bar.POSITION_KEY))
     -- The Appearance page's Overview switch: window pictures on the
     -- overview's cards, off unless turned on there (SPEC.md §6.9).
     self.overview_pictures = hs.settings.get(overview.PICTURES_KEY) == true
@@ -321,6 +326,7 @@ function M.start(config)
     config.saved = adapter_mod.load()
     -- The tiling area starts below the bar.
     config.top = config.bar ~= false and bar.HEIGHT or 0
+    config.bar_position = self.bar_position
     swipe_mod.check(config.swipe)
     compose_mod.check(config.compose)
     -- The layouts are tide's, from layouts.json and layouts.local.json in
@@ -1101,8 +1107,11 @@ function M.start(config)
     check_karabiner_rules(self)
     choose_super(self, true)
     check_linearmouse(self)
-    if self.bar and self.adapter.hides_menu_bar and self.adapter.hides_menu_bar() then
+    if self.bar and self.bar_position ~= "bottom" and self.adapter.hides_menu_bar and self.adapter.hides_menu_bar() then
         self.adapter.notify(checklist.MENU_BAR_NOTICE)
+    end
+    if self.bar and checklist.dock_covers(self.bar_position, self.adapter.dock()) then
+        self.adapter.notify(checklist.DOCK_NOTICE)
     end
     -- The settings window's Super key choice: the rules and the keys again,
     -- at once (settings_hs.choose_super).

@@ -225,4 +225,59 @@ t.test("a Super key choice rebinds tide's keys at once, and a failed one says wh
     t.eq(why, "tide can't switch Karabiner's rules on this Mac")
 end)
 
+-- The Bar page's Position row: kept in hs.settings, and the bars and windows follow at
+-- once, with no reload.
+t.test("a Bar choice is kept and places the bars and tiles again at once", function()
+    local settings_hs = require("tide.settings_hs")
+    local bar = require("tide.bar")
+    local checklist = require("tide.checklist")
+    local stored, did, logged, said = {}, {}, {}, {}
+    local dock = { side = "bottom", hides = false }
+    local tide = {
+        adapter = {
+            log = function(line)
+                logged[#logged + 1] = line
+            end,
+            notify = function(text)
+                said[#said + 1] = text
+            end,
+            dock = function()
+                return dock
+            end,
+        },
+        wm = {
+            bar_position = "top",
+            bar_floor = { A = 68 },
+            retile = function()
+                did[#did + 1] = "retile"
+            end,
+        },
+        bar = {
+            update = function()
+                did[#did + 1] = "place"
+            end,
+        },
+    }
+    local store = {
+        set = function(k, v)
+            stored[k] = v
+        end,
+    }
+    t.eq(settings_hs.choose_bar_position(tide, "bottom", store), true)
+    t.eq(stored[bar.POSITION_KEY], "bottom")
+    t.eq(tide.bar_position, "bottom")
+    t.eq(tide.wm.bar_position, "bottom")
+    t.eq(tide.wm.bar_floor, {}, "a floor is for the top")
+    t.eq(did, { "place", "retile" })
+    t.eq(said, {}, "a Dock shown at the bottom is fine")
+    dock.hides = true
+    settings_hs.choose_bar_position(tide, "bottom", store)
+    t.eq(said, { checklist.DOCK_NOTICE }, "one that hides there slides over the bar")
+    local ok, why = settings_hs.choose_bar_position(tide, "left", store)
+    t.eq(ok, nil)
+    t.eq(why, "the bar can't go along left")
+    t.eq(stored[bar.POSITION_KEY], "bottom", "nothing changed")
+    t.eq(logged, { "settings: the bar can't go along left" })
+end)
+
 t.done("settings")

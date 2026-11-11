@@ -97,6 +97,82 @@ t.test("with no room kept for a menu bar that shows, the bar covers it from the 
     t.eq(below.y, 36)
 end)
 
+-- A bar along the bottom (SPEC.md §8): the bottom of hs.screen's frame,
+-- above a Dock that shows, with the menu bar and any notch left alone.
+t.test("the position is top unless it's bottom", function()
+    t.eq(bar.position("bottom"), "bottom")
+    t.eq(bar.position("top"), "top")
+    t.eq(bar.position(nil), "top", "unset")
+    t.eq(bar.position("left"), "top", "anything else")
+end)
+
+t.test("a bar along the bottom takes the bottom of the area, and windows tile above it", function()
+    -- The menu bar shown (24 px) and a Dock shown at the bottom (70 px):
+    -- macOS's frame already leaves both out.
+    local shown = { area = { x = 0, y = 24, w = 1920, h = 986 }, full = { x = 0, y = 0, w = 1920, h = 1080 }, menu_bar = true }
+    local strip, area = bar.place(shown, 36, nil, "bottom")
+    t.eq(strip, { x = 0, y = 24 + 986 - 36, w = 1920, h = 36 }, "just above the Dock, not over the menu bar")
+    t.eq(area, { x = 0, y = 24, w = 1920, h = 950 }, "from under the menu bar down to the bar")
+    local notched = { area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
+    strip, area = bar.place(notched, 36, 68, "bottom")
+    t.eq(strip, { x = 0, y = 32 + 950 - 36, w = 1512, h = 36 }, "the notch's strip is left alone")
+    t.eq(area, { x = 0, y = 32, w = 1512, h = 914 }, "and a floor, which is for the top, changes nothing")
+    t.eq(bar.place({ area = { x = 0, y = 0, w = 100, h = 20 } }, 36, nil, "bottom"),
+        { x = 0, y = 0, w = 100, h = 20 }, "a display shorter than the bar")
+end)
+
+t.test("a bar along the bottom floats, below the Dock's level, whatever is at the top", function()
+    t.eq(bar.level({ menu_bar = true }, "bottom"), "floating", "not over the menu bar")
+    t.eq(bar.level({ notch = true }, "bottom"), "floating")
+    t.eq(bar.level({}, "bottom"), "floating")
+    t.eq(bar.level({ menu_bar = true }, "top"), "status", "the top as before")
+end)
+
+t.test("a bar along the bottom never keeps the pointer off the top row", function()
+    t.eq(bar.keeps_off_top(true, true, "bottom"), false, "a hidden menu bar slides in over nothing of tide's")
+    t.eq(bar.keeps_off_top(true, true, "top"), true)
+end)
+
+t.test("windows tile above a bar along the bottom, and a notched display keeps its title", function()
+    local a = fake.new()
+    a.screens_[1] = { uuid = "A", area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
+    a.add(1, { title = "Notes" })
+    local wm = wm_mod.new(a, { top = bar.HEIGHT, bar_position = "bottom", workspaces = { "in" } })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(a.wins[1].frame.y, 32, "from the top of macOS's frame")
+    t.eq(a.wins[1].frame.y + a.wins[1].frame.h, 32 + 950 - bar.HEIGHT, "down to the bar")
+    t.eq(bar.state(wm, "A", "Notes", {}).notch, false, "the bar is away from the notch")
+    t.eq(bar.state(wm, "A", "Notes", {}).title, "Notes")
+    wm.bar_position = "top"
+    wm:retile()
+    t.eq(a.wins[1].frame.y, bar.HEIGHT, "back under a bar at the top, at once")
+    t.eq(bar.state(wm, "A", "Notes", {}).notch, true)
+end)
+
+t.test("a bar's tip opens above a bar along the bottom", function()
+    local frame = { x = 1920, y = 1000, w = 1920, h = 36 }
+    t.eq(bar.tip_frame(frame, 960, 400, 26, "bottom"), { x = 1920 + 760, y = 1000 - 6 - 26, w = 400, h = 26 })
+    t.eq(bar.tip_frame(frame, 50, 400, 26, "bottom").x, 1920 + 6, "held off the left edge")
+end)
+
+t.test("the bar's menus open under a bar at the top and above one along the bottom", function()
+    local menu = { { title = "Lock" }, { title = "-" }, { title = "Sleep" } }
+    t.eq(bar.menu_height(menu), bar.MENU_PAD + 2 * bar.MENU_ROW + bar.MENU_SEPARATOR)
+    local top = { x = 0, y = 0, w = 1920, h = 36 }
+    t.eq(bar.menu_point(top, 100, menu), { x = 100, y = 36 })
+    local bottom = { x = 0, y = 1044, w = 1920, h = 36 }
+    t.eq(bar.menu_point(bottom, 100, menu, "bottom"), { x = 100, y = 1044 - bar.menu_height(menu) },
+        "its bottom on the bar's top")
+end)
+
+t.test("a bar along the bottom leaves banners where macOS puts them", function()
+    local notices = require("tide.notices")
+    local bars = { A = { x = 0, y = 1044, w = 1920, h = 36 } }
+    t.eq(notices.clearance({ x = 1500, y = 30, w = 400, h = 80 }, bars), 0)
+end)
+
 t.test("Show Menu Bar ends on Esc or a click below the bars, not on the menu bar", function()
     local frames = { A = { x = 0, y = 0, w = 1920, h = 36 }, B = { x = 1920, y = 0, w = 1280, h = 36 } }
     t.eq(bar.reveal_done(frames, "key", "escape", 0, 0), true)
@@ -753,6 +829,18 @@ t.test("the pointer is kept off a bar's top row, so the hidden menu bar stays hi
     t.eq(bar.off_top(frames, 1600, 0), nil, "a hidden bar, under a full-screen window, leaves the menu bar to show")
     t.eq(bar.off_top({ C = { x = 0, y = -1080, w = 1920, h = 36 } }, 100, -1080), -1079, "a display above another")
     t.eq(bar.off_top(frames, 2000, 500), nil)
+end)
+
+t.test("the Apple logo's menu has no Show Menu Bar for a bar along the bottom", function()
+    local titles = {}
+    for _, item in ipairs(bar.apple_menu(function() end, function() end, "bottom")) do
+        titles[#titles + 1] = item.title
+    end
+    t.eq(titles[1], "About This Mac", "nor the separator after it")
+    for _, title in ipairs(titles) do
+        t.eq(title ~= "Show Menu Bar", true)
+    end
+    t.eq(#titles, #bar.APPLE - 2)
 end)
 
 t.test("the Apple logo's menu is the Apple menu's entries, each opening or doing the real thing", function()

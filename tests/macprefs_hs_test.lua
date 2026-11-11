@@ -140,6 +140,7 @@ t.test("a change on the page is saved to macos.local.json, keeping the rest", fu
     t.eq(w.prefs.handle({ macReset = "finder.showPathBar" }), true)
     t.eq(json.decode(w.files["/c/macos.local.json"]), { text = { smoothing = "light" } })
     t.eq(w.prefs.handle({ keepMenuBarHidden = true }), false, "not the page's")
+    t.eq(w.prefs.handle({ barPosition = "bottom" }), false, "nor the Bar page's")
 end)
 
 t.test("a change the page can't save says why on the page", function()

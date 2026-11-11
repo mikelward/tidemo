@@ -672,7 +672,7 @@ sandbox.tide.update({
 }
 // A right-click on an item opens its settings page, by tide's map with
 // tide's page ids (tide SPEC.md §7.1), and keeps WebKit's menu away;
-// off every item it does nothing.
+// off every item it opens the Bar page.
 {
   sandbox.tide.update({
     uuid: "B", workspaces: ws, title: "Doc", icons: {
@@ -694,7 +694,8 @@ sandbox.tide.update({
   assert.strictEqual(pages(chipsNow[0]), "workspaces");
   assert.strictEqual(pages(ids.title), "floating");
   assert.strictEqual(pages(ids.clocks), "clocks");
-  assert.strictEqual(pages(ids.logo), "");
+  assert.strictEqual(pages(ids.logo), "bar", "the Bar page, as tide's logo");
+  assert.strictEqual(pages(ids.apple), "bar");
   assert.strictEqual(pages(named.source), "keyboard");
   assert.strictEqual(pages(named.awake), "idle");
   assert.strictEqual(pages(named.mic), "sound");
@@ -703,9 +704,9 @@ sandbox.tide.update({
   assert.strictEqual(pages(named.volume), "sound");
   assert.strictEqual(pages(named.wifi), "network");
   assert.strictEqual(pages(named.battery), "power");
-  assert.strictEqual(pages(named.sysmon), "");
+  assert.strictEqual(pages(named.sysmon), "bar");
   assert.strictEqual(pages(named.session), "idle");
-  assert.strictEqual(pages(ids.bar), null);
+  assert.strictEqual(pages(ids.bar), "bar", "the bar off every item opens the Bar page");
   sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: { awake: { on: true, presenting: true } } });
   assert.strictEqual(pages(ids.icons.children[0]), "muted", "Presenting opens Notifications, tide's muted page");
 }

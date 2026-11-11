@@ -613,7 +613,7 @@ t.test("the settings sidebar groups the pages under tide's headings", function()
     t.eq(shown, {
         "HARDWARE", "Displays", "Sound", "Network", "Bluetooth", "Mouse", "Trackpad", "Keyboard", "Power",
         "WINDOWS", "Layouts", "Workspaces", "Floating",
-        "GENERAL", "Appearance", "Notifications", "Clipboard", "Clocks", "Idle", "Start at login", "macOS", "Setup checklist",
+        "GENERAL", "Appearance", "Bar", "Notifications", "Clipboard", "Clocks", "Idle", "Start at login", "macOS", "Setup checklist",
     })
     t.eq(sidebar.parts, { shortcuts = "keyboard" })
 end)

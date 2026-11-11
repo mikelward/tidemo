@@ -25,6 +25,7 @@ t.test("the popover sits under the speaker, kept on the bar's display", function
     t.eq(volume.frame(bar, 50, 2).x, 100, "not off the left edge")
     t.eq(volume.frame(bar, 5000, 2).x, 800, "not off the right edge")
     t.eq(volume.frame(bar, nil, 1).x, 800, "no position: the right end")
+    t.eq(volume.frame(bar, 900, 2, "bottom").y, bar.y - (volume.CHROME + 2 * volume.ROW), "above a bar along the bottom")
     t.eq(volume.height(100), volume.MAX_HEIGHT, "many outputs scroll")
 end)
 

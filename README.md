@@ -48,7 +48,8 @@ It brings tide for Linux's desktop to macOS:
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);
 - Caps Lock as Compose, as on Linux, with Linux's own sequences (§10);
-- tide for Linux's bar along the top: tide's logo, opening the switcher, the
+- tide for Linux's bar along the top, or the bottom (Tide Settings' Bar
+  page, or right-click the bar), where macOS's menu bar stays: tide's logo, opening the switcher, the
   workspaces, the window's title, the clocks
   and tide's own status items (input source, keep awake, camera,
   microphone, Bluetooth on or off with `blueutil`, Bluetooth headphones,
@@ -160,7 +161,9 @@ By hand:
    "Automatically hide and show the menu bar": Never. tide's bar covers
    it, so it no longer slides in when the pointer reaches the top; the
    Apple logo's **Show Menu Bar** brings it back until Esc, Return, or a
-   click below it. Until it's set, tide says so when it starts.
+   click below it. Until it's set, tide says so when it starts. With the
+   bar at the bottom, any setting works; there, keep the Dock on a side or
+   shown, or it slides over the bar.
 4. Free tide's keys in System Settings › Keyboard › Keyboard Shortcuts:
    turn off Mission Control's "Mission Control", "Application windows",
    "Move left a space", "Move right a space" and "Switch to Desktop 1"

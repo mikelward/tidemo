@@ -41,7 +41,7 @@ import {
 } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings, workspaceSetting } from "./tide-workspacenames.js";
 import {
-  MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate,
+  BAR_CHOICES, MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate,
   positionAt, steppedDim, steppedModeAt, steppedPositionAt, steppedTimePast, wallpaperColor,
   withSetting as withAppearance,
 } from "./tide-appearance.js";
@@ -1639,7 +1639,7 @@ function renderMac() {
   document.getElementById("mac-error").textContent = typeof macState?.error === "string" ? macState.error : "";
 }
 
-// The Appearance page's Menu bar switch: whether tide keeps the hidden
+// The Bar page's Menu bar switch: whether tide keeps the hidden
 // menu bar from sliding over its bar (SPEC.md §8). A click sends
 // { keepMenuBarHidden: on }, and tide answers with tide.update().
 let menuBarHidden = true;
@@ -1654,6 +1654,25 @@ function renderMenuBar(menuBar) {
 document.getElementById("menubar-hidden").addEventListener("click", () => {
   send({ keepMenuBarHidden: !menuBarHidden });
 });
+
+// The Bar page's Position row: which edge the bar runs along, Top or
+// Bottom, as tide's Bar page names them (BAR_CHOICES), with ‹ and ›
+// to the other, which send { barPosition: position }; tide places the bars
+// again and answers with tide.update() (SPEC.md §8).
+function renderBar(b) {
+  const box = document.getElementById("bar-position");
+  box.replaceChildren();
+  const i = Math.max(0, BAR_CHOICES.findIndex((c) => c.position === b?.position));
+  const step = (d) => send({ barPosition: BAR_CHOICES[(i + d + BAR_CHOICES.length) % BAR_CHOICES.length].position });
+  const shown = el("span", BAR_CHOICES[i].label);
+  shown.className = "value";
+  box.append(
+    el("span", "Position"),
+    keyed(button("‹", "Previous: Position", false, () => step(-1)), "bar-position-prev"),
+    shown,
+    keyed(button("›", "Next: Position", false, () => step(1)), "bar-position-next"),
+  );
+}
 
 // The Appearance page's Overview switch: window pictures on the overview's
 // cards, or app icons (SPEC.md §6.9). A click sends { overviewPictures: on },
@@ -2216,6 +2235,7 @@ window.tide = {
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
     if (state.launcher && typeof state.launcher === "object") renderLauncher(state.launcher);
     if (state.menuBar && typeof state.menuBar === "object") renderMenuBar(state.menuBar);
+    if (isObject(state.bar)) renderBar(state.bar);
     if (isObject(state.overview)) renderOverview(state.overview);
     if (isObject(state.macos)) {
       macState = state.macos;
