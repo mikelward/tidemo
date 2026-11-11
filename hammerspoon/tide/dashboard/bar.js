@@ -38,6 +38,7 @@ const ITEMS = [
   [".battery", "battery"],
   [".sysmon", "sysmon"],
   [".session", "session"],
+  [".tray", "bar"],
   ["#bar", "bar"],
 ];
 // tide's ids for tide's pages, where they differ.
@@ -226,6 +227,8 @@ const PATHS = {
   // A power symbol, as tide's system-shutdown-symbolic.
   power: `<path d="M8 2v5.5"/><path d="M4.6 4.3a5 5 0 1 0 6.8 0"/>`,
   // A processor, as tide's cpu-symbolic: a chip with pins on each side.
+  // Three dots in a row, for other apps' icons, as a menu's More.
+  tray: `<path d="M3.5 8v.01M8 8v.01M12.5 8v.01" stroke-width="2.25"/>`,
   cpu: `<rect x="4" y="4" width="8" height="8" rx="1.5"/><rect x="6.5" y="6.5" width="3" height="3" rx="0.5"/>` +
     `<path d="M6 1.5v2M10 1.5v2M6 12.5v2M10 12.5v2M1.5 6h2M1.5 10h2M12.5 6h2M12.5 10h2"/>`,
 };
@@ -289,48 +292,56 @@ function battery(p) {
   return b;
 }
 
-function renderIcons(box, icons) {
-  box.replaceChildren();
-  if (icons.source) {
+// Each status icon's drawing, by its id in the Bar page's list (bar.lua's
+// ICONS): its elements, none when it has nothing to show.
+const DRAW = {
+  source(icons) {
+    if (!icons.source) return [];
     const b = icon("source", icons.source.name, { toggle: "source" }, "", "label");
     b.textContent = icons.source.label;
-    box.append(b);
-  }
-  if (icons.awake?.presenting) {
-    // Presenter mode (SPEC.md §10): the cup with a word, and a click ends it.
-    const b = icon("awake", "Presenting: Do Not Disturb and keep awake", { toggle: "presenter" }, svg(PATHS.awake), "presenting");
-    b.append(el("span", "text", "Presenting"));
-    box.append(b);
-  } else if (icons.awake) {
+    return [b];
+  },
+  awake(icons) {
+    if (icons.awake?.presenting) {
+      // Presenter mode (SPEC.md §10): the cup with a word, and a click ends it.
+      const b = icon("awake", "Presenting: Do Not Disturb and keep awake", { toggle: "presenter" }, svg(PATHS.awake), "presenting");
+      b.append(el("span", "text", "Presenting"));
+      return [b];
+    }
+    if (!icons.awake) return [];
     // Its tip says what it's doing, in the sign's words (presenter.lua's
     // awake_sign), as tide's hover does.
     const on = !!icons.awake.on;
-    box.append(icon("awake", on ? "Keeping awake" : "Not keeping awake", { toggle: "awake" }, svg(PATHS.awake), on ? "on" : "off"));
-  }
-  if (icons.camera) {
+    return [icon("awake", on ? "Keeping awake" : "Not keeping awake", { toggle: "awake" }, svg(PATHS.awake), on ? "on" : "off")];
+  },
+  camera(icons) {
+    if (!icons.camera) return [];
     const c = el("span", "icon camera");
     c.setAttribute("data-tip", "Camera in use");
     c.setAttribute("data-state", "in-use");
     c.innerHTML = svg(PATHS.camera);
-    box.append(c);
-  }
-  if (icons.mic) {
+    return [c];
+  },
+  mic(icons) {
+    if (!icons.mic) return [];
     const muted = !!icons.mic.muted;
     const art = svg(PATHS.mic + (muted ? SLASH : ""));
-    box.append(icon("mic", muted ? "Microphone muted" : "Microphone", { toggle: "mic" }, art, muted ? "muted" : "on"));
-  }
+    return [icon("mic", muted ? "Microphone muted" : "Microphone", { toggle: "mic" }, art, muted ? "muted" : "on")];
+  },
   // Bluetooth: one glyph, faint while off, as tide's; a click opens
   // Bluetooth settings.
-  if (icons.bluetooth) {
+  bluetooth(icons) {
+    if (!icons.bluetooth) return [];
     const on = !!icons.bluetooth.on;
-    box.append(icon("bluetooth", on ? "Bluetooth on" : "Bluetooth off", { open: "bluetooth" }, svg(PATHS.bluetooth), on ? "on" : "off"));
-  }
+    return [icon("bluetooth", on ? "Bluetooth on" : "Bluetooth off", { open: "bluetooth" }, svg(PATHS.bluetooth), on ? "on" : "off")];
+  },
   // Each connected Bluetooth audio device, named on hover; a click opens
   // Bluetooth settings.
-  for (const d of icons.headphones?.devices ?? []) {
-    box.append(icon("headphones", d.name, { open: "bluetooth" }, svg(PATHS.headphones), "connected"));
-  }
-  if (icons.volume) {
+  headphones(icons) {
+    return (icons.headphones?.devices ?? []).map((d) => icon("headphones", d.name, { open: "bluetooth" }, svg(PATHS.headphones), "connected"));
+  },
+  volume(icons) {
+    if (!icons.volume) return [];
     // Four levels with mute, then the level as a %. An output with no
     // volume control (fixed) draws the full speaker with no %, and can't
     // be scrolled.
@@ -356,26 +367,51 @@ function renderIcons(box, icons) {
         wheeled = 0;
       });
     }
-    box.append(b);
-  }
-  box.append(network(icons));
-  if (icons.battery) box.append(battery(icons.battery));
+    return [b];
+  },
+  network: (icons) => [network(icons)],
+  battery: (icons) => (icons.battery ? [battery(icons.battery)] : []),
   // The system monitor: CPU %, colored when hot, throttling or short of
   // memory; a click opens Activity Monitor.
-  if (icons.sysmon) {
+  sysmon(icons) {
+    if (!icons.sysmon) return [];
     const s = icons.sysmon;
     const b = icon("sysmon", s.tip || "CPU", { open: "sysmon" }, svg(PATHS.cpu), s.tone || "normal");
     b.append(el("span", "text", s.text));
-    box.append(b);
+    return [b];
+  },
+  // Other apps' icons, which macOS keeps in its menu bar: a click hides
+  // the bars so the menu bar shows (bar.lua's Show Menu Bar).
+  tray: () => [icon("tray", "Other apps' icons", { tray: true }, svg(PATHS.tray), "normal")],
+  // The session menu, last unless moved, as tide's: tide shows macOS's own
+  // menu under the icon, so it sends where the icon is.
+  session() {
+    const session = icon("session", "Lock, log out or power off", null, svg(PATHS.power), "normal");
+    session.addEventListener("click", () => {
+      const r = session.getBoundingClientRect();
+      send({ session: { x: Math.round(r.left) } });
+    });
+    return [session];
+  },
+};
+
+// The bar's order unless the Bar page chose another: every icon but the tray.
+export const ICON_ORDER = ["source", "awake", "camera", "mic", "bluetooth", "headphones", "volume", "network", "battery", "sysmon", "session"];
+
+// The order tide sent: the bar's own when it sent none, and none when it
+// sent an empty list, which hs.json.encode writes as {}.
+function iconOrder(sent) {
+  if (sent === undefined || sent === null) return ICON_ORDER;
+  return Array.isArray(sent) ? sent : [];
+}
+
+// The icons in `order`, the ids tide sends (bar.shown_icons); one it
+// doesn't know is skipped.
+function renderIcons(box, icons, order = ICON_ORDER) {
+  box.replaceChildren();
+  for (const id of order) {
+    if (Object.hasOwn(DRAW, id)) box.append(...DRAW[id](icons));
   }
-  // The session menu, last, as tide's: tide shows macOS's own menu under
-  // the icon, so it sends where the icon is.
-  const session = icon("session", "Lock, log out or power off", null, svg(PATHS.power), "normal");
-  session.addEventListener("click", () => {
-    const r = session.getBoundingClientRect();
-    send({ session: { x: Math.round(r.left) } });
-  });
-  box.append(session);
 }
 
 // Sets each item's reach (hitInsets) as --reach-* for its ::before, which
@@ -511,7 +547,7 @@ window.tide = {
     notch = !!state.notch;
     renderWorkspaces(document.getElementById("workspaces"), state.workspaces, state.app_icons || {});
     document.getElementById("title-text").textContent = state.title;
-    renderIcons(document.getElementById("icons"), state.icons);
+    renderIcons(document.getElementById("icons"), state.icons, iconOrder(state.iconOrder));
     const loaded = nextSettings(state, settings);
     settings = loaded.settings;
     if (loaded.errors.length > 0) send({ clockErrors: loaded.errors });

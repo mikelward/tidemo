@@ -280,4 +280,42 @@ t.test("a Bar choice is kept and places the bars and tiles again at once", funct
     t.eq(logged, { "settings: the bar can't go along left" })
 end)
 
+t.test("the Bar page's icons are kept whole and drawn at once", function()
+    local settings_hs = require("tide.settings_hs")
+    local bar = require("tide.bar")
+    local stored, logged, drawn = {}, {}, 0
+    local tide = {
+        adapter = {
+            log = function(text)
+                logged[#logged + 1] = text
+            end,
+        },
+        bar = {
+            update = function()
+                drawn = drawn + 1
+            end,
+        },
+    }
+    local store = {
+        set = function(k, v)
+            stored[k] = v
+        end,
+    }
+    t.eq(settings_hs.choose_bar_icons(tide, { { id = "tray", shown = true }, { id = "bogus" } }, store), true)
+    local kept = stored[bar.ICONS_KEY]
+    t.eq(#kept, #bar.ICONS, "every icon, once")
+    local want = {}
+    for i, e in ipairs(bar.icon_list({ { id = "tray", shown = true } })) do
+        want[i] = { id = e.id, shown = e.shown }
+    end
+    t.eq(kept, want, "made whole as the bar makes it, other apps' icons on")
+    t.eq(tide.bar_icons, kept)
+    t.eq(drawn, 1)
+    local ok, why = settings_hs.choose_bar_icons(tide, "battery", store)
+    t.eq(ok, nil)
+    t.eq(why, "the bar's icons aren't a list: battery")
+    t.eq(stored[bar.ICONS_KEY], kept, "nothing changed")
+    t.eq(logged, { "settings: the bar's icons aren't a list: battery" })
+end)
+
 t.done("settings")

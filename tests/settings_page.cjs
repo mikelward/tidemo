@@ -1803,6 +1803,40 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(sent, [{ barPosition: "top" }], "‹ wraps round to Top");
 }
 
+// The Bar page's Icons list: each icon in tide's order with ↑, ↓ and a
+// switch; any of them sends the whole list back, changed.
+{
+  const icons = [
+    { id: "source", label: "Keyboard", shown: true },
+    { id: "tray", label: "Other apps' icons", shown: false },
+    { id: "session", label: "Lock and power", shown: true },
+  ];
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top", icons } });
+  const rows = () => ids["bar-icons"].children;
+  assert.deepStrictEqual(rows().map((li) => li.children.map((c) => c.textContent)), [
+    ["Keyboard", "↑", "↓", "On"],
+    ["Other apps' icons", "↑", "↓", "Off"],
+    ["Lock and power", "↑", "↓", "On"],
+  ]);
+  assert.strictEqual(rows()[0].children[1].disabled, true, "the first can't go up");
+  assert.strictEqual(rows()[2].children[2].disabled, true, "the last can't go down");
+  const list = (...pairs) => [{ barIcons: pairs.map(([id, shown]) => ({ id, shown })) }];
+  sent.length = 0;
+  rows()[1].children[3].listeners.click();
+  assert.deepStrictEqual(sent, list(["source", true], ["tray", true], ["session", true]), "a switch turns its icon on");
+  sent.length = 0;
+  rows()[1].children[1].listeners.click();
+  assert.deepStrictEqual(sent, list(["tray", false], ["source", true], ["session", true]), "↑ swaps it with the one above");
+  sent.length = 0;
+  rows()[0].children[2].listeners.click();
+  assert.deepStrictEqual(sent, list(["tray", false], ["source", true], ["session", true]), "↓ with the one below");
+  // The keyboard follows the icon it moved, so ↓ can be pressed again.
+  rows()[0].children[2].focus();
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top", icons: [icons[1], icons[0], icons[2]] } });
+  assert.strictEqual(sandbox.document.activeElement, rows()[1].children[2], "the keyboard stays on Keyboard's ↓");
+  sandbox.document.activeElement = null;
+}
+
 // The Appearance page's Overview switch: icons unless tide says pictures
 // are on, a click asks for the other, and pictures on without Screen
 // Recording say so.

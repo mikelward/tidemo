@@ -31,6 +31,83 @@ function M.position(v)
     return v == "bottom" and "bottom" or "top"
 end
 
+-- The status icons the Bar page lists, in the bar's order unless you
+-- choose another: each one's id, the name the page gives it, and whether
+-- it shows unless you say. "tray" is a way to the other apps' icons that
+-- macOS keeps in its menu bar, which tide can't draw: a click hides the
+-- bars so the menu bar shows (Show Menu Bar). The Bar page's list is kept
+-- in hs.settings under ICONS_KEY (SPEC.md §8).
+M.ICONS = {
+    { id = "source", label = "Keyboard", shown = true },
+    { id = "awake", label = "Keep awake", shown = true },
+    { id = "camera", label = "Camera in use", shown = true },
+    { id = "mic", label = "Microphone", shown = true },
+    { id = "bluetooth", label = "Bluetooth", shown = true },
+    { id = "headphones", label = "Headphones", shown = true },
+    { id = "volume", label = "Sound", shown = true },
+    { id = "network", label = "Network", shown = true },
+    { id = "battery", label = "Battery", shown = true },
+    { id = "sysmon", label = "System monitor", shown = true },
+    { id = "tray", label = "Other apps' icons", shown = false },
+    { id = "session", label = "Lock and power", shown = true },
+}
+M.ICONS_KEY = "tide.bar_icons"
+
+-- A stored list as every icon of M.ICONS once, { { id, label, shown } },
+-- in the stored order: an id it doesn't know or names twice is dropped, and
+-- an icon it leaves out (one added since) goes in at its own place among
+-- the rest, as it shows unless you say. Anything but a list is the default.
+function M.icon_list(stored)
+    local known, out, seen = {}, {}, {}
+    for i, e in ipairs(M.ICONS) do
+        known[e.id] = { at = i, e = e }
+    end
+    for _, v in ipairs(type(stored) == "table" and stored or {}) do
+        local k = type(v) == "table" and known[v.id]
+        if k and not seen[v.id] then
+            seen[v.id] = true
+            local shown = v.shown
+            if type(shown) ~= "boolean" then
+                shown = k.e.shown
+            end
+            out[#out + 1] = { id = k.e.id, label = k.e.label, shown = shown }
+        end
+    end
+    for i, e in ipairs(M.ICONS) do
+        if not seen[e.id] then
+            -- After the icon it follows by default, or first.
+            local at = 1
+            for j = i - 1, 1, -1 do
+                local prev = M.ICONS[j].id
+                local found
+                for n, o in ipairs(out) do
+                    if o.id == prev then
+                        found = n
+                    end
+                end
+                if found then
+                    at = found + 1
+                    break
+                end
+            end
+            table.insert(out, at, { id = e.id, label = e.label, shown = e.shown })
+        end
+    end
+    return out
+end
+
+-- The ids the bar draws, in order, from a stored list: the shown ones,
+-- less the tray along the bottom, where macOS's menu bar already shows.
+function M.shown_icons(stored, position)
+    local ids = {}
+    for _, e in ipairs(M.icon_list(stored)) do
+        if e.shown and not (e.id == "tray" and M.position(position) == "bottom") then
+            ids[#ids + 1] = e.id
+        end
+    end
+    return ids
+end
+
 -- A long name is cut to this many characters, with an ellipsis (SPEC.md
 -- §8, a guess to confirm).
 M.NAME_MAX = 16
@@ -936,7 +1013,7 @@ end
 -- session(uuid, { x }) for the session menu under the icon at x,
 -- settings(page) for a right-click's settings page, "" for the first,
 -- sound(uuid, { right }) for the volume popover under the speaker,
--- and tip(uuid, tip).
+-- tray(uuid) for the tray icon's Show Menu Bar, and tip(uuid, tip).
 function M.handle(wm, body, act)
     local uuid = body.uuid
     if body.show then
@@ -968,6 +1045,8 @@ function M.handle(wm, body, act)
         act.volume(tonumber(body.volume))
     elseif body.menubar and act.menubar then
         act.menubar(uuid)
+    elseif body.tray and act.tray then
+        act.tray(uuid)
     elseif type(body.settings) == "string" and act.settings then
         act.settings(body.settings)
     elseif body.workspaces and act.workspaces then

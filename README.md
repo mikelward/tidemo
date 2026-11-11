@@ -56,7 +56,9 @@ It brings tide for Linux's desktop to macOS:
   speaker, opening a volume popover with a slider, mute and the outputs,
   and a monitor's own speakers over DDC with `m1ddc` or `ddcctl`, the
   volume keys included, network with a lock while a VPN is up, battery, CPU %, and a
-  session menu to lock, log out, sleep, restart or shut down), with
+  session menu to lock, log out, sleep, restart or shut down; the Bar
+  page chooses which show and in what order, and can add one that shows
+  macOS's menu bar with other apps' icons), with
   Super+Shift+M to mute the microphone
   (§7.2, §8, §14.2);
 - Super+S to keep the display awake, and Super+P for presenter mode, Do

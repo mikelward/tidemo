@@ -1844,11 +1844,24 @@ stock keys:
     (only for a bar at the top),
     on by default and kept in `hs.settings` as tide's own; off, the menu
     bar shows at the top edge as on any Mac.
+  - **The Bar page's Icons list chooses which status icons show, and
+    their order.** Each icon has a switch, and ↑ and ↓ move it; the bar
+    redraws at once (`settings_hs.choose_bar_icons`). The list is this
+    Mac's own, in `hs.settings` (`bar.ICONS_KEY`), as Position is.
+    `bar.icon_list` makes a stored list whole: an id it doesn't know or
+    names twice is dropped, and an icon added since goes in after the one
+    it follows by default. Every icon but one shows unless turned off.
+    - **Other apps' icons** is off unless turned on. macOS gives no way
+      to draw other apps' status items (a VPN, Zoom) in tide's bar, so
+      this icon, three dots, does Show Menu Bar: it hides the bars until
+      Esc, Return or a click below them, and macOS's menu bar shows with
+      those icons. Along the bottom the menu bar already shows, so the bar
+      leaves it out. A right-click on it opens the Bar page.
   - **Or along the bottom: Tide Settings' Bar page, Position: Top or
     Bottom.** Top is the default. The Bar page sits after Appearance, as
     tide for Linux's does, and holds the Menu bar switch too, with buttons
     for macOS's Menu bar and Dock settings. Its search finds it by "bar",
-    "panel", "taskbar", "top", "bottom", "menu bar" and "dock". The names
+    "panel", "taskbar", "top", "bottom", "menu bar", "dock", "icons", "status", "tray" and "order". The names
     are tide for Linux's (`barPosition` in its `appearance.json`,
     `BAR_CHOICES` in its appearance module), but the choice is this Mac's
     own, in `hs.settings`

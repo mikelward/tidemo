@@ -1674,6 +1674,40 @@ function renderBar(b) {
   );
 }
 
+// The Bar page's Icons list: each status icon in the bar's order, with a
+// switch to show it and ↑ ↓ to move it. A change sends the whole list,
+// { barIcons: [{ id, shown }] }, and tide answers with tide.update().
+// The keyboard stays on the button it was on, which follows its icon.
+function renderBarIcons(b) {
+  keepingFocus(() => drawBarIcons(b));
+}
+
+function drawBarIcons(b) {
+  const list = document.getElementById("bar-icons");
+  list.replaceChildren();
+  const icons = Array.isArray(b?.icons) ? b.icons : [];
+  const sendList = (next) => send({ barIcons: next.map((e) => ({ id: e.id, shown: e.shown === true })) });
+  const move = (i, d) => {
+    const next = icons.slice();
+    [next[i], next[i + d]] = [next[i + d], next[i]];
+    sendList(next);
+  };
+  icons.forEach((e, i) => {
+    const li = el("li");
+    const on = e.shown === true;
+    const name = el("span", e.label);
+    name.className = "name";
+    const toggle = keyed(button(on ? "On" : "Off", `${e.label}: ${on ? "on" : "off"}`, false,
+      () => sendList(icons.map((o, j) => (j === i ? { ...o, shown: !on } : o)))), `bar-icon-${e.id}`);
+    toggle.setAttribute("aria-pressed", String(on));
+    li.append(name,
+      keyed(button("↑", `Move up: ${e.label}`, i === 0, () => move(i, -1)), `bar-icon-${e.id}-up`),
+      keyed(button("↓", `Move down: ${e.label}`, i === icons.length - 1, () => move(i, 1)), `bar-icon-${e.id}-down`),
+      toggle);
+    list.append(li);
+  });
+}
+
 // The Appearance page's Overview switch: window pictures on the overview's
 // cards, or app icons (SPEC.md §6.9). A click sends { overviewPictures: on },
 // and tide answers with tide.update(); `granted` false says why the
@@ -2235,7 +2269,10 @@ window.tide = {
     if (state.keyboard && typeof state.keyboard === "object") renderKeyboard(state.keyboard);
     if (state.launcher && typeof state.launcher === "object") renderLauncher(state.launcher);
     if (state.menuBar && typeof state.menuBar === "object") renderMenuBar(state.menuBar);
-    if (isObject(state.bar)) renderBar(state.bar);
+    if (isObject(state.bar)) {
+      renderBar(state.bar);
+      renderBarIcons(state.bar);
+    }
     if (isObject(state.overview)) renderOverview(state.overview);
     if (isObject(state.macos)) {
       macState = state.macos;
