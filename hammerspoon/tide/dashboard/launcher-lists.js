@@ -5,6 +5,8 @@
 // feed. The rest is tileco's matching, ranking and footer, unchanged.
 
 import {
+  arrowStep as tilecoArrowStep,
+  barAtBottom as tilecoBarAtBottom,
   footerKeys as tilecoFooterKeys,
   footerText as tilecoFooterText,
   items as tilecoItems,
@@ -19,6 +21,8 @@ import {
 } from "./launcher.js";
 import { feed } from "./launcher-chrome.js";
 
+export const arrowStep = tilecoArrowStep;
+export const barAtBottom = tilecoBarAtBottom;
 export const footerKeys = tilecoFooterKeys;
 export const footerText = tilecoFooterText;
 export const items = tilecoItems;
@@ -32,9 +36,11 @@ export const SECTION_KEY = TILECO_SECTION_KEY;
 export const workspaceRows = tilecoWorkspaceRows;
 
 // The page a right-click on each bar item opens, by Tide Settings' ids in
-// place of tileco's sections: the cup opens Idle, as on tide's own bar.
+// place of tileco's sections: the cup opens Idle, as on tide's own bar,
+// and the logo and the bar off its items the Bar page.
 export const BAR_SECTIONS = Object.freeze({
-  logo: null,
+  bar: "bar",
+  logo: "bar",
   workspaces: "workspaces",
   title: "workspaces",
   "keep-awake": "idle",
