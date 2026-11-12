@@ -47,7 +47,8 @@ It brings tide for Linux's desktop to macOS:
   Super+PgUp and PgDn for the previous and next workspace with windows,
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);
-- Caps Lock as Compose, as on Linux, with Linux's own sequences (§10);
+- Caps Lock as Compose, as on Linux, with Linux's own sequences, when
+  turned on under Keyboard in Tide Settings (§10);
 - tide for Linux's bar along the top, or the bottom (Tide Settings' Bar
   page, or right-click the bar), where macOS's menu bar stays: tide's logo, opening the switcher, the
   workspaces, the window's title, the clocks
@@ -146,8 +147,8 @@ turn on Accessibility for Hammerspoon, reload its config, and log out.
 With [mikelward/scripts](https://github.com/mikelward/scripts), a plain
 `setup` (or `setup-macos`) clones or pulls tide, runs its installer, and
 adds its owner's choices: the PC keyboard's modifier rotation (with
-`--super win`), conf's other Karabiner rules, LinearMouse and macOS's
-settings.
+`--super win`), Caps Lock as Compose, conf's other Karabiner rules,
+LinearMouse's config and macOS's settings.
 `--wm amethyst` sets up Amethyst instead.
 
 By hand:

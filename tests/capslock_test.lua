@@ -94,6 +94,30 @@ t.test("sets nothing when Caps Lock is mapped already", function()
     t.eq(#h.calls, 1)
 end)
 
+t.test("takes only Caps Lock's F18 out, keeping the rest and another Caps Lock mapping", function()
+    local rot = { { src = 0x7000000E0, dst = 0x7000000E3 } }
+    t.eq(capslock.without_compose({ rot[1], { src = capslock.CAPS_LOCK, dst = capslock.F18 } }), rot)
+    t.eq(capslock.without_compose(rot), nil, "nothing to take out")
+    t.eq(capslock.without_compose({ { src = capslock.CAPS_LOCK, dst = 0x700000029 } }), nil, "Escape is yours")
+end)
+
+t.test("turned off, sets the mapping without Caps Lock's F18", function()
+    local h = hidutil("( { HIDKeyboardModifierMappingSrc = 30064771296; HIDKeyboardModifierMappingDst = 30064771299; },"
+        .. " { HIDKeyboardModifierMappingSrc = 30064771129; HIDKeyboardModifierMappingDst = 30064771181; } )")
+    local changed
+    capslock.remove(h.run, h.log, function(c)
+        changed = c
+    end)
+    t.eq(changed, true)
+    t.eq(h.calls[2], "/usr/bin/hidutil property --set " .. capslock.json({ { src = 0x7000000E0, dst = 0x7000000E3 } }))
+    h = hidutil(ROTATION)
+    capslock.remove(h.run, h.log, function(c)
+        changed = c
+    end)
+    t.eq(changed, false)
+    t.eq(#h.calls, 1, "nothing to take out, nothing set")
+end)
+
 t.test("a mapping it can't read, or hidutil failing, is logged and changes nothing", function()
     local h = hidutil("garbage")
     capslock.apply(h.run, h.log)

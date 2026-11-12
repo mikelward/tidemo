@@ -1749,8 +1749,23 @@ function renderSuper(sup) {
   );
 }
 
+// Caps Lock is Compose (SPEC.md §10): keyboard.capsCompose, absent when
+// tide's Compose is off; a click sends { capsCompose: on }.
+function renderCapsCompose(on) {
+  const list = document.getElementById("caps-compose");
+  list.replaceChildren();
+  if (typeof on !== "boolean") return;
+  const li = el("li");
+  const toggle = button(on ? "On" : "Off", `Caps Lock is Compose: ${on ? "on" : "off"}`, false,
+    () => send({ capsCompose: !on }));
+  toggle.setAttribute("aria-pressed", String(on));
+  li.append(el("span", "Caps Lock is Compose"), toggle);
+  list.append(li);
+}
+
 function renderKeyboard(keyboard) {
   renderSuper(keyboard?.super);
+  renderCapsCompose(keyboard?.capsCompose);
   const list = document.getElementById("karabiner-rules");
   list.replaceChildren();
   const rules = Array.isArray(keyboard?.rules) ? keyboard.rules : [];

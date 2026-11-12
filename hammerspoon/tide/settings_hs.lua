@@ -7,6 +7,7 @@
 -- outside Hammerspoon.
 
 local bar = require("tide.bar")
+local capslock = require("tide.capslock")
 local brand = require("tide.brand")
 local dashboard = require("tide.dashboard")
 local karabiner = require("tide.karabiner")
@@ -314,6 +315,19 @@ function M.choose_bar_position(tide, value, store)
     return true
 end
 
+-- Keyboard's "Caps Lock is Compose": kept in `store` (hs.settings), and
+-- Caps Lock's F18 put in the key mapping at once, or taken out.
+function M.set_caps_compose(tide, on, store)
+    tide.caps_compose = on
+    store.set(capslock.SETTINGS_KEY, on)
+    if on then
+        capslock.apply(tide.adapter.run, tide.adapter.log)
+    else
+        capslock.remove(tide.adapter.run, tide.adapter.log)
+    end
+    return true
+end
+
 -- Which status icons the bar shows, and in what order, the Bar page's
 -- Icons list: `value` is { { id, shown } } in order, made whole by
 -- bar.icon_list, kept in `store` (hs.settings) as tide's own and drawn at
@@ -507,6 +521,8 @@ function M.new(tide)
                 } or nil,
                 rules = "__karabiner_rules__",
                 problem = tide.karabiner_rules and tide.karabiner_rules.state.problem or "",
+                -- Caps Lock is Compose (capslock.lua): nil without Compose.
+                capsCompose = tide.compose and tide.caps_compose == true or nil,
             },
             -- tide's key bindings as they registered, and the keys that
             -- didn't (keys.shortcuts), for the Keyboard section's Shortcuts.
@@ -814,6 +830,11 @@ function M.new(tide)
                 if not ok then
                     tide.adapter.notify(why)
                 end
+                push()
+            elseif type(body.capsCompose) == "boolean" and tide.compose then
+                -- Keyboard's Caps Lock switch: kept as tide's own, and
+                -- the key mapping changed at once.
+                M.set_caps_compose(tide, body.capsCompose, hs.settings)
                 push()
             elseif type(body.overviewPictures) == "boolean" then
                 -- The Overview switch: kept in hs.settings, as tide's own,

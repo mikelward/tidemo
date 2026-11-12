@@ -262,7 +262,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | Mouse: fastest, acceleration on, left-handed, wheel 3× (conf `hyprland.lua`) | Mouse settings and `com.apple.mouse.scaling`; the wheel's speed and direction through LinearMouse, from tide for Linux's `input.json` (§10) | **partial**: the wheel **yes**; speed and left-handed in Mouse settings |
 | Touchpad: natural scroll, tap to click; mouse not natural | Trackpad settings (§10) | **partial**: one natural-scroll switch for both *(unverified)* |
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
-| Caps Lock as Compose | Caps Lock sends F18, and tide reads the keys after it from Linux's own Compose table (§10) | **yes** *(unverified on a Mac)*: not during Secure Input |
+| Caps Lock as Compose | Keyboard's "Caps Lock is Compose", off unless turned on, makes Caps Lock send F18, and tide reads the keys after it from Linux's own Compose table (§10) | **yes** *(unverified on a Mac)*: not during Secure Input |
 | Setup checklist (tide for Chrome §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
 | Settings pages, shared `~/.config/tide` files, `.local` overrides (tide for Linux §16) | tide reads the same files (§15); every page of tide for Linux's is a section, with buttons to macOS's panes and the helpers for what tide can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts (your keys and the presets, as tide for Linux's) and the Setup checklist are tide's own; Appearance is only a button |
 | `tide doctor` (tide for Linux §5.4) | `tide doctor` (§15) | **yes** |
@@ -2899,6 +2899,10 @@ that isn't one is left out, and the log says so.
   *(unverified units)*. US Dvorak is a native input source.
 - **Caps Lock as Compose,** as on Linux (`compose.lua`): Caps Lock, then
   ' and e, types é.
+  - **Off unless turned on,** with Keyboard's "Caps Lock is Compose" in
+    tide's settings, kept in `hs.settings` (`tide.caps_lock_compose`): it
+    changes a key outside window management. `setup-macos` turns it on.
+    Turned off, tide takes Caps Lock's F18 out of the mapping at once.
   - macOS has no Compose key, so tide makes Caps Lock send F18, and binds
     F18 (`capslock.lua`). It's F18, not F19, since Karabiner sends
     `Super+Backspace` as `Super+F19` (§7.2).
@@ -2907,8 +2911,8 @@ that isn't one is left out, and the log says so.
     what's there, such as `setup-macos`'s modifier rotation. It does so as
     it starts and after a wake or a keyboard plugged in, since the
     mapping doesn't survive a restart. A mapping that already has Caps
-    Lock, to F18 or anything else, is left alone. `compose = false`
-    leaves Caps Lock as it is.
+    Lock, to anything but F18, is left alone, on or off. `compose = false`
+    leaves Caps Lock as it is, and takes the switch away.
   - The keys after it are held back from the app in front, by an event
     tap, and read as the characters they'd type, so Shift and the layout,
     Dvorak included, count as they do on Linux.
