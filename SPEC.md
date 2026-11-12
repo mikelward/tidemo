@@ -2837,7 +2837,8 @@ that isn't one is left out, and the log says so.
     `mouse.naturalScroll` in `input.json` and `input.local.json` (tide for Linux
     §16), read with tide for Linux's own `input.mjs`, copied unchanged as
     `dashboard/tide-input.js`, so one setting serves both desktops. What
-    isn't set is what tide for Linux's page shows: 3× and off.
+    isn't set is what tide for Linux's page shows, tide's own defaults: 1×
+    and off. mikelward/conf's `input.json` sets its owner's 3×.
     - tide writes them into LinearMouse's config, which LinearMouse
       reloads when it changes (its `FileWatcher`). That's
       `~/Library/Application Support/linearmouse/linearmouse.json` if it
