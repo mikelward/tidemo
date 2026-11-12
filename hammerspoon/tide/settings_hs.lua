@@ -315,6 +315,16 @@ function M.choose_bar_position(tide, value, store)
     return true
 end
 
+-- Keyboard's "Caps Lock is Compose" as the page gets it: on or off, or nil
+-- without tide's Compose, which hides the row. Off must be false, not nil,
+-- or the row would hide when it's off.
+function M.caps_compose_state(tide)
+    if not tide.compose then
+        return nil
+    end
+    return tide.caps_compose == true
+end
+
 -- Keyboard's "Caps Lock is Compose": kept in `store` (hs.settings), and
 -- Caps Lock's F18 put in the key mapping at once, or taken out.
 function M.set_caps_compose(tide, on, store)
@@ -522,7 +532,7 @@ function M.new(tide)
                 rules = "__karabiner_rules__",
                 problem = tide.karabiner_rules and tide.karabiner_rules.state.problem or "",
                 -- Caps Lock is Compose (capslock.lua): nil without Compose.
-                capsCompose = tide.compose and tide.caps_compose == true or nil,
+                capsCompose = M.caps_compose_state(tide),
             },
             -- tide's key bindings as they registered, and the keys that
             -- didn't (keys.shortcuts), for the Keyboard section's Shortcuts.
