@@ -45,6 +45,23 @@ t.test("an app on Super+Backspace takes Karabiner's F19", function()
     t.eq(b[1].karabiner_key, nil)
 end)
 
+-- Zoom's app is zoom.us.app, whose bundle ID is us.zoom.xos: a name with a
+-- dot and no space reads like a bundle ID, but the app of that name comes
+-- first.
+t.test("an app whose name has a dot in it is the app, not a bundle ID of that name", function()
+    local function installed(name)
+        return ({ ["zoom.us"] = "us.zoom.xos", Spotify = "com.spotify.client" })[name]
+    end
+    local b, problems = appkeys.bindings({
+        { keys = "SUPER + Z", app = "zoom.us" },
+        { keys = "SUPER + S", app = "com.apple.Safari" },
+    }, installed)
+    t.eq(problems, {})
+    t.eq(b[1].arg, { bundle = "us.zoom.xos", name = "zoom.us" })
+    -- A bundle ID no app is named after is still one.
+    t.eq(b[2].arg, { bundle = "com.apple.Safari", name = "com.apple.Safari" })
+end)
+
 t.test("apps.local.json's list replaces apps.json's", function()
     local list = appkeys.load(DIR, files({
         ["apps.json"] = json.encode({ apps = { { keys = "SUPER + M", app = "Spotify" } } }),

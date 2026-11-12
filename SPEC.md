@@ -1747,7 +1747,9 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
   - **Your own app keys** are in `apps.json`, or `apps.local.json`, in
     tide's folder: `{ "apps": [ { "keys": "SUPER + M", "app": "Spotify" } ] }`,
     an app by its name or bundle ID, with `"new": true` for a new window
-    each time (`appkeys.lua`). Keys are Hyprland's strings, as `keys.json`'s.
+    each time (`appkeys.lua`). An app of that name comes before a bundle ID
+    that reads the same: Zoom's app is `zoom.us`, and its bundle ID
+    `us.zoom.xos`. Keys are Hyprland's strings, as `keys.json`'s.
     Yours come first, so one on tide's keys takes them, and the Shortcuts
     list says which of tide's it displaced. The settings window's Keyboard
     page lists them under Your app keys, with New window or Bring forward
