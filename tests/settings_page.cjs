@@ -534,21 +534,6 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["input-sources-heading"].hidden, true);
 }
 
-// Keyboard's Caps Lock is Compose: off unless turned on, a click asking for
-// the other, and no row without tide's Compose.
-{
-  const row = () => ids["caps-compose"].children;
-  sandbox.tide.update({ clockFiles: [], keyboard: { capsCompose: false } });
-  assert.deepStrictEqual(row()[0].children.map((c) => c.textContent), ["Caps Lock is Compose", "Off"]);
-  sent.length = 0;
-  row()[0].children[1].listeners.click();
-  assert.deepStrictEqual(sent, [{ capsCompose: true }]);
-  sandbox.tide.update({ clockFiles: [], keyboard: { capsCompose: true } });
-  assert.strictEqual(row()[0].children[1].textContent, "On");
-  sandbox.tide.update({ clockFiles: [], keyboard: {} });
-  assert.strictEqual(row().length, 0);
-}
-
 // Network and Power: Wi-Fi's switch and where it's joined, how the Mac's
 // online, and the battery.
 {

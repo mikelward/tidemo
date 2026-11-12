@@ -27,7 +27,10 @@ end
 -- missing), decode(text) (nil when it doesn't parse), encode(obj),
 -- write(path, text) (true, or nil and why), run(path, args, done(code,
 -- err, out)) (whether it started), get(key) and set(key, value), notify,
--- log, and changed(), called when what the page shows has changed.
+-- log, changed(), called when what the page shows has changed, and own(values),
+-- given the good settings each time the files are read, for the ones tide
+-- applies itself (macprefs.lua's `own`), and hidden(), the settings the
+-- page leaves out, as a set of names, since tide can't apply them now.
 function M.new(d)
     local self = {}
     local good = {}
@@ -178,12 +181,21 @@ function M.new(d)
             good = values
             apply()
         end
+        if d.own then
+            d.own(good)
+        end
         d.changed()
     end
 
     -- What macOS has for each setting, read afresh, for the page.
     function self.read_live()
-        local left = #macprefs.SETTINGS
+        local read = {}
+        for _, s in ipairs(macprefs.SETTINGS) do
+            if not s.own then
+                read[#read + 1] = s
+            end
+        end
+        local left = #read
         local fresh = {}
         local function one_done()
             left = left - 1
@@ -192,7 +204,7 @@ function M.new(d)
                 d.changed()
             end
         end
-        for _, s in ipairs(macprefs.SETTINGS) do
+        for _, s in ipairs(read) do
             if not d.run(M.DEFAULTS, macprefs.read_args(s), function(code, _, out)
                 fresh[s.name] = macprefs.parse(s, code, out)
                 one_done()
@@ -211,7 +223,7 @@ function M.new(d)
         if edit_error then
             all[#all + 1] = edit_error
         end
-        return macprefs.page(good, live, all)
+        return macprefs.page(good, live, all, d.hidden and d.hidden() or nil)
     end
 
     -- The page's { macSet = { name, value } } or { macReset = name }:

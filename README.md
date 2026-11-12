@@ -48,7 +48,8 @@ It brings tide for Linux's desktop to macOS:
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);
 - Caps Lock as Compose, as on Linux, with Linux's own sequences, when
-  turned on under Keyboard in Tide Settings (§10);
+  turned on under Keyboard on Tide Settings' macOS page, or in
+  `macos.json` (§10);
 - tide for Linux's bar along the top, or the bottom (Tide Settings' Bar
   page, or right-click the bar), where macOS's menu bar stays: tide's logo, opening the switcher, the
   workspaces, the window's title, the clocks

@@ -280,44 +280,6 @@ t.test("a Bar choice is kept and places the bars and tiles again at once", funct
     t.eq(logged, { "settings: the bar can't go along left" })
 end)
 
-t.test("Keyboard's Caps Lock switch reaches the page off as well as on, and not without Compose", function()
-    local settings_hs = require("tide.settings_hs")
-    t.eq(settings_hs.caps_compose_state({ compose = {} }), false)
-    t.eq(settings_hs.caps_compose_state({ compose = {}, caps_compose = false }), false)
-    t.eq(settings_hs.caps_compose_state({ compose = {}, caps_compose = true }), true)
-    t.eq(settings_hs.caps_compose_state({ caps_compose = true }), nil)
-end)
-
-t.test("Keyboard's Caps Lock switch is kept, and changes the key mapping at once", function()
-    local settings_hs = require("tide.settings_hs")
-    local capslock = require("tide.capslock")
-    local stored, ran = {}, {}
-    local tide = {
-        adapter = {
-            run = function(path, args, done)
-                ran[#ran + 1] = path .. " " .. table.concat(args, " ")
-                done(0, "", "(null)")
-                return true
-            end,
-            log = function() end,
-        },
-    }
-    local store = {
-        set = function(k, v)
-            stored[k] = v
-        end,
-    }
-    t.eq(settings_hs.set_caps_compose(tide, true, store), true)
-    t.eq(stored[capslock.SETTINGS_KEY], true)
-    t.eq(tide.caps_compose, true)
-    t.eq(ran[#ran], "/usr/bin/hidutil property --set " .. capslock.json({ { src = capslock.CAPS_LOCK, dst = capslock.F18 } }))
-    ran = {}
-    settings_hs.set_caps_compose(tide, false, store)
-    t.eq(stored[capslock.SETTINGS_KEY], false)
-    t.eq(tide.caps_compose, false)
-    t.eq(ran, { "/usr/bin/hidutil property --get UserKeyMapping" }, "no F18 there, nothing set")
-end)
-
 t.test("the Bar page's icons are kept whole and drawn at once", function()
     local settings_hs = require("tide.settings_hs")
     local bar = require("tide.bar")

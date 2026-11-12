@@ -1,6 +1,6 @@
 -- Caps Lock sending F18, which tide takes as Compose (SPEC.md §10), set by
--- tide itself when Keyboard's "Caps Lock is Compose" is on, and taken out
--- again when it's turned off. Off unless turned on: it changes a key
+-- tide itself when macos.json's keyboard.capsLockCompose is on, and taken
+-- out again when it's turned off. Off unless turned on: it changes a key
 -- outside window management. macOS keeps one key mapping for
 -- every keyboard (hidutil's UserKeyMapping), so tide adds Caps Lock's to
 -- what's there, keeping, say, setup-macos's modifier rotation, and sets it
@@ -12,8 +12,8 @@
 local M = {}
 
 M.HIDUTIL = "/usr/bin/hidutil"
--- Keyboard's switch, in hs.settings: true turns it on.
-M.SETTINGS_KEY = "tide.caps_lock_compose"
+-- The setting, in macos.json and macos.local.json (macprefs.lua).
+M.SETTING = "keyboard.capsLockCompose"
 -- HID usage IDs: page 7 (keyboard), Caps Lock 0x39 and F18 0x6D.
 M.CAPS_LOCK = 0x700000039
 M.F18 = 0x70000006D
@@ -132,6 +132,19 @@ end
 -- Takes Caps Lock sending F18 out of the mapping, leaving the rest.
 function M.remove(run, log, done)
     update(run, log, M.without_compose, done)
+end
+
+-- The mapping brought to the setting, `on`: added each time it's on, as tide
+-- starts, after a wake and as the files change, since the mapping doesn't
+-- last a restart; taken out once when it's turned off. `state` remembers
+-- whether it was on, so a Caps Lock that was never tide's is left alone.
+function M.follow(state, on, run, log)
+    if on then
+        M.apply(run, log)
+    elseif state.on then
+        M.remove(run, log)
+    end
+    state.on = on == true
 end
 
 return M
