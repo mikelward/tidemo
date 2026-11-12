@@ -280,6 +280,14 @@ t.test("a Bar choice is kept and places the bars and tiles again at once", funct
     t.eq(logged, { "settings: the bar can't go along left" })
 end)
 
+t.test("Keyboard's Caps Lock switch reaches the page off as well as on, and not without Compose", function()
+    local settings_hs = require("tide.settings_hs")
+    t.eq(settings_hs.caps_compose_state({ compose = {} }), false)
+    t.eq(settings_hs.caps_compose_state({ compose = {}, caps_compose = false }), false)
+    t.eq(settings_hs.caps_compose_state({ compose = {}, caps_compose = true }), true)
+    t.eq(settings_hs.caps_compose_state({ caps_compose = true }), nil)
+end)
+
 t.test("Keyboard's Caps Lock switch is kept, and changes the key mapping at once", function()
     local settings_hs = require("tide.settings_hs")
     local capslock = require("tide.capslock")
