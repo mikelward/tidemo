@@ -129,8 +129,9 @@ git clone https://github.com/mikelward/tidemo.git ~/tidemo
 ~/tidemo/install/tide-setup
 ```
 
-It installs [Hammerspoon](https://www.hammerspoon.org) and the bar's
-helpers, `blueutil` and `m1ddc` (or `ddcctl` on Intel), with
+It installs [Hammerspoon](https://www.hammerspoon.org),
+[LinearMouse](https://linearmouse.app), which tide's Mouse settings drive,
+and the bar's helpers, `blueutil` and `m1ddc` (or `ddcctl` on Intel), with
 [Homebrew](https://brew.sh); runs `make install`, which copies tide into
 `~/.hammerspoon/tide`; writes the `init.lua` below if there isn't one;
 frees the keys tide needs (SPEC.md §7.3); and stops the menu bar hiding,
