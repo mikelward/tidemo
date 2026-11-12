@@ -1501,13 +1501,18 @@ together (§6). tide turns it off (§6.6), and has its own.
     as Option, Alt as Control, and the right side the same. tide adds the
     rotation to `hidutil`'s `UserKeyMapping` (`capslock.lua`), as it
     starts, after a wake or a keyboard plugged in, and as the files
-    change, and takes it out for Mac.
+    change, and takes it out for Mac: only the entries it added, which it
+    keeps in `hs.settings` across reloads, so the same rotation set by
+    something else stays. One change runs at a time, so a later setting
+    can't be written over by an earlier one.
   - **A Mac keyboard's keys sit in a different order** (fn, control,
     option, command), so tide's Karabiner rule `tide-mac-keyboards.json`,
     in Karabiner's folder only for PC, swaps option and command on the
     built-in keyboard and Apple's (vendors 1452 and 76) first. Karabiner
     sees physical keys, before the rotation, so every Karabiner rule then
-    sees Ctrl, Win and Alt as a PC keyboard sends them. Without Karabiner
+    sees Ctrl, Win and Alt as a PC keyboard sends them. Karabiner uses one
+    rule per key, so the rule gives option the Win rule's lone tap too.
+    Without Karabiner
     a MacBook's keys stay in its own order *(the device match is
     unverified on a Mac)*.
   - **The Super key follows it,** once it's set: Win for PC, left Option

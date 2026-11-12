@@ -34,6 +34,16 @@
                                 }
                             ]
                         }
+                    ],
+                    "to_if_alone": [
+                        {
+                            "key_code": "f20",
+                            "modifiers": [
+                                "left_option",
+                                "left_command",
+                                "left_control"
+                            ]
+                        }
                     ]
                 },
                 {

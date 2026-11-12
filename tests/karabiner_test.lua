@@ -432,6 +432,9 @@ end)
 
 t.test("the Mac keyboard rule swaps option and command on Apple's keyboards alone", function()
     local r = json.decode(read_file("hammerspoon/tide/karabiner/" .. karabiner.MAC_KEYBOARDS_FILE)).rules[1]
+    -- Karabiner's copy is found by this, so it never changes: a renamed rule
+    -- would leave the old one on.
+    t.eq(r.description, "Mac keyboards: option and command swap, so control, option and command act as a PC keyboard's Ctrl, Win and Alt (tide's PC keyboard type)")
     local pairs_ = {}
     for _, m in ipairs(r.manipulators) do
         pairs_[m.from.key_code] = m.to[1].key_code
@@ -439,6 +442,22 @@ t.test("the Mac keyboard rule swaps option and command on Apple's keyboards alon
         t.eq(m.conditions[1].identifiers, { { is_built_in_keyboard = true }, { vendor_id = 1452 }, { vendor_id = 76 } })
     end
     t.eq(pairs_, { left_option = "left_command", left_command = "left_option", right_option = "right_command", right_command = "right_option" })
+    -- Karabiner uses one rule per key, so the Win rule's lone tap never sees
+    -- an option this rule took: it carries the same tap.
+    local win = json.decode(read_file("hammerspoon/tide/karabiner/tide.json")).rules[1]
+    local tap
+    for _, m in ipairs(win.manipulators) do
+        if m.from.key_code == "left_command" then
+            tap = m.to_if_alone
+        end
+    end
+    for _, m in ipairs(r.manipulators) do
+        if m.from.key_code == "left_option" then
+            t.eq(m.to_if_alone, tap)
+        else
+            t.eq(m.to_if_alone, nil)
+        end
+    end
 end)
 
 t.test("a linked rule is replaced, not written through", function()

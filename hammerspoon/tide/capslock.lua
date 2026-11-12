@@ -24,6 +24,8 @@ M.F18 = 0x70000006D
 -- Option (E2); a Mac keyboard's control, option and command are swapped
 -- into those first, by tide's Karabiner rule (karabiner.lua).
 M.TYPE = "keyboard.type"
+-- The entries tide added, in hs.settings, so a reload takes out only those.
+M.OWNED_KEY = "tide.keymap_owned"
 M.ROTATION = {
     { src = 0x7000000E0, dst = 0x7000000E3 },
     { src = 0x7000000E3, dst = 0x7000000E2 },
@@ -149,62 +151,101 @@ function M.remove(run, log, done)
     update(run, log, M.without_compose, done)
 end
 
+-- An entry as a key for the set of the ones tide added.
+local function key(m)
+    return string.format("%X:%X", m.src, m.dst)
+end
+M.key = key
+
 -- `list` with what tide manages brought to `want` ({ caps, pc }): each
 -- wanted entry added where its key isn't mapped yet, and each unwanted one
--- that `had` says was tide's taken out, so a mapping that was never tide's
--- is left alone. nil when nothing changes.
-function M.desired(list, want, had)
-    local groups = {
-        { on = want.caps, was = had.caps, entries = { { src = M.CAPS_LOCK, dst = M.F18 } } },
-        { on = want.pc, was = had.pc, entries = M.ROTATION },
-    }
-    local out, changed = {}, false
-    for _, m in ipairs(list) do
-        local drop = false
-        for _, g in ipairs(groups) do
-            if not g.on and g.was then
-                for _, e in ipairs(g.entries) do
-                    if m.src == e.src and m.dst == e.dst then
-                        drop = true
-                    end
-                end
-            end
+-- that tide added (`owned`, a set of M.key) taken out, so a mapping that
+-- was never tide's is left alone, the same one included. Returns the new
+-- list, the entries added and the ones taken out, or nil when nothing
+-- changes.
+function M.desired(list, want, owned)
+    local wanted = {}
+    if want.caps then
+        wanted[#wanted + 1] = { src = M.CAPS_LOCK, dst = M.F18 }
+    end
+    if want.pc then
+        for _, e in ipairs(M.ROTATION) do
+            wanted[#wanted + 1] = e
         end
-        if drop then
-            changed = true
+    end
+    local is_wanted = {}
+    for _, e in ipairs(wanted) do
+        is_wanted[key(e)] = true
+    end
+    local out, added, dropped = {}, {}, {}
+    for _, m in ipairs(list) do
+        if owned[key(m)] and not is_wanted[key(m)] then
+            dropped[#dropped + 1] = m
         else
             out[#out + 1] = m
         end
     end
-    for _, g in ipairs(groups) do
-        if g.on then
-            for _, e in ipairs(g.entries) do
-                local mapped = false
-                for _, m in ipairs(out) do
-                    if m.src == e.src then
-                        mapped = true
-                    end
-                end
-                if not mapped then
-                    out[#out + 1] = { src = e.src, dst = e.dst }
-                    changed = true
-                end
+    for _, e in ipairs(wanted) do
+        local mapped = false
+        for _, m in ipairs(out) do
+            if m.src == e.src then
+                mapped = true
             end
         end
+        if not mapped then
+            out[#out + 1] = { src = e.src, dst = e.dst }
+            added[#added + 1] = e
+        end
     end
-    return changed and out or nil
+    if #added == 0 and #dropped == 0 then
+        return nil
+    end
+    return out, added, dropped
 end
 
 -- The mapping brought to the settings, `want` ({ caps, pc }): what's on
 -- added each time, as tide starts, after a wake and as the files change,
--- since the mapping doesn't last a restart; what's turned off taken out
--- once. `state` remembers what was on.
+-- since the mapping doesn't last a restart; what's turned off taken out,
+-- where tide added it. `state` keeps `owned`, the entries tide added, given
+-- to `state.save` after each change so a reload keeps them; and one change
+-- runs at a time, a later `want` waiting for it, so an earlier one can't
+-- write over it.
 function M.follow(state, want, run, log)
-    local had = { caps = state.caps, pc = state.pc }
-    update(run, log, function(list)
-        return M.desired(list, want, had)
-    end)
-    state.caps, state.pc = want.caps == true, want.pc == true
+    state.owned = state.owned or {}
+    state.want = want
+    if state.busy then
+        state.again = true
+        return
+    end
+    state.busy = true
+    local function go()
+        local w = state.want
+        local added, dropped
+        update(run, log, function(list)
+            local out, a, d = M.desired(list, w, state.owned)
+            added, dropped = a, d
+            return out
+        end, function(changed)
+            if changed then
+                for _, e in ipairs(added) do
+                    state.owned[key(e)] = true
+                end
+                for _, e in ipairs(dropped) do
+                    state.owned[key(e)] = nil
+                end
+                if state.save then
+                    state.save(state.owned)
+                end
+            end
+            if state.again then
+                state.again = false
+                go()
+            else
+                state.busy = false
+            end
+        end)
+    end
+    go()
 end
 
 return M
