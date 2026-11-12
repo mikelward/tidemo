@@ -18,6 +18,7 @@ M.WHEN = {
     SystemUIServer = "now",
     apps = "as apps reopen",
     login = "at next login",
+    tide = "now",
 }
 
 local G = "NSGlobalDomain"
@@ -172,6 +173,7 @@ M.GROUPS = {
     { id = "missionControl", label = "Dock and Mission Control" },
     { id = "windows", label = "Windows" },
     { id = "dialogs", label = "Dialogs" },
+    { id = "keyboard", label = "Keyboard" },
     { id = "typing", label = "Typing" },
     { id = "text", label = "Text" },
 }
@@ -179,6 +181,9 @@ M.GROUPS = {
 -- Every setting, in the page's order: its `group` and `key` in the files
 -- (`name` is both), what the page calls it, its `kind` ("bool", "choice" or
 -- "folder"), macOS's own value, and `effect`, when a change shows (M.WHEN).
+-- One that's `own` has no `defaults` keys: tide applies it itself, with
+-- the values macprefs_hs hands it (`own`), as it starts, after a wake and
+-- as the files change.
 M.SETTINGS = {
     setting("finder", "showHiddenFiles", "Show hidden files", "bool", false, "Finder",
         one(key("com.apple.finder", "AppleShowAllFiles", "bool"))),
@@ -219,6 +224,8 @@ M.SETTINGS = {
         one(key(G, "NSAutomaticDashSubstitutionEnabled", "bool"))),
     setting("typing", "doubleSpacePeriod", "Add a period with a double space", "bool", true, "apps",
         one(key(G, "NSAutomaticPeriodSubstitutionEnabled", "bool"))),
+    -- Caps Lock sending F18, tide's Compose (capslock.lua).
+    setting("keyboard", "capsLockCompose", "Caps Lock is Compose", "bool", false, "tide", { keys = {}, own = true }),
     setting("text", "smoothing", "Font smoothing", "choice", "medium", "apps", smoothing(),
         { choices = { "off", "light", "medium", "strong" } }),
 }
@@ -378,7 +385,7 @@ function M.plan(values, applied, home)
     local steps = {}
     for _, s in ipairs(M.SETTINGS) do
         local want, had = values[s.name], applied[s.name]
-        if want ~= had then
+        if want ~= had and not s.own then
             local per = want ~= nil and s.to(want) or {}
             local commands = {}
             for i, k in ipairs(s.keys) do
@@ -440,13 +447,15 @@ end
 -- The macOS page: each group's rows, each { name, label, kind, value,
 -- set, when, choices }. `value` is the files' (`values`), else what macOS
 -- has (`live`), else macOS's own; `set` says the files set it, so it can
--- be given back to macOS.
-function M.page(values, live, errors)
+-- be given back to macOS. A setting named in `hide` isn't shown, and a
+-- group left empty isn't either.
+function M.page(values, live, errors, hide)
+    hide = hide or {}
     local groups = {}
     for _, g in ipairs(M.GROUPS) do
         local rows = {}
         for _, s in ipairs(M.SETTINGS) do
-            if s.group == g.id then
+            if s.group == g.id and not hide[s.name] then
                 local v = values[s.name]
                 local set = v ~= nil
                 if not set then
@@ -466,7 +475,9 @@ function M.page(values, live, errors)
                 }
             end
         end
-        groups[#groups + 1] = { label = g.label, rows = rows }
+        if #rows > 0 then
+            groups[#groups + 1] = { label = g.label, rows = rows }
+        end
     end
     return { groups = groups, error = table.concat(errors or {}, "; ") }
 end

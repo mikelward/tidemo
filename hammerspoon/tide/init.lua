@@ -751,7 +751,24 @@ function M.start(config)
                 self.settings.refresh()
             end
         end,
+        -- The settings tide applies itself: Caps Lock as Compose, once
+        -- Compose is made, below.
+        own = function(values)
+            self.caps_compose = values[capslock.SETTING] == true
+            if self.compose then
+                capslock.follow(self.caps_state, self.caps_compose, self.adapter.run, self.adapter.log)
+            end
+        end,
+        -- Without Compose (start's compose = false), Caps Lock as Compose
+        -- would do nothing, so the page leaves it out.
+        hidden = function()
+            if self.compose then
+                return {}
+            end
+            return { [capslock.SETTING] = true }
+        end,
     })
+    self.caps_state = {}
     self.macprefs.load()
     -- Light or dark on tide's schedule, once a mode's set in its files.
     self.theme = theme_hs.new(self)
@@ -932,16 +949,13 @@ function M.start(config)
             self.swipe:touches(list, dragging)
         end)
     end
-    -- Compose on F18, as on Linux (SPEC.md §10). Keyboard's "Caps Lock is
-    -- Compose", off unless turned on, makes Caps Lock send F18, added to
-    -- the key mapping that's there (capslock.lua), and again after a wake
-    -- or a keyboard plugged in, below.
-    self.caps_compose = hs.settings.get(capslock.SETTINGS_KEY) == true
+    -- Compose on F18, as on Linux (SPEC.md §10). macos.json's "Caps Lock
+    -- is Compose", off unless turned on, makes Caps Lock send F18, added
+    -- to the key mapping that's there (capslock.lua), as the files change
+    -- (above), and again after a wake or a keyboard plugged in, below.
     if config.compose ~= false then
         self.compose = compose_hs.new(hs, self.adapter.log)
-        if self.caps_compose then
-            capslock.apply(self.adapter.run, self.adapter.log)
-        end
+        capslock.follow(self.caps_state, self.caps_compose, self.adapter.run, self.adapter.log)
     end
     -- The current workspace's name, for scripts, written whenever it
     -- changes (SPEC.md §6.3). A failure is said once, until a write works.
@@ -1144,8 +1158,8 @@ function M.start(config)
         check_karabiner_rules(self)
         choose_super(self, false)
         check_linearmouse(self)
-        if self.compose and self.caps_compose then
-            capslock.apply(self.adapter.run, self.adapter.log)
+        if self.compose then
+            capslock.follow(self.caps_state, self.caps_compose, self.adapter.run, self.adapter.log)
         end
     end))
     return self

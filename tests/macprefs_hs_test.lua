@@ -10,7 +10,7 @@ local macprefs_hs = require("tide.macprefs_hs")
 -- A world: `files` by path, `ran` each command as one string, `fail` the
 -- defaults write commands that fail, `live` what defaults read answers.
 local function world(files)
-    local w = { files = files or {}, ran = {}, notes = {}, logs = {}, saved = {}, fail = {}, live = {}, changed = 0 }
+    local w = { files = files or {}, ran = {}, notes = {}, logs = {}, saved = {}, fail = {}, live = {}, changed = 0, own = {} }
     w.prefs = macprefs_hs.new({
         dir = "/c",
         home = "/Users/someone",
@@ -58,6 +58,12 @@ local function world(files)
         changed = function()
             w.changed = w.changed + 1
         end,
+        own = function(values)
+            w.own[#w.own + 1] = values["keyboard.capsLockCompose"] == true
+        end,
+        hidden = function()
+            return w.hidden
+        end,
     })
     return w
 end
@@ -72,6 +78,20 @@ t.test("a setting in the files is written, and Finder restarted to show it", fun
     })
     t.eq(w.saved[macprefs_hs.APPLIED_KEY], { ["finder.showHiddenFiles"] = true, ["finder.showPathBar"] = true })
     t.eq(w.notes, {})
+end)
+
+t.test("a setting tide applies itself is handed over each time the files are read, and runs no defaults", function()
+    local w = world({ ["/c/macos.json"] = '{"keyboard":{"capsLockCompose":true}}' })
+    w.prefs.load()
+    t.eq(w.ran, {})
+    t.eq(w.own, { true })
+    w.files["/c/macos.local.json"] = '{"keyboard":{"capsLockCompose":false}}'
+    w.prefs.load()
+    t.eq(w.own, { true, false })
+    -- Read again unchanged, it's handed over again, so a mapping lost to a
+    -- restart comes back.
+    w.prefs.load()
+    t.eq(w.own, { true, false, false })
 end)
 
 t.test("loading again applies nothing, so a change in System Settings stays", function()
@@ -122,6 +142,22 @@ t.test("a file that's wrong is said once, and the last good settings stay", func
     t.eq(w.ran, {})
     t.eq(w.notes, { "tide's macOS settings stay as they were: macos.local.json doesn't parse; macos.json: finder.showPathBar takes true, false or \"macos\"" })
     t.eq(w.prefs.state().groups[1].rows[2].value, true, "the page shows the good one")
+end)
+
+t.test("the page leaves out what tide says it can't apply now", function()
+    local w = world({})
+    local function names()
+        local out = {}
+        for _, g in ipairs(w.prefs.state().groups) do
+            for _, r in ipairs(g.rows) do
+                out[r.name] = true
+            end
+        end
+        return out
+    end
+    t.eq(names()["keyboard.capsLockCompose"], true)
+    w.hidden = { ["keyboard.capsLockCompose"] = true }
+    t.eq(names()["keyboard.capsLockCompose"], nil)
 end)
 
 t.test("the page shows what macOS has for a setting the files leave out", function()

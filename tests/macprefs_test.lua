@@ -47,6 +47,29 @@ t.test("a change writes each of its keys; what didn't change runs nothing", func
     t.eq(#macprefs.plan({ ["text.smoothing"] = "light" }, { ["text.smoothing"] = "light" }, "/h"), 0)
 end)
 
+t.test("Caps Lock is Compose is tide's to apply: no defaults step, shown under Keyboard, off by default", function()
+    t.eq(#macprefs.plan({ ["keyboard.capsLockCompose"] = true }, {}, "/h"), 0)
+    local page = macprefs.page({}, {}, {})
+    local row
+    for _, g in ipairs(page.groups) do
+        for _, r in ipairs(g.rows) do
+            if r.name == "keyboard.capsLockCompose" then
+                row = r
+                t.eq(g.label, "Keyboard")
+            end
+        end
+    end
+    t.eq({ row.value, row.set, row.when }, { false, false, "now" })
+    -- Without tide's Compose it does nothing, so the page leaves it out,
+    -- and the Keyboard group with it.
+    for _, g in ipairs(macprefs.page({}, {}, {}, { ["keyboard.capsLockCompose"] = true }).groups) do
+        t.eq(g.label ~= "Keyboard", true, "no Keyboard group")
+    end
+    local values, errors = macprefs.merge({ keyboard = { capsLockCompose = true } }, nil)
+    t.eq(errors, {})
+    t.eq(values["keyboard.capsLockCompose"], true)
+end)
+
 t.test("a setting taken out of the files is given back to macOS", function()
     local steps = macprefs.plan({}, { ["finder.showPathBar"] = true }, "/h")
     t.eq(args_of(steps), { "delete com.apple.finder ShowPathbar" })

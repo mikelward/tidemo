@@ -451,11 +451,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
   for a new workspace, so launching on the one you're on wouldn't be what
   you asked for.
 
-- **Caps Lock as Compose is kept in `hs.settings`** (`tide.caps_lock_compose`),
-  as the Overview switch is, not in a shared `~/.config/tide` file: tide for
-  Linux's `input.json` rejects keys it doesn't know, and `macos.json` holds
-  only `defaults` keys. `setup-macos` turns it on with `defaults write
-  org.hammerspoon.Hammerspoon`, where it isn't set yet.
+- **Caps Lock as Compose is in `macos.json`** (`keyboard.capsLockCompose`),
+  on the macOS page, as a setting tide applies itself, so editing the file
+  is enough. Not tide for Linux's `input.json`, which rejects keys it
+  doesn't know. A machine that turned it on in `hs.settings` before this
+  gets it back from `setup-macos`, which writes it to `macos.json`.
 
 - **The bar at the bottom keeps the Apple logo and its menu** (2026-11-11):
   About This Mac, System Settings and the session's actions stay a corner
