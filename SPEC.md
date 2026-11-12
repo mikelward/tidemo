@@ -1482,7 +1482,9 @@ together (§6). tide turns it off (§6.6), and has its own.
   - **How it tells:** at start, and whenever Karabiner starts or stops,
     tide checks that Karabiner is running and has tide's rules loaded
     *(how to check unverified: its background process, and its config
-    file)*.
+    file)*. A rule turned off in Karabiner's window, which keeps its copy
+    marked `"enabled": false`, isn't loaded: the keys go to Option, as the
+    Keyboard page's Super key row says (§15).
   - **The keys:** tide registers the same map on plain Option instead. Every
     key still works, at the cost of Option's text gestures above.
   - **The Super tap:** an event tap, if Input Monitoring is granted, or
