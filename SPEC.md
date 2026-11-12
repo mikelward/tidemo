@@ -1051,7 +1051,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   Cmd+Return (§9). From any other, they launch where you are.
   - The process then starts with the right `TIDE_WORKSPACE` (§6.3), and its
     first window goes straight to the named workspace.
-  - Esc cancels the launch, so nothing opens.
+  - Esc launches on the workspace you launched from. For Cmd+Return, which
+    asks for a new workspace, Esc cancels the launch, so nothing opens.
   - Enter on the workspace you launched from launches there, and its
     window, matched to the launch, doesn't ask again.
   - An app key for one of "in"'s apps doesn't ask.
@@ -1687,7 +1688,7 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
   workspace with it (Activate, §6.1).
   - From a workspace that asks, "in" by default, a key that would launch
     asks for a workspace name first, unless the app is one of "in"'s
-    (§6.2). Esc cancels the launch.
+    (§6.2). Esc launches where you are.
   - **Super+T opens a new kitty window every time,** on the workspace
     you're on, as tide for Linux's terminal key does: Cmd+N to a running kitty, or a
     launch.
@@ -2478,7 +2479,8 @@ tab, the search field naming the tab you're in.
   tide. tide's settings are an app on Launch, Tide Settings.
 - **Launching from a workspace that asks, "in" by default, asks for a
   workspace name first** (§6.2), so the
-  app starts with the right `TIDE_WORKSPACE` (§6.3). Esc cancels the launch.
+  app starts with the right `TIDE_WORKSPACE` (§6.3). Esc launches where you
+  are.
 - **Cmd+Return** (physical Ctrl+Enter) runs the app on a new workspace, as
   Ctrl+Enter does on tide for Linux: it asks for a name first, from any workspace,
   since there's no empty one to use (§6.1).

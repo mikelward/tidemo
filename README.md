@@ -239,7 +239,8 @@ start.
 Any other window opening on a workspace whose `askForName` is on, "in" by
 default, asks for a workspace name, and so does a launch from there: Enter
 makes or uses the workspace and moves there, the one it's on included, and
-Esc closes the window or cancels the launch. Home's apps never ask. Any
+Esc closes the window, or launches where you are (Cmd+Return's Esc cancels
+it). Home's apps never ask. Any
 window can be sent to "in". A pinned app's window stays open on its
 workspace: Super+Backspace and the prompt's Esc leave it open, and while it
 has focus Cmd+W, Cmd+Shift+W and Cmd+Q never reach it, with a notification
