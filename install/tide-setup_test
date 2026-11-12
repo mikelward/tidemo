@@ -125,6 +125,7 @@ add_command() {
 stage_installed() {
     add_app Hammerspoon
     add_app Karabiner-Elements
+    add_app LinearMouse
     add_command blueutil
     add_command m1ddc
 }
@@ -293,7 +294,8 @@ test_missing_brew_warns() {
     assert_output_contains "Homebrew not found, so Hammerspoon can't be installed" &&
     assert_output_contains "Homebrew not found, so blueutil can't be installed" &&
     assert_output_contains "Homebrew not found, so Karabiner-Elements can't be installed" &&
-    assert_output_contains "tide installed with 4 problem(s)"
+    assert_output_contains "Homebrew not found, so LinearMouse can't be installed" &&
+    assert_output_contains "tide installed with 5 problem(s)"
 }
 
 test_failed_hammerspoon_install_is_counted() {
@@ -302,6 +304,28 @@ test_failed_hammerspoon_install_is_counted() {
     assert_status 0 &&
     assert_output_contains "could not install Hammerspoon; nothing will tile" &&
     assert_output_contains "Error: no bottle for hammerspoon" &&
+    assert_output_contains "tide installed with 1 problem(s)"
+}
+
+# LinearMouse, which tide's Mouse settings drive, comes with tide.
+test_installs_linearmouse() {
+    run_setup
+    assert_status 0 &&
+    assert_called "brew install --cask linearmouse [HOMEBREW_NO_ASK=1]"
+}
+
+test_does_not_reinstall_linearmouse() {
+    add_app LinearMouse
+    run_setup
+    assert_status 0 &&
+    assert_not_called "brew install --cask linearmouse"
+}
+
+test_failed_linearmouse_install_is_counted() {
+    touch "$TEST_TMPDIR/brew_fails.linearmouse"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not install LinearMouse; tide's Mouse settings won't reach your mouse" &&
     assert_output_contains "tide installed with 1 problem(s)"
 }
 
@@ -760,6 +784,9 @@ run_test "SETUP_COMMAND names what to rerun" test_setup_command_names_what_to_re
 run_test "--no-install installs nothing with brew" test_no_install_skips_hammerspoon
 run_test "no Homebrew is warned about" test_missing_brew_warns
 run_test "a failed Hammerspoon install is counted" test_failed_hammerspoon_install_is_counted
+run_test "LinearMouse is installed" test_installs_linearmouse
+run_test "LinearMouse isn't reinstalled" test_does_not_reinstall_linearmouse
+run_test "a failed LinearMouse install is counted" test_failed_linearmouse_install_is_counted
 run_test "blueutil is installed" test_installs_blueutil
 run_test "blueutil isn't reinstalled" test_does_not_reinstall_blueutil
 run_test "a failed blueutil install is counted" test_failed_blueutil_install_is_counted

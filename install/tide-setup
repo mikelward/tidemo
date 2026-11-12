@@ -4,6 +4,8 @@
 # yourself, not root: nothing here needs an administrator. It:
 #
 # - installs Hammerspoon, which tide runs in, with Homebrew;
+# - installs LinearMouse, which tide's Mouse settings drive, so a mouse
+#   wheel notch scrolls the same distance however fast it turns;
 # - installs blueutil, so the bar can show whether Bluetooth is on, and
 #   m1ddc (Apple silicon) or ddcctl (Intel), so it can show and set a
 #   monitor's own speaker volume over DDC (SPEC.md §8);
@@ -87,6 +89,7 @@ WARNINGS=0
 # What a machine without Hammerspoon or tide loses, for the warnings below.
 TIDE_MISSING_EFFECT="nothing will tile and tide's workspace keys will do nothing"
 BLUEUTIL_MISSING_EFFECT="tide's bar won't show whether Bluetooth is on"
+LINEARMOUSE_MISSING_EFFECT="tide's Mouse settings won't reach your mouse"
 DDC_MISSING_EFFECT="tide's bar won't show a monitor's speaker volume"
 
 # --- Reporting ---
@@ -417,6 +420,28 @@ install_hammerspoon() {
     info "Installing Hammerspoon"
     brew_logged install --cask hammerspoon \
         || warn "could not install Hammerspoon; $TIDE_MISSING_EFFECT until it is"
+}
+
+# LinearMouse, which tide's Mouse settings drive (linearmouse.lua). Its cask,
+# like Hammerspoon's, needs no administrator's password.
+install_linearmouse() {
+    if app_path LinearMouse >/dev/null; then
+        return 0
+    fi
+    if test "$INSTALL" = no; then
+        warn "LinearMouse is not installed and --no-install was given; $LINEARMOUSE_MISSING_EFFECT until it is"
+        return 0
+    fi
+    if ! is_command brew; then
+        warn "Homebrew not found, so LinearMouse can't be installed; $LINEARMOUSE_MISSING_EFFECT until it is"
+        return 0
+    fi
+    if stale_cask_record linearmouse LinearMouse "until then, $LINEARMOUSE_MISSING_EFFECT"; then
+        return 0
+    fi
+    info "Installing LinearMouse"
+    brew_logged install --cask linearmouse \
+        || warn "could not install LinearMouse; $LINEARMOUSE_MISSING_EFFECT until it is"
 }
 
 # The DDC tool for this Mac: m1ddc on Apple silicon, ddcctl on Intel, whose
@@ -779,6 +804,7 @@ fi
 is_command defaults || error "defaults is required (tide-setup sets up macOS)"
 
 install_hammerspoon
+install_linearmouse
 install_brew_tool blueutil "$BLUEUTIL_MISSING_EFFECT"
 install_brew_tool "$(ddc_tool)" "$DDC_MISSING_EFFECT"
 install_tide
