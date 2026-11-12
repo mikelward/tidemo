@@ -586,8 +586,13 @@ function M.start(config)
             startup.home_at_login(ws_settings.inApps, hs.settings, self.adapter.login(), function(app)
                 return app.bundle ~= nil and self.adapter.bundle_running(app.bundle)
             end, function(app)
-                self.adapter.open_in_background(app.path)
-            end, self.adapter.log, self.adapter.find_app)
+                if app.run then
+                    -- As its app key runs it, landing on "in".
+                    self.wm.actions.app(self.wm, { run = app.run, home_app = true }, false)
+                else
+                    self.adapter.open_in_background(app.path)
+                end
+            end, self.adapter.log, startup.home_finder(self.adapter.find_app, self.adapter.helper_exists))
         else
             startup.home_at_login(start_home_apps, hs.settings, self.adapter.login(), self.adapter.app_running,
                 self.adapter.open_in_background, self.adapter.log)

@@ -293,4 +293,27 @@ t.test("from tide's files, each of home's apps is the Mac app it names, and tide
     })
 end)
 
+-- As on tide for Linux, an entry that's no Mac app runs its launcher in
+-- ~/scripts, as its app key does: google-chat opens Google Chat.
+t.test("one of home's apps with no Mac app runs its launcher of that name", function()
+    local find = startup.home_finder(function(name)
+        return name == "Mail" and { path = "/System/Applications/Mail.app", bundle = "b.mail" } or nil
+    end, function(name)
+        return name == "google-chat" or name == "gmail"
+    end)
+    local opened, logged = {}, {}
+    startup.start_home({ "google-chat", "Mail", "youtube-music", "https://chat.google.com" }, function(app)
+        return app.bundle ~= nil and false
+    end, function(app)
+        opened[#opened + 1] = app.run or app.path
+    end, function(text)
+        logged[#logged + 1] = text
+    end, find)
+    t.eq(opened, { "google-chat", "/System/Applications/Mail.app" })
+    t.eq(logged, {
+        "youtube-music is no app on this Mac, so not starting it",
+        "https://chat.google.com is no app on this Mac, so not starting it",
+    })
+end)
+
 t.done("startup_test")
