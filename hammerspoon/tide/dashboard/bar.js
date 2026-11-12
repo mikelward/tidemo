@@ -135,7 +135,7 @@ export function titleInsets(bar, title, leftEnd, rightStart) {
 
 // What a click at an element reaches, innermost first: a chip's window
 // icon, then the logo, a chip, the title, the clocks or a status item.
-const TARGET = "nav > button .app.win, #apple, #logo, nav > button, #title, #clocks, #icons > button.icon";
+const TARGET = "nav > button .app.win, #apple, #logo, nav > button, #title, #clocks, #icons > button.icon, #icons-lead > button.icon";
 
 // A trackpad sends many small scrolls; one step is this much of them.
 const STEP = 50;
@@ -395,8 +395,9 @@ const DRAW = {
   },
 };
 
-// The bar's order unless the Bar page chose another: every icon but the tray.
-export const ICON_ORDER = ["source", "awake", "camera", "mic", "bluetooth", "headphones", "volume", "network", "battery", "sysmon", "session"];
+// The bar's order unless the Bar page chose another: every icon but the
+// tray, the clocks first.
+export const ICON_ORDER = ["clock", "source", "awake", "camera", "mic", "bluetooth", "headphones", "volume", "network", "battery", "sysmon", "session"];
 
 // The order tide sent: the bar's own when it sent none, and none when it
 // sent an empty list, which hs.json.encode writes as {}.
@@ -406,12 +407,18 @@ function iconOrder(sent) {
 }
 
 // The icons in `order`, the ids tide sends (bar.shown_icons); one it
-// doesn't know is skipped.
-function renderIcons(box, icons, order = ICON_ORDER) {
+// doesn't know is skipped. "clock" is where the clocks go: icons before it
+// are drawn in `lead`, ahead of the clocks, the rest in `box`. Without it
+// the clocks are hidden.
+function renderIcons(box, icons, order = ICON_ORDER, lead = null, clocks = null) {
   box.replaceChildren();
-  for (const id of order) {
-    if (Object.hasOwn(DRAW, id)) box.append(...DRAW[id](icons));
-  }
+  if (lead) lead.replaceChildren();
+  const at = order.indexOf("clock");
+  if (clocks) clocks.hidden = at < 0;
+  order.forEach((id, i) => {
+    if (!Object.hasOwn(DRAW, id)) return;
+    (lead && i < at ? lead : box).append(...DRAW[id](icons));
+  });
 }
 
 // Sets each item's reach (hitInsets) as --reach-* for its ::before, which
@@ -487,7 +494,7 @@ function fit() {
   // The Apple logo first, reaching the bar's left edge, so the corner opens
   // the Apple menu as on a Mac, then tide's logo, then the chips.
   const lefts = reach(bar, [document.getElementById("apple"), document.getElementById("logo"), ...document.getElementById("workspaces").children], { start: true });
-  const rights = reach(bar, [document.getElementById("clocks"), ...document.getElementById("icons").children], { end: true });
+  const rights = reach(bar, [...document.getElementById("icons-lead").children, document.getElementById("clocks"), ...document.getElementById("icons").children], { end: true });
   // An empty title has no target: there's no window there to maximize.
   const title = document.getElementById("title");
   const box = title.getBoundingClientRect();
@@ -510,7 +517,7 @@ function markHover() {
     hovered = target;
   }
   // The camera is no target, since a click there does nothing, but has a tip.
-  showTip(hovered ?? (pointerAt && document.elementFromPoint(pointerAt.x, pointerAt.y)?.closest("#icons > .icon")));
+  showTip(hovered ?? (pointerAt && document.elementFromPoint(pointerAt.x, pointerAt.y)?.closest("#icons > .icon, #icons-lead > .icon")));
 }
 
 // While the title, or an item with a tip, is hovered, tide shows the
@@ -547,7 +554,8 @@ window.tide = {
     notch = !!state.notch;
     renderWorkspaces(document.getElementById("workspaces"), state.workspaces, state.app_icons || {});
     document.getElementById("title-text").textContent = state.title;
-    renderIcons(document.getElementById("icons"), state.icons, iconOrder(state.iconOrder));
+    renderIcons(document.getElementById("icons"), state.icons, iconOrder(state.iconOrder),
+      document.getElementById("icons-lead"), document.getElementById("clocks"));
     const loaded = nextSettings(state, settings);
     settings = loaded.settings;
     if (loaded.errors.length > 0) send({ clockErrors: loaded.errors });

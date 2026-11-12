@@ -90,7 +90,7 @@ class Element {
 
 const ids = {};
 // The page's own elements, as bar.html has them.
-const TAGS = { bar: "header", left: "div", logo: "button", workspaces: "nav", title: "span", "title-text": "span", right: "div", clocks: "ol", icons: "div" };
+const TAGS = { bar: "header", left: "div", logo: "button", workspaces: "nav", title: "span", "title-text": "span", right: "div", "icons-lead": "div", clocks: "ol", icons: "div" };
 const byId = (id) => {
   const e = new Element(TAGS[id] ?? id);
   e.id = id;
@@ -319,6 +319,20 @@ sandbox.tide.update({
   assert.strictEqual(JSON.stringify(sent), JSON.stringify([{ uuid: "B", tray: true }]));
 }
 sent.length = 0;
+
+// The clocks move as an icon does: icons before them in the order go ahead
+// of them, and without "clock" they're hidden.
+sandbox.tide.update({
+  uuid: "B", workspaces: ws, title: "", iconOrder: ["battery", "clock", "session"],
+  icons: { battery: { percent: 50, text: "50%" } },
+});
+assert.deepStrictEqual(ids["icons-lead"].children.map((c) => c.className), ["icon battery"], "the battery left of the clocks");
+assert.deepStrictEqual(ids.icons.children.map((c) => c.className), ["icon session"], "the session icon right of them");
+assert.strictEqual(ids.clocks.hidden, false, "the clocks show");
+sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", iconOrder: ["battery"], icons: { battery: { percent: 50, text: "50%" } } });
+assert.strictEqual(ids.clocks.hidden, true, "turned off, the clocks hide");
+assert.strictEqual(ids["icons-lead"].children.length, 0);
+assert.deepStrictEqual(ids.icons.children.map((c) => c.className), ["icon battery"]);
 
 // Every icon off: tide's empty list comes through JSON as [] or {}, and
 // either draws none, not the bar's own order.

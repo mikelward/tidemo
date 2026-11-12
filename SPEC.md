@@ -1851,6 +1851,9 @@ stock keys:
     `bar.icon_list` makes a stored list whole: an id it doesn't know or
     names twice is dropped, and an icon added since goes in after the one
     it follows by default. Every icon but one shows unless turned off.
+    - **Clocks** is in the list too, first by default, so the clocks move
+      among the icons and turn off as one does. Icons before them are
+      drawn ahead of them; turned off, the clocks hide.
     - **Other apps' icons** is off unless turned on. macOS gives no way
       to draw other apps' status items (a VPN, Zoom) in tide's bar, so
       this icon, three dots, does Show Menu Bar: it hides the bars until
