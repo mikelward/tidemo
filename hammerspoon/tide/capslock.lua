@@ -17,6 +17,21 @@ M.SETTING = "keyboard.capsLockCompose"
 -- HID usage IDs: page 7 (keyboard), Caps Lock 0x39 and F18 0x6D.
 M.CAPS_LOCK = 0x700000039
 M.F18 = 0x70000006D
+-- The PC keyboard type (macos.json's keyboard.type "pc"): the three keys
+-- left of the space bar, Ctrl, Win and Alt, act as Command, Option and
+-- Control, so Ctrl+C copies as on Linux; the right side the same. A PC
+-- keyboard's Ctrl, Win and Alt are left Control (E0), Command (E3) and
+-- Option (E2); a Mac keyboard's control, option and command are swapped
+-- into those first, by tide's Karabiner rule (karabiner.lua).
+M.TYPE = "keyboard.type"
+M.ROTATION = {
+    { src = 0x7000000E0, dst = 0x7000000E3 },
+    { src = 0x7000000E3, dst = 0x7000000E2 },
+    { src = 0x7000000E2, dst = 0x7000000E0 },
+    { src = 0x7000000E4, dst = 0x7000000E7 },
+    { src = 0x7000000E7, dst = 0x7000000E6 },
+    { src = 0x7000000E6, dst = 0x7000000E4 },
+}
 
 -- hidutil's `property --get UserKeyMapping` output as a list of
 -- { src, dst }, or nil and why. It prints "(null)" for none, or an
@@ -134,17 +149,62 @@ function M.remove(run, log, done)
     update(run, log, M.without_compose, done)
 end
 
--- The mapping brought to the setting, `on`: added each time it's on, as tide
--- starts, after a wake and as the files change, since the mapping doesn't
--- last a restart; taken out once when it's turned off. `state` remembers
--- whether it was on, so a Caps Lock that was never tide's is left alone.
-function M.follow(state, on, run, log)
-    if on then
-        M.apply(run, log)
-    elseif state.on then
-        M.remove(run, log)
+-- `list` with what tide manages brought to `want` ({ caps, pc }): each
+-- wanted entry added where its key isn't mapped yet, and each unwanted one
+-- that `had` says was tide's taken out, so a mapping that was never tide's
+-- is left alone. nil when nothing changes.
+function M.desired(list, want, had)
+    local groups = {
+        { on = want.caps, was = had.caps, entries = { { src = M.CAPS_LOCK, dst = M.F18 } } },
+        { on = want.pc, was = had.pc, entries = M.ROTATION },
+    }
+    local out, changed = {}, false
+    for _, m in ipairs(list) do
+        local drop = false
+        for _, g in ipairs(groups) do
+            if not g.on and g.was then
+                for _, e in ipairs(g.entries) do
+                    if m.src == e.src and m.dst == e.dst then
+                        drop = true
+                    end
+                end
+            end
+        end
+        if drop then
+            changed = true
+        else
+            out[#out + 1] = m
+        end
     end
-    state.on = on == true
+    for _, g in ipairs(groups) do
+        if g.on then
+            for _, e in ipairs(g.entries) do
+                local mapped = false
+                for _, m in ipairs(out) do
+                    if m.src == e.src then
+                        mapped = true
+                    end
+                end
+                if not mapped then
+                    out[#out + 1] = { src = e.src, dst = e.dst }
+                    changed = true
+                end
+            end
+        end
+    end
+    return changed and out or nil
+end
+
+-- The mapping brought to the settings, `want` ({ caps, pc }): what's on
+-- added each time, as tide starts, after a wake and as the files change,
+-- since the mapping doesn't last a restart; what's turned off taken out
+-- once. `state` remembers what was on.
+function M.follow(state, want, run, log)
+    local had = { caps = state.caps, pc = state.pc }
+    update(run, log, function(list)
+        return M.desired(list, want, had)
+    end)
+    state.caps, state.pc = want.caps == true, want.pc == true
 end
 
 return M

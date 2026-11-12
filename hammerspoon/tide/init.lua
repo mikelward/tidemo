@@ -755,9 +755,8 @@ function M.start(config)
         -- Compose is made, below.
         own = function(values)
             self.caps_compose = values[capslock.SETTING] == true
-            if self.compose then
-                capslock.follow(self.caps_state, self.caps_compose, self.adapter.run, self.adapter.log)
-            end
+            self.keyboard_type = values[capslock.TYPE]
+            self.apply_keys()
         end,
         -- Without Compose (start's compose = false), Caps Lock as Compose
         -- would do nothing, so the page leaves it out.
@@ -769,6 +768,28 @@ function M.start(config)
         end,
     })
     self.caps_state = {}
+    -- tide's key mapping brought to the settings (capslock.lua): the PC
+    -- keyboard type's rotation, and Caps Lock as Compose once Compose is
+    -- made. A keyboard type set in the files also turns the Mac keyboard
+    -- rule on or off and picks the Super key, once Karabiner's rules are
+    -- read (below); left unset, both stay as they are.
+    function self.apply_keys()
+        local pc = self.keyboard_type == "pc"
+        capslock.follow(self.caps_state, { caps = self.compose ~= nil and self.caps_compose, pc = pc },
+            self.adapter.run, self.adapter.log)
+        if self.keyboard_type == nil or not self.karabiner_rules then
+            return
+        end
+        local ok, why = self.karabiner_rules.set_mac_keyboards(pc)
+        if not ok then
+            self.adapter.log("keyboard type: " .. tostring(why))
+        end
+        local super = self.karabiner_rules.super()
+        local want = pc and "win" or "option"
+        if super ~= "none" and super ~= want then
+            settings_hs.choose_super(self, want)
+        end
+    end
     self.macprefs.load()
     -- Light or dark on tide's schedule, once a mode's set in its files.
     self.theme = theme_hs.new(self)
@@ -955,7 +976,7 @@ function M.start(config)
     -- (above), and again after a wake or a keyboard plugged in, below.
     if config.compose ~= false then
         self.compose = compose_hs.new(hs, self.adapter.log)
-        capslock.follow(self.caps_state, self.caps_compose, self.adapter.run, self.adapter.log)
+        self.apply_keys()
     end
     -- The current workspace's name, for scripts, written whenever it
     -- changes (SPEC.md §6.3). A failure is said once, until a write works.
@@ -1064,6 +1085,8 @@ function M.start(config)
         self.adapter.log(why)
         self.adapter.notify(why)
     end
+    -- The keyboard type's Karabiner side, now that its rules are read.
+    self.apply_keys()
     -- tide's Mouse settings, applied to LinearMouse (SPEC.md §10).
     local sources, missing = {}, nil
     for _, name in ipairs(linearmouse.MODULES) do
@@ -1158,9 +1181,7 @@ function M.start(config)
         check_karabiner_rules(self)
         choose_super(self, false)
         check_linearmouse(self)
-        if self.compose then
-            capslock.follow(self.caps_state, self.caps_compose, self.adapter.run, self.adapter.log)
-        end
+        self.apply_keys()
     end))
     return self
 end

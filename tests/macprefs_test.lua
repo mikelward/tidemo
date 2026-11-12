@@ -60,10 +60,26 @@ t.test("Caps Lock is Compose is tide's to apply: no defaults step, shown under K
         end
     end
     t.eq({ row.value, row.set, row.when }, { false, false, "now" })
-    -- Without tide's Compose it does nothing, so the page leaves it out,
-    -- and the Keyboard group with it.
+    -- Without tide's Compose it does nothing, so the page leaves it out;
+    -- a group it empties goes too.
     for _, g in ipairs(macprefs.page({}, {}, {}, { ["keyboard.capsLockCompose"] = true }).groups) do
+        for _, r in ipairs(g.rows) do
+            t.eq(r.name ~= "keyboard.capsLockCompose", true)
+        end
+    end
+    for _, g in ipairs(macprefs.page({}, {}, {}, { ["keyboard.capsLockCompose"] = true, ["keyboard.type"] = true }).groups) do
         t.eq(g.label ~= "Keyboard", true, "no Keyboard group")
+    end
+    -- The keyboard type: Mac unless set, tide's to apply, Mac or PC only.
+    t.eq(#macprefs.plan({ ["keyboard.type"] = "pc" }, {}, "/h"), 0)
+    local _, bad = macprefs.merge({ keyboard = { type = "dvorak" } }, nil)
+    t.eq(#bad, 1)
+    for _, g in ipairs(macprefs.page({}, {}, {}).groups) do
+        for _, r in ipairs(g.rows) do
+            if r.name == "keyboard.type" then
+                t.eq({ g.label, r.value, r.set, r.choices }, { "Keyboard", "mac", false, { "mac", "pc" } })
+            end
+        end
     end
     local values, errors = macprefs.merge({ keyboard = { capsLockCompose = true } }, nil)
     t.eq(errors, {})

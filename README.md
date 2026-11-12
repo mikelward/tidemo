@@ -50,6 +50,8 @@ It brings tide for Linux's desktop to macOS:
 - Caps Lock as Compose, as on Linux, with Linux's own sequences, when
   turned on under Keyboard on Tide Settings' macOS page, or in
   `macos.json` (§10);
+- a PC keyboard type, off unless set, which puts Ctrl, Win and Alt left
+  of the space bar on every keyboard, the MacBook's own included (§7.1);
 - tide for Linux's bar along the top, or the bottom (Tide Settings' Bar
   page, or right-click the bar), where macOS's menu bar stays: tide's logo, opening the switcher, the
   workspaces, the window's title, the clocks
