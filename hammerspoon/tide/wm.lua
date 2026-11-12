@@ -415,6 +415,11 @@ function M.new(adapter, config)
     end
     -- id -> the place sync() paired a new window with.
     self.paired = {}
+    -- The place each of those took by title, which `release` gives back.
+    self.matched = {}
+    -- Which of a sync's new windows take launches, and their apps
+    -- (M:reserve_launches).
+    self.for_launch, self.reserved_apps = {}, {}
     -- The muted apps and sites (SPEC.md §14.2), and each browser window's
     -- front tab's host, as the switcher last saw it.
     self.muted = mute.empty()
@@ -1069,8 +1074,27 @@ function M:launched_on(w, l, kind)
     end
 end
 
+-- Whether new window `id` (with facts `f`) would take a launch: not a
+-- dialog going to its parent.
+function M:takes_launch(id, f)
+    return not (rules.decide(f, self.rules) == "float" and self:parent_ws(id, f))
+end
+
+-- Whether a launch of app `app` (a bundle ID) is waiting for its window.
+function M:launch_pending(app)
+    local now = self.a.now()
+    for _, l in ipairs(self.launches or {}) do
+        if app ~= nil and l.app == app and now - l.at <= M.GRANT then
+            return true
+        end
+    end
+    return false
+end
+
 -- The launch window `w` is from, if any: { ws, screen }. `take` uses it up.
-function M:launched_to(w, take)
+-- `how` picks which: nil the oldest that fits; "own" its app's own first,
+-- then one for any app; "any" only one for any app (a helper script's).
+function M:launched_to(w, take, how)
     local now = self.a.now()
     local list = self.launches or {}
     for i = #list, 1, -1 do
@@ -1078,12 +1102,23 @@ function M:launched_to(w, take)
             table.remove(list, i)
         end
     end
-    for i, l in ipairs(list) do
-        if l.app == nil or l.app == w.app then
-            if take then
-                table.remove(list, i)
+    local passes = how == "own" and { "own", "any" } or { how or "either" }
+    for _, pass in ipairs(passes) do
+        for i, l in ipairs(list) do
+            local fits
+            if pass == "own" then
+                fits = l.app ~= nil and l.app == w.app
+            elseif pass == "any" then
+                fits = l.app == nil
+            else
+                fits = l.app == nil or l.app == w.app
             end
-            return l
+            if fits then
+                if take then
+                    table.remove(list, i)
+                end
+                return l
+            end
         end
     end
 end
@@ -1110,10 +1145,31 @@ function M:add(id)
     if kind == "ignore" then
         return kind
     end
-    local saved = self.paired[id] or self:match(id, f, function(sid)
-        return self.a.state(sid) ~= nil
-    end)
-    self.paired[id] = nil
+    -- A launch of this app you named a workspace for wins over a place
+    -- its last run left by title: you said where its window goes
+    -- (SPEC.md §6.5). A window's own saved place, by id, still holds.
+    -- A sync chose which of its new windows take launches (M:pair); a
+    -- window found alone, by a focus report, takes one if it's waiting.
+    local saved = self.paired[id]
+    local reserved = self.for_launch[id]
+    self.paired[id], self.matched[id], self.for_launch[id] = nil, nil, nil
+    local named = reserved or (not self.syncing and self:launch_pending(f.app))
+    if not saved then
+        saved = self:own_place(id, f)
+        if not saved and not named then
+            saved = self:match(id, f, function(sid)
+                return self.a.state(sid) ~= nil
+            end)
+        end
+    end
+    -- In a sync, the app's own launches are its reserved windows'; the
+    -- others may take only a launch for any app.
+    local how
+    if named then
+        how = "own"
+    elseif self.syncing and self.reserved_apps[f.app] then
+        how = "any"
+    end
     local launched = false
     if saved and saved.ws then
         -- tide restarted, or the app relaunched: the window goes back where
@@ -1161,11 +1217,11 @@ function M:add(id)
         if l then
             self:launched_on(w, l, kind)
         end
-    elseif self:launched_to(w) then
+    elseif self:launched_to(w, false, how) then
         -- A launch tide made goes to the workspace it was for, even if
         -- you've moved on since, marked if that isn't showing (SPEC.md
         -- §6.1, §14.2). Its workspace was named, so it doesn't ask again.
-        local l = self:launched_to(w, true)
+        local l = self:launched_to(w, true, how)
         w.ws = self:ensure_ws(l.ws)
         self:launched_on(w, l, kind)
         launched = true
@@ -1277,6 +1333,15 @@ function M:claim(c)
     return c.place
 end
 
+-- Give back a place `claim` took, for another window to take.
+function M:release(c)
+    if c.sid ~= nil then
+        self.saved[c.sid] = c.place
+    else
+        self.gone[#self.gone + 1] = c.place
+    end
+end
+
 -- Where window `id` was (SPEC.md §6.3): its own saved place, if it's the
 -- same app's, else the closest by title of its app's places.
 -- The place saved under window `id`, if it's its app's. If the id is
@@ -1341,6 +1406,40 @@ function M:pair(ids, live)
         if not self.paired[p.id] and not taken[p.c.place] then
             taken[p.c.place] = true
             self.paired[p.id] = self:claim(p.c)
+            self.matched[p.id] = p.c
+        end
+    end
+    self:reserve_launches(ids, facts)
+end
+
+-- Of the new windows `ids` a sync found (`facts` holds those without a
+-- place of their own), choose which take each app's own waiting launches:
+-- of those that can (not a dialog going to its parent), those that matched no place first, in the order macOS lists
+-- them, so a window coming back keeps its place; then any, giving its
+-- place back.
+function M:reserve_launches(ids, facts)
+    self.for_launch, self.reserved_apps = {}, {}
+    local want = {}
+    local now = self.a.now()
+    for _, l in ipairs(self.launches or {}) do
+        if l.app ~= nil and now - l.at <= M.GRANT then
+            want[l.app] = (want[l.app] or 0) + 1
+        end
+    end
+    for _, unpaired in ipairs({ true, false }) do
+        for _, id in ipairs(ids) do
+            local f = facts[id]
+            local app = f and f.app
+            if app and (want[app] or 0) > 0 and not self.for_launch[id]
+                and (self.paired[id] == nil) == unpaired and self:takes_launch(id, f) then
+                if self.matched[id] then
+                    self:release(self.matched[id])
+                end
+                self.paired[id], self.matched[id] = nil, nil
+                self.for_launch[id] = true
+                self.reserved_apps[app] = true
+                want[app] = want[app] - 1
+            end
         end
     end
 end
@@ -1479,11 +1578,14 @@ function M:sync()
         end
         return seq[p] < seq[q]
     end)
+    self.syncing = true
     for _, list in ipairs({ first, rest }) do
         for _, id in ipairs(list) do
             self:add(id)
         end
     end
+    self.syncing = false
+    self.for_launch, self.reserved_apps = {}, {}
     self:finish_migration()
     return lost
 end

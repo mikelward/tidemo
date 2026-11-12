@@ -1209,6 +1209,9 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   tide matches each to its old place by app and title, closest first, as
   tide for Chrome matches by tab addresses (tide for Chrome §14.2). A window it can't match joins
   the workspace showing.
+- **A relaunch you named a workspace for** (§6.2) puts its first window
+  there, not back in its old place, so you stay where you named. Any
+  other windows it restores go back to their places.
 - **If tide quits,** it restores every window it hid first, so nothing is
   left stranded in the Dock or off screen: a parked window goes back
   onto its display's tiling area, where it was before the park if that's
