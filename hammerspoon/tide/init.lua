@@ -927,12 +927,16 @@ function M.start(config)
             self.swipe:touches(list, dragging)
         end)
     end
-    -- Caps Lock as Compose, as on Linux (SPEC.md §10): tide makes it send
-    -- F18, added to the key mapping that's there (capslock.lua), and again
-    -- after a wake or a keyboard plugged in, below.
+    -- Compose on F18, as on Linux (SPEC.md §10). Keyboard's "Caps Lock is
+    -- Compose", off unless turned on, makes Caps Lock send F18, added to
+    -- the key mapping that's there (capslock.lua), and again after a wake
+    -- or a keyboard plugged in, below.
+    self.caps_compose = hs.settings.get(capslock.SETTINGS_KEY) == true
     if config.compose ~= false then
         self.compose = compose_hs.new(hs, self.adapter.log)
-        capslock.apply(self.adapter.run, self.adapter.log)
+        if self.caps_compose then
+            capslock.apply(self.adapter.run, self.adapter.log)
+        end
     end
     -- The current workspace's name, for scripts, written whenever it
     -- changes (SPEC.md §6.3). A failure is said once, until a write works.
@@ -1135,7 +1139,7 @@ function M.start(config)
         check_karabiner_rules(self)
         choose_super(self, false)
         check_linearmouse(self)
-        if self.compose then
+        if self.compose and self.caps_compose then
             capslock.apply(self.adapter.run, self.adapter.log)
         end
     end))

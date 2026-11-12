@@ -446,6 +446,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **Caps Lock as Compose is kept in `hs.settings`** (`tide.caps_lock_compose`),
+  as the Overview switch is, not in a shared `~/.config/tide` file: tide for
+  Linux's `input.json` rejects keys it doesn't know, and `macos.json` holds
+  only `defaults` keys. `setup-macos` turns it on with `defaults write
+  org.hammerspoon.Hammerspoon`, where it isn't set yet.
+
 - **The bar at the bottom keeps the Apple logo and its menu** (2026-11-11):
   About This Mac, System Settings and the session's actions stay a corner
   away, though the real Apple menu now shows at the top. Only Show Menu

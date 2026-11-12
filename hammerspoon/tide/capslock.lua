@@ -1,5 +1,7 @@
 -- Caps Lock sending F18, which tide takes as Compose (SPEC.md §10), set by
--- tide itself rather than setup-macos. macOS keeps one key mapping for
+-- tide itself when Keyboard's "Caps Lock is Compose" is on, and taken out
+-- again when it's turned off. Off unless turned on: it changes a key
+-- outside window management. macOS keeps one key mapping for
 -- every keyboard (hidutil's UserKeyMapping), so tide adds Caps Lock's to
 -- what's there, keeping, say, setup-macos's modifier rotation, and sets it
 -- again as it starts and after a wake or a keyboard plugged in: the
@@ -10,6 +12,8 @@
 local M = {}
 
 M.HIDUTIL = "/usr/bin/hidutil"
+-- Keyboard's switch, in hs.settings: true turns it on.
+M.SETTINGS_KEY = "tide.caps_lock_compose"
 -- HID usage IDs: page 7 (keyboard), Caps Lock 0x39 and F18 0x6D.
 M.CAPS_LOCK = 0x700000039
 M.F18 = 0x70000006D
@@ -57,6 +61,21 @@ function M.with_compose(list)
     return out
 end
 
+-- The mapping without Caps Lock sending F18, or nil when there's nothing
+-- to do: Caps Lock isn't mapped, or is mapped to something else, which is
+-- yours.
+function M.without_compose(list)
+    local out, found = {}, false
+    for _, m in ipairs(list) do
+        if m.src == M.CAPS_LOCK and m.dst == M.F18 then
+            found = true
+        else
+            out[#out + 1] = m
+        end
+    end
+    return found and out or nil
+end
+
 -- `list` as the JSON `hidutil property --set` takes, in hex as Apple's
 -- examples write it.
 function M.json(list)
@@ -68,10 +87,10 @@ function M.json(list)
     return '{"UserKeyMapping":[' .. table.concat(parts, ",") .. "]}"
 end
 
--- Reads the mapping with `run(path, args, done(code, err, out))` and, when
--- Caps Lock isn't in it, sets it with Caps Lock's added. `log` says what
--- went wrong, and `done(changed)`, if given, is called at the end.
-function M.apply(run, log, done)
+-- Reads the mapping with `run(path, args, done(code, err, out))` and sets
+-- it to `change(list)`, unless that's nil. `log` says what went wrong, and
+-- `done(changed)`, if given, is called at the end.
+local function update(run, log, change, done)
     done = done or function() end
     local started = run(M.HIDUTIL, { "property", "--get", "UserKeyMapping" }, function(code, err, out)
         if code ~= 0 then
@@ -83,7 +102,7 @@ function M.apply(run, log, done)
             log("capslock: couldn't read the key mapping, so Caps Lock is left as it is: " .. why)
             return done(false)
         end
-        local new = M.with_compose(list)
+        local new = change(list)
         if not new then
             return done(false)
         end
@@ -103,6 +122,16 @@ function M.apply(run, log, done)
         log("capslock: couldn't run " .. M.HIDUTIL .. " to read the key mapping")
         done(false)
     end
+end
+
+-- Adds Caps Lock sending F18 to the mapping, when Caps Lock isn't in it.
+function M.apply(run, log, done)
+    update(run, log, M.with_compose, done)
+end
+
+-- Takes Caps Lock sending F18 out of the mapping, leaving the rest.
+function M.remove(run, log, done)
+    update(run, log, M.without_compose, done)
 end
 
 return M
