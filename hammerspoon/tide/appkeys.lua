@@ -17,7 +17,9 @@ M.FILE = "apps.json"
 M.LOCAL_FILE = "apps.local.json"
 M.MAX = 50
 
--- A bundle ID, rather than an app's name: dotted, with no spaces.
+-- What could be a bundle ID, rather than an app's name: dotted, with no
+-- spaces. An app's name can read so too, as zoom.us and draw.io do, so an
+-- app of that name comes first (M.bindings).
 local function is_bundle(s)
     return s:match("^[%w%-]+%.[%w%.%-]+$") ~= nil
 end
@@ -143,12 +145,14 @@ end
 
 -- The entries as keys.lua map bindings, { key, shift, action = "app",
 -- arg = spec, does }, and what couldn't be one, each said once. `bundle_of`
--- gives an app name's bundle ID, or nil when there's no such app.
+-- gives an app name's bundle ID, or nil when there's no such app. An app
+-- called what `app` says is the one meant, even where its name reads like a
+-- bundle ID: Zoom's app is zoom.us, and its bundle ID us.zoom.xos.
 function M.bindings(list, bundle_of)
     local out, problems = {}, {}
     for _, e in ipairs(list) do
         local b, why = shortcuts.from_hypr(e.keys)
-        local bundle = is_bundle(e.app) and e.app or bundle_of(e.app)
+        local bundle = bundle_of(e.app) or (is_bundle(e.app) and e.app or nil)
         if not b then
             problems[#problems + 1] = e.app .. " on " .. e.keys .. ": " .. why
         elseif not bundle then
