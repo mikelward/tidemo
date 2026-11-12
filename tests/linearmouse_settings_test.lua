@@ -196,20 +196,20 @@ local function scrolling(m, path)
     return { n = #config.schemes, lines = last.scrolling.distance.vertical, reverse = last.scrolling.reverse.vertical }
 end
 
-t.test("with no config, every mouse gets tide's 3x, nine lines, and its wheel not natural", function()
+t.test("with no config, every mouse gets tide's 1x, three lines, and its wheel not natural", function()
     local m = machine({})
     m.lm.apply("event")
     t.eq(m.writes, { CONFIG })
     -- macOS's switch is on, tide's mouse off: reversed.
-    t.eq(scrolling(m), { n = 1, lines = 9, reverse = true })
+    t.eq(scrolling(m), { n = 1, lines = 3, reverse = true })
     t.eq(m.lm.state.problem, "")
     t.eq(m.notices, {})
 end)
 
-t.test("setup-macos's ten lines become tide's nine, in the same scheme", function()
+t.test("setup-macos's ten lines become tide's three, in the same scheme", function()
     local m = machine({ [CONFIG] = SETUP }, { natural = false })
     m.lm.apply("event")
-    t.eq(scrolling(m), { n = 1, lines = 9, reverse = false })
+    t.eq(scrolling(m), { n = 1, lines = 3, reverse = false })
 end)
 
 t.test("Application Support's config is the one changed, when there is one", function()
@@ -277,7 +277,7 @@ t.test("the rest of the config stays where it was, and a scheme of ours goes las
     t.eq(c.schemes[2].scrolling.distance, { horizontal = 12 })
     local ours = c.schemes[4]
     t.eq(ours["if"], { device = { category = "mouse" } })
-    t.eq(ours.scrolling, { distance = { vertical = 9 }, reverse = { vertical = true } })
+    t.eq(ours.scrolling, { distance = { vertical = 3 }, reverse = { vertical = true } })
     t.eq(ours.pointer, nil)
     -- An empty list stays a list, not an object.
     t.eq(m.files[CONFIG]:find('"mappings": []', 1, true) ~= nil, true)
@@ -294,7 +294,7 @@ t.test("a mouse scheme with more conditions isn't ours: a new one goes last", fu
     t.eq(#c.schemes, 2)
     t.eq(c.schemes[1].scrolling.distance.vertical, 1)
     t.eq(c.schemes[2]["if"], { device = { category = "mouse" } })
-    t.eq(c.schemes[2].scrolling.distance.vertical, 9)
+    t.eq(c.schemes[2].scrolling.distance.vertical, 3)
 end)
 
 t.test("a config that's right already isn't written, and isn't read again", function()
@@ -313,10 +313,10 @@ end)
 t.test("the 30 s check puts back a change made in LinearMouse's window", function()
     local m = machine({})
     m.lm.apply("event")
-    m.files[CONFIG] = m.files[CONFIG]:gsub('"vertical": 9', '"vertical": 20')
+    m.files[CONFIG] = m.files[CONFIG]:gsub('"vertical": 3', '"vertical": 20')
     m.lm.apply("check")
     t.eq(#m.writes, 2)
-    t.eq(scrolling(m).lines, 9)
+    t.eq(scrolling(m).lines, 3)
 end)
 
 t.test("a config that isn't JSON is left alone, and said once", function()
@@ -456,7 +456,7 @@ t.test("setting the pointer writes it in every mouse's last scheme, keeping the 
     local config = json.decode(m.files[CONFIG])
     t.eq(#config.schemes, 1)
     t.eq(config.schemes[1].pointer, { acceleration = 2, speed = 0.35 })
-    t.eq(config.schemes[1].scrolling.distance.vertical, 9)
+    t.eq(config.schemes[1].scrolling.distance.vertical, 3)
     t.eq(m.lm.state.pointer, { acceleration = 2, speed = 0.35 })
     local fresh = machine({})
     t.eq((fresh.lm.set_pointer("speed", 0.5)), true)
@@ -485,7 +485,7 @@ t.test("done hears the state once it's applied", function()
     m.lm.apply("event", function(state)
         got = state
     end)
-    t.eq(got.lines, 9)
+    t.eq(got.lines, 3)
     t.eq(got.problem, "")
 end)
 

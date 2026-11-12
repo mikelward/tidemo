@@ -1517,17 +1517,17 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(all()[0].children[3].disabled, true, "the fastest");
   assert.strictEqual(all()[1].children[1].disabled, true, "no acceleration");
   sandbox.tide.update({ clockFiles: [], mouse: { problem: "" } });
-  // tide's defaults for a mouse: 3x, natural scrolling off.
-  assert.strictEqual(rows()[0].children[2].textContent, "3×");
+  // tide's defaults for a mouse: 1x, natural scrolling off.
+  assert.strictEqual(rows()[0].children[2].textContent, "1×");
   assert.strictEqual(rows()[1].children[2].textContent, "Off");
   assert.strictEqual(rows()[1].children[2].attrs["aria-pressed"], "false");
   sent.length = 0;
   rows()[0].children[3].listeners.click();
-  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 4 } });
+  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 1.5 } });
   // Shown at once, and the next change builds on it.
-  assert.strictEqual(rows()[0].children[2].textContent, "4×");
+  assert.strictEqual(rows()[0].children[2].textContent, "1.5×");
   rows()[1].children[2].listeners.click();
-  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 4, naturalScroll: true } });
+  assert.deepStrictEqual(lastInput(), { mouse: { scrollSpeed: 1.5, naturalScroll: true } });
   // The local file over the shared one, and the rest of the local file kept.
   const shared = JSON.stringify({ mouse: { scrollSpeed: 1 } });
   const local = JSON.stringify({ keyboard: { repeatDelay: 300 }, mouse: { naturalScroll: true } });
