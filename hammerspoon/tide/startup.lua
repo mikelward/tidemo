@@ -204,6 +204,21 @@ function M.start_home(names, running, open, log, find)
     end
 end
 
+-- start_home's `find` for a list from tide's files: the Mac app an entry
+-- names (`find_app`), or else, as on tide for Linux, the launcher of that
+-- name in ~/scripts (`helper_exists`), such as google-chat, as { run }.
+function M.home_finder(find_app, helper_exists)
+    return function(name)
+        local app = find_app(name)
+        if app then
+            return app
+        end
+        if helper_exists and not name:find("[/%s]") and helper_exists(name) then
+            return { run = name }
+        end
+    end
+end
+
 -- Home's apps at login: once a login (`login`, as for the list), and only
 -- with a list you set, in tide's files or start()'s `home_apps`. `settings`
 -- is hs.settings' get and set, keeping the login they last started in.

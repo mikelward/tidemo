@@ -992,12 +992,13 @@ the home workspace, the first standing one (§6.1), which is "in" unless
       web app for each of the four, so it would open both, including
       Mail's and Messages' first-run setup on a Mac that uses Google's
       *(a guess, to confirm)*.
-    - **Entries are app names** here, not tide for Linux's programs and web
-      addresses (tide for Linux §6.5). A `chrome --app=URL` window on a Mac is Google Chrome's
-      own, which tide can't tell from a browser window, so a web address
-      would match nothing; Chrome's installed web apps have names of their
-      own, which the list already takes. A `scripts` launcher such as
-      `google-calendar` can go in Start at login's list (§15) instead.
+    - **Entries are app names, or launchers, as on tide for Linux** (tide
+      for Linux §6.5). An entry that names a Mac app opens it, Chrome's
+      installed web apps included. One that doesn't, but names a launcher
+      in `~/scripts` such as `google-chat`, runs it as its app key does,
+      from "in" without asking for a workspace (`startup.home_finder`). A
+      web address matches nothing: a `chrome --app=URL` window on a Mac is
+      Google Chrome's own, which tide can't tell from a browser window.
   - A web app open in a plain Chrome tab isn't its app. Only the installed
     web app's own window counts.
   - Any window can be sent to "in", and every prompt offers "in". So a
