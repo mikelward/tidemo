@@ -120,37 +120,85 @@ end)
 
 t.test("follows the setting: added each time it's on, taken out once it's turned off, never otherwise", function()
     local h = hidutil("(null)")
-    local state = {}
+    local saved
+    local state = { save = function(o)
+        saved = o
+    end }
     capslock.follow(state, {}, h.run, h.log)
     t.eq(#h.calls, 1, "off from the start: read, and nothing set")
     capslock.follow(state, { caps = true }, h.run, h.log)
     t.eq(h.calls[3], "/usr/bin/hidutil property --set " .. capslock.json({ { src = capslock.CAPS_LOCK, dst = capslock.F18 } }))
+    t.eq(saved, { [capslock.key({ src = capslock.CAPS_LOCK, dst = capslock.F18 })] = true }, "tide's, kept for a reload")
     h = hidutil("( { HIDKeyboardModifierMappingSrc = 30064771129; HIDKeyboardModifierMappingDst = 30064771181; } )")
     capslock.follow(state, {}, h.run, h.log)
     t.eq(h.calls[2], "/usr/bin/hidutil property --set " .. capslock.json({}))
+    t.eq(saved, {})
     h = hidutil("( { HIDKeyboardModifierMappingSrc = 30064771129; HIDKeyboardModifierMappingDst = 30064771181; } )")
     capslock.follow(state, {}, h.run, h.log)
     t.eq(#h.calls, 1, "off again: an F18 that isn't tide's now stays")
 end)
 
-t.test("the PC keyboard type adds the rotation, keeps Caps Lock's F18, and takes only its own out", function()
+t.test("the PC keyboard type adds the rotation, keeps Caps Lock's F18, and takes out only what tide added", function()
     local caps = { src = capslock.CAPS_LOCK, dst = capslock.F18 }
-    local new = capslock.desired({ caps }, { caps = true, pc = true }, {})
+    local new, added = capslock.desired({ caps }, { caps = true, pc = true }, {})
     t.eq(#new, 7)
     t.eq(new[1], caps)
     t.eq(new[2], capslock.ROTATION[1])
+    t.eq(#added, 6, "Caps Lock's was there already, so it isn't tide's")
     -- Ctrl acts as Command, Win as Option, Alt as Control.
     t.eq(capslock.ROTATION[1], { src = 0x7000000E0, dst = 0x7000000E3 })
     t.eq(capslock.ROTATION[2], { src = 0x7000000E3, dst = 0x7000000E2 })
     t.eq(capslock.ROTATION[3], { src = 0x7000000E2, dst = 0x7000000E0 })
-    t.eq(capslock.desired(new, { caps = true, pc = true }, { caps = true, pc = true }), nil, "nothing to do")
-    t.eq(capslock.desired(new, { caps = true }, { caps = true, pc = true }), { caps }, "Mac again: the rotation out")
-    t.eq(capslock.desired(new, { caps = true }, { caps = true }), nil, "a rotation tide never added stays")
+    local owned = {}
+    for _, e in ipairs(added) do
+        owned[capslock.key(e)] = true
+    end
+    t.eq(capslock.desired(new, { caps = true, pc = true }, owned), nil, "nothing to do")
+    t.eq((capslock.desired(new, { caps = true }, owned)), { caps }, "Mac again: tide's rotation out")
+    t.eq(capslock.desired(new, { caps = true }, {}), nil, "a rotation tide never added stays")
+    -- Part of it there already, as setup-macos's: only the rest is tide's.
+    local _, part = capslock.desired({ capslock.ROTATION[1] }, { pc = true }, {})
+    t.eq(#part, 5)
     -- A key mapped already, to anything, is yours.
     local mine = { src = 0x7000000E0, dst = 0x700000029 }
     local kept = capslock.desired({ mine }, { pc = true }, {})
     t.eq(kept[1], mine)
     t.eq(#kept, 6)
+end)
+
+t.test("one change at a time: a later setting waits, then wins", function()
+    -- A hidutil whose answers come later, by hand, as the real one's do.
+    local mapping = {}
+    local pending = {}
+    local function run(path, args, done)
+        pending[#pending + 1] = function()
+            if args[2] == "--get" then
+                local parts = {}
+                for _, m in ipairs(mapping) do
+                    parts[#parts + 1] = string.format("{ HIDKeyboardModifierMappingSrc = %d; HIDKeyboardModifierMappingDst = %d; }", m.src, m.dst)
+                end
+                done(0, "", #parts == 0 and "(null)" or "( " .. table.concat(parts, ", ") .. " )")
+            else
+                mapping = {}
+                for src, dst in args[3]:gmatch("Src\":0x(%x+),\"HIDKeyboardModifierMappingDst\":0x(%x+)") do
+                    mapping[#mapping + 1] = { src = tonumber(src, 16), dst = tonumber(dst, 16) }
+                end
+                done(0, "", "")
+            end
+        end
+        return true
+    end
+    local function settle()
+        while #pending > 0 do
+            table.remove(pending, 1)()
+        end
+    end
+    local state = {}
+    capslock.follow(state, { pc = true }, run, function() end)
+    capslock.follow(state, { pc = true, caps = true }, run, function() end)
+    t.eq(#pending, 1, "the second waits for the first")
+    settle()
+    t.eq(#mapping, 7, "both: the rotation and Caps Lock's F18")
 end)
 
 t.test("a mapping it can't read, or hidutil failing, is logged and changes nothing", function()

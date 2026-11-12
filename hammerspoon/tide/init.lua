@@ -767,7 +767,14 @@ function M.start(config)
             return { [capslock.SETTING] = true }
         end,
     })
-    self.caps_state = {}
+    -- The key mapping entries tide added, kept across reloads, so only
+    -- those are taken out again (capslock.lua).
+    self.caps_state = {
+        owned = hs.settings.get(capslock.OWNED_KEY) or {},
+        save = function(owned)
+            hs.settings.set(capslock.OWNED_KEY, owned)
+        end,
+    }
     -- tide's key mapping brought to the settings (capslock.lua): the PC
     -- keyboard type's rotation, and Caps Lock as Compose once Compose is
     -- made. A keyboard type set in the files also turns the Mac keyboard
