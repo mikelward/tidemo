@@ -57,6 +57,11 @@ M.SUPER_CHOICES = {
     { value = "win", label = "Win, with the PC keyboard rotation", file = "tide.json" },
     { value = "none", label = "Option, without Karabiner" },
 }
+-- tide's rule that swaps a Mac keyboard's option and command, so its keys
+-- sit in a PC keyboard's order, for the PC keyboard type (capslock.lua): in
+-- karabiner/ beside this file, put in Karabiner's folder only while it's on.
+M.MAC_KEYBOARDS_FILE = "tide-mac-keyboards.json"
+
 -- The left Option rule's description starts so; any other tide rule is the
 -- Win key's.
 M.OPTION_PREFIX = "tide: left Option"
@@ -370,6 +375,54 @@ function M.new(deps)
             return nil, "couldn't write " .. path .. ": " .. tostring(err)
         end
         return self.set(description, true)
+    end
+
+    -- Turn the Mac keyboard rule on, putting it in Karabiner's folder, or
+    -- off, taking it out again. Returns true, or nil and why.
+    function self.set_mac_keyboards(on)
+        local text = deps.read(M.SUPER_DIR .. "/" .. M.MAC_KEYBOARDS_FILE)
+        local rule = text and deps.decode(text)
+        local description = type(rule) == "table" and type(rule.rules) == "table" and rule.rules[1]
+            and rule.rules[1].description
+        if type(description) ~= "string" then
+            return nil, "couldn't read tide's rule " .. M.SUPER_DIR .. "/" .. M.MAC_KEYBOARDS_FILE .. ": install tide again"
+        end
+        local path = assets .. "/" .. M.MAC_KEYBOARDS_FILE
+        local function state()
+            self.check(true)
+            for _, r in ipairs(self.state.rules) do
+                if r.description == description then
+                    return r.on
+                end
+            end
+            return nil
+        end
+        if on then
+            if deps.read(path) ~= text then
+                local ok, err = deps.write(path, text)
+                if not ok then
+                    return nil, "couldn't write " .. path .. ": " .. tostring(err)
+                end
+            end
+            if state() ~= true then
+                return self.set(description, true)
+            end
+            return true
+        end
+        if state() == true then
+            local ok, err = self.set(description, false)
+            if not ok then
+                return nil, err
+            end
+        end
+        if deps.read(path) ~= nil then
+            local ok, err = (deps.remove or os.remove)(path)
+            if not ok then
+                return nil, "couldn't remove " .. path .. ": " .. tostring(err)
+            end
+            self.check(true)
+        end
+        return true
     end
 
     -- tide doctor's lines: what's wrong, and conf's rules that are off.

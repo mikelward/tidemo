@@ -1557,7 +1557,7 @@ function renderLauncher(launcher) {
 // ‹ and ›, or a folder typed and set with Enter; one tide sets has a button
 // giving it back to macOS. A change sends { macSet: { name, value } }, a
 // reset { macReset: name }, and tide answers with tide.update().
-const MAC_CHOICE_LABELS = { off: "Off", light: "Light", medium: "Medium", strong: "Strong" };
+const MAC_CHOICE_LABELS = { off: "Off", light: "Light", medium: "Medium", strong: "Strong", mac: "Mac", pc: "PC" };
 const MAC_WHEN = { "as apps reopen": "As apps reopen", "at next login": "At next login" };
 let macState = null;
 // What the page shows now, so the same again draws nothing and the keyboard

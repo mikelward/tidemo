@@ -28,6 +28,14 @@ checked against a source or a Mac is marked *(unverified)*.
   differ, tide follows tide for Linux, since macOS can bind all of its keys (§7).
 - **No SIP changes.** A managed work Mac can't lower its security, and a
   personal one shouldn't have to.
+- **Nothing changes until it's asked for.** Someone installing tide, on
+  any platform, isn't surprised: tide decides window management and its
+  own session, and anything else, a key, a mouse, macOS's own settings,
+  is off or left as it was until they turn it on. tide may offer such
+  settings; its owner's choices come from mikelward/scripts and conf.
+- **Native, or a widely used free tool.** A feature needs nothing, or a
+  free tool many people already run, such as Karabiner-Elements or
+  LinearMouse, since a new binary may need approving on a work Mac.
 - **Say what can't be done,** as tide for Chrome §2 does for chromeOS, so nobody spends
   a week finding out (§13).
 - **Never degrade silently.** Fallbacks are tide's to choose: Option for
@@ -1485,9 +1493,26 @@ together (§6). tide turns it off (§6.6), and has its own.
     fix it. The checklist (§10) and `tide doctor` (§15) report it too.
   - **When Karabiner comes back,** tide moves its keys back to Karabiner's
     combinations, with no restart.
-- **The rotation covers every keyboard,** the MacBook's own included. If
-  that's wrong for the built-in keyboard, `hidutil` can match PC keyboards
-  alone *(unverified)*. That's a question for `setup-macos`.
+- **The keyboard type, Mac or PC,** in `macos.json` (`keyboard.type`,
+  under Keyboard on the macOS page), is Mac unless set: the keys stay
+  macOS's.
+  - **PC** puts Ctrl, Win and Alt, the three keys left of the space bar,
+    on every keyboard, whatever their caps say: Ctrl acts as Command, Win
+    as Option, Alt as Control, and the right side the same. tide adds the
+    rotation to `hidutil`'s `UserKeyMapping` (`capslock.lua`), as it
+    starts, after a wake or a keyboard plugged in, and as the files
+    change, and takes it out for Mac.
+  - **A Mac keyboard's keys sit in a different order** (fn, control,
+    option, command), so tide's Karabiner rule `tide-mac-keyboards.json`,
+    in Karabiner's folder only for PC, swaps option and command on the
+    built-in keyboard and Apple's (vendors 1452 and 76) first. Karabiner
+    sees physical keys, before the rotation, so every Karabiner rule then
+    sees Ctrl, Win and Alt as a PC keyboard sends them. Without Karabiner
+    a MacBook's keys stay in its own order *(the device match is
+    unverified on a Mac)*.
+  - **The Super key follows it,** once it's set: Win for PC, left Option
+    for Mac, as the Super key row would set it. Left unset, the row's
+    choice stands.
 
 ### 7.2 The map
 

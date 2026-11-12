@@ -411,6 +411,36 @@ t.test("choosing plain Option turns tide's rule off and leaves its file", functi
     t.eq(m.k.super(), "none")
 end)
 
+-- The PC keyboard type's Mac keyboard rule: in Karabiner's folder and on
+-- while it's on; off and gone again for Mac.
+t.test("the Mac keyboard rule goes in, on, for PC, and off and out for Mac", function()
+    local rule = read_file("hammerspoon/tide/karabiner/" .. karabiner.MAC_KEYBOARDS_FILE)
+    local description = json.decode(rule).rules[1].description
+    local m = super_machine()
+    m.files[karabiner.SUPER_DIR .. "/" .. karabiner.MAC_KEYBOARDS_FILE] = rule
+    local path = ASSETS .. "/" .. karabiner.MAC_KEYBOARDS_FILE
+    t.eq(m.k.set_mac_keyboards(true), true)
+    t.eq(m.files[path], rule)
+    t.eq(has(enabled(m), description), true)
+    t.eq(m.k.super(), "win", "not taken for a Super key rule")
+    t.eq(m.k.set_mac_keyboards(true), true, "again: nothing to do")
+    t.eq(m.k.set_mac_keyboards(false), true)
+    t.eq(has(enabled(m), description), false)
+    t.eq(m.files[path], nil)
+    t.eq(m.k.set_mac_keyboards(false), true, "again: nothing to do")
+end)
+
+t.test("the Mac keyboard rule swaps option and command on Apple's keyboards alone", function()
+    local r = json.decode(read_file("hammerspoon/tide/karabiner/" .. karabiner.MAC_KEYBOARDS_FILE)).rules[1]
+    local pairs_ = {}
+    for _, m in ipairs(r.manipulators) do
+        pairs_[m.from.key_code] = m.to[1].key_code
+        t.eq(m.conditions[1].type, "device_if")
+        t.eq(m.conditions[1].identifiers, { { is_built_in_keyboard = true }, { vendor_id = 1452 }, { vendor_id = 76 } })
+    end
+    t.eq(pairs_, { left_option = "left_command", left_command = "left_option", right_option = "right_command", right_command = "right_option" })
+end)
+
 t.test("a linked rule is replaced, not written through", function()
     local target = "/Users/me/conf/config/karabiner/assets/complex_modifications/tide.json"
     local m = super_machine({ links = { [ASSETS .. "/tide.json"] = target } })
