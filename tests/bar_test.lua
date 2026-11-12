@@ -246,8 +246,8 @@ t.test("the Bar page lists every icon once, in the order you chose", function()
         return table.concat(out, " ")
     end
     t.eq(ids(bar.icon_list(nil)),
-        "source awake camera mic bluetooth headphones volume network battery sysmon tray- session",
-        "the bar's own order, other apps' icons off")
+        "clock source awake camera mic bluetooth headphones volume network battery sysmon tray- session",
+        "the bar's own order, the clocks first, other apps' icons off")
     t.eq(ids(bar.icon_list({
         { id = "battery", shown = true },
         { id = "source", shown = false },
@@ -255,13 +255,22 @@ t.test("the Bar page lists every icon once, in the order you chose", function()
         { id = "battery", shown = false },
         "junk",
     })),
-        "battery sysmon tray- session source- awake camera mic bluetooth headphones volume network",
+        "clock battery sysmon tray- session source- awake camera mic bluetooth headphones volume network",
         "unknown and repeated ids are dropped; a missing one goes in after the icon it follows")
     t.eq(ids(bar.icon_list({ { id = "session" }, { id = "mic", shown = "yes" } })),
-        "source awake camera session mic bluetooth headphones volume network battery sysmon tray-",
+        "clock source awake camera session mic bluetooth headphones volume network battery sysmon tray-",
         "a missing or odd shown is the icon's own")
     t.eq(ids(bar.icon_list("top")), ids(bar.icon_list(nil)), "anything but a list is the default")
-    t.eq(bar.icon_list(nil)[1].label, "Keyboard")
+    t.eq(bar.icon_list(nil)[2].label, "Keyboard")
+    -- The clocks move and turn off as an icon does.
+    local moved = {}
+    for i, e in ipairs(bar.icon_list(nil)) do
+        moved[i] = { id = e.id, shown = e.shown and e.id ~= "clock" }
+    end
+    table.insert(moved, 9, table.remove(moved, 1))
+    t.eq(ids(bar.icon_list(moved)),
+        "source awake camera mic bluetooth headphones volume network clock- battery sysmon tray- session",
+        "the clocks where you put them, off")
 end)
 
 t.test("the bar draws the shown icons, other apps' only at the top", function()
@@ -269,11 +278,11 @@ t.test("the bar draws the shown icons, other apps' only at the top", function()
     for i, e in ipairs(bar.icon_list(nil)) do
         stored[i] = { id = e.id, shown = e.id == "tray" or (e.id ~= "mic" and e.id ~= "session" and e.shown) }
     end
-    table.insert(stored, 1, table.remove(stored, 11))
+    table.insert(stored, 1, table.remove(stored, 12))
     t.eq(bar.shown_icons(stored, "top"),
-        { "tray", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" })
+        { "tray", "clock", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" })
     t.eq(bar.shown_icons(stored, "bottom"),
-        { "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" },
+        { "clock", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" },
         "along the bottom macOS's menu bar already shows them")
 end)
 

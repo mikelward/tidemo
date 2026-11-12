@@ -35,9 +35,11 @@ end
 -- choose another: each one's id, the name the page gives it, and whether
 -- it shows unless you say. "tray" is a way to the other apps' icons that
 -- macOS keeps in its menu bar, which tide can't draw: a click hides the
--- bars so the menu bar shows (Show Menu Bar). The Bar page's list is kept
--- in hs.settings under ICONS_KEY (SPEC.md §8).
+-- bars so the menu bar shows (Show Menu Bar). "clock" is the clocks, which
+-- move and turn off as an icon does. The Bar page's list is kept in
+-- hs.settings under ICONS_KEY (SPEC.md §8).
 M.ICONS = {
+    { id = "clock", label = "Clocks", shown = true },
     { id = "source", label = "Keyboard", shown = true },
     { id = "awake", label = "Keep awake", shown = true },
     { id = "camera", label = "Camera in use", shown = true },

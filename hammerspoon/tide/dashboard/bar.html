@@ -150,7 +150,7 @@ nav button .more {
 #logo,
 nav > button,
 #clocks,
-#icons > .icon {
+:is(#icons, #icons-lead) > .icon {
   position: relative;
   z-index: 0;
 }
@@ -166,8 +166,8 @@ nav > button:first-child::after,
 #logo + nav > button:first-child::after,
 #clocks::before,
 #clocks::after,
-#icons > .icon::before,
-#icons > .icon::after,
+:is(#icons, #icons-lead) > .icon::before,
+:is(#icons, #icons-lead) > .icon::after,
 #title::before,
 #title::after {
   content: "";
@@ -180,7 +180,7 @@ nav > button:first-child::after,
 }
 #apple::after,
 #logo::after,
-#icons > .icon::after,
+:is(#icons, #icons-lead) > .icon::after,
 #title::after {
   border-radius: 6px;
   pointer-events: none;
@@ -202,8 +202,8 @@ nav > button::after {
 #logo.hover::after,
 nav > button.hover::after,
 #clocks.hover::after,
-#icons > button.icon.hover::after,
-#icons > button.icon:hover::after,
+:is(#icons, #icons-lead) > button.icon.hover::after,
+:is(#icons, #icons-lead) > button.icon:hover::after,
 #title.hover::after {
   background: var(--hover);
 }
@@ -243,17 +243,21 @@ nav button .app.none.win:hover {
 #right #clocks {
   padding: 0 6px;
 }
+/* Turned off on the Bar page: hidden, over the launcher's display: flex. */
+#clocks[hidden] {
+  display: none;
+}
 #clocks.compact li:not(:last-child) {
   display: none;
 }
-#icons {
+:is(#icons, #icons-lead) {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 /* Line icons in the text color (bar.js draws them); state shows as color,
    not a background. */
-#icons .icon {
+:is(#icons, #icons-lead) .icon {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -266,51 +270,51 @@ nav button .app.none.win:hover {
   font: inherit;
   cursor: pointer;
 }
-#icons svg {
+:is(#icons, #icons-lead) svg {
   display: block;
   flex: none;
 }
-#icons .source {
+:is(#icons, #icons-lead) .source {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-#icons [data-state="off"],
-#icons [data-state="muted"],
-#icons [data-state="mute"],
-#icons [data-state="none"] {
+:is(#icons, #icons-lead) [data-state="off"],
+:is(#icons, #icons-lead) [data-state="muted"],
+:is(#icons, #icons-lead) [data-state="mute"],
+:is(#icons, #icons-lead) [data-state="none"] {
   color: var(--muted);
 }
-#icons [data-state="on"].awake,
-#icons [data-state="in-use"] {
+:is(#icons, #icons-lead) [data-state="on"].awake,
+:is(#icons, #icons-lead) [data-state="in-use"] {
   color: var(--accent);
 }
 /* Presenter mode: a filled accent pill, so it's hard to miss, as tide's
    Presenting pill is. */
-#icons .awake[data-state="presenting"] {
+:is(#icons, #icons-lead) .awake[data-state="presenting"] {
   background: var(--accent);
   color: var(--on-accent);
   font-size: 11px;
   font-weight: 600;
 }
-#icons .battery[data-state="low"] {
+:is(#icons, #icons-lead) .battery[data-state="low"] {
   color: var(--urgent);
 }
-#icons .battery .text,
-#icons .volume .text,
-#icons .sysmon .text {
+:is(#icons, #icons-lead) .battery .text,
+:is(#icons, #icons-lead) .volume .text,
+:is(#icons, #icons-lead) .sysmon .text {
   font-variant-numeric: tabular-nums;
 }
 /* Held as wide as two digits and a %, as tide's, so the icons beside it
    don't move as the level changes, except at 100%. */
-#icons .volume .text,
-#icons .sysmon .text {
+:is(#icons, #icons-lead) .volume .text,
+:is(#icons, #icons-lead) .sysmon .text {
   min-width: 2.2em;
 }
-#icons .sysmon[data-state="warn"] {
+:is(#icons, #icons-lead) .sysmon[data-state="warn"] {
   color: var(--warn);
 }
-#icons .sysmon[data-state="danger"] {
+:is(#icons, #icons-lead) .sysmon[data-state="danger"] {
   color: var(--danger);
 }
 </style>
@@ -323,6 +327,7 @@ nav button .app.none.win:hover {
 </div>
 <span id="title"><span id="title-text"></span></span>
 <div id="right">
+<div id="icons-lead"></div>
 <ol id="clocks"></ol>
 <div id="icons"></div>
 </div>
