@@ -543,15 +543,17 @@ local function is_our_rule(description)
     return false
 end
 
--- tide's rule in the selected Karabiner profile, if it has one. Each
--- profile keeps its own rules, so a rule left in another profile doesn't
--- count.
+-- tide's rule in the selected Karabiner profile, if it has one that's on.
+-- Each profile keeps its own rules, so a rule left in another profile
+-- doesn't count. Nor does one turned off in Karabiner's window, which
+-- keeps its copy, marked "enabled": false, and sends none of its keys
+-- (dashboard/karabiner.js's ruleStates reads it the same way).
 local function our_rule(config)
     for _, p in ipairs(type(config) == "table" and config.profiles or {}) do
         if p.selected then
             local cm = p.complex_modifications or {}
             for _, r in ipairs(cm.rules or {}) do
-                if is_our_rule(r.description) then
+                if is_our_rule(r.description) and r.enabled ~= false then
                     return r
                 end
             end

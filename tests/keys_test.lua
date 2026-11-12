@@ -65,6 +65,24 @@ t.test("the rule only counts in the selected profile", function()
     t.eq(select(2, keys.super(read, running, HOME, decode)), false)
 end)
 
+-- Karabiner's window turns a rule off by marking its copy "enabled": false
+-- (karabiner.js's ruleStates): Karabiner sends none of its keys then, so
+-- keys bound to its chord would all be dead.
+t.test("with the rule turned off in Karabiner's window, Super falls back to Option", function()
+    local read, running = env({
+        [CONFIG] = profiles(profile(true, { description = "tide: Win to Super", enabled = false })),
+    }, { ["Karabiner-Core-Service"] = true })
+    local super, ok = keys.super(read, running, HOME, decode)
+    t.eq(ok, false)
+    t.eq(super, { "alt" })
+    -- One that's on, after one that's off, is the rule in use.
+    read = env({
+        [CONFIG] = profiles(profile(true, { description = "tide: left Option to Super", enabled = false },
+            { description = "tide: Win to Super", enabled = true })),
+    }, {})
+    t.eq(select(2, keys.super(read, running, HOME, decode)), true)
+end)
+
 t.test("an unreadable config means no rule", function()
     local read, running = env({ [CONFIG] = "not json" }, { ["Karabiner-Core-Service"] = true })
     t.eq(select(2, keys.super(read, running, HOME, function()
@@ -442,6 +460,11 @@ t.test("no rule, or no config, has no gaps to report: the fallback notice covers
     -- Only the selected profile's rule counts.
     local read = env({ [CONFIG] = profiles(profile(false, rule("f20", true)), profile(true, rule("spacebar", false))) }, {})
     t.eq(#keys.rule_gaps(read, HOME, decode), 2)
+    -- One turned off in Karabiner's window isn't in use, so nothing of it
+    -- is missing: the keys are on Option.
+    local off = rule("spacebar", false)
+    off.enabled = false
+    t.eq(keys.rule_gaps(env({ [CONFIG] = profiles(profile(true, off)) }, {}), HOME, decode), {})
 end)
 
 t.test("Alt+Tab's manipulator must send what tide binds", function()
