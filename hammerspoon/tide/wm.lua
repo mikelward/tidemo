@@ -2475,12 +2475,16 @@ end
 
 -- The prompt's answer for launch question `q`: a name shows that
 -- workspace, making it if it's new, then launches with its
--- TIDE_WORKSPACE; nil (Esc) launches nothing.
+-- TIDE_WORKSPACE. Nil (Esc) launches on the workspace you asked from,
+-- or for Cmd+Return, which asked for a new one, launches nothing.
 function M:launch_answer(q, name)
     if self.prompting ~= q or self:refuse_unsafe(q, name) then
         return
     end
     self:asked_done(q)
+    if name == nil and not q.launch.fresh then
+        name = q.launch.from
+    end
     local n = name and self:canonical(name)
     if n then
         self:show(n, nil, true)
@@ -2552,7 +2556,8 @@ end
 -- (`opts.home_app`, and never for Cmd+Return). `opts.app` is the bundle
 -- ID, if known, which the launch's window is matched by (launch_to). The question waits its turn
 -- behind any other. A name shows that workspace, making it if it's new,
--- then `go(env)` launches with its TIDE_WORKSPACE; Esc launches nothing.
+-- then `go(env)` launches with its TIDE_WORKSPACE; Esc launches where you
+-- are, or for Cmd+Return, nothing.
 -- Elsewhere it launches straight away, on the workspace you're on.
 function M:before_launch(opts, go)
     -- The display you launched from, before the prompt takes focus and a
@@ -2565,6 +2570,7 @@ function M:before_launch(opts, go)
         go(self:env(cur))
         return
     end
+    opts.from = cur
     self.asking[#self.asking + 1] = { launch = opts, go = go }
     self:ask_next()
 end

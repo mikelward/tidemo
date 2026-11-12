@@ -446,6 +446,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **Esc on Cmd+Return's question still cancels** (2026-11-12): Esc on
+  any other launch's question launches where you are, but Cmd+Return asks
+  for a new workspace, so launching on the one you're on wouldn't be what
+  you asked for.
+
 - **Caps Lock as Compose is kept in `hs.settings`** (`tide.caps_lock_compose`),
   as the Overview switch is, not in a shared `~/.config/tide` file: tide for
   Linux's `input.json` rejects keys it doesn't know, and `macos.json` holds
