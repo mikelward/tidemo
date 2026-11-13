@@ -17,6 +17,9 @@ local function stub(opts)
     function s.add_screen(url)
         local i = #s.screens + 1
         local scr = { url = url or "file:///System/Library/Desktop%20Pictures/Sonoma.heic" }
+        function scr.fullFrame()
+            return { x = 0, y = 0, w = 1512, h = 982 }
+        end
         function scr.desktopImageURL(self, set)
             if set == nil then
                 return self.url
@@ -39,10 +42,49 @@ local function stub(opts)
         fs = {
             attributes = function(path, what)
                 t.eq(what, "mode")
+                if (opts.dirs or {})[path] then
+                    return "directory"
+                end
                 return (opts.pictures or {})[path] and "file" or nil
             end,
             mkdir = function(dir)
                 s.made_dir = dir
+            end,
+            -- A folder's names, as lfs.dir gives them; one that isn't
+            -- there is an error, as it is.
+            dir = function(path)
+                local names = (opts.dirs or {})[path]
+                if not names then
+                    error("cannot open " .. path .. ": No such file or directory")
+                end
+                return function(state)
+                    state.i = state.i + 1
+                    return names[state.i]
+                end, { i = 0 }
+            end,
+        },
+        -- A picture, as macOS reads it: one named "broken" can't be.
+        image = {
+            imageFromPath = function(path)
+                if path:find("broken", 1, true) then
+                    return nil
+                end
+                s.decoded = s.decoded or {}
+                s.decoded[#s.decoded + 1] = path
+                return {
+                    size = function()
+                        return { w = 4000, h = 2000 }
+                    end,
+                    setSize = function(_, box, absolute)
+                        t.eq(absolute, true)
+                        return {
+                            encodeAsURLString = function(_, scale, kind)
+                                t.eq({ scale, kind }, { false, "JPEG" })
+                                return "data:" .. path .. "@" .. box.w .. "x" .. box.h
+                            end,
+                        }
+                    end,
+                }
             end,
         },
         -- A color's picture, drawn: saved as a file that then exists.
@@ -126,6 +168,11 @@ local function stub(opts)
             end,
             log = function(text)
                 s.logged[#s.logged + 1] = text
+            end,
+            -- Run by the test, a tick at a time.
+            after = function(_, fn)
+                s.ticks = s.ticks or {}
+                s.ticks[#s.ticks + 1] = fn
             end,
         },
     }
@@ -225,6 +272,112 @@ end)
 t.test("a cancel chooses nothing", function()
     local s = stub({ files = FILES, pictures = PICTURES })
     t.eq(s.wall.pick("lightWallpaper"), nil)
+end)
+
+-- The wallpaper grid: macOS's folder, with its thumbnails, and yours; this
+-- Mac's isn't there.
+local SYS = "/System/Library/Desktop Pictures"
+local GRID = {
+    dirs = {
+        [SYS] = { ".", "..", "Sonoma.heic", "broken.png", ".thumbnails" },
+        [SYS .. "/.thumbnails"] = { "Sonoma.heic" },
+        [HOME .. "/Pictures/Wallpapers"] = { "city-day.jpg", "city-night.jpg" },
+    },
+    pictures = {
+        [SYS .. "/Sonoma.heic"] = true,
+        [SYS .. "/broken.png"] = true,
+        [SYS .. "/.thumbnails/Sonoma.heic"] = true,
+        [HOME .. "/Pictures/Wallpapers/city-day.jpg"] = true,
+        [HOME .. "/Pictures/Wallpapers/city-night.jpg"] = true,
+    },
+}
+
+-- Run the ticks the grid asked for until there are none.
+local function drain(s)
+    while s.ticks and #s.ticks > 0 do
+        table.remove(s.ticks, 1)()
+    end
+end
+
+t.test("the grid lists the wallpapers at once, then draws each thumbnail a tick at a time", function()
+    local s = stub(GRID)
+    local listed, thumbs = nil, {}
+    s.wall.gallery(function(l)
+        listed = l
+    end, function(th)
+        thumbs[#thumbs + 1] = th
+    end)
+    local names = {}
+    for i, img in ipairs(listed.images) do
+        names[i] = { img.name, img.collection, img.mode, img.setting, img.width }
+    end
+    t.eq(names, {
+        { "broken", "macOS", "", SYS .. "/broken.png", 0 },
+        { "city-day", "Yours", "light", "~/Pictures/Wallpapers/city-day.jpg", 0 },
+        { "city-night", "Yours", "dark", "~/Pictures/Wallpapers/city-night.jpg", 0 },
+        { "Sonoma", "macOS", "", SYS .. "/Sonoma.heic", 0 },
+    }, "no size from a file that isn't there")
+    t.eq(listed.screens, { { width = 1512, height = 982 } })
+    t.eq(listed.problems, {}, "a folder that isn't there isn't one")
+    t.eq(#thumbs, 0, "a thumbnail that can't be drawn isn't sent")
+    drain(s)
+    t.eq(#thumbs, 3)
+    t.eq(thumbs[3], { path = SYS .. "/Sonoma.heic", url = "data:" .. SYS .. "/.thumbnails/Sonoma.heic@320x160",
+        width = 4000, height = 2000 }, "from macOS's smaller copy")
+    t.eq(thumbs[1].url, "data:" .. HOME .. "/Pictures/Wallpapers/city-day.jpg@320x160", "else the picture")
+    t.eq(s.logged, { "wallpaper grid: couldn't draw a thumbnail of " .. SYS .. "/broken.png: macOS couldn't read it" })
+end)
+
+t.test("opened again, the grid has its thumbnails, and draws none twice", function()
+    local s = stub(GRID)
+    s.wall.gallery(function() end, function() end)
+    drain(s)
+    local decoded = #s.decoded
+    local listed, again = nil, 0
+    s.wall.gallery(function(l)
+        listed = l
+    end, function()
+        again = again + 1
+    end)
+    drain(s)
+    t.eq(#s.decoded, decoded)
+    t.eq(again, 0)
+    t.eq(listed.images[4].thumb, "data:" .. SYS .. "/.thumbnails/Sonoma.heic@320x160")
+    t.eq(listed.images[1].thumb, nil)
+    t.eq(#s.logged, 1, "the broken one said once")
+end)
+
+t.test("closed, or opened again, the grid stops drawing the last opening's thumbnails", function()
+    local s = stub(GRID)
+    local thumbs = 0
+    s.wall.gallery(function() end, function()
+        thumbs = thumbs + 1
+    end)
+    s.wall.gallery_closed()
+    drain(s)
+    t.eq(thumbs, 0)
+end)
+
+t.test("a folder it can't read says so, and the rest still show", function()
+    local dirs = { [HOME .. "/Pictures/Wallpapers"] = { "Locked" } }
+    local s = stub({ dirs = dirs, pictures = {} })
+    -- Locked is a folder that can't be listed.
+    dirs[HOME .. "/Pictures/Wallpapers/Locked"] = nil
+    local attributes = hs.fs.attributes
+    hs.fs.attributes = function(path, what)
+        if path == HOME .. "/Pictures/Wallpapers/Locked" then
+            return "directory"
+        end
+        return attributes(path, what)
+    end
+    local listed
+    s.wall.gallery(function(l)
+        listed = l
+    end, function() end)
+    t.eq(#listed.problems, 1)
+    t.eq(listed.problems[1]:match("^couldn't read " .. HOME:gsub("%p", "%%%0") .. "/Pictures/Wallpapers/Locked: ") ~= nil,
+        true, listed.problems[1])
+    t.eq(s.logged[1], "wallpaper grid: " .. listed.problems[1])
 end)
 
 t.done("wallpaper_hs")

@@ -318,4 +318,16 @@ t.test("the Bar page's icons are kept whole and drawn at once", function()
     t.eq(logged, { "settings: the bar's icons aren't a list: battery" })
 end)
 
+t.test("the wallpaper grid reaches the page with its lists as lists, empty or not", function()
+    local settings_hs = require("tide.settings_hs")
+    local json = require("json")
+    local was = _G.hs
+    _G.hs = { json = { encode = json.encode } }
+    local text = settings_hs.encode_gallery({ images = {}, screens = { { width = 1512, height = 982 } },
+        problems = { 'couldn\'t read "x"' } })
+    _G.hs = was
+    t.eq(json.decode(text), { images = {}, screens = { { width = 1512, height = 982 } }, problems = { 'couldn\'t read "x"' } })
+    t.eq(text:find('"images":[]', 1, true) ~= nil, true, text)
+end)
+
 t.done("settings")

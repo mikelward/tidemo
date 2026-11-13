@@ -43,6 +43,16 @@ function M.list(list, encode)
     return "[" .. table.concat(out, ",") .. "]"
 end
 
+-- The wallpaper grid's pictures (wallpaper_hs's gallery) as JSON, each
+-- of its lists a list, empty or not.
+function M.encode_gallery(g)
+    return '{"images":' .. M.list(g.images, hs.json.encode)
+        .. ',"screens":' .. M.list(g.screens, hs.json.encode)
+        .. ',"problems":' .. M.list(g.problems, function(p)
+            return hs.json.encode({ p }):sub(2, -2)
+        end) .. "}"
+end
+
 -- A Floating fill-in (floating.prefill) as JSON, its `about` rows a list.
 function M.encode_fill(fill)
     local about = fill.about
@@ -828,6 +838,21 @@ function M.new(tide)
                 save(dashboard.AWAKE_LOCAL_FILE, body.writeAwake, "Stay awake when plugged in")
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
+            elseif body.listWallpapers == true and tide.wallpaper then
+                -- The grid: its pictures at once, then each thumbnail.
+                tide.wallpaper.gallery(function(g)
+                    if view then
+                        view:evaluateJavaScript("tide.wallpaperGrid(" .. M.encode_gallery(g) .. ")", function(_, err)
+                            if dashboard.js_failed(err) then
+                                tide.adapter.log("settings: " .. hs.inspect(err))
+                            end
+                        end)
+                    end
+                end, function(th)
+                    answer("tide.wallpaperThumb", th)
+                end)
+            elseif body.wallpapersClosed == true and tide.wallpaper then
+                tide.wallpaper.gallery_closed()
             elseif body.readCities == true then
                 send_cities()
             elseif body.findLocation == true then

@@ -651,9 +651,15 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   walls()[0].children[1].listeners.keydown({ key: "Enter" });
   assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/Pictures/day.jpg" }, "only this Mac's own, in appearance.local.json");
   assert.strictEqual(walls()[0].children[1].value, "~/Pictures/day.jpg", "shown at once");
+  // The grid's Other… asks for the file dialog, closing the grid.
+  assert.strictEqual(walls()[1].children[3].attrs["data-icon"], "grid");
   walls()[1].children[3].listeners.click();
-  assert.deepStrictEqual(sent.at(-1), { pickWallpaper: "darkWallpaper" });
-  assert.strictEqual(walls()[1].children[3].attrs["data-icon"], "folder");
+  assert.deepStrictEqual(sent.at(-1), { listWallpapers: true });
+  const other = walls()[2].children[0].children.at(-1);
+  assert.strictEqual(other.textContent, "Other…");
+  other.listeners.click();
+  assert.deepStrictEqual(sent.slice(-2), [{ wallpapersClosed: true }, { pickWallpaper: "darkWallpaper" }]);
+  assert.strictEqual(walls().length, 2, "the grid's closed");
   sandbox.tide.setWallpaper("darkWallpaper", "/Library/Desktop Pictures/Sky.heic");
   assert.deepStrictEqual(lastAppearance(), { lightWallpaper: "~/Pictures/day.jpg", darkWallpaper: "/Library/Desktop Pictures/Sky.heic" });
   // A path tide wouldn't take is refused, saying why, and nothing's saved.
@@ -672,6 +678,83 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(walls()[0].children[1].disabled, true);
   assert.strictEqual(walls()[0].children[2].disabled, true, "nor its colors");
   assert.strictEqual(walls()[0].children[3].disabled, true);
+}
+
+// The wallpaper grid, as tide's: the pictures tide lists, your screen's
+// shape first, filtered by light or dark, opening on the row's own, and by
+// collection; a thumbnail lands as it's drawn; choosing one sets it.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  const walls = () => ids.wallpapers.children.filter((li) => li.className !== "position");
+  const grid = () => ids.wallpapers.children.find((li) => li.className === "gallery");
+  const controls = () => grid().children[0].children;
+  const pictures = () => grid().children.filter((c) => c.className?.startsWith("pictures"));
+  const headings = () => grid().children.filter((c) => c.className === "heading").map((c) => c.textContent);
+  const names = () => pictures().flatMap((p) => p.children.map((b) => b.attrs.title));
+  const SYS = "/System/Library/Desktop Pictures";
+  const image = (path, name, mode, collection, width, height, setting = path) => ({ path, name, mode, collection, width, height, setting });
+  const images = [
+    image("/Users/u/Pictures/Wallpapers/city-day.jpg", "city-day", "light", "Yours", 3024, 1964, "~/Pictures/Wallpapers/city-day.jpg"),
+    image("/Users/u/Pictures/Wallpapers/city-night.jpg", "city-night", "dark", "Yours", 3024, 1964, "~/Pictures/Wallpapers/city-night.jpg"),
+    image(`${SYS}/Sonoma.heic`, "Sonoma", "", "macOS", 6016, 6016),
+    image(`${SYS}/Solid Colors/Teal.png`, "Teal", "", "Solid Colors", 0, 0),
+  ];
+  sandbox.tide.update({ clockFiles: [], appearanceFiles: { local: '{"darkWallpaper": "/System/Library/Desktop Pictures/Sonoma.heic"}' } });
+  sent.length = 0;
+  walls()[1].children[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ listWallpapers: true }], "listed afresh each time it opens");
+  assert.strictEqual(walls()[1].children[3].attrs["aria-expanded"], "true");
+  assert.strictEqual(grid().children[1].textContent, "Looking for wallpapers");
+  assert.strictEqual(controls()[0].value, "dark", "on the row's own mode");
+  assert.strictEqual(sandbox.document.activeElement, controls()[0]);
+  sandbox.tide.wallpaperGrid({ images: images.map((i) => ({ ...i })), screens: [{ width: 1512, height: 982 }], problems: [] });
+  assert.deepStrictEqual(headings(), ["Fits your screen", "Other shapes"]);
+  assert.deepStrictEqual(pictures().map((p) => p.className), ["pictures fits", "pictures others"]);
+  assert.deepStrictEqual(names(), ["city-night", "Sonoma", "Teal"], "no light one of a pair, in dark");
+  assert.strictEqual(pictures()[1].children[0].attrs["aria-current"], "true", "the one set");
+  assert.strictEqual(pictures()[0].children[0].children[0].textContent, "city-night", "its name until its thumbnail");
+  // Light and dark shows both of the pair.
+  controls()[0].value = "any";
+  controls()[0].listeners.change();
+  assert.deepStrictEqual(names(), ["city-day", "city-night", "Sonoma", "Teal"]);
+  // Chips pick a collection, Yours last.
+  assert.deepStrictEqual(controls().slice(1, -1).map((c) => c.textContent), ["All", "macOS", "Solid Colors", "Yours"]);
+  controls()[4].listeners.click();
+  assert.deepStrictEqual(names(), ["city-day", "city-night"]);
+  assert.deepStrictEqual(headings(), [], "every one fits: no heading");
+  controls()[1].listeners.click();
+  // A thumbnail lands in place; one that brings the size the header
+  // didn't say moves its picture.
+  sandbox.tide.wallpaperThumb({ path: `${SYS}/Sonoma.heic`, url: "data:sonoma", width: 320, height: 320 });
+  const sonoma = pictures()[1].children.find((b) => b.attrs.title === "Sonoma");
+  assert.strictEqual(sonoma.children[0].tag, "img");
+  assert.strictEqual(sonoma.children[0].src, "data:sonoma");
+  sandbox.tide.wallpaperThumb({ path: `${SYS}/Solid Colors/Teal.png`, url: "data:teal", width: 1512, height: 982 });
+  assert.deepStrictEqual(names(), ["city-day", "city-night", "Teal", "Sonoma"], "Teal's the screen's shape");
+  // Choosing one sets it, as the row's field would, and closes the grid.
+  sent.length = 0;
+  pictures()[0].children[0].listeners.click();
+  assert.deepStrictEqual(sent[0], { wallpapersClosed: true });
+  assert.deepStrictEqual(lastAppearance(), { darkWallpaper: "~/Pictures/Wallpapers/city-day.jpg" });
+  assert.strictEqual(grid(), undefined);
+  assert.strictEqual(sandbox.document.activeElement, walls()[1].children[3], "back on its button");
+  // Escape closes it with nothing set, and not the window; so does a click
+  // elsewhere. Reopened, it says what it couldn't list.
+  walls()[0].children[3].listeners.click();
+  assert.strictEqual(controls()[0].value, "light");
+  sent.length = 0;
+  docListeners.keydown({ key: "Escape" });
+  assert.strictEqual(grid(), undefined);
+  assert.deepStrictEqual(sent, [{ wallpapersClosed: true }]);
+  walls()[0].children[3].listeners.click();
+  sandbox.tide.wallpaperGrid({ images: [], screens: [], problems: ["couldn't read /Users/u/Pictures/Wallpapers/Locked: Permission denied"] });
+  assert.strictEqual(grid().children[1].textContent,
+    "No wallpapers in Desktop Pictures or ~/Pictures/Wallpapers. Couldn't list every wallpaper: couldn't read /Users/u/Pictures/Wallpapers/Locked: Permission denied");
+  docListeners.click({ target: { closest: () => null } });
+  assert.strictEqual(grid(), undefined);
+  // A list for a grid that's closed is left alone.
+  sandbox.tide.wallpaperGrid({ images, screens: [], problems: [] });
+  assert.strictEqual(grid(), undefined);
 }
 
 // A wallpaper's colors, as tide's page has them: its swatch shows the color
