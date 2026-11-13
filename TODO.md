@@ -454,10 +454,32 @@ tide. INFEASIBLE.md lists what can't be fixed.
   in front, then the clipboard put back. It beeps with nothing selected,
   copies the whole line in some editors, and can lose a copy made in
   between.
-- **Later: one selection with kitty.** kitty's buffer is its own (conf's
-  `kitty/macos.conf`), so a selection made there doesn't reach other apps,
-  nor theirs kitty. kitty could hand each selection to tide, and take
-  tide's on a middle click.
+- **Open question: one selection with the terminals** (SPEC.md §5.3).
+  Each terminal's selection is its own, so text selected in kitty or
+  Ghostty doesn't middle click paste into other apps, nor theirs into the
+  terminal. tide could be the one selection, under the same setting. A
+  sketch, with the kitty commands unchecked against its source:
+  - **From kitty:** after a selecting gesture in kitty, ask it for the
+    selected text over the remote control socket (`kitten @ get-text
+    --extent selection`). No kitty setting changes; one short process for
+    each selection made there.
+  - **From Ghostty:** read its selection pasteboard,
+    `com.mitchellh.ghostty.selection`, by name.
+  - **From Terminal:** likely nothing new, if it says what's selected
+    through Accessibility *(unverified)*.
+  - **Into Ghostty:** write tide's selection to that pasteboard as it
+    changes, and Ghostty's own middle click pastes it.
+  - **Into kitty:** tide takes the middle click there and pastes its
+    selection, through the socket or the clipboard as elsewhere. conf's
+    `copy_on_select` buffer stays for when the setting is off.
+  - **To decide: whether tide takes every plain middle click in kitty.**
+    A program that has grabbed the mouse, such as vim or tmux in mouse
+    mode, would lose its own, and tide can't tell from outside that one
+    has. Shift+middle would still reach kitty.
+  - **Left out: iTerm2.** It copies each selection to the clipboard by
+    default *(unverified)*, so tide would read that, or its scripting
+    API.
+  - Only the logic could be tested here: CI's Mac has neither terminal.
 - **Later: a selection made with the keyboard, pasted into another app**
   (SPEC.md §5.3). tide reads the selection only after a mouse gesture.
 - **Not yet decided:** Tab reaching every control in dialogs
