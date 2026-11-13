@@ -58,6 +58,7 @@ M.PRESETS = {
             next_layout = { "SUPER + E" },
             resize_mode = { "SUPER + R" },
             quit = { "SUPER + SHIFT + E" },
+            reload = { "SUPER + SHIFT + C" },
         },
     },
     sway = {
@@ -80,6 +81,7 @@ M.PRESETS = {
             next_layout = { "SUPER + E" },
             resize_mode = { "SUPER + R" },
             quit = { "SUPER + SHIFT + E" },
+            reload = { "SUPER + SHIFT + C" },
         },
     },
     xmonad = {
@@ -100,6 +102,7 @@ M.PRESETS = {
             add_master = { "SUPER + comma" },
             remove_master = { "SUPER + period" },
             quit = { "SUPER + SHIFT + Q" },
+            reload = { "SUPER + Q" },
         },
     },
     bspwm = {
@@ -109,6 +112,7 @@ M.PRESETS = {
             launcher = { "SUPER + Space" },
             close = { "SUPER + W" },
             quit = { "SUPER + ALT + Q" },
+            reload = { "SUPER + ALT + R" },
             monocle = { "SUPER + M" },
             float = { "SUPER + S" },
             fullscreen = { "SUPER + F" },
