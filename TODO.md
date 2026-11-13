@@ -449,9 +449,17 @@ tide. INFEASIBLE.md lists what can't be fixed.
     keyboard entry is in front.
 - **Later: images in the clipboard history,** as tide for Linux's cliphist keeps
   them.
-- **To consider: middle-click paste,** like Linux's primary selection.
-  tide would copy what's selected and put the clipboard back after the
-  paste, which can lose a copy made in between.
+- **Later: middle click paste where Accessibility says nothing**
+  (SPEC.md §5.3), as a second switch, off by default: Command+C in the app
+  in front, then the clipboard put back. It beeps with nothing selected,
+  copies the whole line in some editors, and can lose a copy made in
+  between.
+- **Later: one selection with kitty.** kitty's buffer is its own (conf's
+  `kitty/macos.conf`), so a selection made there doesn't reach other apps,
+  nor theirs kitty. kitty could hand each selection to tide, and take
+  tide's on a middle click.
+- **Later: a selection made with the keyboard, pasted into another app**
+  (SPEC.md §5.3). tide reads the selection only after a mouse gesture.
 - **Not yet decided:** Tab reaching every control in dialogs
   (`AppleKeyboardUIMode`), no `.DS_Store` on network shares, and Touch ID
   for `sudo` (`/etc/pam.d/sudo_local`).
@@ -459,6 +467,24 @@ tide. INFEASIBLE.md lists what can't be fixed.
   macOS's press-and-hold does. macOS keeps its own.
 
 ## Decisions needing review
+
+- **Middle click paste remembers the last selection made with the mouse**
+  (SPEC.md §5.3, 2026-11-13), read 0.1 s after a drag, a double click or
+  a Shift click, rather than reading the app in front at the click: with
+  focus following the mouse, that's the app being pasted into. Reversible:
+  `middlepaste.pick` and `middlepaste.selects`.
+- **Middle click paste goes through the clipboard** (SPEC.md §5.3,
+  2026-11-13): the text marked transient, Command+V, and the clipboard put
+  back 0.3 s later, since setting a field's text through Accessibility
+  doesn't work in web pages. CI's Mac pastes between two TextEdit
+  windows with these timings; slower apps are untried. Reversible:
+  `middlepaste.CLICK_SETTLE`, `FOCUS_TRIES` and `RESTORE_AFTER`.
+- **Middle click paste turns on Chrome's and Electron apps' accessibility**
+  (SPEC.md §5.3, 2026-11-13), once per app, the first time one is
+  involved, since they say nothing otherwise. Reversible: `nudge` in
+  `middlepaste_hs.lua`.
+- **A middle click in kitty, Ghostty, iTerm2 and Terminal stays theirs**
+  (SPEC.md §5.3, 2026-11-13). Reversible: `middlepaste.TERMINALS`.
 
 - **The wallpaper grid's folders and collections** (SPEC.md §10,
   2026-11-13): macOS's `/System/Library/Desktop Pictures` (collection

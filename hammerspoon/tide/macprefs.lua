@@ -173,6 +173,7 @@ M.GROUPS = {
     { id = "missionControl", label = "Dock and Mission Control" },
     { id = "windows", label = "Windows" },
     { id = "dialogs", label = "Dialogs" },
+    { id = "mouse", label = "Mouse" },
     { id = "keyboard", label = "Keyboard" },
     { id = "typing", label = "Typing" },
     { id = "text", label = "Text" },
@@ -224,6 +225,10 @@ M.SETTINGS = {
         one(key(G, "NSAutomaticDashSubstitutionEnabled", "bool"))),
     setting("typing", "doubleSpacePeriod", "Add a period with a double space", "bool", true, "apps",
         one(key(G, "NSAutomaticPeriodSubstitutionEnabled", "bool"))),
+    -- A middle click pasting what was last selected, as on Linux
+    -- (middlepaste.lua).
+    setting("mouse", "middleClickPaste", "Middle click pastes the selection", "bool", false, "tide",
+        { keys = {}, own = true }),
     -- Ctrl, Win and Alt where a PC keyboard has them, on every keyboard
     -- (capslock.lua, karabiner.lua).
     setting("keyboard", "type", "Keyboard", "choice", "mac", "tide", { keys = {}, own = true, choices = { "mac", "pc" } }),

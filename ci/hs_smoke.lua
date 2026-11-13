@@ -944,6 +944,154 @@ local function check_dim(after)
     end)
 end
 
+-- Middle click paste (SPEC.md §5.3), for real: text selected in one
+-- TextEdit window, with Command+A, is read through Accessibility, a middle
+-- click on another window's text pastes it there, and the clipboard is as
+-- it was afterwards. That window isn't focused, so tide's dim layer is over
+-- it (§5.6). The tap's part is done by hand: selected() as after a
+-- drag, and click() as for a plain middle click.
+local PASTE_WAIT = 5
+local PASTE_WORDS = "tide smoke words"
+local PASTE_CLIPBOARD = "tide smoke clipboard"
+
+-- A window's text area, a few levels down from it.
+local function text_area(id)
+    local function find(el, depth)
+        if not el or depth > 4 then
+            return nil
+        end
+        if el:attributeValue("AXRole") == "AXTextArea" then
+            return el
+        end
+        for _, child in ipairs(el:attributeValue("AXChildren") or {}) do
+            local found = find(child, depth + 1)
+            if found then
+                return found
+            end
+        end
+    end
+    local w = hs.window.get(id)
+    return w and find(hs.axuielement.windowElement(w), 0)
+end
+
+local function check_middle_paste(after)
+    local ids = app_windows(tide.wm)
+    local from, to = ids[1], ids[2]
+    local source, target = from and text_area(from), to and text_area(to)
+    if not source or not target then
+        fail("middle click paste: no text area in two TextEdit windows")
+        after()
+        return
+    end
+    local function done(why, ...)
+        tide.middle_paste.set(false)
+        if why then
+            fail("middle click paste: " .. why, ...)
+        else
+            say("middle click paste: the selection pasted, and the clipboard came back")
+        end
+        after()
+    end
+    -- `ready()` every 0.2 s until it's true, then `next`; `late()` says
+    -- what was still wrong at the deadline.
+    local function wait(ready, next, late)
+        local started = hs.timer.secondsSinceEpoch()
+        -- A global, like smoke_timer, so it isn't collected.
+        smoke_paste = hs.timer.doEvery(0.2, function()
+            local ok = ready()
+            if not ok and hs.timer.secondsSinceEpoch() - started <= PASTE_WAIT then
+                return
+            end
+            smoke_paste:stop()
+            if ok then
+                next()
+            else
+                done("%s after %ds", late(), PASTE_WAIT)
+            end
+        end)
+    end
+    source:setAttributeValue("AXValue", PASTE_WORDS)
+    hs.pasteboard.setContents(PASTE_CLIPBOARD)
+    tide.middle_paste.set(true)
+    hs.window.get(from):focus()
+    wait(function()
+        return tide.adapter.focused() == from
+    end, function()
+        hs.eventtap.keyStroke({ "cmd" }, "a", 1000)
+        wait(function()
+            return source:attributeValue("AXSelectedText") == PASTE_WORDS
+        end, function()
+            tide.middle_paste.selected()
+            local asked = hs.timer.secondsSinceEpoch()
+            local f = hs.window.get(to):frame()
+            local x, y = f.x + f.w / 2, f.y + f.h / 2
+            -- The settings window an earlier check opened may be over the
+            -- point, and a click over one of tide's own windows is left
+            -- alone: close it, and wait until nothing of tide's is there.
+            -- That also gives selected() time for its read.
+            local settings = hs.window.find("tide settings")
+            if settings then
+                settings:close()
+            end
+            wait(function()
+                return hs.timer.secondsSinceEpoch() - asked >= 0.5 and not tide.wm:own_at(x, y)
+            end, function()
+                if not tide.middle_paste.click(x, y) then
+                    -- Why not: what's under the point and its parents, each
+                    -- with whether its value can be set, and what's focused.
+                    local roles = {}
+                    local id = tide.wm:window_at(x, y)
+                    local known = id and tide.wm.windows[id]
+                    local pid = known and known.pid
+                    local app_el = pid and hs.axuielement.applicationElementForPID(pid)
+                    local el = app_el and app_el:elementAtPosition(x, y)
+                    while el and #roles < 6 do
+                        roles[#roles + 1] = tostring(el:attributeValue("AXRole"))
+                            .. (el:isAttributeSettable("AXValue") == true and " (settable)" or "")
+                        el = el:attributeValue("AXParent")
+                    end
+                    local app = pid and hs.application.applicationForPID(pid)
+                    local focus = hs.axuielement.systemWideElement():attributeValue("AXFocusedUIElement")
+                    -- And what the window server has at the point, front
+                    -- to back: owner, name, layer, and tide's id for it.
+                    local stack = {}
+                    for _, info in ipairs(hs.window.list(true) or {}) do
+                        local b = info.kCGWindowBounds or {}
+                        if x >= (b.X or 0) and x < (b.X or 0) + (b.Width or 0)
+                            and y >= (b.Y or 0) and y < (b.Y or 0) + (b.Height or 0) and #stack < 8 then
+                            stack[#stack + 1] = string.format("%s %q layer %s%s", tostring(info.kCGWindowOwnerName),
+                                tostring(info.kCGWindowName), tostring(info.kCGWindowLayer),
+                                tide.wm.windows[info.kCGWindowNumber] and " (tide's " .. info.kCGWindowNumber .. ")" or "")
+                        end
+                    end
+                    done("the click at %.0f,%.0f wasn't taken; under it, in %s: %s; focused is %s, with %q selected;"
+                        .. " window_at says %s (to is %s), own_at %s; the stack there: %s",
+                        x, y, tostring(app and app:bundleID()), table.concat(roles, " < "),
+                        tostring(focus and focus:attributeValue("AXRole")),
+                        tostring(focus and focus:attributeValue("AXSelectedText")),
+                        tostring(id), tostring(to), tostring(tide.wm:own_at(x, y)), table.concat(stack, "; "))
+                    return
+                end
+                wait(function()
+                    return target:attributeValue("AXValue") == PASTE_WORDS
+                        and hs.pasteboard.readString() == PASTE_CLIPBOARD
+                end, function()
+                    done()
+                end, function()
+                    return string.format("the other window has %q and the clipboard %q",
+                        tostring(target:attributeValue("AXValue")), tostring(hs.pasteboard.readString()))
+                end)
+            end, function()
+                return "one of tide's own windows was still over the other TextEdit window"
+            end)
+        end, function()
+            return string.format("Command+A selected %q", tostring(source:attributeValue("AXSelectedText")))
+        end)
+    end, function()
+        return "the first TextEdit window didn't take focus"
+    end)
+end
+
 local function check_tiling()
     if not hs.accessibilityState() then
         fail("tiling: Hammerspoon doesn't have Accessibility on this runner")
@@ -983,7 +1131,9 @@ local function check_tiling()
                 check_dim(function()
                     check_launcher_attention()
                     check_launcher_page(function()
-                        check_launcher_keys(finish)
+                        check_launcher_keys(function()
+                            check_middle_paste(finish)
+                        end)
                     end)
                 end)
                 return

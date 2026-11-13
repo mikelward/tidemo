@@ -248,6 +248,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | Drag a tiled window's edge to set the split (tide for Chrome §5.3) | Accessibility's resize notification (§5.3) | **yes** |
 | Drop a dragged tile on another to swap them (tide for Chrome §5.3) | Accessibility's move notification (§5.3) | **yes** |
 | Super+middle-click maximizes the window under the pointer (tide for Linux §6.6) | the same event tap (§5.3) | **yes** |
+| Middle click pastes the selection (Linux's primary selection) | `macos.json`'s `mouse.middleClickPaste` (the macOS page's Mouse), off unless turned on: the selection read through Accessibility, pasted where you click (§5.3) | **partial**: text fields only, and not from an app that doesn't say what's selected. CI's Mac pastes between TextEdit windows; a real middle button, Chrome and Electron apps are *(unverified on a Mac)* |
 | Resize mode for floats, Super+Shift+R (tide for Linux §6.6) | a tide key mode (§5.3) | **yes** |
 | Focus follows mouse (KDE) | tide's own (§5.2) | **yes**, but focusing raises (§13) |
 | Nothing steals focus (tide for Linux §14) | macOS activation rules, plus tide's focus guard (§14) | **partial**: apps can still activate themselves |
@@ -729,6 +730,77 @@ handling (tide for Chrome §5.3):
     outline in the same way *(unverified)*.
 - **Super+middle-click** maximizes the window under the pointer, or puts it
   back in its tile, as on tide for Linux (tide for Linux §6.6).
+- **A middle click pastes the selection,** as Linux's primary selection
+  does (`middlepaste.lua`). macOS has none, so tide keeps one.
+  - **Off unless turned on,** with "Middle click pastes the selection"
+    under Mouse on the macOS page, `mouse.middleClickPaste` in `macos.json`
+    and `macos.local.json` (§15): it changes what a mouse button does in
+    other apps. It's a setting tide applies itself, as each time the files
+    are read.
+  - **Selecting never copies.** After a drag, a double or triple click, or
+    a Shift click, tide reads what's selected in the app in front,
+    Accessibility's `AXSelectedText`, 0.1 s later, and remembers it. The
+    clipboard and its history (§9.1) are untouched. A plain click costs no
+    read.
+  - **It's kept in memory only,** the last one, until the next or until
+    the setting goes off. Clicking away keeps it, as on Linux. A password
+    field's selection is never read.
+  - **A plain middle click on a text field pastes it** at the click. A
+    text field is one whose value can be set, or the text inside one.
+    What's under the click is asked of the app whose window tide knows
+    is there, not of the whole screen: the dim's layer (§5.6) lies over
+    every window but the focused one, and Hammerspoon can't ask
+    Accessibility about its own. Where tide knows no window, the click is
+    left alone. A
+    click anywhere else is the app's, so a link still opens in a new tab
+    and a tab still closes. So is one with a modifier held; with Super it
+    maximizes (above).
+  - **What's pasted** is the remembered selection when it came from
+    another app. With focus following the mouse (§5.2), the app in front
+    is the one being pasted into. In the app it came from, what's selected
+    now wins, since the keyboard may have changed it. With nothing
+    remembered, it's what's selected in front, so a selection made with
+    the keyboard pastes in its own app; one made with the keyboard in
+    another app isn't seen.
+  - **The paste goes through the clipboard, briefly.** tide keeps the
+    clipboard, puts the text there, clicks where you clicked to place the
+    caret, sends Command+V, and puts the clipboard back 0.3 s after that
+    *(unverified on a Mac that it's long enough in a slow app)*.
+    Command+V goes to the app in front, so tide sends it only once that's
+    the app clicked, looking every 0.05 s, ten times at most. If another
+    app is in front by then, as when focus follows the mouse on to another
+    window, nothing is pasted and the clipboard goes back. Setting
+    the field's text through Accessibility would skip the clipboard, but
+    web pages don't take it.
+    - The text is marked `org.nspasteboard.TransientType`, so tide's
+      history and other clipboard managers skip it (§9.1).
+    - Something copied during the paste stays: tide puts the clipboard
+      back only while the pasteboard is as it left it.
+    - Only the clipboard's first item is kept, as `hs.pasteboard.readAllData`
+      reads it: several files copied at once come back as one.
+    - Quitting or reloading Hammerspoon mid-paste puts it back first.
+  - **Terminals are left alone:** kitty, Ghostty, iTerm2 and Terminal
+    paste their own selection on a middle click. kitty's is a buffer of
+    its own (conf's `kitty/macos.conf`), so a selection made in kitty
+    doesn't reach other apps, and kitty says nothing through
+    Accessibility.
+  - **Chrome and Electron apps say nothing until asked.** Chrome builds
+    its accessibility tree once something asks its application element's
+    role, and an Electron app once `AXManualAccessibility` is set on it
+    (Chromium's `chrome_browser_application_mac.mm`, Electron's
+    `electron_application.mm`). tide does each once per app, the first
+    time a selection or a middle click involves it, so the first one there
+    may do nothing *(unverified on a Mac)*. It costs that app the upkeep
+    of its tree, as VoiceOver would. tide never sets
+    `AXEnhancedUserInterface`.
+  - **It needs Accessibility** (§11.1), as the tap does. Turned on
+    without it, macOS asks, and a notification says where to turn it on:
+    clicking it opens Privacy & Security's Accessibility list. The Setup
+    checklist and `tide doctor` say so too.
+  - **Cost and reliability:** nothing to pay and no network. One
+    Accessibility read after each selecting gesture, and a few more on a
+    middle click: what's under the pointer, up to six of its parents, and
+    the selection. Each is given up after the adapter's timeout (§5.2).
 - **Super+Shift+R** enters resize mode for a float. In it, H J K L or the
   arrows resize the window, and Esc or Return leaves. This is tide for Linux's resize
   mode (tide for Linux §6.6). It needs only keys.
@@ -3091,7 +3163,7 @@ that isn't one is left out, and the log says so.
 
 | Permission | Asked when | Buys |
 |---|---|---|
-| Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags (§5.3), notification banners |
+| Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags and middle click paste (§5.3), notification banners |
 | Input Monitoring | only for the lone Super tap, if done by an event tap (§7) *(unverified that Accessibility alone isn't enough)* | seeing Option go down and up |
 | Screen Recording | only when you turn on the overview's window pictures (§6.9); titles come through Accessibility (§2.5), and screenshots use macOS's own keys (§10) | the overview's window pictures |
 | Automation, per browser | the first time the switcher's Windows tab lists tabs (§9) | tab titles and addresses |
