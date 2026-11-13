@@ -544,9 +544,34 @@ function M.new()
     -- its remote control, so the shell in it gets `env` (SPEC.md §6.3);
     -- with no socket, or if that fails, and for every other app, Cmd+N,
     -- whose window gets the environment the app started with.
+    -- The app's own New Window menu item (Finder's New Finder Window), the
+    -- one way to ask for a window that every app means the same by: Cmd+N
+    -- is a new playlist in Music.
+    local NEW_WINDOW = "^New (Finder )?Window$"
+    local function new_window_item(running)
+        local ok, item = pcall(running.findMenuItem, running, NEW_WINDOW, true)
+        if not ok then
+            -- Treated as having none: the launcher goes to its window.
+            a.log("couldn't read " .. tostring(running:bundleID()) .. "'s menus for New Window: " .. tostring(item))
+            return false
+        end
+        return item ~= nil
+    end
+
+    -- Whether app `bundle` runs and has a New Window menu item.
+    function a.can_new_window(bundle)
+        local running = bundle and hs.application.get(bundle)
+        return running ~= nil and new_window_item(running)
+    end
+
     local function new_window(spec, running, env)
         local function cmd_n()
-            if running:activate() then
+            if new_window_item(running) and running:activate() then
+                if not running:selectMenuItem(NEW_WINDOW, true) then
+                    a.log("couldn't choose New Window in " .. spec.bundle .. "; using Cmd+N")
+                    hs.eventtap.keyStroke({ "cmd" }, "n", 0, running)
+                end
+            elseif running:activate() then
                 hs.eventtap.keyStroke({ "cmd" }, "n", 0, running)
             else
                 a.notify("Couldn't open a new window of " .. spec.bundle)

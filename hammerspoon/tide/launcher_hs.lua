@@ -338,7 +338,8 @@ function M.run(tide, recency, item, fresh)
         -- workspace (SPEC.md §6.2).
         local home_app = tide.wm:home_app_named(item.title)
         if bundle then
-            tide.wm.actions.app(tide.wm, { bundle = bundle, name = item.title, home_app = home_app }, fresh)
+            -- A running app opens a new window here, where it can.
+            tide.wm.actions.app(tide.wm, { bundle = bundle, name = item.title, home_app = home_app, new_window = true }, fresh)
         else
             tide.wm:before_launch({ fresh = fresh, home_app = home_app, default = item.title }, function(env)
                 -- No bundle ID to say which app's window is the launch's.
