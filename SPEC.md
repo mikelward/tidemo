@@ -797,9 +797,9 @@ handling (tide for Chrome §5.3):
     without it, macOS asks, and a notification says where to turn it on:
     clicking it opens Privacy & Security's Accessibility list. The Setup
     checklist and `tide doctor` say so too.
-  - **Cost and reliability:** nothing to pay and no network. One
-    Accessibility read after each selecting gesture, and a few more on a
-    middle click: what's under the pointer, up to six of its parents, and
+  - **Cost and reliability:** nothing to pay and no network. A few
+    Accessibility reads after each selecting gesture, what's focused and
+    what's selected there, and a few more on a middle click: what's under the pointer, up to six of its parents, and
     the selection. Each is given up after the adapter's timeout (§5.2).
 - **Super+Shift+R** enters resize mode for a float. In it, H J K L or the
   arrows resize the window, and Esc or Return leaves. This is tide for Linux's resize
