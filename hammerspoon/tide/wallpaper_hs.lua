@@ -178,9 +178,17 @@ function M.new(tide)
         end
         local images = wallgrid.images(found, home, wallpaper.setting)
         for _, img in ipairs(images) do
+            -- imagesize.read gives nil and why when it can't tell.
             local w, h = imagesize.read(img.path)
-            img.width, img.height = w or 0, h or 0
-            img.thumb = thumbs[img.path] and thumbs[img.path].url or nil
+            if not w then
+                h = nil
+            end
+            local drawn = thumbs[img.path] or nil
+            -- A picture whose header gives no size (TIFF, WebP) keeps the
+            -- size its thumbnail found, as it isn't drawn again.
+            img.width = w or (drawn and drawn.width) or 0
+            img.height = h or (drawn and drawn.height) or 0
+            img.thumb = drawn and drawn.url or nil
         end
         local frames = {}
         for _, s in ipairs(hs.screen.allScreens()) do
