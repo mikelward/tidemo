@@ -19,8 +19,6 @@ t.test("macOS's answer is where it is, and how close, in whole km", function()
         { latitude = 53.35, longitude = -6.26, accuracyKm = 2 })
     t.eq(location.found({ latitude = 53.35, longitude = -6.26, horizontalAccuracy = 65 }).accuracyKm, 1,
         "never \"within about 0 km\"")
-    t.eq(location.found({ latitude = 53.35, longitude = -6.26, horizontalAccuracy = -1 }).accuracyKm, nil,
-        "a negative accuracy is CoreLocation's invalid")
     t.eq(location.found({ latitude = 53.35, longitude = -6.26 }).accuracyKm, nil)
 end)
 
@@ -30,6 +28,8 @@ t.test("no answer, or one out of range, is none", function()
     t.eq(location.found({ latitude = 91, longitude = 0 }), nil)
     t.eq(location.found({ latitude = 0, longitude = -181 }), nil)
     t.eq(location.found({ latitude = 0 / 0, longitude = 0 }), nil, "NaN")
+    t.eq(location.found({ latitude = 53.35, longitude = -6.26, horizontalAccuracy = -1 }), nil,
+        "a negative accuracy is CoreLocation's invalid fix, so Find waits for a real one")
 end)
 
 t.test("a Find with no answer says how long it waited", function()
