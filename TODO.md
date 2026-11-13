@@ -47,6 +47,12 @@ so on macOS 26; ticks survive a reload. What's left:
 
 - **Appearance**, if anything's left for it: a link to Appearance's own
   pane.
+- **Done: Appearance's city picker** (SPEC.md §10). Only
+  `tests/settings_page.cjs` and `tests/location_test.lua` cover it. **Check
+  on a Mac** that the list opens quickly the first time, the search keeps
+  its caret as you type, Find asks for Location Services the first time
+  and lists the cities nearest you once allowed, and says why with it
+  turned off.
 - **The dim (SPEC.md §5.6). Check on a Mac:** every window but the focused
   one is dimmed, and the desktop; the hole's corners match the window's on
   macOS 26 and before; clicks go through the layer; menus, popovers, the
@@ -445,6 +451,20 @@ tide. INFEASIBLE.md lists what can't be fixed.
   macOS's press-and-hold does. macOS keeps its own.
 
 ## Decisions needing review
+
+- **The city picker's Find asks Location Services, not beacondb.net**
+  (SPEC.md §10, 2026-11-13): tide for Linux asks beacondb.net by the IP
+  address. On a Mac, Location Services is nearer, needs no new host, sends
+  nothing of tide's anywhere, and is the permission the bar's Wi-Fi name
+  already asks for. It shows no DB-IP credit, as none of its data is used.
+  Reversible: `find_location` in `settings_hs.lua`.
+- **Sunrise and sunset has no time zone city to fall back on**
+  (SPEC.md §10, 2026-11-13): tide for Linux uses the time zone's city when
+  no location is set, from `tide-tz`. tide runs tide for Linux's module
+  with none, so the Location row shows in every mode until a city is
+  chosen, and the picker lists nothing until something's typed or Find
+  answers. Reversible: pass a `place` to `loadAppearance` in `theme.lua`
+  and the page.
 
 - **Esc on Cmd+Return's question still cancels** (2026-11-12): Esc on
   any other launch's question launches where you are, but Cmd+Return asks

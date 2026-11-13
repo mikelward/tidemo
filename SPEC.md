@@ -2779,9 +2779,50 @@ that isn't one is left out, and the log says so.
   - The settings window's Appearance page has tide for Linux's rows (tide for Linux §16):
     light or dark now and until when, with its switch; the mode, ‹ and ›
     through macOS's own and then tide for Linux's four; By the clock's times, − and
-    + a quarter hour; and the latitude and longitude, typed and set with
-    Enter. A change goes to `appearance.local.json`; macOS's own takes the
-    mode out of it, and can't be chosen while the shared file sets one.
+    + a quarter hour; and a Location row naming the city sunrise and
+    sunset are for, with Change. A change goes to `appearance.local.json`;
+    macOS's own takes the mode out of it, and can't be chosen while the
+    shared file sets one.
+    - The Location row shows under Sunrise and sunset. With no location
+      set it shows in every mode of tide's, as "Location for sunrise and
+      sunset", since that mode can't be chosen without one. Coordinates
+      set by hand show as numbers.
+    - tide for Linux falls back to the time zone's city with no location
+      set. tide doesn't: its light or dark runs tide for Linux's module
+      without a time zone city, so Sunrise and sunset needs a city chosen,
+      or coordinates set in the files.
+  - **Built: tide for Linux's city picker** (tide for Linux §16), under
+    the Location row's Change.
+    - It's tide for Linux's own module and list, copied unchanged
+      (`dashboard/tide-cities.js` and `cities.tsv`; `make check-tide`):
+      about 8,500 GeoNames cities (CC BY 4.0), 440 KB, which tide reads and
+      hands the page the first time the picker opens.
+    - It searches as you type, with tide for Linux's fuzzy matcher, and lists the
+      best eight. Accents and punctuation don't count, "St" reads as
+      "Saint", and after a comma the rest narrows by region or country.
+      Of equal matches, bigger and nearer the location set come first.
+      With nothing typed, it lists the cities nearest the location set.
+    - A chosen city is saved as `city`, `latitude` and `longitude` in
+      `appearance.local.json`, with tide for Linux's `withLocation`. Once one is,
+      and `appearance.json` sets a location, the first row goes back to
+      that one.
+    - ↑ and ↓ move, Enter or a click chooses, and Escape or a click
+      elsewhere closes it with nothing set.
+    - **Find**, beside the search, asks macOS's Location Services where
+      this Mac is (`hs.location`; `location.lua`), and lists the cities
+      nearest that, with how close macOS says it is, such as "to within
+      about 3 km". It's on a click only. Looking stops once macOS answers,
+      or after 30 seconds, which is time to answer macOS's question the
+      first time. Location Services off, for Hammerspoon or for the Mac,
+      says so under the results; so does no answer, in the log too.
+      - tide for Linux asks beacondb.net instead, by the IP address. tide
+        doesn't, so it sends nothing anywhere. macOS works out where the
+        Mac is as it does for any app, from nearby Wi-Fi networks through
+        Apple's location service, under macOS's own privacy terms. It's
+        the same permission the bar's Wi-Fi name needs, on the Setup
+        checklist.
+    - **Cost and reliability:** nothing to install, no network of tide's
+      own, and no key. The list is about 440 KB, read once a session.
   - macOS's dynamic wallpapers already change with the appearance, and
     kitty can follow it with its automatic themes *(unverified version)*.
   - **Built: tide for Linux's wallpapers, light and dark, are the desktop picture.**
@@ -3716,7 +3757,7 @@ Each one names a workaround, or says there is none.
     | Keyboard | the input sources, each a click to use (below), the Switcher, tide for Linux's or tide for Chrome's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tide's own (below) |
-    | Appearance | light or dark on tide for Linux's schedule, and its switch (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, and the Overview switch for window pictures (§6.9); Appearance settings |
+    | Appearance | light or dark on tide for Linux's schedule, and its switch, with a city picker for sunrise and sunset (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, and the Overview switch for window pictures (§6.9); Appearance settings |
     | Bar | Position, Top or Bottom (§8), and the Menu bar switch; Menu bar settings, Dock settings |
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tide's own (below) |

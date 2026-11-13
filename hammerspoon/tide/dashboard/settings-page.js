@@ -41,7 +41,8 @@ import {
 } from "./tide-workspacepage.js";
 import { loadWorkspaceSettings, workspaceSetting } from "./tide-workspacenames.js";
 import {
-  BAR_CHOICES, MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, parseCoordinate,
+  BAR_CHOICES, MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, locationRow,
+  parseAppearance, resetLocation, withLocation,
   positionAt, steppedDim, steppedModeAt, steppedPositionAt, steppedTimePast, wallpaperColor,
   withSetting as withAppearance,
 } from "./tide-appearance.js";
@@ -53,6 +54,7 @@ import {
   DAYS, DAY_LABELS, loadNotificationSettings, steppedDndTime, withDayToggled, withSetting as withNotification,
 } from "./tide-dnd.js";
 import { isZone, localText, sharedText } from "./settings.js";
+import { foundText, nearestCities, parseCities, searchCities } from "./tide-cities.js";
 import { steppedPointer } from "./linearmouse.js";
 import { matches, searchedRows } from "./tide-settingssearch.js";
 
@@ -868,6 +870,8 @@ function colorsFor(w, shows) {
 
 document.addEventListener("click", (e) => {
   if (colorsOpen && !e.target?.closest?.("[data-colors]")) closeColors(false);
+  // And the city picker (below).
+  if (cityPick.open && !e.target?.closest?.("[data-cities]")) closeCities(false);
 });
 
 // Set one of appearance.local.json's settings to `value`, or take it out
@@ -889,14 +893,159 @@ function setAppearance(key, value) {
 // Appearance's light or dark, as tide's page has it (tide SPEC.md §16):
 // what shows now and until when, with Light now or Dark now; the mode, ‹
 // and › through macOS's own, then tide's; By the clock's times, − and + a
-// quarter hour; and the place Sunrise and sunset needs, typed and set with
-// Enter. A change goes to appearance.local.json, as a wallpaper's does, and
-// tide sets macOS's appearance as it says (theme_hs.lua), answering
-// with tide.theme().
+// quarter hour; and the Location row Sunrise and sunset needs, its Change
+// opening the city picker. A change goes to appearance.local.json, as a
+// wallpaper's does, and tide sets macOS's appearance as it says
+// (theme_hs.lua), answering with tide.theme().
 let themeState = {};
 const OWN_MODE = { mode: undefined, label: "macOS's own" };
 const THEME_TIMES = [{ key: "light", label: "Light from", other: "dark" }, { key: "dark", label: "Dark from", other: "light" }];
-const THEME_PLACE = [{ key: "latitude", label: "Latitude, negative for south", example: "such as 37.8" }, { key: "longitude", label: "Longitude, negative for west", example: "such as -122.4" }];
+
+// The city picker, as tide's (tide SPEC.md §16), under the Location row:
+// tide's cities.tsv searched as you type with tide's own module, best and
+// nearest first, or with nothing typed the nearest cities; and above them,
+// once a city is chosen, a row that takes it out again. ↑ and ↓ move, Enter
+// or a click chooses, and Escape, or a click anywhere else, closes it with
+// nothing set. The list comes from tide ({ readCities } answered with
+// tide.cities()) the first time it opens. Find asks tide where this Mac is
+// ({ findLocation }), which asks macOS's Location Services and answers
+// with tide.foundLocation().
+const CITY_ROWS = 8;
+const cityPick = {
+  open: false,
+  asked: false,
+  cities: null,
+  failed: "",
+  typed: "",
+  at: 0,
+  // Find's answer ({ latitude, longitude, accuracyKm }) for this opening,
+  // whether it's asking, and why it couldn't.
+  found: null,
+  finding: false,
+  findFailed: "",
+};
+
+// The rows to choose from: { label, city }, city null for the row that
+// takes the location out.
+function cityRows(settings, shared) {
+  const typed = cityPick.typed.trim();
+  const near = cityPick.found
+    ?? (settings.latitude !== undefined && settings.longitude !== undefined
+      ? { latitude: settings.latitude, longitude: settings.longitude } : null);
+  const cities = cityPick.cities ?? [];
+  const found = typed !== "" ? searchCities(cities, typed, CITY_ROWS, near) : near ? nearestCities(cities, near, CITY_ROWS) : [];
+  const reset = typed === "" && !cityPick.found ? resetLocation(settings, shared, null) : null;
+  return (reset ? [{ label: reset, city: null }] : []).concat(found.map((c) => ({ label: c.label, city: c })));
+}
+
+function openCities() {
+  if (cityPick.open) return closeCities(true);
+  Object.assign(cityPick, { open: true, typed: "", at: 0, found: null, finding: false, findFailed: "" });
+  if (!cityPick.asked) {
+    cityPick.asked = true;
+    send({ readCities: true });
+  }
+  renderAppearance();
+  focusKey("cities-search");
+}
+
+// Back on Change for Escape; a click elsewhere leaves the keyboard on what
+// was clicked.
+function closeCities(toChange) {
+  cityPick.open = false;
+  cityPick.finding = false;
+  renderAppearance();
+  if (toChange) focusKey("theme-location");
+}
+
+function chooseCity(row) {
+  cityPick.open = false;
+  const city = row.city === null ? null : { label: row.city.label, latitude: row.city.latitude, longitude: row.city.longitude };
+  const error = document.getElementById("appearance-error");
+  const r = withLocation(appearanceText("local"), city, appearanceText("shared"), null);
+  if (r.error) {
+    error.textContent = `${r.error}; not changing the location`;
+    renderAppearance();
+    return;
+  }
+  error.textContent = "";
+  appearanceFiles = { ...appearanceFiles, local: r.text };
+  send({ writeAppearance: r.text });
+  renderAppearance();
+  focusKey("theme-location");
+}
+
+function findCity() {
+  if (cityPick.finding) return;
+  cityPick.finding = true;
+  cityPick.findFailed = "";
+  send({ findLocation: true });
+  renderAppearance();
+}
+
+// The picker, under the Location row: the search and Find, the rows, and
+// why there's nothing to choose or how close Find's answer is.
+function cityPicker(settings, shared) {
+  const li = el("li");
+  li.className = "cities";
+  li.setAttribute("data-cities", "");
+  const list = el("ul");
+  const note = el("p");
+  note.className = "note";
+  let rows = [];
+  // The rows and the note alone, as you type, so the field keeps its caret.
+  const draw = () => {
+    rows = cityRows(settings, shared);
+    cityPick.at = Math.max(0, Math.min(cityPick.at, rows.length - 1));
+    list.replaceChildren();
+    rows.forEach((r, i) => {
+      const row = el("li");
+      const b = keyed(button(r.label, r.label, false, () => chooseCity(r)), `cities-row-${i}`);
+      b.setAttribute("aria-current", String(i === cityPick.at));
+      row.append(b);
+      list.append(row);
+    });
+    const typed = cityPick.typed.trim() !== "";
+    note.textContent = cityPick.failed !== "" ? cityPick.failed
+      : cityPick.findFailed !== "" ? cityPick.findFailed
+        : cityPick.cities === null ? "Reading the city list"
+          : typed && rows.length === 0 ? "No cities match"
+            : cityPick.found && !typed ? foundText({ accuracyKm: cityPick.found.accuracyKm ?? null })
+              : "";
+  };
+  const search = keyed(el("input"), "cities-search");
+  search.value = cityPick.typed;
+  search.placeholder = "Search cities";
+  search.spellcheck = false;
+  search.setAttribute("aria-label", "Search cities");
+  search.addEventListener("input", () => {
+    cityPick.typed = search.value;
+    cityPick.at = 0;
+    draw();
+  });
+  search.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      cityPick.at += e.key === "ArrowDown" ? 1 : -1;
+      e.preventDefault?.();
+      draw();
+    } else if (e.key === "Enter" && rows.length > 0) {
+      e.handled = true;
+      chooseCity(rows[cityPick.at]);
+    } else if (e.key === "Escape") {
+      // The picker's, not the window's.
+      e.handled = true;
+      closeCities(true);
+    }
+  });
+  const find = keyed(button(cityPick.finding ? "Finding" : "Find", "Find my location", false, findCity), "cities-find");
+  find.setAttribute("aria-disabled", String(cityPick.finding));
+  const top = el("div");
+  top.className = "search";
+  top.append(search, find);
+  draw();
+  li.append(top, list, note);
+  return li;
+}
 
 // Whether a file's text sets a mode.
 function setsMode(text) {
@@ -956,26 +1105,23 @@ function renderTheme(settings, bad) {
     }
     const place = document.getElementById("theme-place");
     place.replaceChildren();
-    for (const c of chosen ? THEME_PLACE : []) {
+    // Location, under Sunrise and sunset, or in every mode while there's
+    // none, as that mode needs one: the city chosen, or the coordinates
+    // set by hand.
+    const where = locationRow(settings, null);
+    if (chosen && where.shown) {
       const li = el("li");
-      const input = el("input");
-      input.value = settings[c.key] === undefined ? "" : String(settings[c.key]);
-      input.placeholder = c.example;
-      input.spellcheck = false;
-      input.disabled = bad;
-      input.setAttribute("aria-label", c.label);
-      input.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter") return;
-        if (input.value.trim() === "") return setAppearance(c.key, undefined);
-        const got = parseCoordinate(c.key, input.value);
-        if (got.error) {
-          document.getElementById("appearance-error").textContent = `${got.error}; not changing ${c.key}`;
-          return;
-        }
-        setAppearance(c.key, got.value);
-      });
-      li.append(el("span", c.label), keyed(input, `theme-${c.key}`));
+      const value = el("span", where.value);
+      value.className = "value";
+      const change = keyed(button("Change", "Change location", bad, openCities), "theme-location");
+      change.setAttribute("data-cities", "");
+      change.setAttribute("aria-expanded", String(cityPick.open));
+      li.append(el("span", where.label), value, change);
       place.append(li);
+      if (cityPick.open && !bad) {
+        const parsed = shared === null ? { settings: {} } : parseAppearance(shared);
+        place.append(cityPicker(settings, parsed.settings ?? {}));
+      }
     }
   });
 }
@@ -2205,6 +2351,9 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !e.handled && colorsOpen) {
     // A wallpaper's colors close first, as tide's do.
     closeColors(true);
+  } else if (e.key === "Escape" && !e.handled && cityPick.open) {
+    // So does the city picker.
+    closeCities(true);
   } else if (e.key === "Escape" && !e.handled && searchField().value !== "") {
     // From anywhere in the window, Escape clears a query before it closes.
     searchField().value = "";
@@ -2343,6 +2492,35 @@ window.tide = {
   // The file macOS's dialog chose for wallpaper `key`, as a setting.
   setWallpaper(key, value) {
     if (WALLPAPERS.some((w) => w.key === key) && typeof value === "string") setWallpaper(key, value);
+  },
+  // The city picker's list, tide's cities.tsv's text, or why it couldn't
+  // be read.
+  cities(r) {
+    if (typeof r?.text === "string") {
+      const parsed = parseCities(r.text);
+      cityPick.cities = parsed.cities;
+      cityPick.failed = parsed.cities.length === 0 ? "No cities in the city list" : "";
+    } else {
+      cityPick.cities = [];
+      cityPick.failed = typeof r?.error === "string" ? r.error : "Couldn't read the city list";
+      // Asked again the next time the picker opens.
+      cityPick.asked = false;
+    }
+    renderAppearance();
+  },
+  // Find's answer: where Location Services says this Mac is, or why not.
+  foundLocation(r) {
+    if (!cityPick.finding) return;
+    cityPick.finding = false;
+    if (Number.isFinite(r?.latitude) && Number.isFinite(r?.longitude)) {
+      cityPick.found = { latitude: r.latitude, longitude: r.longitude, accuracyKm: Number.isFinite(r.accuracyKm) ? r.accuracyKm : null };
+      cityPick.findFailed = "";
+      cityPick.typed = "";
+      cityPick.at = 0;
+    } else {
+      cityPick.findFailed = `Couldn't find your location: ${typeof r?.error === "string" ? r.error : "no answer"}`;
+    }
+    renderAppearance();
   },
   mutedError(why, entry) {
     document.getElementById("muted-error").textContent = why;

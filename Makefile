@@ -8,8 +8,8 @@
 #   make install  copy the Hammerspoon modules to ~/.hammerspoon/tide
 #   make check-tide   compare the copies of tide for Linux's geometry, direction,
 #                 clocks, startup, clipboard, steps, layouts, input, fuzzy,
-#                 workspaces, bar settings and settings search modules,
-#                 character list and key presets with a tide checkout
+#                 workspaces, bar settings, settings search and cities modules,
+#                 character and city lists and key presets with a tide checkout
 #                 (TIDE=../tide by default)
 #   make check-tideco   compare the dashboard's copies of tide for Chrome's clock
 #                 modules and launcher page with a tideco checkout
@@ -63,6 +63,7 @@ install:
 	mkdir -p $(HAMMERSPOON_DIR)/tide
 	cp hammerspoon/tide/*.lua $(HAMMERSPOON_DIR)/tide/
 	cp hammerspoon/tide/chars.tsv hammerspoon/tide/LICENSE-UNICODE $(HAMMERSPOON_DIR)/tide/
+	cp hammerspoon/tide/cities.tsv $(HAMMERSPOON_DIR)/tide/
 	cp hammerspoon/tide/compose.tsv hammerspoon/tide/LICENSE-X11 $(HAMMERSPOON_DIR)/tide/
 	mkdir -p $(HAMMERSPOON_DIR)/tide/icons
 	cp hammerspoon/tide/icons/*.png $(HAMMERSPOON_DIR)/tide/icons/
@@ -79,7 +80,7 @@ install:
 
 # geometry.lua is tide for Linux's, copied unchanged, so a workspace looks the
 # same on both desktops; so is its clocks module, so this reads and writes tide
-# for Linux's clocks files as it does, and its startup, clipboard and input modules, for startup.json, clipboard.json and input.json, and its Workspaces page's, for workspaces.json; so is the picker's character list, and
+# for Linux's clocks files as it does, and its startup, clipboard and input modules, for startup.json, clipboard.json and input.json, and its Workspaces page's, for workspaces.json; so is the picker's character list, the Appearance page's city picker and its list, and
 # the logo, which `make icons` renders. The bar's chips and the settings
 # window take tide for Linux's palette's colors.
 check-tide:
@@ -96,6 +97,8 @@ check-tide:
 	cmp $(TIDE)/shell/lib/dnd.mjs hammerspoon/tide/dashboard/tide-dnd.js
 	cmp $(TIDE)/shell/lib/palette.mjs hammerspoon/tide/dashboard/tide-palette.js
 	cmp $(TIDE)/shell/lib/fuzzy.mjs hammerspoon/tide/dashboard/tide-fuzzy.js
+	cmp $(TIDE)/shell/lib/cities.mjs hammerspoon/tide/dashboard/tide-cities.js
+	cmp $(TIDE)/shell/cities/cities.tsv hammerspoon/tide/cities.tsv
 	cmp $(TIDE)/shell/lib/span.mjs hammerspoon/tide/dashboard/tide-span.js
 	cmp $(TIDE)/shell/lib/workspacenames.mjs hammerspoon/tide/dashboard/tide-workspacenames.js
 	cmp $(TIDE)/shell/lib/workspacepage.mjs hammerspoon/tide/dashboard/tide-workspacepage.js
