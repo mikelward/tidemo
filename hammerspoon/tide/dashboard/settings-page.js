@@ -42,7 +42,7 @@ import {
 import { loadWorkspaceSettings, workspaceSetting } from "./tide-workspacenames.js";
 import {
   BAR_CHOICES, MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, locationRow,
-  parseAppearance, resetLocation, withLocation,
+  parseAppearance, resetLocation, withLocation, GALLERY_MODES, galleryCollections, galleryFiltered, galleryModeFor, galleryRows,
   positionAt, steppedDim, steppedModeAt, steppedPositionAt, steppedTimePast, wallpaperColor,
   withSetting as withAppearance,
 } from "./tide-appearance.js";
@@ -771,7 +771,7 @@ function renderBluetooth(st) {
 // The Appearance page's wallpapers, light and dark, as tide's has them
 // (tide SPEC.md §15, §16): appearance.json and appearance.local.json, read
 // and changed with tide's own module, so the Mac's desktop shows the ones
-// tide does. Enter sets one typed; its choose button asks tide for
+// tide does. Enter sets one typed; its grid's Other… asks tide for
 // macOS's file dialog ({ pickWallpaper: key }), and tide answers with
 // tide.setWallpaper(key, value). A change goes to appearance.local.json
 // ({ writeAppearance: text }).
@@ -799,6 +799,10 @@ let colorsTyped = null;
 const focusKey = (key) => document.querySelector?.(`[data-key="${key}"]`)?.focus?.();
 
 function openColors(key) {
+  if (gridOpen) {
+    gridOpen = "";
+    send({ wallpapersClosed: true });
+  }
   colorsOpen = colorsOpen === key ? "" : key;
   colorsTyped = null;
   renderAppearance();
@@ -868,8 +872,142 @@ function colorsFor(w, shows) {
   return li;
 }
 
+// The wallpaper grid, as tide's (tide SPEC.md §16): its button opens the
+// wallpapers installed, and yours, under the row, as thumbnails, those your
+// screen's shape first, cropped as it would be, then the rest whole. A
+// dropdown shows Light, Dark, or both, opening on the row's own; chips
+// pick a collection. Choosing one sets it as the row's field would, and
+// closes it; Other… asks for macOS's file dialog instead; Escape, or a
+// click anywhere else, closes it with nothing set. tide lists them
+// ({ listWallpapers }) each time it opens, answering with
+// tide.wallpaperGrid(), then sends each thumbnail as it's drawn with
+// tide.wallpaperThumb(); { wallpapersClosed } stops that.
+const GRID_COLUMNS = 4;
+const GRID_MODE_LABELS = { light: "Light", dark: "Dark", any: "Light and dark" };
+let gridOpen = "";
+const gridState = { images: null, screens: [], problems: [], mode: "any", collection: "" };
+// Each picture's button as last drawn, by path, so a thumbnail lands in
+// place without drawing the grid again.
+let gridButtons = new Map();
+
+function openGrid(key) {
+  if (gridOpen === key) return closeGrid(true);
+  colorsOpen = "";
+  gridOpen = key;
+  Object.assign(gridState, { images: null, screens: [], problems: [], mode: galleryModeFor(key), collection: "" });
+  send({ listWallpapers: true });
+  renderAppearance();
+  focusKey(`grid-mode-${key}`);
+}
+
+function closeGrid(toButton) {
+  const key = gridOpen;
+  gridOpen = "";
+  send({ wallpapersClosed: true });
+  renderAppearance();
+  if (toButton) focusKey(`grid-${key}`);
+}
+
+function chooseGridImage(key, image) {
+  gridOpen = "";
+  send({ wallpapersClosed: true });
+  setWallpaper(key, image.setting);
+  // Drawn shut even when the value's refused.
+  renderAppearance();
+  focusKey(`grid-${key}`);
+}
+
+// A picture's button: its thumbnail, or its name until that comes.
+function gridThumb(button_, image) {
+  button_.replaceChildren();
+  if (typeof image.thumb === "string") {
+    const img = el("img");
+    img.src = image.thumb;
+    img.alt = "";
+    button_.append(img);
+  } else {
+    const name = el("span", image.name);
+    name.className = "name";
+    button_.append(name);
+  }
+}
+
+function galleryFor(w, current) {
+  const li = el("li");
+  li.className = "gallery";
+  li.setAttribute("data-gallery", "");
+  const one = gridState.screens[0];
+  if (one) li.setAttribute("style", `--screen: ${one.width} / ${one.height}`);
+  const controls = el("div");
+  controls.className = "controls";
+  const mode = keyed(el("select"), `grid-mode-${w.key}`);
+  mode.setAttribute("aria-label", "Light or dark");
+  for (const m of GALLERY_MODES) {
+    const o = el("option", GRID_MODE_LABELS[m]);
+    o.value = m;
+    o.selected = m === gridState.mode;
+    mode.append(o);
+  }
+  mode.value = gridState.mode;
+  mode.addEventListener("change", () => {
+    gridState.mode = mode.value;
+    renderAppearance();
+  });
+  controls.append(mode);
+  const images = gridState.images ?? [];
+  const collections = galleryCollections(images);
+  for (const c of collections.length ? ["", ...collections] : []) {
+    const chip = keyed(button(c || "All", c ? `Only ${c}` : "Every collection", false, () => {
+      gridState.collection = c;
+      renderAppearance();
+    }), `grid-chip-${w.key}-${c}`);
+    chip.className = "chip";
+    chip.setAttribute("aria-pressed", String(gridState.collection === c));
+    controls.append(chip);
+  }
+  const other = keyed(button("Other…", `Choose the ${w.label.toLowerCase()} from a file`, false, () => {
+    gridOpen = "";
+    send({ wallpapersClosed: true });
+    renderAppearance();
+    send({ pickWallpaper: w.key });
+  }), `grid-other-${w.key}`);
+  other.className = "other";
+  controls.append(other);
+  li.append(controls);
+  const note = el("p");
+  note.className = "note";
+  if (gridState.images === null) note.textContent = "Looking for wallpapers";
+  else if (images.length === 0) note.textContent = "No wallpapers in Desktop Pictures or ~/Pictures/Wallpapers";
+  if (gridState.problems.length) {
+    note.textContent = `${note.textContent ? `${note.textContent}. ` : ""}Couldn't list every wallpaper: ${gridState.problems.join("; ")}`;
+  }
+  if (note.textContent) li.append(note);
+  gridButtons = new Map();
+  const shown = galleryFiltered(images, gridState.mode, gridState.collection);
+  for (const row of galleryRows(shown, gridState.screens, GRID_COLUMNS)) {
+    if (row.heading) {
+      const h = el("p", row.heading);
+      h.className = "heading";
+      li.append(h);
+    }
+    const line = el("div");
+    line.className = `pictures ${row.section}`;
+    for (const image of row.images) {
+      const b = keyed(button("", image.name, false, () => chooseGridImage(w.key, image)), `grid-${w.key}-${image.path}`);
+      b.setAttribute("title", image.name);
+      b.setAttribute("aria-current", String(image.setting === current));
+      gridThumb(b, image);
+      gridButtons.set(image.path, b);
+      line.append(b);
+    }
+    li.append(line);
+  }
+  return li;
+}
+
 document.addEventListener("click", (e) => {
   if (colorsOpen && !e.target?.closest?.("[data-colors]")) closeColors(false);
+  if (gridOpen && !e.target?.closest?.("[data-gallery]")) closeGrid(false);
   // And the city picker (below).
   if (cityPick.open && !e.target?.closest?.("[data-cities]")) closeCities(false);
 });
@@ -1157,13 +1295,15 @@ function renderWallpapers(settings, bad) {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") setWallpaper(w.key, input.value.trim());
     });
-    const choose = keyed(button("…", `Choose the ${w.label.toLowerCase()}`, bad, () => send({ pickWallpaper: w.key })),
-      `choose-${w.key}`);
-    choose.setAttribute("data-icon", "folder");
+    const grid = keyed(button("", `Wallpapers for the ${w.label.toLowerCase()}`, bad, () => openGrid(w.key)), `grid-${w.key}`);
+    grid.setAttribute("data-icon", "grid");
+    grid.setAttribute("data-gallery", "");
+    grid.setAttribute("aria-expanded", String(gridOpen === w.key));
     const shows = wallpaperColor(settings[w.key] ?? "");
-    li.append(el("span", w.label), input, swatchFor(w, shows, bad), choose);
+    li.append(el("span", w.label), input, swatchFor(w, shows, bad), grid);
     list.append(li);
     if (colorsOpen === w.key && !bad) list.append(colorsFor(w, shows));
+    if (gridOpen === w.key && !bad) list.append(galleryFor(w, settings[w.key] ?? ""));
     // A color has nothing to place.
     if (!shows) list.append(positionFor(w, settings, bad));
   }
@@ -2351,6 +2491,9 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !e.handled && colorsOpen) {
     // A wallpaper's colors close first, as tide's do.
     closeColors(true);
+  } else if (e.key === "Escape" && !e.handled && gridOpen) {
+    // So does the wallpaper grid.
+    closeGrid(true);
   } else if (e.key === "Escape" && !e.handled && cityPick.open) {
     // So does the city picker.
     closeCities(true);
@@ -2467,6 +2610,30 @@ window.tide = {
   // The Displays page alone, as macOS says it is now.
   displays(st) {
     renderDisplays(st);
+  },
+  // The wallpaper grid's pictures, for the grid open now.
+  wallpaperGrid(g) {
+    if (!gridOpen || !isObject(g)) return;
+    gridState.images = Array.isArray(g.images) ? g.images : [];
+    gridState.screens = Array.isArray(g.screens) ? g.screens : [];
+    gridState.problems = Array.isArray(g.problems) ? g.problems.map(String) : [];
+    renderAppearance();
+  },
+  // One picture's thumbnail: drawn in place, or the grid drawn again when
+  // it brings the size the picture's header didn't say, as that can move
+  // it.
+  wallpaperThumb(th) {
+    const image = gridState.images?.find((i) => i.path === th?.path);
+    if (!gridOpen || !image || typeof th.url !== "string") return;
+    image.thumb = th.url;
+    if (!(image.width > 0 && image.height > 0) && th.width > 0 && th.height > 0) {
+      image.width = th.width;
+      image.height = th.height;
+      renderAppearance();
+      return;
+    }
+    const b = gridButtons.get(image.path);
+    if (b) gridThumb(b, image);
   },
   // The Sound page alone, as macOS says it is now.
   sound(s) {

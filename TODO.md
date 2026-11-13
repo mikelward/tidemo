@@ -53,6 +53,14 @@ so on macOS 26; ticks survive a reload. What's left:
   its caret as you type, Find asks for Location Services the first time
   and lists the cities nearest you once allowed, and says why with it
   turned off.
+- **Done: Appearance's wallpaper grid** (SPEC.md §10). Only
+  `tests/wallgrid_test.lua`, `tests/imagesize_test.lua`,
+  `tests/wallpaper_hs_test.lua` and `tests/settings_page.cjs` cover it.
+  **Check on a Mac** that macOS's wallpapers all show with their
+  thumbnails, from `.thumbnails` where it has them; how long the first
+  opening takes; that a HEIC's size from its header matches what Finder
+  says; and that choosing a dynamic one sets it changing with the
+  appearance.
 - **The dim (SPEC.md §5.6). Check on a Mac:** every window but the focused
   one is dimmed, and the desktop; the hole's corners match the window's on
   macOS 26 and before; clicks go through the layer; menus, popovers, the
@@ -452,6 +460,33 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **The wallpaper grid's folders and collections** (SPEC.md §10,
+  2026-11-13): macOS's `/System/Library/Desktop Pictures` (collection
+  macOS, or its subfolder's name, such as Solid Colors), `/Library/Desktop
+  Pictures` (This Mac) and `~/Pictures/Wallpapers` (Yours), as tide for
+  Linux's `~/Pictures/wallpapers`, rather than all of Pictures, which can
+  hold a Photos library. Reversible: `wallgrid.folders` and
+  `wallgrid.collection`.
+- **The wallpaper grid leaves out macOS's aerials** (SPEC.md §10,
+  2026-11-13): a `.madesktop` is a video's settings, not a picture, with
+  nothing to show as a thumbnail, and it's unverified that NSWorkspace
+  sets one from a file. Reversible: `wallgrid.TYPES`.
+- **The wallpaper grid's file dialog is its Other…** (SPEC.md §10,
+  2026-11-13): the row's own choose button gave way to the grid's, and
+  Other… in the grid opens macOS's file dialog, so a row has one button
+  for pictures, not two. tide for Linux keeps both on the row.
+  Reversible: `renderWallpapers` in `settings-page.js`.
+- **No Unsplash or Wallhaven in the wallpaper grid** (SPEC.md §10,
+  2026-11-13): tide for Linux's buttons to find more wallpapers in a
+  browser would be tide's first links to outside sites from the
+  Appearance page, a new dependency on two sites, one of them with
+  uploads of mixed licenses. Reversible: tide for Linux's
+  `moreWallpapers`, already in `tide-appearance.js`.
+- **Thumbnails are JPEG data: URLs drawn by Hammerspoon** (SPEC.md §10,
+  2026-11-13): the page can't load a file, so each thumbnail is drawn
+  with `hs.image`, from macOS's `.thumbnails` copy where there is one,
+  one a tick, and kept until Hammerspoon reloads. Reversible:
+  `wallpaper_hs.lua`'s `thumbnail`.
 - **The city picker's Find asks Location Services, not beacondb.net**
   (SPEC.md §10, 2026-11-13): tide for Linux asks beacondb.net by the IP
   address. On a Mac, Location Services is nearer, needs no new host, sends

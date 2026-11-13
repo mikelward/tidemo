@@ -2872,14 +2872,65 @@ that isn't one is left out, and the log says so.
       click anywhere else, closes them with nothing set.
       *(Unverified on a Mac: that the stretched square shows as an even
       color on every display.)*
-    - **Choosing one:** each wallpaper's field has a choose button, which
-      opens macOS's own file dialog (`hs.dialog.chooseFileOrFolder`),
-      offering images, where the wallpaper is now, or in Pictures. The file
-      chosen is set as a typed path is: from `~/` when it's in your home
-      folder, so it reads the same on Linux, where tide for Linux shows it. A cancel
-      changes nothing.
-    - The dialog is modal, so tide waits on it, as Hammerspoon's
-      dialogs do: windows that open meanwhile are tiled once it closes.
+    - **Built: the wallpaper grid** (tide for Linux §16). Each wallpaper's
+      row has a grid button, which opens the wallpapers installed, and
+      yours, as thumbnails under the row (`wallgrid.lua`,
+      `wallpaper_hs.lua`'s `gallery`).
+      - It shows every picture under `/System/Library/Desktop Pictures`
+        (macOS's own, with subfolders such as Solid Colors), `/Library/Desktop
+        Pictures` (an administrator's or an organization's) and
+        `~/Pictures/Wallpapers`, three folders deep, sorted by name. A
+        folder that isn't there is passed over. Yours is
+        `~/Pictures/Wallpapers` rather than all of Pictures, which can hold
+        a Photos library.
+      - HEIC, HEIF, JPEG, PNG, TIFF and WebP are shown. A `.madesktop`,
+        macOS's aerial wallpapers, is left out: it's a video's settings,
+        not a picture, and tide can't tell that macOS sets one from a file.
+        Hidden folders and packages aren't looked in.
+      - Pictures your displays' shape come first, under Fits your screen,
+        cropped as the display would be; the rest follow under Other
+        shapes, shown whole. tide for Linux's own functions sort and filter
+        them (`galleryRows`, `galleryFiltered`, `galleryCollections` in
+        `tide-appearance.js`), so a shape within 2% fits.
+      - Each picture's size comes from its header, not decoding it
+        (`imagesize.lua`): PNG's IHDR, JPEG's frame, and a HEIC's largest
+        `ispe`, since macOS's are grids of tiles. A TIFF or WebP's comes
+        with its thumbnail, which can move it under Fits your screen.
+      - **A dropdown** shows Light, Dark, or Light and dark, opening on the
+        row's own mode. A picture that's one of a light and dark pair by
+        its name, as tide for Linux pairs them (`-l` and `-d`, light with
+        dark or dimmed, day with night, after a space too, as in "Mojave
+        Day"), shows only for its mode. Any other shows for either; a
+        dynamic HEIC changes with macOS's appearance by itself.
+      - **Chips** pick a collection, or All: macOS, a subfolder of macOS's
+        folder by its name, This Mac, or Yours, last. With one collection
+        there are none.
+      - **Thumbnails** are drawn one at a time after the grid shows, so a
+        hundred pictures don't hold the window up, each from macOS's own
+        smaller copy in `.thumbnails` beside it where there is one, else
+        from the picture: at most 320 by 200, as a JPEG `data:` URL, since
+        the page can't load a file. They're kept until Hammerspoon reloads,
+        so the grid opens at once the second time. One macOS can't read
+        shows its name, and is logged once. *(Unverified on a Mac: that
+        `.thumbnails` holds a copy of each by its name, and how long the
+        first opening takes without it.)*
+      - It lists the folders afresh each time it opens. A folder it can't
+        read, or a link to nothing, is said over the grid and logged; the
+        rest still show.
+      - **Other…** opens macOS's own file dialog (`hs.dialog.chooseFileOrFolder`),
+        offering images, where the wallpaper is now, or in Pictures. A
+        cancel changes nothing. The dialog is modal, so tide waits on it,
+        as Hammerspoon's dialogs do: windows that open meanwhile are tiled
+        once it closes.
+      - Choosing a picture, or a file, sets it as a typed path is: from
+        `~/` when it's in your home folder, so it reads the same on Linux,
+        where tide for Linux shows it. It closes the grid. Escape, or a
+        click anywhere else, closes it with nothing set.
+      - tide for Linux's Unsplash and Wallhaven buttons, to find more
+        in a browser, aren't here.
+      - **Cost and reliability:** nothing to install and no network; one
+        walk of three folders each time it opens, reading each picture's
+        header, and one decode for each thumbnail the first time.
     - **Cost and reliability:** nothing to install or pay for; one
       notification watcher, and a desktop picture set only when it
       changes.
@@ -3757,7 +3808,7 @@ Each one names a workaround, or says there is none.
     | Keyboard | the input sources, each a click to use (below), the Switcher, tide for Linux's or tide for Chrome's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tide's own (below) |
-    | Appearance | light or dark on tide for Linux's schedule, and its switch, with a city picker for sunrise and sunset (§10), the wallpapers, light and dark, each chosen in macOS's file dialog and placed as its position says, and the Overview switch for window pictures (§6.9); Appearance settings |
+    | Appearance | light or dark on tide for Linux's schedule, and its switch, with a city picker for sunrise and sunset (§10), the wallpapers, light and dark, each chosen from a grid of those installed or in macOS's file dialog, and placed as its position says, and the Overview switch for window pictures (§6.9); Appearance settings |
     | Bar | Position, Top or Bottom (§8), and the Menu bar switch; Menu bar settings, Dock settings |
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tide's own (below) |

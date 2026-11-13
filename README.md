@@ -114,7 +114,8 @@ It brings tide for Linux's desktop to macOS:
 - an Appearance page in the settings window with tide for Linux's light
   or dark by the clock or by sunrise and sunset, a city picker for where
   (Find asks macOS's Location Services, on a click only), and a
-  wallpaper for each (§10, §15);
+  wallpaper for each, picked from a grid of macOS's and yours
+  (`~/Pictures/Wallpapers`), your screen's shape first, or any file (§10, §15);
 - a macOS page in the settings window for macOS's own settings that
   `setup-macos` used to set: Finder's hidden files, path bar and
   extensions, the screenshot folder and thumbnail, the Spaces order, hot
