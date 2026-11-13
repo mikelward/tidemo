@@ -34,9 +34,8 @@ M.map = {
     { key = ",", action = "cycle", arg = -1, name = "previous_layout" },
     { key = "`", action = "monocle", name = "monocle" },
     { key = "o", action = "monocle", name = "monocle" },
-    { key = "up", action = "maximize", name = "maximize" },
-    { key = "up", shift = true, action = "fullscreen", name = "fullscreen" },
-    { key = "down", action = "restore", name = "restore" },
+    { key = "x", action = "maximize", name = "maximize" },
+    { key = "x", shift = true, action = "fullscreen", name = "fullscreen" },
     { key = "f", shift = true, action = "toggle_float", name = "float" },
     -- A PC keyboard's Insert arrives as the Mac's Help key.
     { key = "help", action = "toggle_float", name = "float" },
@@ -53,12 +52,16 @@ M.map = {
     -- (SPEC.md §6.7).
     { key = "z", action = "minimize", name = "minimize" },
     { key = "r", shift = true, action = "resize_mode", name = "resize_mode" },
-    -- Left and Right go between windows, across displays at the edge;
-    -- PgUp and PgDn between workspaces (SPEC.md §7.2).
+    -- The arrows go between windows, across displays at the edge; PgUp
+    -- and PgDn between workspaces (SPEC.md §7.2).
     { key = "left", action = "select", arg = -1, name = "focus_left" },
     { key = "right", action = "select", arg = 1, name = "focus_right" },
+    { key = "up", action = "select_vertical", arg = -1, name = "focus_above" },
+    { key = "down", action = "select_vertical", arg = 1, name = "focus_below" },
     { key = "left", shift = true, action = "move_side", arg = -1, name = "move_left" },
     { key = "right", shift = true, action = "move_side", arg = 1, name = "move_right" },
+    { key = "up", shift = true, action = "move_vertical", arg = -1, name = "move_above" },
+    { key = "down", shift = true, action = "move_vertical", arg = 1, name = "move_below" },
     { key = "pageup", action = "step", arg = -1, name = "previous_workspace" },
     { key = "pagedown", action = "step", arg = 1, name = "next_workspace" },
     { key = "pageup", shift = true, action = "move_ws", arg = -1, name = "move_to_previous_workspace" },
@@ -250,6 +253,8 @@ M.resize_exit = { "escape", "return" }
 -- used last Super+Space.
 M.keyless = {
     { action = "last_layout", name = "last_layout" },
+    -- Super+X and Super+Shift+X toggle maximize and full screen.
+    { action = "restore", name = "restore" },
 }
 
 -- keys.lua's map with the keyless bindings after it, for shortcuts.lua.
@@ -310,7 +315,9 @@ M.DOES = {
     resize_mode = "Resize mode",
     step = by_sign("Previous workspace", "Next workspace"),
     select = by_sign("Select the window to the left", "Select the window to the right"),
+    select_vertical = by_sign("Select the window above", "Select the window below"),
     move_side = by_sign("Move the window left", "Move the window right"),
+    move_vertical = by_sign("Move the window up", "Move the window down"),
     move_ws = by_sign("Move the window to the previous workspace", "Move the window to the next workspace"),
     lock = "Lock",
     logout = "Log out",

@@ -42,8 +42,9 @@ It brings tide for Linux's desktop to macOS:
   window there, Super+0 and Super+Shift+0 the same for the last workspace
   on the bar, and Alt+Tab to swap with the master, with conf's Karabiner
   rule (§7.2);
-- Super+Left and Right to select the window that way, going on to the next
-  display at the edge, and Super+Shift+Left and Right to move it there;
+- Super and an arrow to select the window that way, going on to the next
+  display at the edge, and Super+Shift and an arrow to move it there;
+  Super+X to maximize and Super+Shift+X for full screen;
   Super+PgUp and PgDn for the previous and next workspace with windows,
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);

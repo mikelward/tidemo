@@ -485,6 +485,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
   `middlepaste_hs.lua`.
 - **A middle click in kitty, Ghostty, iTerm2 and Terminal stays theirs**
   (SPEC.md §5.3, 2026-11-13). Reversible: `middlepaste.TERMINALS`.
+- **Super+Up and Down select above and below** (2026-11-13), as on tide
+  for Linux, with maximize and full screen moved to `Super+X` and
+  `Super+Shift+X`, and restore keyless. On a display, a window must share
+  some height (width, going up or down) to be picked, so from the master
+  `Super+Up` goes to the display above, not the top of the stack.
 
 - **The wallpaper grid's folders and collections** (SPEC.md §10,
   2026-11-13): macOS's `/System/Library/Desktop Pictures` (collection
