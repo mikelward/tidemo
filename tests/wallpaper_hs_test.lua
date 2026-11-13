@@ -343,6 +343,8 @@ t.test("opened again, the grid has its thumbnails, and draws none twice", functi
     t.eq(#s.decoded, decoded)
     t.eq(again, 0)
     t.eq(listed.images[4].thumb, "data:" .. SYS .. "/.thumbnails/Sonoma.heic@320x160")
+    t.eq({ listed.images[4].width, listed.images[4].height }, { 4000, 2000 },
+        "a size its header doesn't give comes from its thumbnail, so it still fits the screen")
     t.eq(listed.images[1].thumb, nil)
     t.eq(#s.logged, 1, "the broken one said once")
 end)
