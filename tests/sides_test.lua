@@ -264,4 +264,59 @@ t.test("a float too big for the next display shrinks to fit inside it", function
     t.eq(wm.windows[1].floating, true, "still floating")
 end)
 
+
+-- A second display below A, the same size.
+local function setup_below(on_a, on_b)
+    local a = fake.new()
+    a.screens_[2] = {
+        uuid = "B",
+        area = { x = 0, y = 1080, w = 1920, h = 1080 },
+        full = { x = 0, y = 1080, w = 1920, h = 1080 },
+    }
+    for _, id in ipairs(on_a) do
+        a.add(id, {})
+    end
+    for _, id in ipairs(on_b) do
+        a.add(id, { frame = { x = 100, y = 1200, w = 800, h = 600 } })
+    end
+    local wm = wm_mod.new(a, { workspaces = { "in" } })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    a.calls = {}
+    return a, wm
+end
+
+t.test("Super+Up and Down select in the stack, then the display below, not the stack beside the master", function()
+    local a, wm = setup_below({ 1, 2, 3 }, { 4 })
+    local order = wm:part("in", "A").order
+    local master, top, bottom = order[1], order[2], order[3]
+    t.eq(a.wins[top].frame.y < a.wins[bottom].frame.y, true, "two stacked in tile")
+    a.focus_ = top
+    wm:act("select_vertical", 1)
+    t.eq(a.focus_, bottom)
+    wm:act("select_vertical", -1)
+    t.eq(a.focus_, top)
+    a.focus_ = master
+    wm:act("select_vertical", -1)
+    t.eq(a.focus_, master, "nothing above the master on the top display")
+    wm:act("select_vertical", 1)
+    t.eq(a.focus_, 4, "below the master is B's window")
+    t.eq(wm:current_screen(), "B")
+end)
+
+t.test("Super+Shift+Up and Down swap in the stack, then move to the display below", function()
+    local a, wm = setup_below({ 1, 2, 3 }, { 4 })
+    local order = wm:part("in", "A").order
+    local top, bottom = order[2], order[3]
+    a.focus_ = bottom
+    wm:act("move_vertical", -1)
+    t.eq(wm:part("in", "A").order[2], bottom, "swapped with the one above")
+    a.focus_ = top
+    wm:act("move_vertical", 1)
+    wm:act("move_vertical", 1)
+    t.eq(wm.windows[top].screen, "B", "past the bottom, onto B")
+    t.eq(a.focus_, top)
+end)
+
 t.done("sides")

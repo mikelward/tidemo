@@ -814,16 +814,18 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
 - **Monocle** is a layout. Every window fills the tiling area, and
   `Super+J` and `K` flip between them. New windows open full size. The bar
   shows `[n]`, the hidden count.
-- **Maximize** (`Super+Up`) covers the tiling area with just this window.
+- **Maximize** (`Super+X`) covers the tiling area with just this window.
   It lasts until you press it again, close the window, or focus another
   window on the workspace.
-- **Full screen** (`Super+Shift+Up`) covers the whole display, bar and all.
+- **Full screen** (`Super+Shift+X`) covers the whole display, bar and all.
   It's tide's own: a move to the display's whole frame, which works
   over an auto-hidden menu bar *(unverified)*, not macOS's native full
   screen, which moves the window to a Space of its own (§13).
   An app's own native full screen (the green button) is left alone, and
   that window isn't on any tide workspace while it lasts.
-- **`Super+Down`** puts it back in its tile from either.
+- **Each key toggles its own**, so pressed again it puts the window back
+  in its tile. Restore puts it back from either, with no key by default;
+  the Keyboard section's shortcuts can give it one (§15).
 - **macOS brings all of an app's windows forward** when the app is
   activated *(unverified for Accessibility focus)*. In monocle that could
   shuffle the stack, so tide puts the order back after each activation.
@@ -1028,9 +1030,9 @@ never empty in between.
 | **Move** a window to a workspace (`Super+Shift+Return`'s prompt, §7.2) | It moves to the end of that workspace's stack on the same display. A new name makes the workspace first, at the end of the list. Then that workspace shows. | that window, as on tide for Linux |
 | **Next or previous** (`Super+PgUp`, `PgDn`) | Show the one after or before that has a window, in bar order, wrapping from the last to home and back, as on tide for Linux: an empty one, standing or made, or one whose only windows you minimized, is passed over, and with none other it stays. Scrolling over the bar's workspaces still stops at each, first and last. | as Show |
 | **Move a window to the next or previous** (`Super+Shift+PgUp`, `PgDn`) | Move, to the one after or before, wrapping as Next does. | that window |
-| **Move a window left or right** (`Super+Shift+Left`, `Right`, §7.2) | On its display, it swaps with the window that way. At the display's edge, it goes to the next display that way, as Moved to another display. | that window |
+| **Move a window that way** (`Super+Shift` and an arrow, §7.2) | On its display, it swaps with the window that way. At the display's edge, it goes to the next display that way, as Moved to another display. | that window |
 | **Activate**: an app key, the switcher, Cmd+Tab, a Dock click, a notification click | If the window's workspace isn't showing, show it. | that window |
-| **Moved to another display** by you (a drag, `Super+Shift+Left` / `Right`, or macOS) | It joins that display's stack, in the same workspace. | that window |
+| **Moved to another display** by you (a drag, `Super+Shift` and an arrow, or macOS) | It joins that display's stack, in the same workspace. | that window |
 | **Minimize** by you (`Super+Z`, Cmd+M, the yellow button) | Set the flag. The window joins its display's tray (§6.7). | `Super+Z`: the workspace's last used window still showing; otherwise macOS decides |
 | **Restore** by you, from the tray (§6.7), the switcher's Windows tab (§9), the Dock or Cmd+Tab | Clear the flag. If its workspace is hidden, this is Activate. | that window |
 | **Hide** an app (Cmd+H) | Nothing: hidden apps are macOS's, and come back where they were. | macOS decides |
@@ -1621,8 +1623,8 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+P` | presenter mode: Do Not Disturb and keep awake together (§10) | hotkey; keep awake as `Super+S`, Do Not Disturb through two shortcuts you make in Shortcuts |
 | `Super+Shift+E` | log out | hotkey; System Events, which asks first |
 | `Super+Home` | show "in" (§6.2) | hotkey |
-| `Super+Left` / `Right` | select the window left / right of this one; at a display's edge, the nearest on the next display that way (below) | hotkey |
-| `Super+Shift+Left` / `Right` | move the window left / right the same way, onto the next display at the edge; a float straight onto the next display (below) | hotkey |
+| `Super+Left` / `Right` / `Up` / `Down` | select the window left / right / above / below this one; at a display's edge, the nearest on the next display that way (below) | hotkey |
+| `Super+Shift+Left` / `Right` / `Up` / `Down` | move the window that way, onto the next display at the edge; a float straight onto the next display (below) | hotkey |
 | `Super+PgUp` / `PgDn` | previous / next workspace | hotkey |
 | `Super+Shift+PgUp` / `PgDn` | move the window to the previous / next workspace, and follow it | hotkey |
 | three fingers left / right on the trackpad | next / previous workspace, as `Super+PgDn` / `PgUp` | event tap |
@@ -1634,7 +1636,7 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+=` / `Super+-` | add / remove a master | hotkey |
 | `Super+.` / `Super+,` | next / previous layout | hotkey |
 | ``Super+` ``, `Super+O` | monocle | hotkey |
-| `Super+Up` / `Super+Shift+Up` / `Super+Down` | maximize / full screen / restore (§5.4) | hotkey |
+| `Super+X` / `Super+Shift+X` | maximize / full screen on or off (§5.4) | hotkey |
 | `Super+Shift+F`, `Super+Insert` | float or tile | hotkey |
 | `Super+Shift+I` | the settings window's Floating section, filled in for the focused window (§15), tide for Linux's `Super+Alt+F` | hotkey |
 | `Super+Shift+R` | resize mode for a float (§5.3) | hotkey, then plain keys until Esc |
@@ -1683,6 +1685,12 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     the stack beside you wins over a taller master on the far side, and on
     a taller display standing higher, it's the window in that column level
     with yours, not the top one.
+  - On this display, a window must share some height with yours. So in
+    tile the stack isn't above or below the master, and from the master
+    `Super+Up` goes to the display above.
+  - **`Super+Up` and `Down` are the same rule turned on its side,**
+    sharing width instead of height (2026-11-13). They replaced maximize
+    and restore, which moved to `Super+X` (§5.4).
   - The rule is tide for Linux's, in tide for Linux's own `direction.lua` (tide for Linux §6.6), copied
     unchanged; `make check-tide` fails if the two drift.
   - Past the last display that way, nothing. They don't wrap round to the
@@ -1698,7 +1706,8 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
   goes to the next display, in the same workspace, as a window you drag
   there does (§6.1), into
   the place in that display's layout that puts it nearest the edge it came
-  in by: its left edge moving right, its right edge moving left. Tile
+  in by: its left edge moving right, its right edge moving left, its top
+  edge moving down and its bottom edge moving up. Tile
   order isn't left to right (threecol's third tile is on the left), so
   tide lays out each place and picks by where the window would land;
   ties go to the place sharing the most height with where it was, then

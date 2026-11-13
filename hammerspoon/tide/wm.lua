@@ -3887,14 +3887,15 @@ function A.move_ws(self, d)
     end
 end
 
--- Left and right (SPEC.md §7.2) ------------------------------------------
+-- Left, right, up and down (SPEC.md §7.2) ------------------------------
 
 -- What's on side `d` of where the keys are, by direction.lua's rule: the
 -- tile picked, if any, and its display, if there's one that way. On the
 -- next display only the tiles at the edge you come in by are picked from. "Where
 -- the keys are" is the focused window's box on the display keys act on,
--- or that whole display with no window of its own focused.
-function M:beside(d)
+-- or that whole display with no window of its own focused. `vertical`
+-- goes up (d < 0) and down (d > 0), on turned boxes (direction.turned).
+function M:beside(d, vertical)
     local uuid = self:current_screen()
     local here = self:screen_by_uuid(uuid)
     if not here then
@@ -3926,7 +3927,11 @@ function M:beside(d)
             box = st.frame
         end
     end
-    return direction.find(box or here.area, uuid, displays, d)
+    local from = box or here.area
+    if vertical then
+        displays, from = direction.turned(displays), direction.turn(from)
+    end
+    return direction.find(from, uuid, displays, d)
 end
 
 -- Whether key list `p` sorts before `q`, first entry first.
@@ -3945,8 +3950,9 @@ end
 -- is laid out, and the one putting the window nearest the edge it came in
 -- by wins: the left edge moving right, the right moving left; then the one
 -- sharing the most height with `from`, where it was; then the nearest
--- center; then the earliest slot.
-function M:entry_slot(n, s, id, d, from)
+-- center; then the earliest slot. `vertical` goes up and down: the bottom
+-- edge moving up, the top moving down, and sharing width.
+function M:entry_slot(n, s, id, d, from, vertical)
     local ws = self:part(n, s.uuid)
     local ids = {}
     for _, other in ipairs(self:tiled(n, s.uuid)) do
@@ -3959,13 +3965,17 @@ function M:entry_slot(n, s, id, d, from)
         local trial = { table.unpack(ids) }
         table.insert(trial, k, id)
         local b = layout.arrange(ws, s.area, trial, self.layout)[id]
-        local edge = d > 0 and b.x - s.area.x or s.area.x + s.area.w - (b.x + b.w)
+        local area, f = s.area, from
+        if vertical then
+            b, area, f = direction.turn(b), direction.turn(area), from and direction.turn(from)
+        end
+        local edge = d > 0 and b.x - area.x or area.x + area.w - (b.x + b.w)
         local cx, cy = b.x + b.w / 2, b.y + b.h / 2
         local fx, fy = cx, cy
-        if from then
-            fx, fy = from.x + from.w / 2, from.y + from.h / 2
+        if f then
+            fx, fy = f.x + f.w / 2, f.y + f.h / 2
         end
-        local key = { edge, from and -direction.overlap(from, b) or 0, (cx - fx) ^ 2 + (cy - fy) ^ 2 }
+        local key = { edge, f and -direction.overlap(f, b) or 0, (cx - fx) ^ 2 + (cy - fy) ^ 2 }
         if not best_key or less(key, best_key) then
             best, best_key = k, key
         end
@@ -3976,8 +3986,8 @@ end
 -- Super+Left/Right: select the window left or right of the focused one,
 -- at a display's edge the nearest on the next display that way. A display
 -- there with no tiles takes the keys, as an empty workspace's does.
-function A.select(self, d)
-    local hit, s = self:beside(d)
+local function select_way(self, d, vertical)
+    local hit, s = self:beside(d, vertical)
     if hit then
         self:choose(hit.id)
     elseif s then
@@ -3985,11 +3995,20 @@ function A.select(self, d)
     end
 end
 
+function A.select(self, d)
+    select_way(self, d, false)
+end
+
+-- Super+Up/Down: the same, above or below.
+function A.select_vertical(self, d)
+    select_way(self, d, true)
+end
+
 -- A float moving `d`: onto the next display that way, by direction.lua's
 -- rule, at the same relative spot in its work area and its size, shrunk
 -- only to fit (direction.place). It stays floating and in its workspace,
 -- joining that display's part, with focus. Past the last display, nothing.
-function M:move_float_side(id, w, d)
+function M:move_float_side(id, w, d, vertical)
     local st = self.a.state(id)
     if not self:shows(id, st) or not self:shown(w.ws) then
         return
@@ -4002,6 +4021,15 @@ function M:move_float_side(id, w, d)
         if s.uuid == here.uuid then
             cur = displays[#displays]
         end
+    end
+    if vertical and cur then
+        local turned = direction.turned(displays)
+        for i, m in ipairs(displays) do
+            if m == cur then
+                cur = turned[i]
+            end
+        end
+        displays = turned
     end
     local next_one = cur and direction.next_monitor(cur, displays, d)
     if not next_one then
@@ -4026,18 +4054,18 @@ end
 -- (SPEC.md §6.1), in the slot whose tile lands nearest the
 -- edge it came in by (M:entry_slot). A float goes straight to the next
 -- display (M:move_float_side).
-function A.move_side(self, d)
+local function move_way(self, d, vertical)
     local fid = self.a.focused()
     local fw = self.windows[fid or false]
     if fw and fw.ws and fw.floating then
-        self:move_float_side(fid, fw, d)
+        self:move_float_side(fid, fw, d, vertical)
         return
     end
     local id, w = self:focused_tile()
     if not id then
         return
     end
-    local hit, s = self:beside(d)
+    local hit, s = self:beside(d, vertical)
     if not s then
         return
     end
@@ -4053,7 +4081,7 @@ function A.move_side(self, d)
         return
     end
     -- Onto the next display, in the same workspace.
-    local before = self:entry_slot(n, self:screen_by_uuid(s.uuid), id, d, from_box)
+    local before = self:entry_slot(n, self:screen_by_uuid(s.uuid), id, d, from_box, vertical)
     self:to_screen(id, s.uuid)
     local ws = self:part_of(w)
     local i = before and layout.index_of(ws.order, before)
@@ -4063,6 +4091,15 @@ function A.move_side(self, d)
     self:reconcile()
     self:retile()
     self:choose(id)
+end
+
+function A.move_side(self, d)
+    move_way(self, d, false)
+end
+
+-- Super+Shift+Up/Down: the same, up or down.
+function A.move_vertical(self, d)
+    move_way(self, d, true)
 end
 
 -- Apps and the launcher ----------------------------------------------------
