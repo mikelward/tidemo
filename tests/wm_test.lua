@@ -781,6 +781,30 @@ t.test("Cmd+Return asks for a new window, even when the app is running", functio
     t.eq(a.fresh[1], true)
 end)
 
+-- As launching it does on tide for Linux: a running browser opens a new
+-- window on the workspace you're on, not yours to go fetch.
+t.test("from the launcher, a running app opens a new window here, where it can", function()
+    local a, wm = setup(1)
+    a.wins[1].app = "com.brave.Browser"
+    wm.windows[1].app = "com.brave.Browser"
+    wm:show("4", nil, true)
+    a.tick()
+    t.eq(wm:current_ws(), "4")
+    a.can_new_window = function(bundle)
+        return bundle == "com.brave.Browser"
+    end
+    wm:act("app", { bundle = "com.brave.Browser", new_window = true })
+    t.eq(#a.launched, 1)
+    t.eq(a.fresh[1], true, "a new window, not the old one")
+    t.eq(wm:current_ws(), "4", "you stay where you are")
+    -- One with no New Window, such as Music, goes to the window it has.
+    a.wins[1].app = "com.apple.Music"
+    wm.windows[1].app = "com.apple.Music"
+    wm:act("app", { bundle = "com.apple.Music", new_window = true })
+    t.eq(#a.launched, 1, "nothing launched")
+    t.eq(wm:current_ws(), "in", "to its window, on in")
+end)
+
 t.test("Super+T opens a new terminal window every time, on this workspace, as tide's does", function()
     local a, wm = setup(1)
     a.wins[1].app = "net.kovidgoyal.kitty"

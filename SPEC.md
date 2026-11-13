@@ -2409,6 +2409,12 @@ tab, the search field naming the tab you're in.
 
 - **Tabs,** in this order *(the order is a guess, to confirm)*:
   - **Launch:** apps, System Settings' panes and tide's commands.
+    **An app that's running opens a new window on the workspace you're
+    on,** as launching it does on tide for Linux, through its own File ›
+    New Window (Finder's New Finder Window): a browser, Finder, an editor.
+    One without that menu item, such as Music, where Cmd+N means
+    something else, goes to the window it has, with its workspace, as
+    before (`hs_adapter.can_new_window`, `wm` `A.app`'s `new_window`).
     **Tide Settings** is listed among the apps, with tide's logo, and opens
     tide's settings window. Each of the window's sections has a row of
     its own, "Tide Settings: Clocks" and so on, found by its name or by

@@ -4115,7 +4115,15 @@ function A.app(self, spec, fresh)
         return
     end
     local ids = spec.bundle and self:app_windows(spec.bundle) or {}
-    if ids[1] then
+    -- From the launcher (`new_window`), a running app that has a New
+    -- Window menu item opens one here, as launching it does on tide for
+    -- Linux, rather than taking you to the window it has (SPEC.md §9.2).
+    if ids[1] and spec.new_window and self.a.can_new_window and self.a.can_new_window(spec.bundle) then
+        self:before_launch({ home_app = spec.home_app, default = default, app = spec.bundle }, function(env)
+            self:grant(spec.bundle)
+            self.a.launch(spec, true, env)
+        end)
+    elseif ids[1] then
         self:activate(ids[1])
     else
         self:before_launch({ home_app = spec.home_app, default = default, app = spec.bundle }, function(env)
