@@ -34,8 +34,13 @@ function M.found(loc)
         return nil
     end
     local accuracy = loc.horizontalAccuracy
+    -- CoreLocation's horizontalAccuracy is negative for a fix whose
+    -- latitude and longitude are invalid, so there's no location yet.
+    if type(accuracy) == "number" and accuracy < 0 then
+        return nil
+    end
     local km
-    -- CoreLocation's horizontalAccuracy is metres, negative when invalid.
+    -- In metres.
     if type(accuracy) == "number" and accuracy > 0 and accuracy < math.huge then
         km = math.max(1, math.floor(accuracy / 1000 + 0.5))
     end
