@@ -845,19 +845,80 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   // Sunrise and sunset is stepped past until there's a place.
   mode()[3].listeners.click();
   assert.strictEqual(lastAppearance().mode, "light");
-  assert.deepStrictEqual(place().map((li) => li.children[0].textContent), ["Latitude, negative for south", "Longitude, negative for west"]);
-  for (const [i, v] of [[0, "53.35"], [1, "-6.26"]]) {
-    place()[i].children[1].value = v;
-    place()[i].children[1].listeners.keydown({ key: "Enter" });
-  }
-  assert.deepStrictEqual(lastAppearance(), { mode: "light", light: "06:45", latitude: 53.35, longitude: -6.26 });
+  // With no location, the Location row shows in every mode of tide's, as
+  // Sunrise and sunset needs one; its Change opens the city picker, which
+  // asks tide for the list the first time.
+  assert.deepStrictEqual(place().map((li) => li.children.map((c) => c.textContent)),
+    [["Location for sunrise and sunset", "None", "Change"]]);
+  sent.length = 0;
+  place()[0].children[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ readCities: true }]);
+  const picker = () => place()[1];
+  const search = () => picker().children[0].children[0];
+  const cityRows = () => picker().children[1].children.map((li) => li.children[0]);
+  const cityNote = () => picker().children[2].textContent;
+  assert.strictEqual(picker().className, "cities");
+  assert.strictEqual(cityNote(), "Reading the city list");
+  sandbox.tide.cities({ text: fs.readFileSync("hammerspoon/tide/cities.tsv", "utf8") });
+  assert.deepStrictEqual(cityRows(), [], "nothing typed and nowhere to be near");
+  assert.strictEqual(sandbox.document.activeElement, search(), "the search keeps the keyboard");
+  search().value = "dublin";
+  search().listeners.input();
+  assert.deepStrictEqual(cityRows().map((b) => b.textContent), ["Dublin, Leinster, Ireland", "South Dublin, Leinster, Ireland"]);
+  assert.strictEqual(cityRows()[0].getAttribute("aria-current"), "true");
+  search().listeners.keydown({ key: "ArrowDown" });
+  assert.strictEqual(cityRows()[1].getAttribute("aria-current"), "true");
+  search().listeners.keydown({ key: "ArrowUp" });
+  search().value = "dublinx";
+  search().listeners.input();
+  assert.strictEqual(cityNote(), "No cities match");
+  search().value = "dublin";
+  search().listeners.input();
+  const pressed = { key: "Enter" };
+  search().listeners.keydown(pressed);
+  assert.deepStrictEqual(lastAppearance(), { mode: "light", light: "06:45", city: "Dublin, Leinster, Ireland", latitude: 53.33, longitude: -6.25 });
+  assert.deepStrictEqual(place(), [], "a location, and a mode that doesn't need it");
   mode()[1].listeners.click();
   assert.strictEqual(lastAppearance().mode, "sun");
-  place()[0].children[1].value = "north";
-  const before = sent.length;
-  place()[0].children[1].listeners.keydown({ key: "Enter" });
-  assert.strictEqual(sent.length, before);
-  assert.match(ids["appearance-error"].textContent, /latitude must be a number/);
+  assert.deepStrictEqual(place().map((li) => li.children.map((c) => c.textContent)), [["Location", "Dublin, Leinster, Ireland", "Change"]]);
+  // Reopened, it lists the cities nearest the one set, and is read once.
+  sent.length = 0;
+  place()[0].children[2].listeners.click();
+  assert.deepStrictEqual(sent, []);
+  assert.deepStrictEqual(cityRows().slice(0, 3).map((b) => b.textContent),
+    ["Dublin, Leinster, Ireland", "South Dublin, Leinster, Ireland", "Swords, Leinster, Ireland"]);
+  // Escape closes it with nothing set, and isn't the window's.
+  const escape = { key: "Escape" };
+  search().listeners.keydown(escape);
+  assert.strictEqual(escape.handled, true);
+  assert.strictEqual(place().length, 1);
+  assert.deepStrictEqual(sent, []);
+  // Find asks tide; its answer lists the cities nearest it, and says how
+  // close it is.
+  place()[0].children[2].listeners.click();
+  picker().children[0].children[1].listeners.click();
+  assert.deepStrictEqual(sent, [{ findLocation: true }]);
+  assert.strictEqual(picker().children[0].children[1].textContent, "Finding");
+  sandbox.tide.foundLocation({ latitude: 54.6, longitude: -5.93, accuracyKm: 3 });
+  assert.strictEqual(cityRows()[0].textContent, "Belfast, Northern Ireland, United Kingdom");
+  assert.strictEqual(cityNote(), "Nearest to you first, to within about 3 km");
+  picker().children[0].children[1].listeners.click();
+  sandbox.tide.foundLocation({ error: "Location Services is off for Hammerspoon" });
+  assert.strictEqual(cityNote(), "Couldn't find your location: Location Services is off for Hammerspoon");
+  search().listeners.keydown({ key: "Escape" });
+  // Once appearance.json sets a location, the first row goes back to it.
+  sandbox.tide.update({
+    clockFiles: [],
+    appearanceFiles: {
+      shared: '{"latitude": 51.51, "longitude": -0.13}',
+      local: '{"mode": "sun", "city": "Dublin, Leinster, Ireland", "latitude": 53.33, "longitude": -6.25}',
+    },
+  });
+  place()[0].children[2].listeners.click();
+  assert.strictEqual(cityRows()[0].textContent, "Back to 51.51, -0.13, from appearance.json");
+  cityRows()[0].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { mode: "sun" });
+  assert.strictEqual(place()[0].children[1].textContent, "51.51, -0.13");
   // Back to macOS's own takes the mode out of appearance.local.json.
   mode()[1].listeners.click();
   mode()[1].listeners.click();

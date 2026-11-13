@@ -26,6 +26,7 @@ local bluetooth_hs = require("tide.bluetooth_hs")
 local netpower_hs = require("tide.netpower_hs")
 local inputsrc = require("tide.inputsrc")
 local overview = require("tide.overview")
+local location = require("tide.location")
 
 local M = {}
 
@@ -55,7 +56,10 @@ function M.encode_fill(fill)
     end))
 end
 
-local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
+local HERE = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$")
+local DIR = HERE .. "/dashboard/"
+-- The city picker's list: tide's cities.tsv, copied unchanged.
+local CITIES = HERE .. "/cities.tsv"
 
 local function read(name)
     local f, err = io.open(DIR .. name)
@@ -691,6 +695,96 @@ function M.new(tide)
         end)
     end
 
+    local function answer(call, value)
+        if not view then
+            return
+        end
+        view:evaluateJavaScript(call .. "(" .. hs.json.encode(value) .. ")", function(_, err)
+            if dashboard.js_failed(err) then
+                tide.adapter.log("settings: " .. hs.inspect(err))
+            end
+        end)
+    end
+
+    -- The city picker's list, read when the picker first asks, not
+    -- before, and handed to the page whole.
+    local function send_cities()
+        local f, err = io.open(CITIES)
+        if not f then
+            tide.adapter.log("settings: couldn't read the city list: " .. tostring(err))
+            return answer("tide.cities", { error = "Couldn't read the city list: " .. tostring(err) })
+        end
+        local text = f:read("a")
+        f:close()
+        answer("tide.cities", { text = text })
+    end
+
+    -- The city picker's Find: where this Mac is, from Location Services,
+    -- for the page to list the cities nearest it. One at a time; it gives
+    -- up after location.TIMEOUT seconds. Looking stops once it's answered.
+    local finding = false
+    local function find_location()
+        local on_ok, on = pcall(hs.location.servicesEnabled)
+        if not on_ok then
+            tide.adapter.log("settings: couldn't read whether Location Services is on: " .. tostring(on))
+            on = nil
+        end
+        local why = location.problem(on, M.location_status(tide.adapter.log))
+        if why then
+            return answer("tide.foundLocation", { error = why })
+        end
+        if finding then
+            return
+        end
+        local started, err = pcall(hs.location.start)
+        if not started then
+            tide.adapter.log("settings: couldn't ask Location Services where the Mac is: " .. tostring(err))
+            return answer("tide.foundLocation", { error = "Couldn't ask Location Services" })
+        end
+        finding = true
+        local timer
+        local function finish(r)
+            if not finding then
+                return
+            end
+            finding = false
+            if timer then
+                timer.stop()
+            end
+            local unregistered, uerr = pcall(hs.location.unregister, "tide-find")
+            if not unregistered then
+                tide.adapter.log("settings: couldn't stop listening for where the Mac is: " .. tostring(uerr))
+            end
+            local stopped, serr = pcall(hs.location.stop)
+            if not stopped then
+                tide.adapter.log("settings: couldn't stop looking for where the Mac is: " .. tostring(serr))
+            end
+            answer("tide.foundLocation", r)
+        end
+        local got, now = pcall(hs.location.get)
+        if not got then
+            tide.adapter.log("settings: couldn't read where the Mac is: " .. tostring(now))
+        end
+        now = got and location.found(now) or nil
+        if now then
+            return finish(now)
+        end
+        local listening, lerr = pcall(hs.location.register, "tide-find", function(loc)
+            local f = location.found(loc)
+            if f then
+                finish(f)
+            end
+        end)
+        if not listening then
+            tide.adapter.log("settings: couldn't listen for where the Mac is: " .. tostring(lerr))
+            return finish({ error = "Couldn't ask Location Services" })
+        end
+        timer = tide.adapter.after(location.TIMEOUT, function()
+            tide.adapter.log("settings: Location Services didn't answer in " .. location.TIMEOUT .. " seconds")
+            finish(location.timed_out())
+        end)
+    end
+
     local content = hs.webview.usercontent.new("tide")
     content:setCallback(function(msg)
         local body = msg.body or {}
@@ -734,6 +828,10 @@ function M.new(tide)
                 save(dashboard.AWAKE_LOCAL_FILE, body.writeAwake, "Stay awake when plugged in")
             elseif type(body.writeAppearance) == "string" then
                 save(dashboard.APPEARANCE_LOCAL_FILE, body.writeAppearance, "the wallpapers")
+            elseif body.readCities == true then
+                send_cities()
+            elseif body.findLocation == true then
+                find_location()
             elseif type(body.pickWallpaper) == "string" and tide.wallpaper then
                 -- macOS's file dialog, over this window; the file chosen
                 -- goes back to the page, which sets it as a typed one.

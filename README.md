@@ -111,6 +111,10 @@ It brings tide for Linux's desktop to macOS:
   links each to its list in Privacy & Security, and lists the Desktop &
   Dock, Lock Screen and Notifications settings to change, to tick off
   (§10, §15);
+- an Appearance page in the settings window with tide for Linux's light
+  or dark by the clock or by sunrise and sunset, a city picker for where
+  (Find asks macOS's Location Services, on a click only), and a
+  wallpaper for each (§10, §15);
 - a macOS page in the settings window for macOS's own settings that
   `setup-macos` used to set: Finder's hidden files, path bar and
   extensions, the screenshot folder and thumbnail, the Spaces order, hot
@@ -295,3 +299,9 @@ and opens three TextEdit windows to check tide tiles them below the bar,
 where its layout says. That's one layout on one
 display; the checklists in SPEC.md §5.1 and §5.2 are what to try on a real
 Mac.
+
+## License
+
+Apache-2.0; see `LICENSE`. The city list (`hammerspoon/tide/cities.tsv`) is
+tide for Linux's, from [GeoNames](https://www.geonames.org/), under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
