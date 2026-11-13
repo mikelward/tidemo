@@ -86,6 +86,25 @@ t.test("Caps Lock is Compose is tide's to apply: no defaults step, shown under K
     t.eq(values["keyboard.capsLockCompose"], true)
 end)
 
+t.test("Middle click paste is tide's to apply: no defaults step, shown under Mouse, off by default", function()
+    t.eq(#macprefs.plan({ ["mouse.middleClickPaste"] = true }, {}, "/h"), 0)
+    local row, label
+    for _, g in ipairs(macprefs.page({}, {}, {}).groups) do
+        for _, r in ipairs(g.rows) do
+            if r.name == "mouse.middleClickPaste" then
+                row, label = r, g.label
+            end
+        end
+    end
+    t.eq({ label, row.label, row.value, row.set, row.when }, { "Mouse", "Middle click pastes the selection", false, false, "now" })
+    local values, errors = macprefs.merge({ mouse = { middleClickPaste = true } }, nil)
+    t.eq(errors, {})
+    t.eq(values[require("tide.middlepaste").SETTING], true)
+    local _, bad = macprefs.merge({ mouse = { middleClickPaste = "yes" } }, nil)
+    t.eq(#bad, 1, "a wrong value is an error, naming the setting")
+    t.eq(bad[1]:find("middleClickPaste", 1, true) ~= nil, true)
+end)
+
 t.test("a setting taken out of the files is given back to macOS", function()
     local steps = macprefs.plan({}, { ["finder.showPathBar"] = true }, "/h")
     t.eq(args_of(steps), { "delete com.apple.finder ShowPathbar" })

@@ -7,6 +7,7 @@ local bar = require("tide.bar")
 local brand = require("tide.brand")
 local kitty = require("tide.kitty")
 local loginenv = require("tide.loginenv")
+local middlepaste = require("tide.middlepaste")
 local notices = require("tide.notices")
 local rules = require("tide.rules")
 local saved = require("tide.saved")
@@ -773,9 +774,10 @@ function M.new()
     end
 
     -- Whether Hammerspoon has Accessibility, without asking for it: false
-    -- shows no prompt (the setup checklist, tide doctor).
-    function a.accessibility()
-        return hs.accessibilityState(false)
+    -- shows no prompt (the setup checklist, tide doctor). `ask` has macOS
+    -- show its prompt while it's off.
+    function a.accessibility(ask)
+        return hs.accessibilityState(ask == true)
     end
 
     -- Whether Hammerspoon has Screen Recording, for the overview's window
@@ -1447,16 +1449,30 @@ end
 -- `is_super(flags)` says whether exactly Super is held. The handlers get the
 -- pointer's position; a press with Super held is swallowed, so the app under
 -- it never sees it, and anything else passes straight through.
+--
+-- Middle click paste (middlepaste.lua) rides the same tap: `h.selected()`
+-- after a left-button gesture that may have selected text, and
+-- `h.paste(x, y)` for a plain middle click, which says whether it took it.
+-- One it took is swallowed, press and release.
 function M.mouse(is_super, h)
     local t = hs.eventtap.event.types
+    local props = hs.eventtap.event.properties
     local drag
+    -- Whether the left button has dragged since it went down, and whether
+    -- the middle button's press was swallowed for a paste.
+    local dragged, pasting = false, false
     local tap = hs.eventtap.new({
         t.leftMouseDown, t.leftMouseDragged, t.leftMouseUp,
         t.rightMouseDown, t.rightMouseDragged, t.rightMouseUp,
-        t.otherMouseDown,
+        t.otherMouseDown, t.otherMouseUp,
     }, function(e)
         local kind = e:getType()
         local p = e:location()
+        if kind == t.leftMouseDown then
+            dragged = false
+        elseif kind == t.leftMouseDragged then
+            dragged = true
+        end
         if kind == t.leftMouseDown or kind == t.rightMouseDown then
             h.clicked()
             if not is_super(e:getFlags()) then
@@ -1476,10 +1492,22 @@ function M.mouse(is_super, h)
                 h.drop(d, p.x, p.y)
                 return true
             end
+            if kind == t.leftMouseUp
+                and middlepaste.selects(dragged, e:getProperty(props.mouseEventClickState), e:getFlags()) then
+                h.selected()
+            end
         elseif kind == t.otherMouseDown then
             -- Button 2 is the middle one.
-            if e:getProperty(hs.eventtap.event.properties.mouseEventButtonNumber) == 2 and is_super(e:getFlags()) then
+            local button, flags = e:getProperty(props.mouseEventButtonNumber), e:getFlags()
+            if button == 2 and is_super(flags) then
                 h.middle(p.x, p.y)
+                return true
+            end
+            pasting = middlepaste.plain(button, flags) and h.paste(p.x, p.y) == true
+            return pasting
+        elseif kind == t.otherMouseUp then
+            if pasting and e:getProperty(props.mouseEventButtonNumber) == 2 then
+                pasting = false
                 return true
             end
         end

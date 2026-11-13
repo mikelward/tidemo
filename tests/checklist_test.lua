@@ -99,6 +99,18 @@ t.test("tide doctor names Accessibility only when it's off", function()
     t.eq(checklist.doctor({}), {}, "unknown isn't a problem to report")
 end)
 
+t.test("tide doctor says a middle click doesn't paste without Accessibility, with the setting on", function()
+    local line = checklist.doctor({ accessibility = false, middle_paste = true })[1]
+    t.eq(line:find("a middle click doesn't paste", 1, true) ~= nil, true)
+    t.eq(checklist.doctor({ accessibility = false })[1]:find("middle click", 1, true), nil, "not with it off")
+    t.eq(checklist.doctor({ accessibility = true, middle_paste = true }), {})
+    for _, p in ipairs(checklist.PERMISSIONS) do
+        if p.id == "accessibility" then
+            t.eq(p.how:find("middle click paste", 1, true) ~= nil, true, "the checklist says what needs it")
+        end
+    end
+end)
+
 t.test("tide doctor says when the overview's pictures are on without Screen Recording", function()
     local lines = checklist.doctor({ accessibility = true, pictures = true, screen_recording = false })
     t.eq(#lines, 1)

@@ -47,6 +47,9 @@ It brings tide for Linux's desktop to macOS:
   Super+PgUp and PgDn for the previous and next workspace with windows,
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);
+- a middle click that pastes the selection, as on Linux, without
+  touching the clipboard to read it, when turned on under Mouse on Tide
+  Settings' macOS page, or in `macos.json` (§5.3);
 - Caps Lock as Compose, as on Linux, with Linux's own sequences, when
   turned on under Keyboard on Tide Settings' macOS page, or in
   `macos.json` (§10);

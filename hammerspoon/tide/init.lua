@@ -58,6 +58,8 @@ local swipe_mod = require("tide.swipe")
 local compose_mod = require("tide.compose")
 local compose_hs = require("tide.compose_hs")
 local capslock = require("tide.capslock")
+local middlepaste = require("tide.middlepaste")
+local middlepaste_hs = require("tide.middlepaste_hs")
 local bar = require("tide.bar")
 local selfreload = require("tide.selfreload")
 local bar_hs = require("tide.bar_hs")
@@ -255,6 +257,7 @@ function M.doctor()
     end
     for _, line in ipairs(checklist.doctor({
         accessibility = M.adapter and M.adapter.accessibility(),
+        middle_paste = M.middle_paste_on == true,
         pictures = M.overview_pictures == true,
         screen_recording = recording,
         menu_bar_hidden = M.bar ~= nil and M.bar_position ~= "bottom" and hides ~= nil and hides(),
@@ -428,14 +431,38 @@ function M.start(config)
     -- Quitting or reloading Hammerspoon brings back every hidden window.
     hs.shutdownCallback = function()
         self.wm:restore_all()
+        -- A paste under way has the selection on the pasteboard: the
+        -- clipboard goes back first.
+        self.middle_paste.stop()
     end
     self.resize = resize_mode(self)
     self.wm.enter_resize_mode = function()
         self.resize:enter()
     end
+    -- Middle click pastes the selection (SPEC.md §5.3), once macos.json's
+    -- switch turns it on, below.
+    self.middle_paste = middlepaste_hs.new(hs, {
+        log = self.adapter.log,
+        accessibility = self.adapter.accessibility,
+        notify = self.adapter.notify,
+        open_accessibility = function()
+            links.open("privacy_accessibility", self.adapter)
+        end,
+        window_pid = function(x, y)
+            local id = self.wm:window_at(x, y)
+            local w = id and self.wm.windows[id]
+            return w and w.pid
+        end,
+    })
     self.mouse = adapter_mod.mouse(function(flags)
         return keys.is_super(self.super, flags)
     end, {
+        selected = function()
+            self.middle_paste.selected()
+        end,
+        paste = function(x, y)
+            return self.middle_paste.click(x, y)
+        end,
         grab = function(kind, x, y)
             return self.wm:grab(kind, x, y)
         end,
@@ -751,9 +778,11 @@ function M.start(config)
                 self.settings.refresh()
             end
         end,
-        -- The settings tide applies itself: Caps Lock as Compose, once
-        -- Compose is made, below.
+        -- The settings tide applies itself: middle click paste, and Caps
+        -- Lock as Compose, once Compose is made, below.
         own = function(values)
+            self.middle_paste_on = values[middlepaste.SETTING] == true
+            self.middle_paste.set(self.middle_paste_on)
             self.caps_compose = values[capslock.SETTING] == true
             self.keyboard_type = values[capslock.TYPE]
             self.apply_keys()

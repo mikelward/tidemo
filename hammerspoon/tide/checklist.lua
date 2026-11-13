@@ -18,7 +18,7 @@ M.PERMISSIONS = {
         id = "accessibility",
         title = "Accessibility for Hammerspoon",
         link = "privacy_accessibility",
-        how = "Turn Hammerspoon on. Tiling, focus follows mouse and the mouse's drags need it, and a macOS update can turn it off.",
+        how = "Turn Hammerspoon on. Tiling, focus follows mouse, the mouse's drags and middle click paste need it, and a macOS update can turn it off.",
         ref = "§11.1",
     },
     {
@@ -238,7 +238,8 @@ function M.doctor(facts)
     facts = facts or {}
     local lines = {}
     if M.permission_state("accessibility", facts) == "off" then
-        lines[#lines + 1] = "Accessibility is off for Hammerspoon, so nothing tiles, focus doesn't follow the mouse and the mouse's drags do nothing:"
+        lines[#lines + 1] = "Accessibility is off for Hammerspoon, so nothing tiles, focus doesn't follow the mouse"
+            .. (facts.middle_paste and ", the mouse's drags do nothing and a middle click doesn't paste:" or " and the mouse's drags do nothing:")
             .. " turn it on in Privacy & Security, from the settings window's Setup checklist."
     end
     if M.permission_state("screen_recording", facts) == "off" then
