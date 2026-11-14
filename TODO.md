@@ -532,6 +532,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **tide for Linux's SPEC.md §6.6 holds the one key table** (2026-11-14),
+  with a macOS column, so §7.2 keeps only how keys are bound, the keys
+  that differ and tide for macOS's own, and the README points there.
+  §7.2 dropped `Super+B` and `Super+Shift+B` from the app keys, which
+  `keys.lua` doesn't bind. Reversible: §7.2.
 - **The dashboard launcher's Attention rows have no mute** (2026-11-14),
   as tide for Chrome's page has none: muting stays on the switcher's
   `Cmd+M` and Tide Settings' Notifications section. The dashboard

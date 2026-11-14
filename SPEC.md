@@ -1640,54 +1640,49 @@ together (§6). tide turns it off (§6.6), and has its own.
 
 ### 7.2 The map
 
-tide registers each with `RegisterEventHotKey`, which needs no permission
-(§2.2). The second column is what macOS sees once Karabiner has mapped it.
+tide's keys are tide for Linux's. Its SPEC.md §6.6 lists them in one
+table with every platform's, and its macOS column is tide's here. This
+section keeps what's macOS's alone: how keys are bound, the keys that
+differ, and the keys only tide for macOS has.
+
+tide registers each key with `RegisterEventHotKey`, which needs no
+permission (§2.2), on the combination Karabiner makes of Super (§7.1).
+These are bound another way, or differ:
 
 | Keys | Action | How |
 |---|---|---|
-| tap `Super` | the launcher: the switcher on Launch, as `Super+Space` and tide for Linux's and tide for Chrome's taps (§9) | Karabiner's tap rule, sending `Super+F20`; or tide's event tap (below) |
-| `Super+Space` | the switcher, on its Launch tab | hotkey |
-| `Super+Tab` | from any workspace, "in"; from "in", the workspace you used last. Pressed again, it flips back | hotkey |
-| `Super+End` | the workspace you used last other than "in" and this one: from "in" where `Super+Tab` goes, from another the one before it | hotkey |
-| `Super+A` | the switcher, on its Attention tab (§14.2) | hotkey |
-| `Super+Shift+Space` | dashboard (§8) | hotkey |
-| `Ctrl+Up` | the overview: every workspace's windows, grouped by workspace, in place of Mission Control (§6.9) | hotkey, once tide's installer frees it (§7.3) |
-| `Ctrl+Down` | the overview of this workspace's windows, in place of App Exposé (§6.9) | hotkey, once tide's installer frees it (§7.3) |
+| tap `Super` | the launcher (§9) | Karabiner's tap rule, sending `Super+F20`; or tide's event tap (below) |
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
-| `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `B` / `Shift+B` / `C` / `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y` | app keys (below) | hotkey |
-| `Super+V` | the picker, on its Clipboard tab: what you've copied, and characters by name (§9.1); Return pastes. Terminal on the VM, which it was, has no key now; the switcher finds it | hotkey |
-| `Super+Shift+V` | the picker, on its Fill tab: your snippets and each Bitwarden login's username, password and 2FA code; Return types it (§9.1) | hotkey |
-| `Super+;` | the picker, on its Characters tab: emoji and symbols by name (§9.1); Return pastes | hotkey |
 | `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey, on `Super+F19` with Karabiner's rule (below); Accessibility presses its close button |
-| `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2) | hotkeys, enabled only then |
-| `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
+| `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2); tide for Linux's `Ctrl+W`, `Ctrl+Shift+W`, `Ctrl+Q` and `Alt+F4` | hotkeys, enabled only then |
 | `Super+L` | lock | hotkey; macOS's lock screen |
 | `Super+S` | keep awake on or off (§10) | hotkey; `hs.caffeinate`, with an on-screen sign |
 | `Super+P` | presenter mode: Do Not Disturb and keep awake together (§10) | hotkey; keep awake as `Super+S`, Do Not Disturb through shortcuts you make in Shortcuts (§10) |
 | `Super+Shift+E` | log out | hotkey; System Events, which asks first |
-| `Super+Home` | show "in" (§6.2) | hotkey |
-| `Super+Left` / `Right` / `Up` / `Down` | select the window left / right / above / below this one; at a display's edge, the nearest on the next display that way (below) | hotkey |
-| `Super+Shift+Left` / `Right` / `Up` / `Down` | move the window that way, onto the next display at the edge; a float straight onto the next display (below) | hotkey |
-| `Super+PgUp` / `PgDn` | previous / next workspace | hotkey |
-| `Super+Shift+PgUp` / `PgDn` | move the window to the previous / next workspace, and follow it | hotkey |
-| three fingers left / right on the trackpad | next / previous workspace, as `Super+PgDn` / `PgUp` | event tap |
-| `Super+J` / `K`, with Shift | focus / move down and up the stack | hotkey |
-| `Super+Return` | go to a workspace, by name (below); it moves no window, so it works with none focused | hotkey |
-| `Super+Shift+Return` | move the window to a workspace, by name (below), and follow it there; with no window focused, nothing | hotkey |
-| `Alt+Tab` | swap with the master; on the master, swap with the previous master | tide's Karabiner rule (`karabiner/tide.json`) turns physical Alt+Tab into `Ctrl+Option+Shift+Tab`, which tide registers (below) |
+| `Super+Shift+R` | reload tide, as on tide for Linux | hotkey; `hs.reload()`, as the switcher's Reload tide does |
+| `Alt+Tab` | swap with the master | tide's Karabiner rule (`karabiner/tide.json`) turns physical Alt+Tab into `Ctrl+Option+Shift+Tab`, which tide registers (below) |
 | `Super+\` / `Super+/` | grow / shrink the master (`mfact` ±0.025), repeating | hotkey |
-| `Super+=` / `Super+-` | add / remove a master | hotkey |
-| `Super+.` / `Super+,` | next / previous layout | hotkey |
-| ``Super+` ``, `Super+O` | monocle | hotkey |
-| `Super+X` / `Super+Shift+X` | maximize / full screen on or off (§5.4) | hotkey |
-| `Super+Shift+F`, `Super+Insert` | float or tile | hotkey |
-| `Super+Shift+I` | Tide Settings' Floating section, filled in for the focused window (§15), tide for Linux's `Super+Alt+F` | hotkey |
-| `Super+Shift+R` | reload tide, as on tide for Linux (tide for Linux §6.6) | hotkey; `hs.reload()`, as the switcher's Reload tide does |
+| `Super+Insert` | float or tile, as `Super+Shift+F` | hotkey on the Mac's Help key, which a PC keyboard's Insert sends |
+| `Super+Shift+I` | Tide Settings' Floating section, filled in for the focused window (§15) | hotkey; tide for Linux's `Super+Alt+F`, but Super holds Option already |
 | `Super`+drag, `Super`+right-drag, `Super`+middle-click | move, resize, maximize (§5.3) | event tap |
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
 | `Print` / `Alt+Print` / `Shift+Print`, `Super+Print` | screenshot screen / window / region, Super+Print a region too (§10) | hotkey on F13, which a PC keyboard's Print sends *(unverified)* |
 | mic-mute key, `Super+Shift+M` | mute the microphone, everywhere | tide, through `hs.audiodevice`'s input mute on the default input device, with an on-screen sign; the bar's microphone item does the same |
 | media, brightness, volume keys | as macOS does them; the volume keys step a monitor's speakers over DDC (§8) | native, `hs.eventtap` for DDC |
+
+Keys only tide for macOS has:
+
+| Keys | Action | How |
+|---|---|---|
+| `Super+Shift+Space` | dashboard (§8) | hotkey |
+| `Ctrl+Up` | the overview: every workspace's windows, grouped by workspace, in place of Mission Control (§6.9) | hotkey, once tide's installer frees it (§7.3) |
+| `Ctrl+Down` | the overview of this workspace's windows, in place of App Exposé (§6.9) | hotkey, once tide's installer frees it (§7.3) |
+| three fingers left / right on the trackpad | next / previous workspace, as `Super+PgDn` / `PgUp` | event tap |
+| none | resize mode: each arrow or `H`, `J`, `K`, `L` grows or shrinks the focused float by 40 px; Esc or Return leaves (§5.3) | the switcher's "Resize the window"; Keyboard's Shortcuts can give it a key. tide for Linux has none, and its `Super+Shift+R` reloads |
+
+The app keys, `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `C` /
+`Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y`, are conf's (tide for
+Linux §6.6), all but its `Super+B` and `Super+Shift+B` (below).
 
 - **The Super tap** must not fire after Super+T, Super+drag or
   Super+click (tide for Linux §8). A mouse button or scroll counts as "another key"
