@@ -834,7 +834,7 @@ t.test("the pointer is kept off the top row only while the menu bar hides", func
     t.eq(bar.keeps_off_top(nil, true), true)
     t.eq(bar.keeps_off_top(true, true), true)
     t.eq(bar.keeps_off_top(true, false), false, "menu bar shown")
-    t.eq(bar.keeps_off_top(false, true), false, "Menu bar kept hidden off")
+    t.eq(bar.keeps_off_top(false, true), false, "Hidden menu bar stays hidden, off")
 end)
 
 -- The pointer's moves reach the page at most so often, ending where the

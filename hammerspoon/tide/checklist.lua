@@ -57,7 +57,7 @@ M.ITEMS = {
         id = "menu_bar",
         title = "Keep the menu bar shown",
         link = "control_center",
-        how = "Set \"Automatically hide and show the menu bar\" to Never. tide's bar then covers it, so it doesn't slide in when the pointer reaches the top; the Apple logo's Show Menu Bar brings it up. With the bar at the bottom (Appearance), any setting works.",
+        how = "Set \"Automatically hide and show the menu bar\" to Never. tide's bar then covers it, so it doesn't slide in when the pointer reaches the top; the Apple logo's Show Menu Bar brings it up. With the bar at the bottom (Tide Settings' Bar page), any setting works.",
         ref = "§8",
     },
     {

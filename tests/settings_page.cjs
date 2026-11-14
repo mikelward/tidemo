@@ -1948,18 +1948,18 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["super-choice"].children.length, 0);
 }
 
-// The Appearance page's Menu bar switch: on unless tide says it's off,
-// and a click asks for the other.
+// The Bar page's Menu bar switch: on unless tide says it's off, named for
+// what it does to a hidden menu bar, and a click asks for the other.
 {
   sandbox.tide.update({ clockFiles: [], menuBar: { hidden: true } });
   const toggle = ids["menubar-hidden"];
-  assert.strictEqual(toggle.textContent, "Menu bar kept hidden");
+  assert.strictEqual(toggle.textContent, "Hidden menu bar stays hidden");
   assert.strictEqual(toggle.attrs["aria-pressed"], "true");
   sent.length = 0;
   toggle.listeners.click();
   assert.deepStrictEqual(sent, [{ keepMenuBarHidden: false }]);
   sandbox.tide.update({ clockFiles: [], menuBar: { hidden: false } });
-  assert.strictEqual(toggle.textContent, "Menu bar shows at the top edge");
+  assert.strictEqual(toggle.textContent, "Hidden menu bar slides in at the top edge");
   sent.length = 0;
   toggle.listeners.click();
   assert.deepStrictEqual(sent, [{ keepMenuBarHidden: true }]);
