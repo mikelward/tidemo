@@ -2944,6 +2944,8 @@ that isn't one is left out, and the log says so.
       › stepping through Fill, centered; Fill, keep top; Fill, keep bottom;
       Fit whole picture; and Stretch to fill, into `appearance.local.json`.
       A color has none.
+      A new wallpaper goes back to Fill, centered, as tide for Linux's
+      does (§16): the position was chosen for the picture before.
     - **With none set** for the mode, or no such file, macOS's own picture
       stays, and System Settings' Wallpaper pane sets it. A missing file is
       logged. Taking a setting out leaves the last picture tide set.

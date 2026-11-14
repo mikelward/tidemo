@@ -868,6 +868,18 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(lastAppearance().darkWallpaperPosition, "fill", "dark's own");
   assert.strictEqual(lastAppearance().lightWallpaperPosition, undefined);
   assert.strictEqual(positions()[1].children[1].disabled, true, "the first");
+  // A new wallpaper goes back to Fill, centered: the position was the
+  // picture before's. The same one again keeps it.
+  const walls = () => ids.wallpapers.children.filter((li) => li.className !== "position");
+  sandbox.tide.update({ clockFiles: [], appearanceFiles: { local: '{"darkWallpaper": "~/n.png", "darkWallpaperPosition": "fill-top", "lightWallpaperPosition": "fit"}' } });
+  sandbox.tide.setWallpaper("darkWallpaper", "~/n.png");
+  assert.strictEqual(lastAppearance().darkWallpaperPosition, "fill-top", "the same picture");
+  sandbox.tide.setWallpaper("darkWallpaper", "~/Pictures/Wallpapers/city.jpg");
+  assert.deepStrictEqual(lastAppearance(), { darkWallpaper: "~/Pictures/Wallpapers/city.jpg", lightWallpaperPosition: "fit" }, "dark's goes, light's stays");
+  assert.strictEqual(positions()[1].children[2].textContent, "Fill, centered", "shown at once");
+  walls()[0].children[1].value = "~/day.jpg";
+  walls()[0].children[1].listeners.keydown({ key: "Enter" });
+  assert.strictEqual(lastAppearance().lightWallpaperPosition, undefined, "typed, too");
   sandbox.tide.update({ clockFiles: [], appearanceFiles: { local: "{" } });
   assert.strictEqual(positions()[0].children[1].disabled, true, "a file that's wrong: nothing changes");
   assert.strictEqual(positions()[0].children[3].disabled, true);
