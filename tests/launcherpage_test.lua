@@ -43,20 +43,24 @@ t.test("each switcher key opens the page on its scope", function()
     t.eq(launcherpage.page_scope("launch"), "launch")
     t.eq(launcherpage.page_scope("workspaces"), "workspaces")
     t.eq(launcherpage.page_scope("windows"), "tabs")
-    t.eq(launcherpage.page_scope("attention"), "tabs")
+    t.eq(launcherpage.page_scope("attention"), "attention")
     t.eq(launcherpage.page_scope("actions"), "actions")
     t.eq(launcherpage.page_scope(nil), "launch")
 end)
 
 -- The switcher's rows for a small desktop: two apps and a pane, a browser
--- tab, two windows, most recent first, and tide's commands.
+-- tab, two windows, most recent first, both wanting attention, Chrome's
+-- the newer, and tide's commands.
 local function rows()
     return launcher.items(
         { { name = "Safari", path = "/Applications/Safari.app" }, { name = "Notes", path = "/System/Applications/Notes.app" } },
         { { title = "Docs", url = "https://docs.example.com/a", browser = "Safari", window = 1, tab = 1, ws = "re" } },
         launcher.COMMANDS,
         { { name = "Mouse", id = "com.apple.Mouse-Settings.extension" } },
-        {},
+        {
+            { window = 1, title = "", app = "Google Chrome", bundle = "com.google.Chrome", ws = "re" },
+            { window = 2, title = "notes.txt", app = "TextEdit", bundle = "com.apple.TextEdit", ws = "in" },
+        },
         { { name = "in" }, { name = "re" } },
         {
             { id = 2, title = "notes.txt", app_name = "TextEdit", bundle = "com.apple.TextEdit", ws = "in" },
@@ -82,6 +86,36 @@ t.test("windows and browser tabs are the page's tabs, windows most recent first"
     t.eq(f.tabs[2].lastAccessed > f.tabs[3].lastAccessed, true)
     t.eq(f.state.windows["window:2"], { ws = "in" })
     t.eq(f.state.windows[f.tabs[3].id], { ws = "re" })
+end)
+
+t.test("the windows wanting attention are the page's marks, as its tabs' window ids, newest last", function()
+    local f = feed()
+    t.eq(f.state.marks, { "window:2", "window:1" })
+    local ids = {}
+    for _, tab in ipairs(f.tabs) do
+        ids[tab.windowId] = true
+    end
+    for _, m in ipairs(f.state.marks) do
+        t.eq(ids[m], true, m .. " is a tab's windowId")
+        t.eq(type(f.state.windows[m]), "table", m .. " has a workspace")
+    end
+end)
+
+t.test("with nothing wanting attention, the page still gets marks, none", function()
+    local f = launcherpage.feed(launcher.items({}, {}, {}, {}, {}, {}, {
+        { id = 7, title = "a", app_name = "TextEdit", bundle = "com.apple.TextEdit", ws = "in" },
+    }))
+    t.eq(f.state.marks, {})
+end)
+
+t.test("a mark for a window the page doesn't list is left out", function()
+    local f = launcherpage.feed(launcher.items({}, {}, {}, {}, {
+        { window = 9, title = "gone", app = "TextEdit", ws = "in" },
+        { window = 7, title = "a", app = "TextEdit", ws = "in" },
+    }, {}, {
+        { id = 7, title = "a", app_name = "TextEdit", bundle = "com.apple.TextEdit", ws = "in" },
+    }))
+    t.eq(f.state.marks, { "window:7" })
 end)
 
 t.test("apps and panes are the page's apps, most recently used first", function()
@@ -152,6 +186,8 @@ end)
 t.test("each message from the page says what to do", function()
     local m = launcherpage.message
     t.eq(m({ tabId = "window:2", windowId = "window:2" }), { kind = "row", value = "window:2" })
+    -- An Attention row: its window comes forward, as its Windows row does.
+    t.eq(m({ activate = "window:2" }), { kind = "row", value = "window:2" })
     t.eq(m({ command = "row:command:Lock" }), { kind = "row", value = "command:Lock" })
     t.eq(m({ command = "keep-awake" }), { kind = "keep_awake" })
     t.eq(m({ command = "app-browser" }), { kind = "browser" })

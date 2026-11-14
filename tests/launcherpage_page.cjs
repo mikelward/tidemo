@@ -67,7 +67,7 @@ for (const id of ["clock-detail", "extras"]) {
   ids[id] = new Element(id);
   ids[id].hidden = true;
 }
-const chips = ["launch", "tabs", "workspaces", "actions"].map((s) => {
+const chips = ["launch", "tabs", "workspaces", "attention", "actions"].map((s) => {
   const b = new Element("button");
   b.dataset.scope = s;
   return b;
@@ -130,6 +130,8 @@ const feed = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
 // The page's work is promises; a turn of the event loop settles them.
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 const rows = () => ids.results.children.map((li) => li.children[1].textContent);
+// Each row's title, or an empty list's line.
+const lines = () => ids.results.children.map((li) => (li.children.length > 0 ? li.children[1].textContent : li.textContent));
 const details = () => ids.results.children.map((li) => li.children[2].textContent);
 const keys = () => ids.results.children.map((li) => li.children[3].textContent);
 const press = (key, extra = {}) => ids.query.fire("keydown", { key, preventDefault() {}, ...extra });
@@ -209,6 +211,39 @@ const typedSaid = () => sent.filter((m) => m.typed !== undefined).map((m) => m.t
   press("Enter");
   await settle();
   assert.deepStrictEqual(choices().slice(-2), [{ workspace: "web" }, { close: true }]);
+
+  // Attention: the windows wanting attention, the most recent first, by
+  // their titles, with their workspaces; Enter goes to one.
+  await type("");
+  sandbox.tide.press("attention");
+  await settle();
+  assert.strictEqual(sandbox.tide.scope(), "attention");
+  assert.strictEqual(ids.query.placeholder, "Go to a window that wants attention");
+  assert.deepStrictEqual(rows(), ["Google Chrome", "notes.txt"]);
+  assert.deepStrictEqual(details(), ["window on re", "window on in"]);
+  assert.match(ids.keys.textContent, /^Enter to go there · /);
+  await type("notes");
+  assert.deepStrictEqual(rows(), ["notes.txt"]);
+  await type("");
+  press("Enter");
+  await settle();
+  assert.deepStrictEqual(choices().slice(-2), [{ activate: "window:1" }, { close: true }]);
+  // Its key while it's open on Attention closes it.
+  sandbox.tide.press("attention");
+  assert.deepStrictEqual(choices().at(-1), { close: true });
+
+  // With nothing wanting attention, which Lua's JSON sends as {}, the scope
+  // is still there and says so, and Enter does nothing.
+  sandbox.tide.open({ ...feed, state: { ...feed.state, marks: {} } }, "attention");
+  await settle();
+  assert.strictEqual(sandbox.tide.scope(), "attention");
+  assert.deepStrictEqual(lines(), ["No window wants attention"]);
+  const quiet = choices().length;
+  press("Enter");
+  await settle();
+  assert.deepStrictEqual(choices().slice(quiet), []);
+  sandbox.tide.open(feed, "launch");
+  await settle();
 
   // Browser tabs arriving later join the rows; keep awake's cup shows it.
   await type("");

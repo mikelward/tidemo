@@ -6,7 +6,9 @@
 
 import {
   arrowStep as tilecoArrowStep,
+  attentionRows as tilecoAttentionRows,
   barAtBottom as tilecoBarAtBottom,
+  emptyText as tilecoEmptyText,
   footerKeys as tilecoFooterKeys,
   footerText as tilecoFooterText,
   items as tilecoItems,
@@ -22,7 +24,9 @@ import {
 import { feed } from "./launcher-chrome.js";
 
 export const arrowStep = tilecoArrowStep;
+export const attentionRows = tilecoAttentionRows;
 export const barAtBottom = tilecoBarAtBottom;
+export const emptyText = tilecoEmptyText;
 export const footerKeys = tilecoFooterKeys;
 export const footerText = tilecoFooterText;
 export const items = tilecoItems;
