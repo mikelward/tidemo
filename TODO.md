@@ -15,7 +15,7 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
    (SPEC.md §8, §14.2).
 7. The dashboard: tide for Chrome's bar and clock panel in an `hs.webview`, on
    Super+Shift+Space (SPEC.md §8).
-   **Decided:** tide's own bar along the top, over an auto-hidden menu bar,
+   **Decided:** tide's own bar along the top, covering a menu bar set to show,
    with the workspaces, the title, tide for Chrome's clocks and its own status items.
    The menu bar item stays as the fallback (`bar = false`), and a large
    number shows briefly on each switch.
@@ -516,8 +516,27 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **For tide for Linux, not here:** holding a key on Linux shows an accent picker, as
   macOS's press-and-hold does. macOS keeps its own.
 
+## Compare default constants with tide for Linux's
+
+- [ ] Extend `make check-tide` (and `check-tideco`) to compare the
+  defaults this repo restates or keeps apart from the copied files with
+  tide for Linux's: the layout defaults in `layout.lua` (each layout's
+  `mfact` and master count, the cycle, the lone-window rules, the `mfact`
+  step and bounds), the standing workspaces, the default clocks, and the
+  key bindings `keys.lua` names after conf's. Today the checks compare
+  only whole copied files, so a default that drifts goes unseen
+  (2026-11-14 spec review).
+
 ## Decisions needing review
 
+- **The switcher's first tab stays "Launch"** (2026-11-14), where tide for
+  Linux says Apps (tide SPEC.md §8.1): the dashboard launcher is tide for
+  Chrome's page, whose scope is Launch, and the two switchers share the
+  names. Reversible: `launcher.lua`'s tab names and `keys.lua`'s `TABS`.
+- **No `tide restore` command** (2026-11-14): SPEC.md §6.5 promised one,
+  but tide never loads `hs.ipc`, so a shell can't reach it. Quitting
+  Hammerspoon brings every hidden window back, which the spec now says
+  instead.
 - **Super+Shift+R reloads tide, and resize mode has no key** (2026-11-14),
   as tide for Linux's `Super+Shift+R` reloads and it has no resize mode
   (tide SPEC.md §6.6). Every free Super key may yet be tide for Linux's,

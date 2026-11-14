@@ -1,7 +1,8 @@
 # tidemo: tide for Linux and tide for Chrome on macOS
 
-**Status: exploration.** This explores what macOS allows. It doesn't
-yet decide what tide is. It takes everything tide for Linux does on Linux
+**Status: built, on Hammerspoon (§3 B).** Decisions are dated where
+they're made, and §19 lists them. Claims not yet tried on a Mac say so.
+This spec takes everything tide for Linux does on Linux
 ([mikelward/tide](https://github.com/mikelward/tide)) and tide for Chrome does on
 chromeOS ([mikelward/tideco](https://github.com/mikelward/tideco)), and says, for
 each one, how a Mac can do it, how well, and at what cost.
@@ -18,7 +19,8 @@ checked against a source or a Mac is marked *(unverified)*.
 ## 1. Goals
 
 - **Everything tide for Linux and tide for Chrome do,** where macOS allows it:
-  - window management: layouts, named workspaces and the dim;
+  - window management: layouts, named workspaces and dimming inactive
+    windows;
   - keys: one key map across the three desktops;
   - one switcher for apps, workspaces, windows and tabs, and a dashboard
     with clocks and a calendar;
@@ -52,7 +54,7 @@ checked against a source or a Mac is marked *(unverified)*.
   A key that does nothing, or a feature quietly turned off, is the
   failure this rules out.
 - **One way in to every feature.** Each feature in this spec has its
-  place in tide for Linux's settings window, the switcher or a key, whoever does the
+  place in Tide Settings, the switcher or a key, whoever does the
   work: tide, macOS, or a helper such as LinearMouse or Karabiner (§15).
   - What tide can change itself, it changes there, even in another
     app's settings file when that app reloads it, as Karabiner does.
@@ -138,7 +140,7 @@ checked against a source or a Mac is marked *(unverified)*.
 - **Own windows only:** an app can draw its own windows at any level: a
   borderless panel, a full-width bar, a dashboard, an overlay. It can't draw
   inside another app's window, and it can't move the menu bar.
-- **The dim:** HazeOver lays "a translucent dark layer behind" the window in
+- **Dimming inactive windows:** HazeOver lays "a translucent dark layer behind" the window in
   use, rather than shading each other window
   ([HazeOver help](https://hazeover.com/help.html)). It needs
   Accessibility to follow focus reliably. An `hs.canvas` can only be
@@ -231,64 +233,62 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | tide for Linux / tide for Chrome | On macOS | Status |
 |---|---|---|
 | Tile, three-column, two columns + stack, monocle (tide for Linux §6.1) | tide for Linux's Lua layout over Accessibility moves (§5) | **yes**, with apps' own size limits |
-| Lone window 80% on ultrawide, 60% from 32:9 | same layout, per display (§5) | **yes** |
+| Lone window rule (tide for Linux §6.1) | same layout, per display (§5) | **yes** |
 | New windows join the end of the stack, with a setting for elsewhere (tide for Linux §6.1) | tide state (§5) | **yes** |
 | Layout, `mfact`, master count per workspace, and per display within it | tide state | **yes** |
 | Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide for Linux §6.5) | windows parked off screen, as AeroSpace does, or minimized as tide for Chrome does, named in tide's state (§6) | **partial**: Mission Control would show every workspace's windows, so setup turns it off and tide's overview takes its keys (§6.9); a sliver of each parked window shows in a corner; minimizing instead animates each switch |
 | A new window on a workspace that asks, "in" by default, asks for a workspace name (tide for Linux §6.5) | tide's name prompt, an `hs.chooser` (§6.2) | **yes** |
 | Pinned apps stay open on their workspace (tide for Linux §6.5) | the close key and the prompt's Esc leave them open; Cmd+W, Cmd+Shift+W and Cmd+Q are hotkeys while one has focus (§6.2) | **partial**: by app name; the close button still closes |
 | `TIDE_WORKSPACE` in launched apps (tide for Linux §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
-| One workspace per monitor from a shared pool (tide for Linux §6.5) | decided against: one workspace spans every display, each display with its own layout in it (§6.1) | **differs** |
-| Dim inactive, 0.12, not a lone window or video (tide for Linux §6.2) | one dark layer over the windows, a hole for the focused one (§5.6) | **partial**: dims the desktop too; drawn only in CI's smoke test, not yet checked by eye on a Mac |
+| One workspace spans every monitor, each with its own part (tide for Linux §6.5) | one workspace spans every display, each display with its own layout in it (§6.1) | **yes** |
+| Dimming inactive windows, not a lone window or video (tide for Linux §6.2) | one dark layer over the windows, a hole for the focused one (§5.6) | **partial**: dims the desktop too; drawn only in CI's smoke test, not yet checked by eye on a Mac |
 | No borders, no gaps | gaps 0; title bars stay | **partial** |
 | Maximize, fullscreen, restore (tide for Linux §6.3) | tide's own, on the same workspace (§5.4) | **yes**; native full screen is its own Space (§13) |
 | Picture-in-picture pinned bottom-right on every workspace (tide for Linux §6.4) | left alone and never minimized (§5.5) | **partial**: its place is the app's |
 | Dialogs float, centered | rules, subrole, fixed size and modality (§5.1) | **yes** *(unverified per app)* |
 | Super+drag moves, Super+right-drag resizes (conf `hyprland.lua`) | an event tap on mouse buttons with Super held (§5.3) | **yes**, with Accessibility |
 | Drag a tiled window's edge to set the split (tide for Chrome §5.3) | Accessibility's resize notification (§5.3) | **yes** |
-| Drop a dragged tile on another to swap them (tide for Chrome §5.3) | Accessibility's move notification (§5.3) | **yes** |
+| Drop a dragged tile on another to swap them (planned in tide for Chrome §5.3) | Accessibility's move notification (§5.3) | **yes** |
 | Super+middle-click maximizes the window under the pointer (tide for Linux §6.6) | the same event tap (§5.3) | **yes** |
 | Middle click pastes the selection (Linux's primary selection) | `macos.json`'s `mouse.middleClickPaste` (the macOS page's Mouse), off unless turned on: the selection read through Accessibility, pasted where you click (§5.3) | **partial**: text fields only, and not from an app that doesn't say what's selected. CI's Mac pastes between TextEdit windows; a real middle button, Chrome and Electron apps are *(unverified on a Mac)* |
 | Super+Shift+R reloads (tide for Linux §6.6) | reloads Hammerspoon, and so tide (§7.2) | **yes** |
 | Focus follows mouse (KDE) | tide's own (§5.2) | **yes**, but focusing raises (§13) |
 | Nothing steals focus (tide for Linux §14) | macOS activation rules, plus tide's focus guard (§14) | **partial**: apps can still activate themselves |
-| Super+A lists the windows wanting attention, newest first (tide for Linux §14.4, tide for Chrome §10.3) | Notifications, bells, and apps activating themselves (§14.2) | **partial**: a banner a Focus hides marks nothing |
+| Super+A lists the windows wanting attention, newest first (tide for Linux §14.4) | Notifications, bells, and apps activating themselves (§14.2) | **partial**: a banner a Focus hides marks nothing |
 | Minimize by key, restore from a tray of icons in the corner (tide for Linux's design) | `Super+Z` and an `hs.canvas` tray per display (§6.7) | **yes** *(unverified on a Mac)* |
-| Full-width bar with workspaces and urgency (tide for Linux §7) | tide's own bar over an auto-hidden menu bar, with its own status items (§8) | **partial**: app menus and other apps' status items still need the menu bar revealed |
+| Full-width bar with workspaces and urgency (tide for Linux §7) | tide's own bar, covering a menu bar set to show, with its own status items (§8) | **partial**: app menus and other apps' status items need Show Menu Bar |
 | SF / NYC / LON clocks (tide for Linux §7.3) | bar clocks, and tide for Chrome's clock panel in the dashboard (§8) | **yes** |
-| One switcher with tabs: launcher, workspaces, windows, attention (tide for Linux §8) | tide's switcher, an `hs.chooser`; the lone Super tap needs an event tap or Karabiner (§7, §9) | **yes** |
-| Clipboard history and characters by name on Super+V (tide for Linux §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with two tabs (§9.1) | **partial**: text only |
+| One switcher with five tabs: apps, workspaces, windows, attention and actions (tide for Linux §8.1) | tide's switcher, an `hs.chooser`; the lone Super tap needs an event tap or Karabiner (§7, §9) | **yes** |
+| Clipboard history and characters by name on Super+V (tide for Linux §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with three tabs: Clipboard, Characters and Fill (§9.1) | **partial**: text only |
 | Browser tabs in the Windows tab (tide for Chrome §9.4) | Chrome, Brave and Safari tabs through AppleScript (§2.5) | **yes**, with Automation granted |
 | App keys (tide for Linux `hyprland.lua`, tide for Chrome §9.1) | global keys that bring an app's window, and its workspace, forward (§7) | **yes** |
 | Second and third Chrome profiles (`browser2`, `browser3`) | separate `--user-data-dir`s, as tide for Linux runs them (§7) | **yes** |
 | Notifications, history, DND (tide for Linux §9) | Notification Center and Focus | **yes**, native |
-| Idle: dim, lock, off, suspend (tide for Linux §10) | Energy and Lock Screen settings; `caffeinate` or an IOPM assertion to keep awake | **partial**: system timings |
-| Lock = login, short hostname | macOS lock and login | **partial**: no hostname |
+| Idle: dim, lock, off, suspend (tide for Linux §10) | tide's own timeline from tide for Linux's `idle.json` (§15), and a power assertion to keep awake (§10) | **yes** *(unverified on a Mac)*; macOS's own timers still run beside it |
+| Lock = login, short hostname | macOS lock and login | **partial**: the hostname only in Lock Screen's message (§13) |
 | Screenshots, to the clipboard and a folder (tide for Linux §13) | macOS's own screenshot keys on tide for Linux's Print keys, and a watcher that copies each saved shot (§10) | **yes**, with macOS's file names |
 | Meet: share a 16:9 slice of an ultrawide (tide for Linux §12) | ScreenCaptureKit can share a region *(unverified in Meet)* | **partial** |
-| Light and dark by time (tide for Linux §15) | Appearance › Auto follows the sun; a fixed 07:00–19:00 needs a scheduled job | **yes**, with a job |
+| Light and dark by time (tide for Linux §15) | tide for Linux's schedule, run by tide (`theme.lua`, §10) | **yes** |
 | US Dvorak | native input source | **yes** |
-| Mouse: fastest, acceleration on, left-handed, wheel 3× (conf `hyprland.lua`) | Mouse settings and `com.apple.mouse.scaling`; the wheel's speed and direction through LinearMouse, from tide for Linux's `input.json` (§10) | **partial**: the wheel **yes**; speed and left-handed in Mouse settings |
+| Mouse: fastest, acceleration on, left-handed, wheel 3× (conf `hyprland.lua`) | speed and acceleration through LinearMouse, and the wheel's speed and direction from tide for Linux's `input.json` (§10, §15) | **partial**: left-handed only in Mouse settings |
 | Touchpad: natural scroll, tap to click; mouse not natural | Trackpad settings (§10) | **partial**: one natural-scroll switch for both *(unverified)* |
 | Key repeat: 600 ms, 25 a second | `InitialKeyRepeat` and `KeyRepeat` (§10) | **partial**: macOS's steps |
 | Caps Lock as Compose | `macos.json`'s `keyboard.capsLockCompose` (the macOS page's Keyboard), off unless turned on, makes Caps Lock send F18, and tide reads the keys after it from Linux's own Compose table (§10) | **yes** *(unverified on a Mac)*: not during Secure Input |
 | Setup checklist (tide for Chrome §3.4) | a settings page with deep links to System Settings panes (§10) | **yes** |
-| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide for Linux §16) | tide reads the same files (§15); every page of tide for Linux's is a section, with buttons to macOS's panes and the helpers for what tide can't change | **partial**: Clocks, Layouts, Workspaces, Start at login, Clipboard, the muted list, Floating, Keyboard's Shortcuts (your keys and the presets, as tide for Linux's) and the Setup checklist are tide's own; Appearance is only a button |
+| Settings pages, shared `~/.config/tide` files, `.local` overrides (tide for Linux §16) | tide reads the same files (§15); every page of tide for Linux's is a section, with buttons to macOS's panes and the helpers for what tide can't change | **partial**: some pages are only buttons to macOS's panes, such as Trackpad (§15's table) |
 | `tide doctor` (tide for Linux §5.4) | `tide doctor` (§15) | **yes** |
 | Workspace swipe, three fingers (conf `hyprland.lua`) | the trackpad's touches through an event tap, with macOS's own swipe between Spaces off (§7.2) | **yes** *(unverified on a Mac)* |
 | kitty, Ubuntu Mono, shell config | native, through `setup` and `conf` | **yes** |
 
 ## 5. Windows and layouts
 
-- **Geometry:** tide for Linux's layout is pure Lua, and tide for Chrome's
-  `src/geometry.js` is a tested port of it. The four layouts, the
-  single-window rule and the share bounds carry over as they are:
-  - tile, three-column, two columns plus a stack, and monocle (tide for Linux §6.1);
-  - each workspace's own layout, `mfact` and master count;
-  - the default by the display's shape: three-column from an aspect of
-    2.1, tile below it;
-  - a lone tiled window centered at 80% wide from 2.1, 60% from 3.2, and
-    full width below 2.1;
+- **Geometry:** tide for Linux's layout is pure Lua, and tide runs its
+  `geometry.lua` unchanged (`make check-tide`). So tide for Linux §6.1's
+  layouts and numbers carry over as they are:
+  - tile, three-column, two columns plus a stack, and monocle;
+  - each workspace's own layout, `mfact` and master count, per display;
+  - the default layout by the display's shape, the lone-window widths
+    (80% from an aspect of 2.1, 60% from 3.2) and the `mfact` bounds;
   - floats and full-screen windows don't count toward "one window".
 - **New windows join the end of the stack,** and the master stays put. A
   setting puts them at the top of the stack, after the focused window, or
@@ -321,13 +321,13 @@ can open before its page names it, and a title rule needs that name.
    tide never moves, focuses or counts any of them.
 2. **A user rule** by app bundle ID and, optionally, title, as tide for Linux's float
    rules (tide for Linux §6.4): `start()`'s `rules` first, then the ones you make on
-   the settings window's Floating section (§15). Rules come first so a
+   Tide Settings' Floating section (§15). Rules come first so a
    misbehaving app can always be fixed. tide's own rules follow the user's: System Settings floats,
    since its width is fixed though its height isn't, so step 4 misses it
    and a tile would leave a gap beside it. Notification Center's windows
    are left alone, whatever they report: they're macOS's own, over every
    window. Hammerspoon's windows aren't watched at all: tide's own, the
-   bar, the launchers and the settings window, and Hammerspoon's console
+   bar, the launchers and Tide Settings, and Hammerspoon's console
    and preferences, which stay where macOS puts them. The window filters
    leave Hammerspoon out (`hs.window.filter.ignoreAlways`): watching it,
    a filter asks Accessibility about each of its windows from
@@ -370,7 +370,7 @@ Placing and keeping floats:
 
 - **A new float centers on its parent,** the app's focused window (tide for Linux
   §6.4). One with no parent, like System Settings, centers on its display,
-  as on tide. It used to open under the pointer, so the pointer's next move
+  as on tide for Linux. It used to open under the pointer, so the pointer's next move
   wouldn't focus the tile beside it. But a slow app's window, such as About
   This Mac, arrived after the pointer had moved on and landed where it had
   been. Focus follows mouse now leaves a tile alone while another app's
@@ -400,7 +400,7 @@ Placing and keeping floats:
     Hammerspoon's console and Preferences stay in that list, by title and
     bounds, so a Super+drag or Super+middle-click over one leaves the tile
     behind alone, as over tide's own windows. tide's own drawing, such
-    as the dim and the drag outline, is click-through and stays out. A click or a key still focuses the
+    as the dimming layer and the drag outline, is click-through and stays out. A click or a key still focuses the
     tile, and the float goes behind it.
   - **Nor does a focus tide picks for you.** A workspace switch, a
     window going into the tray, a window closing, a restore finishing,
@@ -471,8 +471,8 @@ its parent, and stay in front:
 - Chrome's Save As;
 - an About window;
 - System Settings opened from an app;
-- System Settings opened on its own, under the pointer, staying in front
-  until the pointer leaves it;
+- System Settings opened on its own, centered on its display, staying in
+  front while the pointer crosses the tile behind it;
 - an Electron app's dialog;
 - a JetBrains IDE's dialog;
 - Finder's Get Info window.
@@ -520,7 +520,7 @@ is.
      anything. A one-pixel nudge afterward isn't a crossing.
 3. **Ask the window server what's on top at that point,** the moment the
    pointer leaves the window it was over. There's no wait: focus moves on
-   entering, as on tide.
+   entering, as on tide for Linux.
    - So crossing another window on the way to the menu bar focuses it, and
      the menu bar shows that app's menus. Holding Super on the way keeps
      focus where it was (below). The window list
@@ -539,7 +539,7 @@ is.
      the screen. They're web pages, and asking Accessibility what's under
      the pointer over one waits on the page, up to a quarter of a second a
      question and a dozen questions a lookup. On CI's Mac that held Esc on
-     tide for Chrome's launcher for 3.4 s, and over the settings window it would
+     tide for Chrome's launcher for 3.4 s, and over Tide Settings it would
      stall each move. The resync after a raise skips them too, and the
      bar and the Dock.
    - **Onto another display's desktop,** with no window there, focus
@@ -625,9 +625,10 @@ Focus follows mouse pauses, and focus stays where it is:
   short timeout (`AXUIElementSetMessagingTimeout`), and an app that misses
   it is skipped. Amethyst's focus follows mouse hangs Java apps
   (Amethyst#342).
-- **A key turns it off and on,** for the rare app that misbehaves. It's a
-  safety valve, not the fix. Amethyst's only answer to #337 was a toggle
-  key *(key to settle in §7)*.
+- **The switcher's "Focus follows mouse on or off" turns it off and on,**
+  for the rare app that misbehaves (§9). It's a safety valve, not the fix,
+  and it has no key (§19, question 8). Amethyst's only answer to #337 was
+  a toggle key.
 - **In monocle,** only the front window is visible, so there's nothing else
   to cross into, and focus follows the keys.
 - **Focusing without raising,** as KDE does, needs a private call, which
@@ -664,7 +665,7 @@ Each of these must pass before focus follows mouse is on by default:
   the last, with none of them marked for attention.
 - Pointing into Chrome never names Notification Center in the bar, with a
   notification banner showing and without.
-- Spotlight, Launchpad and the auto-hidden menu bar stay open while the
+- Spotlight, Launchpad and the menu bar, shown by Show Menu Bar, stay open while the
   pointer moves.
 - Cmd-Shift-4 keeps its region picker while the pointer crosses windows.
 - Typing into tide's switcher works with the pointer resting on a window,
@@ -708,7 +709,7 @@ handling (tide for Chrome §5.3):
     the window first moves to that display, in the same workspace.
   - **A moved or resized float** keeps its new frame.
 - **Super+drag moves any window, and Super+right-drag resizes it,** from
-  anywhere inside it, as on tide.
+  anywhere inside it, as on tide for Linux.
   - macOS has no built-in way to do this for every app, so tide watches
     mouse buttons with an event tap while Super is held (§2.2), which
     Accessibility covers.
@@ -748,7 +749,7 @@ handling (tide for Chrome §5.3):
   - **A plain middle click on a text field pastes it** at the click. A
     text field is one whose value can be set, or the text inside one.
     What's under the click is asked of the app whose window tide knows
-    is there, not of the whole screen: the dim's layer (§5.6) lies over
+    is there, not of the whole screen: the dimming layer (§5.6) lies over
     every window but the focused one, and Hammerspoon can't ask
     Accessibility about its own. Where tide knows no window, the click is
     left alone. A
@@ -822,7 +823,7 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
   window on the workspace.
 - **Full screen** (`Super+Shift+X`) covers the whole display, bar and all.
   It's tide's own: a move to the display's whole frame, which works
-  over an auto-hidden menu bar *(unverified)*, not macOS's native full
+  over the menu bar too *(unverified with the menu bar shown)*, not macOS's native full
   screen, which moves the window to a Space of its own (§13).
   An app's own native full screen (the green button) is left alone, and
   that window isn't on any tide workspace while it lasts.
@@ -843,7 +844,7 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
 - **Their place is the app's.** Pinning them to the bottom-right corner, as
   tide for Linux does, would mean moving them again after each move of the app's own.
 
-### 5.6 The dim
+### 5.6 Dimming inactive windows
 
 - **Strength 0.12,** as on tide for Linux (tide for Linux §6.2). It's tide for Linux's `dimStrength`,
   in `appearance.json` and `appearance.local.json` (§15), and the
@@ -852,7 +853,7 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
 - **Never dimmed:** a workspace with one visible window, and a focused
   window that's full screen. A window full screen on its own Space isn't
   visible beside the others, so it doesn't count.
-- **tide's own windows,** the settings window and the launchers, sit over
+- **tide's own windows,** Tide Settings and the launchers, sit over
   the layer; while one has the focus, every window under it is dimmed. Picture-in-picture, a screen-share preview
   and apps' panels sit at the floating level or above, over the layer
   *(unverified per app)*.
@@ -879,7 +880,7 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
 **Which windows cast a shadow is tide's `shadows` in appearance.json**
 (tide for Linux §6.2's Borders page): none, floating windows, the focused
 window, or all, the focused one by default; `shadowSize` is how far it
-reaches, 8 px by default. The settings window's Appearance page steps
+reaches, 8 px by default. Tide Settings' Appearance page steps
 through the same four choices, writing appearance.local.json, and a bad
 value is logged, naming the setting (`shadow.load`).
 
@@ -891,15 +892,15 @@ value is logged, naming the setting (`shadow.load`).
 - **None** turns macOS's off. **All** leaves them on. **Floating windows**
   leaves them all on, the nearest macOS allows, and the page says so.
 - **Focused window** turns macOS's off and paints the focused window's
-  itself, on the dim's layer (§5.6; `dim.layer`): the window's shape,
-  shadowed `shadowSize` wide, with its body cut out by the dim's hole. A
+  itself, on the dimming layer (§5.6; `dim.layer`): the window's shape,
+  shadowed `shadowSize` wide, with its body cut out by the layer's hole. A
   lone window casts one too, though it isn't dimmed (`wm:focus_scene`). A
   window in front of the focused one is cleared of it. It's redrawn when
-  the dim is. The size changes only this shadow, so the page shows it only
+  the dimming layer is. The size changes only this shadow, so the page shows it only
   for this choice.
   - It lies over the other windows, not under the focused one: a menu or
     popover reaching outside the focused window is shaded where it
-    crosses it, and it lags a window you drag, as the dim does.
+    crosses it, and it lags a window you drag, as dimming does.
   - How dark it is (`dim.SHADOW_ALPHA`, 0.45) is a guess, to compare with
     macOS's own.
 - **macOS's shadows come back on** when Hammerspoon quits or reloads
@@ -1001,8 +1002,8 @@ numbered ones:
 - **`Super+Home` goes to "in"; `Super+Tab` flips between "in" and the
   workspace you used last; `Super+End` goes to the last one other than
   "in"** (§7.2).
-- **`Super+1…9` count along the bar:** `Super+N` is the Nth workspace in
-  bar order, so `Super+1` is "in", as `Super+Home` is, and `Super+0` is
+- **`Super+1…9` count along the bar,** as on tide for Linux (tide for
+  Linux §6.6): `Super+1` is "in", as `Super+Home` is, and `Super+0` is
   the last (§7.2).
 - **An empty workspace is removed once you leave it,** other than "in" and
   the standing ones. Leaving means no display shows it any more. A workspace holding only
@@ -1027,9 +1028,9 @@ numbered ones:
   - A tab or newline typed in a name is a space, as before, not a refusal.
 - **A workspace spans every display,** and each display has its own
   layout within it. **Decided** (2026-11-01, §19 question 12), and
-  **built**. One workspace shows at a time, on every display at once.
-  tide for Linux's monitors each show one of their own (tide for Linux §6.5), so here the two
-  desktops differ.
+  **built**. One workspace shows at a time, on every display at once, as
+  on tide for Linux, where each monitor shows its own part of it (tide for
+  Linux §6.5).
 - **Each workspace keeps** a part per display: that display's windows in
   tile order, its layout, `mfact` and master count. The workspace as a
   whole keeps its focused window.
@@ -1046,7 +1047,7 @@ numbered ones:
     marked for attention (tide for Linux §14.2).
 - **A tile from a launch you made goes to the display keys acted on as you
   launched it,** one of "in"'s apps too, not where macOS opens it. macOS opens an app's new window
-  where its last one was, so Win+T with the pointer on the internal display
+  where its last one was, so Super+T with the pointer on the internal display
   could open the terminal on the external one. Until tide first places
   it, the app moving it doesn't count as you moving it.
 - **A new window opening on "in"** that isn't one of its apps asks for a
@@ -1126,7 +1127,7 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 - **Each workspace has settings of its own,** tide for Linux's `workspaceSettings`
   in `workspaces.json` (tide for Linux §6.5, and §15 here), by name, ignoring case:
   - **`askForName`:** whether a new window there asks for a workspace's
-    name, below, and whether a launch from there does. The settings window
+    name, below, and whether a launch from there does. Tide Settings
     calls it "New windows ask for a workspace".
   - **`pinnedApps`:** the apps whose windows stay open there (Pinned apps,
     below).
@@ -1288,7 +1289,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
     - Your user ID comes from one `id -u`, the first time there's a socket
       to check.
 - **A running process can't see later changes.** It keeps the name it
-  started with, after a rename or a move to another workspace, as on tide.
+  started with, after a rename or a move to another workspace, as on tide
+  for Linux.
 - **Scripts read the current name from a file:**
   `~/Library/Caches/tide/workspace` holds `TIDE_WORKSPACE`'s value, and
   `workspace.name` beside it holds the name as it shows, each ending in a
@@ -1339,7 +1341,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   stays parked; one whose workspace shows is placed as usual, a float at
   the frame saved with it (`frame`).
 - **If it crashes,** the next start restores what it can't place and
-  reconciles the rest. `tide restore` does it by hand (§16).
+  reconciles the rest. Quitting Hammerspoon brings every hidden window
+  back by hand, as above.
 - **What's saved:** `hs.settings`' `tide.state` names each window's
   workspace by name, its display by UUID, and the display it goes back
   to, if any (§6.4); the workspace showing; and the list of names in
@@ -1356,7 +1359,7 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 
 ### 6.6 Mission Control settings
 
-The checklist (§10) sets these, and undoes `setup-macos`'s nine Spaces:
+The checklist (§10) asks for these, which undo `setup-macos`'s nine Spaces:
 
 - **One Space per display.** tide doesn't use the rest.
 - **"Displays have separate Spaces"** stays on, the default.
@@ -1441,13 +1444,13 @@ mock of five (tide for Linux's `docs/mocks/minimized.html`), as tide for Linux d
      that may break.
 2. **Emulated, AeroSpace-style, parking windows off screen:** the choice
    above.
-   - Switching is instant, there's one shared pool across monitors, and
-     tide for Linux's model fits exactly.
+   - Switching is instant, and one workspace spans every display, as on
+     tide for Linux (tide for Linux §6.5).
    - The cost is Mission Control showing everything, a sliver in a corner
      of each display, and tools that read positions seeing windows off
      screen. Cmd+Tab bringing the workspace along softens the reason
      `setup-macos` turned AeroSpace down.
-3. **Minimized, tideco-style:** tide's first choice, now the
+3. **Minimized, as tide for Chrome does:** tide's first choice, now the
    `hide = "minimize"` setting. Mission Control stays honest, but every
    switch animates, too slowly even with the Scale effect.
 
@@ -1655,7 +1658,7 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+Z` | minimize the window, to the tray (§6.7) | hotkey |
 | `Super+L` | lock | hotkey; macOS's lock screen |
 | `Super+S` | keep awake on or off (§10) | hotkey; `hs.caffeinate`, with an on-screen sign |
-| `Super+P` | presenter mode: Do Not Disturb and keep awake together (§10) | hotkey; keep awake as `Super+S`, Do Not Disturb through two shortcuts you make in Shortcuts |
+| `Super+P` | presenter mode: Do Not Disturb and keep awake together (§10) | hotkey; keep awake as `Super+S`, Do Not Disturb through shortcuts you make in Shortcuts (§10) |
 | `Super+Shift+E` | log out | hotkey; System Events, which asks first |
 | `Super+Home` | show "in" (§6.2) | hotkey |
 | `Super+Left` / `Right` / `Up` / `Down` | select the window left / right / above / below this one; at a display's edge, the nearest on the next display that way (below) | hotkey |
@@ -1666,14 +1669,14 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+J` / `K`, with Shift | focus / move down and up the stack | hotkey |
 | `Super+Return` | go to a workspace, by name (below); it moves no window, so it works with none focused | hotkey |
 | `Super+Shift+Return` | move the window to a workspace, by name (below), and follow it there; with no window focused, nothing | hotkey |
-| `Alt+Tab` | swap with the master; on the master, swap with the previous master | conf's Karabiner rule turns physical Alt+Tab into `Ctrl+Option+Shift+Tab`, which tide registers (below) |
+| `Alt+Tab` | swap with the master; on the master, swap with the previous master | tide's Karabiner rule (`karabiner/tide.json`) turns physical Alt+Tab into `Ctrl+Option+Shift+Tab`, which tide registers (below) |
 | `Super+\` / `Super+/` | grow / shrink the master (`mfact` ±0.025), repeating | hotkey |
 | `Super+=` / `Super+-` | add / remove a master | hotkey |
 | `Super+.` / `Super+,` | next / previous layout | hotkey |
 | ``Super+` ``, `Super+O` | monocle | hotkey |
 | `Super+X` / `Super+Shift+X` | maximize / full screen on or off (§5.4) | hotkey |
 | `Super+Shift+F`, `Super+Insert` | float or tile | hotkey |
-| `Super+Shift+I` | the settings window's Floating section, filled in for the focused window (§15), tide for Linux's `Super+Alt+F` | hotkey |
+| `Super+Shift+I` | Tide Settings' Floating section, filled in for the focused window (§15), tide for Linux's `Super+Alt+F` | hotkey |
 | `Super+Shift+R` | reload tide, as on tide for Linux (tide for Linux §6.6) | hotkey; `hs.reload()`, as the switcher's Reload tide does |
 | `Super`+drag, `Super`+right-drag, `Super`+middle-click | move, resize, maximize (§5.3) | event tap |
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
@@ -1698,9 +1701,9 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
   with Option as Super it stays on Backspace, which nothing takes there. A
   rule copy that still sends Backspace is reported as out of date.
 - **`Super+1…9` and `Super+Shift+1…9` count along the bar,** as on tide for Linux
-  (tide for Linux §6.6). `Super+N` shows the Nth workspace in bar order, home first,
-  so `Super+1` is "in"; `Super+Shift+N` sends the focused window there,
-  with focus staying where you are. A number past the last workspace does
+  (tide for Linux §6.6). `Super` and a digit shows the workspace at that
+  place in bar order, home first, so `Super+1` is "in"; with Shift, it
+  sends the focused window there, with focus staying where you are. A number past the last workspace does
   nothing. A number is a position, not a name. `Super+0` and
   `Super+Shift+0` do the same for the last workspace in bar order.
 - **`Super+Left` and `Right` go between windows, across displays.**
@@ -1781,9 +1784,11 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     steps once, however far it goes, and the next needs every finger
     lifted first. Two or four fingers are left alone, and so is a
     three-finger drag, which holds the mouse button down.
-  - `setup-macos --wm tide` turns off macOS's swipe left and right
-    between Spaces, with three fingers or four, so the two don't both act
-    (§6.6). `swipe = false` in start() turns tide's off.
+  - tide's macOS settings turn off macOS's swipe left and right between
+    Spaces, with three fingers or four, so the two don't both act: the
+    macOS page's Mission Control and App Exposé swipes, which `setup-macos`
+    sets in `macos.json` (§6.6, §15). `swipe = false` in `start()` turns
+    tide's off.
   - *Unverified on a Mac:* that gesture events reach the tap on macOS 26
     with Accessibility alone, and that `getTouches()` still names each
     finger's `identity`, `phase` and `normalizedPosition`.
@@ -1804,7 +1809,7 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 - **`Super+Shift+Return` moves the focused window to a workspace,** with
   the same prompt. Enter moves the window, making the workspace if the
   name is new, and follows it: that workspace shows, with the window
-  focused on the display it was on, as on tide. Esc leaves it where
+  focused on the display it was on, as on tide for Linux. Esc leaves it where
   it is. This is Move (§6.1).
   - With no window focused there's nothing to move, so it does nothing,
     and Hammerspoon's console says why.
@@ -1834,9 +1839,8 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 - **App keys** are tide for Linux's (conf `hyprland.lua`). Each brings the app's
   window forward, launching the app if it has none, and brings its
   workspace with it (Activate, §6.1).
-  - From a workspace that asks, "in" by default, a key that would launch
-    asks for a workspace name first, unless the app is one of "in"'s
-    (§6.2). Esc launches where you are.
+  - A key that would launch from a workspace that asks asks for a name
+    first, as §6.2 says.
   - **Super+T opens a new kitty window every time,** on the workspace
     you're on, as tide for Linux's terminal key does: Cmd+N to a running kitty, or a
     launch.
@@ -1867,13 +1871,13 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
     that reads the same: Zoom's app is `zoom.us`, and its bundle ID
     `us.zoom.xos`. Keys are Hyprland's strings, as `keys.json`'s.
     Yours come first, so one on tide's keys takes them, and the Shortcuts
-    list says which of tide's it displaced. The settings window's Keyboard
+    list says which of tide's it displaced. Tide Settings' Keyboard
     page lists them under Your app keys, with New window or Bring forward
     and Remove for each, and a row to add one: the keys, typed as Super+M,
     and the app. Its changes go to `apps.local.json`, and what can't be
     an app key is said there, writing nothing. A file that's wrong is said
     once, and none of its keys bind until it's fixed.
-- **Keyboard's Shortcuts,** in tide's settings window, list every binding
+- **Keyboard's Shortcuts,** in Tide Settings, list every binding
   that registered, and every key that didn't, as tide for Linux's Keyboard page does
   (§15, tide for Linux §16).
 - **Your keys are tide for Linux's,** so one change serves both desktops:
@@ -1927,8 +1931,8 @@ stock keys:
   and Win+Shift+arrow for Amethyst's throw. Both now go to tide.
 - **Karabiner's Alt+Tab rule** sent Cmd+Tab. It goes to tide's swap
   with the master instead (§7.2).
-- **Super+Shift+N sent to workspace N.** Those keys are gone (§7.2), so
-  `setup-macos`'s Super+Alt+N go with them.
+- **Super+Shift+1…9 sent the window to a numbered workspace.** They now
+  count along the bar (§7.2), so `setup-macos`'s Super+Alt+1…9 go.
 
 ## 8. Bar, clocks and dashboard
 
@@ -2145,10 +2149,11 @@ stock keys:
     `make check-tide`: a chip opens Workspaces, the title Floating, the
     clocks Clocks, the speaker and the mic Sound, keep awake and the session
     icon Idle, Presenting Notifications, and so on. The Apple logo, the
-    camera and the system monitor open the Bar page, as tide's logo,
-    sharing pill and system monitor do, and so does a right-click anywhere
-    else on the bar (tide's `bar` item). tide's page ids are tidemo's, but
-    for Notifications (`muted`, `bar.js`'s `PAGE_IDS`). WebKit's own menu
+    camera and the system monitor open the Bar page, as tide for Linux's
+    logo, sharing pill and system monitor do, and so does a right-click
+    anywhere else on the bar (tide for Linux's `bar` item). tide for
+    Linux's page ids are tide's here too, but for Notifications (`muted`,
+    `bar.js`'s `PAGE_IDS`). WebKit's own menu
     stays away from the bar *(unverified on a Mac that the bar's webview
     gets the right-click)*.
 - **The bar on Hammerspoon** is built like the dashboard: one borderless
@@ -2216,8 +2221,9 @@ stock keys:
     `hs.webview`'s view accepts the first mouse (its `acceptsFirstMouse`
     returns yes, in Hammerspoon 1.4.27's `libwebview.m`), so it reaches the
     page.
-  - It floats above every app's window but below the menu bar, joins every
-    Space, and stays put.
+  - Its window level covers the menu bar at the top (the status level)
+    and floats at the bottom (`bar.level`, above). It joins every Space,
+    and stays put.
   - Focus follows mouse pauses over it, as over the menu bar (§5.2).
   - The bar hides on a display while a window there is full screen, and
     comes back after: tide's full screen (§5.4) in that display's part
@@ -2261,7 +2267,7 @@ stock keys:
       `/usr/local/bin`, since Hammerspoon's PATH has neither.
     - It runs through `hs.task`, never waiting on it, one run at a time:
       as tide starts, on wake, and every 30 s, and again when the
-      settings window's Bluetooth page changes anything (§15).
+      Tide Settings' Bluetooth page changes anything (§15).
     - Hidden with no `blueutil`, no adapter, or any failure, and the log
       says why once, until the reason changes or clears. The headphones
       icons don't need it.
@@ -2403,12 +2409,20 @@ stock keys:
   revealed.
 - **The notch,** on a MacBook's own display, sits where tide for Linux centers the
   title.
-  - Even with the menu bar hidden, macOS keeps a strip as tall as the
-    notch at the top of that display: `hs.screen`'s frame starts below it.
-    A bar placed in the frame sat under the notch, wasting the strip.
-  - **So the bar goes up to the very top there,** over the notch's strip,
-    as tall as the strip or 36 px, whichever is taller, and windows tile
-    below it (`bar.place`).
+  - **With the menu bar shown,** as tide asks (above), the bar covers it
+    on that display as on any other, at the status level. A notched
+    display's menu bar is taller: 37 px or more, where a plain one's is 24
+    or 25 *(seen on Sonoma and later; unverified per model)*. So a shown
+    menu bar taller than 30 px is taken as a notch's (`bar.top_room`), and
+    the title and chips keep clear of it (below). The bar is as tall as
+    the menu bar or 36 px, whichever is taller (`bar.place`).
+  - **With the menu bar still hiding,** macOS keeps a strip as tall as the
+    notch at the top of that display, and `hs.screen`'s frame starts below
+    it. A bar placed in the frame would sit under the notch, wasting the
+    strip, so the bar goes up to the very top there, over the strip, and
+    windows tile below it (`bar.place`). A display counts as having a
+    notch then when its frame still starts below its full frame
+    (`_HIHideMenuBar`, read with `defaults`, says the menu bar hides).
   - **macOS can refuse the strip:** on the owner's MacBook it moved the
     bar's window back down below the notch, so windows, tiled from the top
     of the strip, sat under the bar. So tide reads the bar's frame back
@@ -2418,16 +2432,11 @@ stock keys:
   - **What macOS leaves in the strip is the window level,** tried on the
     owner's MacBook: a canvas or a web view at the floating, or even the
     Dock's, level is moved down out of it, and one at the main menu's level
-    or above stays. So a bar over a notch is at the main menu's level
-    (`bar.level`), set before the window is placed; every other bar stays
-    floating, below the menu bar. *(unverified: whether the menu bar,
+    or above stays. So under a hiding menu bar, a bar over a notch is at
+    the main menu's level (`bar.level`), set before the window is placed,
+    and every other bar floats. *(unverified: whether the hiding menu bar,
     revealed at the top of that display, still shows over the bar, at the
     same level.)*
-  - A display counts as having a notch when the menu bar is set to hide
-    always (`_HIHideMenuBar`, read once with `defaults`) and its frame
-    still starts below its full frame: with the menu bar hidden, the notch
-    is the only thing that keeps room there. With the menu bar showing,
-    the bar stays below it, as on any display.
   - **There's no title on that display,** since the notch sits where it
     goes, and the bar keeps its middle 220 px clear, a little wider than
     the notch *(unverified per model)*. The clocks already shrink to keep
@@ -2453,8 +2462,8 @@ stock keys:
     from Intl, which says `GMT+1` for London in summer (tide for Linux §7.3).
   - **Which are in the bar** is tide for Linux's setting too (tide for Linux §7.3): every zone
     is unless its entry says `"bar": false`, and the dashboard's clock
-    panel lists them all. The Clocks window's **Bar** box on each clock
-    sets it, in `clocks.local.json`.
+    panel lists them all. The Clocks page's **Bar** box on each clock
+    sets it, in `clocks.local.json` (§15).
   - tide for Linux's `hour24` and `dedupeLocal` switches are read but not followed:
     tide for Chrome's clock view is always 24-hour and always hides the local zone.
   - A file that's wrong keeps the clocks as they were, and a notification
@@ -2491,7 +2500,7 @@ tab, the search field naming the tab you're in.
 
 - **The search field's hint names only the keys that work on that tab,**
   as tide for Linux's footer does (tide for Linux §8.1): `Tab` and the tab it goes to on all
-  four, `Cmd+Return`'s new workspace on Launch, and `Cmd+M`'s mute on
+  five, `Cmd+Return`'s new workspace on Launch, and `Cmd+M`'s mute on
   Windows and Attention. Elsewhere `Cmd+Return` does what Return does, and
   `Cmd+M` has no row to mute. `hs.chooser` has no footer, so the hint is
   the one place to say it.
@@ -2501,7 +2510,7 @@ tab, the search field naming the tab you're in.
   - **An icon on every row:** an app's own, a window's or a wanting-attention
     row's from its app, a tab's from its browser, a System Settings pane's
     from System Settings, a screenshot's from Screenshot, and the session's
-    (lock, log out, sleep, restart, shut down) from macOS's images. tide for Linux's
+    (lock, log out, sleep, restart, shut down) from macOS's images. tide's
     own rows, Tide Settings and its commands and toggles, show its logo.
     Each icon is read once and kept, since the rows are rebuilt on every
     keystroke; one that can't be read is left out.
@@ -2512,7 +2521,7 @@ tab, the search field naming the tab you're in.
     screenshot.
   - **Headers with nothing typed:** Launch shows Recent (the five used
     last) and then Apps, System Settings and Commands; Actions groups its
-    rows as Session, tide for Linux, Toggles and Screenshots. A typed query, and the
+    rows as Session, tide, Toggles and Screenshots. A typed query, and the
     other tabs, are one ranked list. A header is a row that can't be
     chosen: `hs.chooser` has no other kind. The first real row is selected
     when the rows change, but the arrow keys still stop on a header, Return
@@ -2524,8 +2533,11 @@ tab, the search field naming the tab you're in.
     which would undo a match's accent, a header's gray and the dimmer key
     hint.
 
-- **Tabs,** in this order *(the order is a guess, to confirm)*:
-  - **Launch:** apps, System Settings' panes and tide's commands.
+- **Five tabs,** in tide for Linux's order (tide for Linux §8.1):
+  - **Launch:** apps, System Settings' panes and tide's commands. It's
+    tide for Linux's Apps tab, named Launch as tide for Chrome's scope is
+    (tide for Chrome §9.4), since the dashboard launcher (§9.2) is tide for
+    Chrome's page and uses its scope names.
     **An app that's running opens a new window on the workspace you're
     on,** as launching it does on tide for Linux, through its own File ›
     New Window (Finder's New Finder Window): a browser, Finder, an editor.
@@ -2533,7 +2545,7 @@ tab, the search field naming the tab you're in.
     something else, goes to the window it has, with its workspace, as
     before (`hs_adapter.can_new_window`, `wm` `A.app`'s `new_window`).
     **Tide Settings** is listed among the apps, with tide's logo, and opens
-    tide's settings window. Each of the window's sections has a row of
+    Tide Settings. Each of the window's sections has a row of
     its own, "Tide Settings: Clocks" and so on, found by its name or by
     what it covers ("left-handed", "time zones"), which opens the window
     there. Those rows are for a query alone, as tide for Linux's per-page rows are
@@ -2630,14 +2642,11 @@ tab, the search field naming the tab you're in.
   the most used and most recent first, and tide for Linux's empty-query sections
   (tide for Linux §8). Text matching nothing in a tab searches all of them, so a
   window or a tab still turns up from Launch.
-- **Quick actions, as tide for Linux's** (tide for Linux §8), on the Actions tab: screenshot
-  the window, screen or a region; lock, log out, sleep, restart, shut down;
-  Do Not Disturb, keep awake, presenter mode, and dark style; reload
-  tide. tide's settings are an app on Launch, Tide Settings.
-- **Launching from a workspace that asks, "in" by default, asks for a
-  workspace name first** (§6.2), so the
-  app starts with the right `TIDE_WORKSPACE` (§6.3). Esc launches where you
-  are.
+- **Quick actions are tide for Linux's** (tide for Linux §8.2), listed
+  above under Actions. tide's settings are an app on Launch, Tide
+  Settings.
+- **Launching from a workspace that asks** asks for a workspace name
+  first, as §6.2 says.
 - **Cmd+Return** (physical Ctrl+Enter) runs the app on a new workspace, as
   Ctrl+Enter does on tide for Linux: it asks for a name first, from any workspace,
   since there's no empty one to use (§6.1).
@@ -2666,7 +2675,7 @@ three tabs. V as in paste. `Super+;` opens it on Characters and
     sets the concealed type through arboard 3.6.1. A copy whose types
     can't be read isn't kept either.
   - The types are read when the watcher fires, so a copy replaced within
-    that moment is judged by its replacement's types, as on tide.
+    that moment is judged by its replacement's types, as on tide for Linux.
   - **Kept on disk for a week, encrypted:** the newest 100, each for 7
     days, or as the Clipboard settings say (§15), so it outlives a restart
     and a reboot, as tide for Linux's does (tide for Linux §8.4).
@@ -2698,7 +2707,7 @@ three tabs. V as in paste. `Super+;` opens it on Characters and
       cap, by a rename over the last, so a crash leaves the old file or
       the new one.
     - **Reading it back:** at start, after the Clipboard settings, so a
-      cap over 200 gets all of it, behind anything copied meanwhile, and
+      cap over the default 100 gets all of it, behind anything copied meanwhile, and
       nothing's written until it's read. A file that can't be read or
       decrypted is said once and left as it is until the history
       changes.
@@ -2750,11 +2759,12 @@ on the display you're on, in place of the switcher.
   tide for Chrome's bar along the page's top is hidden: tide's own bar already
   shows the workspaces, clocks and status icons, which sat elsewhere in
   tide for Chrome's (the owner's call). The page's body stays tide for Chrome's, as
-  `make check-tideco` checks; only tide's style block hides the bar. The Switcher row under
-Keyboard in tide for Linux's settings chooses it, at once, and this Mac keeps the
-choice in `hs.settings`; until it's chosen there, `start({ launcher =
-"dashboard" })` does. The default stays `"chooser"` (§9). A stored choice
-that isn't one is left out, and the log says so.
+  `make check-tideco` checks; only tide's style block hides the bar.
+- **The Switcher row under Keyboard in Tide Settings chooses it,** at
+  once, and this Mac keeps the choice in `hs.settings`; until it's chosen
+  there, `start({ launcher = "dashboard" })` does. The default stays
+  `"chooser"` (§9). A stored choice that isn't one is left out, and the
+  log says so.
 
 - **Opened by the same keys,** each on its own scope, and by the bar's
   logo, which also closes it. tide for Chrome's scopes are Launch, Tabs, Workspaces
@@ -2888,7 +2898,7 @@ that isn't one is left out, and the log says so.
       starts, at each change, on a wake, as the files change, and within
       the hour regardless. The first time, macOS asks to let Hammerspoon
       control System Events; refused, the log says why.
-    - A switch by hand, in Control Center or the settings window's Light
+    - A switch by hand, in Control Center or Tide Settings' Light
       now or Dark now, holds until the next change, or until the settings
       change, as tide for Linux's flip does. tide's own changes aren't taken for
       one.
@@ -2899,7 +2909,7 @@ that isn't one is left out, and the log says so.
       at each look. *(Unverified on a Mac: that System Events' dark mode
       turns macOS's Auto off rather than fighting it, and how long the
       Automation prompt holds tide up the first time.)*
-  - The settings window's Appearance page has tide for Linux's rows (tide for Linux §16):
+  - Tide Settings' Appearance page has tide for Linux's rows (tide for Linux §16):
     light or dark now and until when, with its switch; the mode, ‹ and ›
     through macOS's own and then tide for Linux's four; By the clock's times, − and
     + a quarter hour; and a Location row naming the city sunrise and
@@ -2951,7 +2961,7 @@ that isn't one is left out, and the log says so.
   - **Built: tide for Linux's wallpapers, light and dark, are the desktop picture.**
     - **The settings:** tide for Linux's own, `lightWallpaper` and `darkWallpaper` in
       tide for Linux's `appearance.json`, and in `appearance.local.json` over it. The
-      settings window's Appearance page reads and changes them with tide for Linux's
+      Tide Settings' Appearance page reads and changes them with tide for Linux's
       appearance module, copied unchanged (`dashboard/tide-appearance.js`;
       `make check-tide`), and saves a change to `appearance.local.json`.
     - **The picture:** tide sets it on every display for the mode macOS
@@ -3088,10 +3098,11 @@ that isn't one is left out, and the log says so.
   - Left-handed: the primary button on the right, in Mouse settings.
   - macOS can't say how far a wheel notch scrolls: its slider changes
     only the acceleration, so a slow notch moves a line or so. It's the
-    gap that tide for Chrome §19.2 fills on chromeOS. `setup-macos` installs
-    LinearMouse (free, open source, Accessibility) and gives every mouse
-    nine lines a notch, and a pointer acceleration of 1.5 at speed 0.35
-    (scripts `docs/MACOS.md`), which the Mouse section changes (§15).
+    gap that tide for Chrome §19.2 fills on chromeOS. tide's installer
+    installs LinearMouse (free, open source, Accessibility). `setup-macos`
+    gives every mouse nine lines a notch, and a pointer acceleration of
+    1.5 at speed 0.35 (scripts `docs/MACOS.md`), which the Mouse section
+    changes (§15).
   - **Built: tide for Linux's Scroll speed and Natural scrolling, through
     LinearMouse.** They're tide for Linux's Mouse settings, `mouse.scrollSpeed` and
     `mouse.naturalScroll` in `input.json` and `input.local.json` (tide for Linux
@@ -3116,8 +3127,7 @@ that isn't one is left out, and the log says so.
       (`dashboard/linearmouse.js`) in JavaScriptCore, as Karabiner's is
       (§15).
     - Three lines a notch at 1×, so tide for Linux's 3× is nine, rounded to whole
-      lines, one at least. setup-macos's ten becomes nine the first time
-      tide runs.
+      lines, one at least: the nine `setup-macos` sets.
     - macOS has one natural-scrolling switch,
       `com.apple.swipescrolldirection`, on while it's unset, read with
       `defaults` each time (`hs.mouse.scrollDirection()` takes unset as
@@ -3190,14 +3200,13 @@ that isn't one is left out, and the log says so.
   - The character is typed with `hs.eventtap.keyStrokes`, so it works in
     every app, kitty included.
   - It doesn't work during Secure Input, such as in a password field, when
-    event taps don't see typed keys (§13). `compose = false` in start()
-    turns it off.
+    event taps don't see typed keys (§13).
 - **Setup checklist:** as tide for Chrome's (tide for Chrome §3.4). Each item links to its System
   Settings pane with an `x-apple.systempreferences:` URL *(unverified per
   pane on macOS 26)*. It covers the Mission Control settings (§6.6), the
   minimize settings (§6), the password at once (Idle, above), Chrome's
-  notifications (§5.1), and each permission (§11). **Built,** as the
-  settings window's last section (§15).
+  notifications (§5.1), the menu bar shown (§8), and each permission
+  (§11). **Built,** as Tide Settings' last section (§15).
 - **The rest of the setup:** tide for Chrome's Appendix A lists the helper scripts
   `setup` installs (Bluetooth, the audio profile switcher, notes, IRC,
   remote desktop, the file manager on `Super+E`). Which of them run on a
@@ -3233,7 +3242,7 @@ administrator:
 | Turning on a privacy permission (§11.1) | **yes**, an admin's password unlocks the setting *(unverified on macOS 26 for standard users)* | A managed Mac's MDM can grant it instead (§11.3). |
 | Karabiner's keyboard driver | **yes**: it's a system extension, approved once | Skip Karabiner. tide then binds Option directly, which takes Option's text gestures (§7.1), and the lone Super tap needs an event tap. |
 | `pmset` for the idle timeline (§10) | **yes**, `sudo` | Energy and Lock Screen settings, which a user can change. |
-| Everything else `setup-macos` writes: symbolichotkeys, Dock and minimize settings, mouse scaling, appearance | no: per-user `defaults` | — |
+| Everything else tide's installer, tide and `setup-macos` write: symbolichotkeys, Dock and minimize settings, mouse scaling, appearance | no: per-user `defaults` | — |
 
 ### 11.3 On a managed work Mac
 
@@ -3288,16 +3297,15 @@ Each one names a workaround, or says there is none.
 | Nothing ever steals focus (tide for Linux §14) | An app can activate itself, and macOS decides whether it may. | tide never focuses anything unasked, and hands focus back when an app takes it without a grant (§14.1) *(unverified that it can act in time)*. |
 | Dimming exactly the inactive windows | tide can't draw inside or between other apps' windows (§2.4). | One dark layer over the windows with a hole for the focused one, which dims the desktop too (§5.6). |
 | Instant workspace switches with an honest Cmd+Tab and Mission Control | Hiding windows off screen leaves them in Cmd+Tab and Mission Control; minimizing and Spaces animate (§2.3, §6). | Park, and bring the workspace along when Cmd+Tab picks a parked window; turn Mission Control off and use tide's overview on its keys (§6.9); or minimize with the Scale effect (`hide = "minimize"`). **No** way to get all three at once. |
-| One workspace pool shared by every monitor (tide for Linux §6.5) | Parked and minimized windows have no display of their own, and native Spaces are per display. | tide tracks each workspace's display itself, as tide for Chrome does (tide for Chrome §6.1). |
 | Moving a window to a native Space | Only private calls can (§2.3). | Workspaces by parking windows off screen, or minimizing (§6). |
 | Exact tiles for every app | Apps can refuse or round a size, such as terminals snapping to their character grid (§2.1). | The rest tile around what the app took (§5). In kitty, the grid snapping can be turned off *(unverified)*. |
-| Tiling native full-screen windows | A full-screen window lives in its own Space. | Maximize instead (§4). |
-| Own bar replacing the menu bar | The menu bar is the system's (§8). | Hide the menu bar automatically and put a bar over it, or use SketchyBar. |
+| Tiling native full-screen windows | A full-screen window lives in its own Space. | Maximize instead (§5.4). |
+| Own bar replacing the menu bar | The menu bar is the system's (§8). | Set the menu bar to show and cover it with tide's bar, with Show Menu Bar to reach it (§8), or use SketchyBar. |
 | Every window's attention request (tide for Linux §14.4) | There's no public signal for "this window wants attention" *(unverified)*. | Notifications, bells and self-activation (§14.2). **None** for an app that does none of those. |
 | Own lock screen and login, with the hostname | The lock and login screens are the system's. | Lock Screen's "Show message when locked" can carry the hostname *(unverified on macOS 26)*. **None** for a custom lock screen. |
-| tide for Linux's idle timeline (dim, lock, off, suspend) | macOS sets its own timings (§10). | Energy and Lock Screen settings come close. `pmset` sets more, with admin rights (§11). |
+| tide for Linux's idle timeline alone (dim, lock, off, suspend) | macOS runs its own timers beside any app's (§10). | tide runs tide for Linux's timeline (§15), and the Idle page says to turn macOS's lock timer off. |
 | Sharing a 16:9 slice of an ultrawide in Meet (tide for Linux §12) | Meet shares a screen, a window or a tab. | Share a window, or a virtual display from a tool such as BetterDisplay *(unverified)*. |
-| Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which `setup-macos` installs, tide checks is running, and tide sets from tide for Linux's Scroll speed (§10). |
+| Mouse wheel speed beyond the slider | Mouse settings change only the wheel's acceleration (§10). | LinearMouse, which tide's installer installs, tide checks is running, and tide sets from tide for Linux's Scroll speed (§10). |
 | Keys and the Super tap during Secure Input | While a password field or a terminal's secure keyboard entry is active, event taps stop seeing typed keys *(unverified for hotkeys)*. | **None**, by design. Registered hotkeys keep working, if they do. |
 | Pinning picture-in-picture to a corner (tide for Linux §6.4) | The app places it, and moves it back. | Leave it where the app puts it (§5.5). |
 | Option's text gestures alongside Super on Option | One key can't be both. | Karabiner's mapping (§7.1). Without it, **none**: tide takes them. |
@@ -3402,7 +3410,7 @@ Each one names a workaround, or says there is none.
   - **Its windows are otherwise normal,** and the focus guard (§14.1)
     still hands focus back from one that takes it unasked, just without
     marking it.
-  - **Notifications: less than on tide.** On tide for Linux, Mute also keeps the
+  - **Notifications: less than on tide for Linux.** There, Mute also keeps the
     app's notification popups from showing, though they still go into the
     notification center's history. tide can't stop macOS's own banners:
     they're Notification Center's, with no public way for another app to
@@ -3441,13 +3449,29 @@ Each one names a workaround, or says there is none.
   else writes there: tide's own files are in `~/.config/tide` and
   `~/Library/Caches/tide`.
 
-- **`start()`'s `launcher`** picks the launcher: `"chooser"`, the
-  `hs.chooser` switcher, by default, or `"dashboard"`, tide for Chrome's dashboard
-  page (§9.2). Anything else is an error at load, naming the setting.
-- **One set of files with tide.** tide reads tide for Linux's settings from
-  `~/.config/tide/` (tide for Linux §16.1): the clocks list, the layouts, and the dim
-  strength. One file serves every desktop. A `.local` file beside each
-  overrides it for one machine.
+- **`start()`'s options,** in `~/.hammerspoon/init.lua`'s
+  `tide.start({ ... })`. Each is optional. A bad value is an error at
+  load, naming the option.
+
+  | Option | What it sets | Default |
+  |---|---|---|
+  | `hide` | how hidden workspaces hide: `"park"` or `"minimize"` (§6) | `"park"` |
+  | `launcher` | the switcher: `"chooser"`, the `hs.chooser` switcher, or `"dashboard"`, tide for Chrome's dashboard page (§9.2); Keyboard's Switcher row overrides it | `"chooser"` |
+  | `bar` | `false` puts the workspaces in a menu bar item instead of tide's bar (§8) | tide's bar |
+  | `swipe` | `false` turns tide's three-finger swipe off (§7.2) | on |
+  | `compose` | `false` leaves Caps Lock as it is, and takes its switch away (§10) | the macOS page's switch |
+  | `focus_follows_mouse` | `false` starts with focus follows mouse off (§5.2) | on |
+  | `keep_focus` | more bundle IDs whose windows keep focus, beside the screenshot picker and password prompts (§5.2) | none |
+  | `rules` | float rules, before the Floating section's (§5.1, below) | none |
+  | `layout` | the layouts' settings, under `layouts.json`'s (below) | tide for Linux's (tide for Linux §6.1) |
+  | `workspaces`, `home_apps`, `workspace_settings` | the standing workspaces, home's apps and each workspace's settings, where `workspaces.json` sets none (below) | tide for Linux's standing list and home asking (tide for Linux §6.5); home's apps as §6.2 names them |
+- **One set of files with tide for Linux.** tide reads tide for Linux's
+  settings from `~/.config/tide/` (tide for Linux §16.1): `appearance`,
+  `clocks`, `layouts`, `workspaces`, `startup`, `clipboard`, `input`,
+  `idle`, `notifications`, `snippets` and `keys`, each a `.json` file.
+  One file serves every desktop. A `.local` file beside each overrides it
+  for one machine. tide's own are `macos`, `apps`, `floating-macos` and
+  `awake.local` (below).
 - **The layouts are tide for Linux's setting,** `layouts.json` and
   `layouts.local.json` (tide for Linux §16), read as tide starts, before the first
   workspace is made, and again whenever the folder changes.
@@ -3461,9 +3485,9 @@ Each one names a workaround, or says there is none.
     doesn't undo what the keys set.
   - A file that's wrong, by tide for Linux's checks, is an error at load, in a
     notification naming the file and why, and the last good settings stay.
-  - **The workspace-name patterns** (§6.2) are tide for Linux's setting, in the same
-    file tide for Linux reads them from *(its name to match tide for Linux's)*, so one list
-    names workspaces on both desktops.
+- **The workspace-name patterns** (§6.2) are tide for Linux's setting,
+  `namePatterns` in `workspaces.json` and `workspaces.local.json`, so one
+  list names workspaces on both desktops.
 - **The muted apps and sites** (§14.2) are tide for Linux's setting, `muted` in
   `workspaces.json` and `workspaces.local.json`, so one list serves both
   desktops.
@@ -3521,7 +3545,7 @@ Each one names a workaround, or says there is none.
     that fails is a notification too, and the setting is recorded as half
     done, so the next change runs it again whole, or gives every one of its
     keys back to macOS once the files leave it out.
-  - **The settings window's macOS page** shows each, under its group: a
+  - **Tide Settings' macOS page** shows each, under its group: a
     switch, ‹ and › through a choice, or a folder typed and set with
     Enter, with when it shows if it's not at once. A setting the files
     leave out shows what macOS has now, read with `defaults read` as the
@@ -3558,7 +3582,7 @@ Each one names a workaround, or says there is none.
   - macOS lets an app activate as it opens, so unlike tide for Linux, a command's
     window may take focus *(unverified on macOS 26)*. Its windows go where
     the home workspace's rules put them (§6.2).
-  - **The settings window's Start at login section** edits the list, as
+  - **Tide Settings' Start at login section** edits the list, as
     tide for Linux's Start at login page does, with tide for Linux's own `startup.mjs`, copied
     unchanged as `dashboard/tide-startup.js`.
     - It shows the list in effect: `startup.local.json`'s, else
@@ -3619,7 +3643,7 @@ Each one names a workaround, or says there is none.
     `open -g -a`. An entry that finds none is tide for Linux's, so it's skipped, and
     the log says so, not a notification. One already running, by its
     bundle ID, isn't opened again.
-  - **The settings window's Workspaces section** edits them, as tide for Linux's
+  - **Tide Settings' Workspaces section** edits them, as tide for Linux's
     Workspaces page does, with tide for Linux's own `workspacepage.mjs`,
     `workspacenames.mjs`, `fuzzy.mjs` and `span.mjs`, copied unchanged as
     `dashboard/tide-workspacepage.js`, `tide-workspacenames.js`,
@@ -3652,10 +3676,10 @@ Each one names a workaround, or says there is none.
       Notifications page.
 - **A bad value is an error at load,** naming the setting, not a failure
   later. A pattern that doesn't compile is one (§6.2).
-- **Pages, as tide for Linux's** (tide for Linux §16): Layouts, Keyboard's shortcuts (§7.2),
-  Appearance, Mouse and Keyboard, the checklist (§10), and the permissions
-  (§11).
-  - **Built: the Setup checklist,** the settings window's last section,
+- **Tide Settings,** tide's settings window, has a page for each of tide
+  for Linux's (tide for Linux §16), listed in the table below, then the
+  Setup checklist.
+  - **Built: the Setup checklist,** Tide Settings' last section,
     after tide for Linux's pages, since tide for Linux has no checklist page; it's tide for Chrome's
     options page's (tide for Chrome §3.4). Its launcher row is "Tide Settings: Setup
     checklist", which "permissions" and "accessibility" find too.
@@ -3675,8 +3699,13 @@ Each one names a workaround, or says there is none.
         Off is in red, and `tide doctor` names it.
       - Automation: Can't tell. macOS asks per browser the first time the
         switcher lists its tabs (§9), and there's no way to read it unasked.
+      - Location Services: On or Off, as `hs.location` says, only for the
+        Wi-Fi network's name on the bar and the Network page (§8). Until
+        macOS has asked, its button has macOS ask; after, it opens the list.
     - **Settings** next, each with what to set and an Open button to its
-      pane: one Space per display and the rest of Mission Control's, and
+      pane: the menu bar kept shown, "Automatically hide and show the menu
+      bar" set to Never, for the bar to cover (Control Center, §8); one
+      Space per display and the rest of Mission Control's, and
       macOS's own tiling off (Desktop & Dock, §6.6); minimize into the app's
       icon with the Scale effect (Desktop & Dock, §6); the password at once
       (Lock Screen, §10); and Chrome's notifications allowed (Notifications,
@@ -3830,9 +3859,9 @@ Each one names a workaround, or says there is none.
     reads them (copied unchanged, `dashboard/tide-idle.js`). With nothing
     set in either, macOS's own Lock Screen settings alone time it.
     - With no input for each step's time: a dark veil over every display
-      for the dim (an `hs.canvas` at the screen saver's level), macOS's
+      to dim the screen (an `hs.canvas` at the screen saver's level), macOS's
       lock, the displays off (`pmset displaysleepnow`), and sleep, on
-      battery or on AC too if set. Input lifts the dim, and the timeline
+      battery or on AC too if set. Input lifts the veil, and the timeline
       starts again.
     - tide looks at the idle time (`hs.host.idleTime`) every 5 s, and
       every second while dimmed. Each step happens once until the next
@@ -3841,7 +3870,7 @@ Each one names a workaround, or says there is none.
       playing holds) holds every step, as an idle inhibit does on tide for Linux;
       one keeping the system awake holds the sleep alone. tide's own
       keep awake holds the display, so it holds the timeline too.
-    - The page: Use tide for Linux's idle settings, On or Off, then each step's time, − and +
+    - The page: Use tide's idle settings, On or Off, then each step's time, − and +
       along tide for Linux's ladder, and Sleep when plugged in. On writes tide for Linux's timings
       as they stand to `idle.local.json`; Off empties it, and can't turn
       off what the shared file sets.
@@ -3930,7 +3959,7 @@ Each one names a workaround, or says there is none.
     | Bluetooth | On or Off, and the paired devices, each connected or disconnected (below); Bluetooth settings |
     | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
-    | Keyboard | the input sources, each a click to use (below), the Switcher, tide for Linux's or tide for Chrome's (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
+    | Keyboard | the input sources, each a click to use (below), the Switcher, tide's or tide for Chrome's dashboard launcher (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
     | Layouts, Workspaces, Floating | none: tide's own (below) |
     | Appearance | light or dark on tide for Linux's schedule, and its switch, with a city picker for sunrise and sunset (§10), the wallpapers, light and dark, each chosen from a grid of those installed or in macOS's file dialog, and placed as its position says, and the Overview switch for window pictures (§6.9); Appearance settings |
@@ -3938,7 +3967,7 @@ Each one names a workaround, or says there is none.
     | Notifications | Do not disturb on a schedule, its times and days (below); Notifications settings, above the muted list |
     | Clipboard | none: tide's own (below) |
     | Clocks | Date & Time settings, for the Mac's own zone |
-    | Idle | Stay awake when plugged in, Use tide for Linux's idle settings On or Off, each step's time, and Sleep when plugged in (below); Lock settings |
+    | Idle | Stay awake when plugged in, Use tide's idle settings On or Off, each step's time, and Sleep when plugged in (below); Lock settings |
     | Start at login | Login Items settings, for macOS's own list |
 
     - A pane opens by its `x-apple.systempreferences:` ID, as the bar's
@@ -4037,14 +4066,14 @@ Each one names a workaround, or says there is none.
     - They come from `keys.lua`, as tide registered them as it started,
       or as Super last moved between Karabiner's and Option (§7.1): each
       binding's keys and what it does, in `keys.bindings`' order, then
-      resize mode's keys, as "Resize mode: H", as tide for Linux shows a submap.
+      resize mode's keys, as "Resize mode: H".
     - Keys show as they're printed on a PC keyboard, as tide for Linux's do: Super
       for whichever modifiers stand for it, `Super+Backspace`,
       `Super+Insert` for the Mac's Help, `Print` for F13, `Alt+Tab` for
       the Karabiner chord it arrives as, and "Tap Super" for Super+F20.
     - What one does is its `does` in `keys.lua`, in conf's words for
       tide for Linux's same key where it has one. One without says "no
-      description", as on tide.
+      description", as on tide for Linux.
     - **A key that didn't register** is listed under them, in red, with
       what it does and why: macOS refused it, or another binding has the
       same chord. With Super on Option that's Super+Print, which is
@@ -4055,7 +4084,7 @@ Each one names a workaround, or says there is none.
       the event tap's, not `keys.lua`'s.
     - **Cost and reliability:** nothing to pay, and nothing new to run; the
       list is made as the keys bind.
-  - **Built: Layouts,** a section of the settings window, as tide for Linux's
+  - **Built: Layouts,** a section of Tide Settings, as tide for Linux's
     Layouts page (tide for Linux §16), with tide for Linux's own `layouts.mjs` and `steps.mjs`,
     copied unchanged as `dashboard/tide-layouts.js` and `tide-steps.js`:
     where ultrawide begins, the mode a new workspace starts in on each kind
@@ -4064,18 +4093,18 @@ Each one names a workaround, or says there is none.
     through the choices. It writes only `layouts.local.json`, keeping what
     else it says; a file that's wrong is named, and nothing changes here
     until it's fixed. Its launcher row is "Tide Settings: Layouts".
-  - **Built: Clocks,** a window from the launcher ("Tide Settings: Clocks") or
-    the dashboard ("Change the clocks…"). The window also has the Start at
-    login, Clipboard and Muted sections. Each section has its own launcher
-    row ("Tide Settings: Clocks", "Tide Settings: Start at login" and so
-    on, §9), found by its name, which opens the window there, or
-    turns an open one to it, as tide for Linux's per-page rows do (tide for Linux §16). As tide for Linux's Clocks page, it adds a
-    zone by its ID, relabels, moves and removes clocks, and writes only
-    `clocks.local.json`, with tide for Linux's own functions, so the first change
-    copies the list the bar shows. A zone Intl doesn't know is refused.
+  - **Built: Clocks,** a page of Tide Settings, opened by its launcher row
+    ("Tide Settings: Clocks"), the dashboard's "Change the clocks…", or a
+    right-click on the bar's clocks. As every page's row does, it opens
+    the window there, or turns an open one to it, as tide for Linux's
+    per-page rows do (tide for Linux §16). As tide for Linux's Clocks page,
+    it adds a zone by its ID, relabels, moves and removes clocks, sets
+    each clock's **Bar** box (§8), and writes only `clocks.local.json`,
+    with tide for Linux's own functions, so the first change copies the
+    list the bar shows. A zone Intl doesn't know is refused.
     tide watches the folder, so the bar, the dashboard and the page
     follow a change, a hand edit's included.
-  - **Built: Clipboard,** a section of the settings window, as tide for Linux's
+  - **Built: Clipboard,** a section of Tide Settings, as tide for Linux's
     Clipboard page (tide for Linux §16), with tide for Linux's own `clipboard.mjs`, copied
     unchanged as `dashboard/tide-clipboard.js`. It reads and writes tide for Linux's
     `clipboard.json` and `clipboard.local.json`, key by key, so one setting
@@ -4093,14 +4122,14 @@ Each one names a workaround, or says there is none.
       the file and the setting, and the last good settings stay; the
       section says so too, and changes nothing until it's fixed. tide
       reads the files again when the folder changes.
-  - **The settings window also lists the muted apps and sites** (§14.2),
+  - **Tide Settings also lists the muted apps and sites** (§14.2),
     each with an Unmute button, writing `workspaces.local.json` as the
     one-key mute does.
     - As on tide for Linux's Notifications page, a bundle id or `site:HOST` typed at
       the list's foot is muted with Enter. One the list wouldn't take back
       on loading, or one muted already, is refused, and the section says
       why.
-- **Built: Floating,** a section of the settings window, as tide for Linux's
+- **Built: Floating,** a section of Tide Settings, as tide for Linux's
   Floating page (tide for Linux §16): the rules that float a window by its app and
   title, and the floating windows no rule covers yet. Its launcher row is
   "Tide Settings: Floating".
@@ -4123,7 +4152,7 @@ Each one names a workaround, or says there is none.
     - An entry with no app, an app with a space, a key other than these
       two, a title that isn't a Lua pattern, or one listed already is an
       error at load naming the file, `rules` and the entry. So is a list
-      of more than 64, as on tide. The last good rules stay, and a
+      of more than 64, as on tide for Linux. The last good rules stay, and a
       notification says so once.
     - A pattern is checked whole, as Lua's matcher reads it: Lua says a
       pattern is malformed only when a match reaches the bad part, so a
@@ -4173,7 +4202,7 @@ Each one names a workaround, or says there is none.
       standard, its app's name and the app's path, each only when macOS
       says. Nothing matches on these but the rules' app and title; they
       show what a rule could need. The section starts closed, and stays as
-      you leave it while the settings window is open.
+      you leave it while Tide Settings is open.
   - `Super+Shift+I` opens the section filled in for the focused window, as
     *Always float* fills it (§7.2). tide for Linux's key is `Super+Alt+F`, which
     tide can't have: Super's chord holds Option already, with Karabiner
@@ -4195,14 +4224,14 @@ Each one names a workaround, or says there is none.
   - Karabiner's rules loaded, and tide's rule up to date, checked again
     after a plug or a wake: Karabiner
     runs the copy it made when the rule was enabled, so a copy from before
-    conf added Alt+Tab (Ctrl+Option+Shift+Tab) and the tap's Super+F20
+    tide's rule added Alt+Tab (Ctrl+Option+Shift+Tab) and the tap's Super+F20
     leaves those two dead. tide reads the copy in `karabiner.json`, and a
     notification names what's missing and says to remove and re-add the
     rule, once each time that changes, rechecked every 30 s (§7.1, §7.2).
     **Built so far:** this check, Accessibility (the Setup checklist,
     above), Karabiner's and LinearMouse's, as
     `tide.doctor()` in Hammerspoon's console and the switcher's "Check
-    tide for Linux (doctor)";
+    tide (doctor)";
   - conf's Karabiner rules that are off, and what stops tide switching
     them (the Keyboard section, above);
   - LinearMouse installed and running, for the mouse wheel (§10). A
@@ -4252,12 +4281,14 @@ Each one names a workaround, or says there is none.
   remembers its use by.
 
 - **tide** (this repo): the spec, the code, and its installer,
-  `install/tide-setup`: Hammerspoon, blueutil and the DDC tool, `make
-  install`, `init.lua`, the keys in §7.3 and the menu bar. It needs
-  neither scripts nor conf.
+  `install/tide-setup`: Hammerspoon, LinearMouse, blueutil and the DDC
+  tool, `make install`, `init.lua`, the keys in §7.3, the menu bar shown,
+  and Karabiner with tide's rule for Super (§7.1). It needs neither
+  scripts nor conf.
 - **conf:**
-  - Karabiner's other rules (`config/karabiner/`), updated for §7.3; tide's
-    own, for Super, are here (§7.1);
+  - Karabiner's other rules (`config/karabiner/`), updated for §7.3, such
+    as the terminal and PC-arrows rules; tide's own rules ship with tide
+    (§7.1);
   - the shell's shpool and tmux startup, which reads `TIDE_WORKSPACE`, and
     on a Mac reads tide's workspace file when it's missing (§6.3);
   - `kitty.conf`'s remote control socket, private to you, on a Mac only,
@@ -4265,11 +4296,11 @@ Each one names a workaround, or says there is none.
   - `amethyst.yml` retired;
   - the Hammerspoon config, if tide starts as route B (§3).
 - **scripts:** `setup-macos`. It clones or pulls tide, runs its
-  installer, then adds its owner's choices: the modifier rotation,
-  Karabiner and LinearMouse, and macOS's settings
-  in `macos.json` (§6.6, §15).
-- **tide for Linux:** the layout geometry and its test fixtures, shared so tide
-  doesn't keep its own copy, and the picker's character list (§9.1),
+  installer, then adds its owner's choices: the modifier rotation, Caps
+  Lock as Compose, conf's Karabiner rules, LinearMouse's settings, and
+  macOS's settings in `macos.json` (§6.6, §15).
+- **tide for Linux:** the layout geometry and its test fixtures, and the
+  modules, lists and key presets tide copies unchanged (§8, §9.1, §15),
   which `make check-tide` compares.
 
 ## 18. Testing and milestones
@@ -4305,22 +4336,26 @@ Each one names a workaround, or says there is none.
 1. **Workspaces:** decided, park, with minimizing as a setting (§6, changed
    from minimize on 2026-11-05), and native Spaces next if neither works
    out.
-2. **Build route:** Hammerspoon first (§3 B), or straight to a native app?
-3. **Bar:** decided, tide's own bar over an auto-hidden menu bar, with its
-   own status items (§8). The menu bar item stays as the fallback.
+2. **Build route:** Hammerspoon first, decided and built (§3 B). Whether
+   to go on to a native app is still open.
+3. **Bar:** decided, tide's own bar, with its own status items, covering a
+   menu bar set to show (§8), or along the bottom. The menu bar item stays
+   as the fallback.
 4. **Amethyst:** decided (2026-11-01), replace it. `setup-macos` sets up
    tide unless `--wm amethyst` says otherwise, so a plain `setup` does
    too, and it pulls an existing tide checkout first. Running both would
    fight over the same windows, so it warns about an Amethyst still
    installed.
-5. **The dim:** decided (2026-11-04), tide's own, a layer over the
+5. **Dimming inactive windows:** decided (2026-11-04), tide's own, a layer over the
    windows with a hole for the focused one (§5.6), in place of HazeOver.
 6. **Karabiner for Super:** decided, yes (§7.1).
-7. **The built-in keyboard:** rotate its modifiers too, or PC keyboards
-   only (§7.1)?
-8. **A key to toggle focus follows mouse:** decided, none;
-   `tide.toggle_focus_follows_mouse()` from Hammerspoon's console, or
-   `focus_follows_mouse = false` in `start()` (§5.2).
+7. **The built-in keyboard:** decided, the PC keyboard type rotates every
+   keyboard, the built-in one included, with `tide-mac-keyboards.json`
+   putting a Mac keyboard's keys in a PC's order first (§7.1).
+8. **A key to toggle focus follows mouse:** decided, none. The switcher's
+   "Focus follows mouse on or off" (§9), `tide.toggle_focus_follows_mouse()`
+   from Hammerspoon's console, or `focus_follows_mouse = false` in
+   `start()` (§5.2).
 9. **`Super+1…9` and `Super+Shift+1…9`:** decided, positions in bar order
    (§7.2).
 10. **`Super+End`:** decided, the last workspace other than "in" and the
