@@ -68,13 +68,11 @@ end
 M.LABELS = { chooser = "tide's switcher", dashboard = "tileco's launcher" }
 
 -- The page's scope for the switcher's tab `tab`, which a key opens it on.
--- tileco's page has no Attention scope, so the windows wanting attention
--- are among the windows, on Tabs.
 M.PAGE_SCOPE = {
     launch = "launch",
     workspaces = "workspaces",
     windows = "tabs",
-    attention = "tabs",
+    attention = "attention",
     actions = "actions",
 }
 
@@ -140,6 +138,8 @@ end
 -- dashboard has them (`clock_files`, `good_clocks`).
 --   - Windows and browser tabs are Chrome's tabs, windows most recent first,
 --     each its own window for its workspace.
+--   - The windows wanting attention are tileco's marks: their tabs' window
+--     ids, the newest last. One the page doesn't list is left out.
 --   - Apps, the app scripts and System Settings' panes are tileco's app keys, most recently
 --     used first; Tide Settings is tileco's own row.
 --   - Tide Settings' sections are tileco's settings sections.
@@ -166,6 +166,22 @@ function M.feed(items, opts)
         }
         if item.ws then
             windows[item.id] = { ws = item.ws }
+        end
+    end
+    -- By tide's window id, the page's id for the window: the same type as
+    -- its tab's windowId, which the page compares a mark with.
+    local by_window = {}
+    for _, item in ipairs(listed) do
+        if item.kind == "window" then
+            by_window[item.window] = item.id
+        end
+    end
+    local marks = {}
+    for i = #items, 1, -1 do
+        local item = items[i]
+        local id = item.kind == "attention" and by_window[item.window]
+        if id then
+            marks[#marks + 1] = id
         end
     end
     local found = {}
@@ -223,7 +239,7 @@ function M.feed(items, opts)
         commands = commands,
         sections = sections,
         view = opts.view,
-        state = { windows = windows },
+        state = { windows = windows, marks = marks },
         keepAwake = opts.keep_awake or false,
         clockFiles = opts.clock_files or {},
         goodClocks = opts.good_clocks,
@@ -231,7 +247,8 @@ function M.feed(items, opts)
 end
 
 -- What a message from the page asks for, as { kind, value }:
---   row: run the switcher's row with id `value`;
+--   row: run the switcher's row with id `value`: a tab's, an Attention
+--     row's window's, or a command's;
 --   workspace: show workspace `value`, made if it's new;
 --   settings: the settings window, at section `value` if there's one;
 --   keep_awake, browser (tileco's Browser window), reload, close;
@@ -248,6 +265,9 @@ function M.message(body)
         return { kind = "typed", value = body.typed == true }
     elseif body.tabId ~= nil then
         return { kind = "row", value = tostring(body.tabId) }
+    elseif body.activate ~= nil then
+        -- An Attention row: its window, as its row on Tabs.
+        return { kind = "row", value = tostring(body.activate) }
     elseif type(body.command) == "string" then
         local id = body.command:sub(1, #M.ROW) == M.ROW and body.command:sub(#M.ROW + 1)
         if id and id ~= "" then

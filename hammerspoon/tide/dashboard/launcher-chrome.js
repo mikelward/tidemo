@@ -6,8 +6,9 @@
 //   - its tabs are the switcher's windows and browser tabs;
 //   - its settings' apps are the Mac's apps and System Settings' panes;
 //   - its manifest's commands are tide's;
-//   - storage holds the view and the windows' workspaces, keep awake, and
-//     the extras card dismissed, since the Mac needs none of them;
+//   - storage holds the view, the windows' workspaces and the ones wanting
+//     attention, keep awake, and the extras card dismissed, since the Mac
+//     needs none of them;
 //   - every permission is granted: nothing here asks Chrome for one.
 // tide's clocks come from its clocks files, as on the dashboard.
 
@@ -89,6 +90,8 @@ export function update(next) {
   const list = (x) => (Array.isArray(x) ? x : []);
   for (const k of ["tabs", "apps", "actions", "commands", "sections"]) feed[k] = list(feed[k]);
   if (feed.view) for (const k of ["bar", "made", "urgent"]) feed.view[k] = list(feed.view[k]);
+  // The page has an Attention scope only when the marks are a list.
+  if (feed.state) feed.state = { ...feed.state, marks: list(feed.state.marks) };
   const loaded = nextSettings({ clockFiles: feed.clockFiles ?? {}, goodClocks: feed.goodClocks }, settings);
   settings = loaded.settings;
   if (loaded.errors.length > 0) send({ clockErrors: loaded.errors });
