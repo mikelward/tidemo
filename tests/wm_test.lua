@@ -1365,4 +1365,27 @@ t.test("a bad hide setting fails at load, naming the setting", function()
     t.eq(wm_mod.new(fake.new(), { hide = "park" }).hide, "park")
 end)
 
+-- macOS can report no display for a moment, as one is swapped for another
+-- or the lid closes on the last: windows that open then, and the layout
+-- keys, wait for a display rather than fail.
+t.test("with no display, a new window and the layout keys wait for one", function()
+    local a, wm = setup(1)
+    local screens = a.screens_
+    a.screens_ = {}
+    a.pointer_uuid = nil
+    a.add(2, {})
+    a.add(3, { subrole = "AXDialog", frame = { x = 0, y = 0, w = 400, h = 200 } })
+    wm:schedule()
+    a.tick()
+    for _, act in ipairs({ { "mfact", 1 }, { "nmaster", 1 }, { "cycle", 1 }, { "monocle" } }) do
+        wm:act(act[1], act[2])
+    end
+    a.screens_ = screens
+    a.pointer_uuid = "A"
+    wm:schedule()
+    a.tick()
+    t.eq(wm:part("in", "A").order, { 1, 2 })
+    t.eq(wm.windows[3].floating, true)
+end)
+
 t.done("wm")
