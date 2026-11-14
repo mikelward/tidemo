@@ -609,7 +609,7 @@ M.SETTINGS_SECTIONS = {
     { id = "workspaces", group = "windows", name = "Workspaces", covers = "standing workspaces home apps name patterns pinned apps ask for a name" },
     { id = "floating", group = "windows", name = "Floating", covers = "floating windows rules",
       key = "Settings: floating windows" },
-    { id = "appearance", group = "general", name = "Appearance", covers = "dark style light theme accent overview window pictures thumbnails" },
+    { id = "appearance", group = "general", name = "Appearance", covers = "dark style light theme accent overview window pictures thumbnails shadow shadows" },
     -- tide's Bar page, with tide's keywords, and the menu bar's switch.
     { id = "bar", group = "general", name = "Bar", covers = "panel taskbar top bottom position menu bar dock icons status tray order clock clocks" },
     { id = "muted", group = "general", name = "Notifications", covers = "muted apps and sites mute unmute",

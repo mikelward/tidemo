@@ -871,6 +871,38 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
 - **The alternative,** an outline round the focused window instead, is
   JankyBorders' (§13).
 
+### 5.7 Shadows
+
+**Which windows cast a shadow is tide's `shadows` in appearance.json**
+(tide for Linux §6.2's Borders page): none, floating windows, the focused
+window, or all, the focused one by default; `shadowSize` is how far it
+reaches, 8 px by default. The settings window's Appearance page steps
+through the same four choices, writing appearance.local.json, and a bad
+value is logged, naming the setting (`shadow.load`).
+
+- **macOS shadows every window or none.** There's no public way to change
+  another app's window shadow, its size or which windows have one (§2.4).
+  Hammerspoon's `hs.window.setShadows` turns them all on or off through an
+  undocumented call *(unverified on macOS 26)*. yabai shadows windows one
+  by one only with SIP partly off, which tide doesn't ask for.
+- **None** turns macOS's off. **All** leaves them on. **Floating windows**
+  leaves them all on, the nearest macOS allows, and the page says so.
+- **Focused window** turns macOS's off and paints the focused window's
+  itself, on the dim's layer (§5.6; `dim.layer`): the window's shape,
+  shadowed `shadowSize` wide, with its body cut out by the dim's hole. A
+  lone window casts one too, though it isn't dimmed (`wm:focus_scene`). A
+  window in front of the focused one is cleared of it. It's redrawn when
+  the dim is. The size changes only this shadow, so the page shows it only
+  for this choice.
+  - It lies over the other windows, not under the focused one: a menu or
+    popover reaching outside the focused window is shaded where it
+    crosses it, and it lags a window you drag, as the dim does.
+  - How dark it is (`dim.SHADOW_ALPHA`, 0.45) is a guess, to compare with
+    macOS's own.
+- **macOS's shadows come back on** when Hammerspoon quits or reloads
+  (`hs.shutdownCallback` calls `dim_hs.stop`), and a reload sets them as
+  the setting says again.
+
 ## 6. Workspaces
 
 **Decided: park, with minimizing as a setting** (2026-11-05, replacing

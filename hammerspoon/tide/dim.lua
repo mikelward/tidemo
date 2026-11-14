@@ -47,22 +47,55 @@ local function relative(b, origin)
     return { x = b.x - origin.x, y = b.y - origin.y, w = b.w, h = b.h }
 end
 
+local function grown(b, by)
+    return { x = b.x - by, y = b.y - by, w = b.w + 2 * by, h = b.h + 2 * by }
+end
+
+-- How dark a painted shadow is at its darkest *(a guess, to compare with
+-- macOS's own)*.
+M.SHADOW_ALPHA = 0.45
+
 -- What one display's layer draws, as hs.canvas elements in the display's
--- own coordinates, or nil for no layer.
--- `scene` is wm:dim_scene(): { focused = frame, above = { frame, ... } },
+-- own coordinates, or nil for no layer: the dim, and the focused window's
+-- shadow when tide paints it (shadow.lua).
+-- `dim_scene` is wm:dim_scene(): { focused = frame, above = { frame, ... } },
 -- with no focused frame when every window's to be dimmed, or nil when
--- nothing is. `full` is the display's whole frame,
--- `strength` the dim's, `radius` a window's corner radius.
-function M.elements(scene, full, strength, radius)
-    if not scene or not strength or strength <= 0 then
+-- nothing is. `focus` is wm:focus_scene(), the same for the shadow, which a
+-- lone window casts too, or nil for no shadow. `full` is the display's
+-- whole frame, `strength` the dim's, `radius` a window's corner radius and
+-- `size` how far the shadow reaches (0 for none).
+function M.layer(dim_scene, focus, full, strength, radius, size)
+    local dimming = dim_scene ~= nil and strength ~= nil and strength > 0
+    local f = focus and focus.focused
+    local shadow = f ~= nil and (size or 0) > 0 and overlap(grown(f, size), full)
+    if not dimming and not shadow then
         return nil
     end
-    local color = { red = 0, green = 0, blue = 0, alpha = strength }
+    local color = { red = 0, green = 0, blue = 0, alpha = dimming and strength or 0 }
     local corners = { xRadius = radius, yRadius = radius }
-    local out = {
-        { type = "rectangle", action = "fill", fillColor = color, frame = { x = 0, y = 0, w = full.w, h = full.h } },
-    }
-    if scene.focused and overlap(scene.focused, full) then
+    local out = {}
+    if dimming then
+        out[#out + 1] = { type = "rectangle", action = "fill", fillColor = color, frame = { x = 0, y = 0, w = full.w, h = full.h } }
+    end
+    if shadow then
+        -- The window's own shape, shadowed, its body cut out below with
+        -- the dim's hole, leaving the shadow round it.
+        out[#out + 1] = {
+            type = "rectangle",
+            action = "fill",
+            fillColor = { red = 0, green = 0, blue = 0, alpha = 1 },
+            roundedRectRadii = corners,
+            withShadow = true,
+            shadow = {
+                blurRadius = size,
+                color = { red = 0, green = 0, blue = 0, alpha = M.SHADOW_ALPHA },
+                offset = { h = 0, w = 0 },
+            },
+            frame = relative(f, full),
+        }
+    end
+    local hole = (dimming and dim_scene.focused) or (shadow and f) or nil
+    if hole and overlap(hole, full) then
         -- destinationOut takes the layer away under an opaque shape, its
         -- rounded edge's antialiasing too.
         out[#out + 1] = {
@@ -71,13 +104,16 @@ function M.elements(scene, full, strength, radius)
             fillColor = { red = 0, green = 0, blue = 0, alpha = 1 },
             compositeRule = "destinationOut",
             roundedRectRadii = corners,
-            frame = relative(scene.focused, full),
+            frame = relative(hole, full),
         }
         -- A window in front of the focused one is dimmed where it covers the
-        -- hole too. copy sets it to the dim exactly, so where it reaches past
-        -- the hole it isn't dimmed twice.
-        for _, b in ipairs(scene.above or {}) do
-            if overlap(b, scene.focused) and overlap(b, full) then
+        -- hole too, and takes none of the shadow. copy sets it to the dim
+        -- exactly (none, with no dim), so where it reaches past the hole it
+        -- isn't dimmed twice.
+        local reach = shadow and grown(hole, size) or hole
+        local above = (dim_scene and dim_scene.above) or (focus and focus.above) or {}
+        for _, b in ipairs(above) do
+            if overlap(b, reach) and overlap(b, full) then
                 out[#out + 1] = {
                     type = "rectangle",
                     action = "fill",
@@ -90,6 +126,11 @@ function M.elements(scene, full, strength, radius)
         end
     end
     return out
+end
+
+-- The dim alone (no shadow).
+function M.elements(scene, full, strength, radius)
+    return M.layer(scene, scene, full, strength, radius, 0)
 end
 
 -- The corner radius of a window on macOS `major`: larger from macOS 26

@@ -885,6 +885,28 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(positions()[0].children[3].disabled, true);
 }
 
+// Shadows, as tide's Borders page steps them: tide's Focused window until a
+// file says, ‹ and › into appearance.local.json, and the size only for the
+// one tide paints. Floating says what macOS does instead.
+{
+  const lastAppearance = () => JSON.parse(sent.filter((m) => m.writeAppearance).at(-1).writeAppearance);
+  sandbox.tide.update({ clockFiles: [], appearanceFiles: {} });
+  assert.strictEqual(ids["shadows-choice"].textContent, "Focused window");
+  assert.strictEqual(ids["shadow-size-row"].hidden, false);
+  assert.strictEqual(ids["shadow-size"].textContent, "8 px");
+  ids["shadow-more"].listeners.click();
+  assert.deepStrictEqual(lastAppearance(), { shadowSize: 9 });
+  ids["shadows-prev"].listeners.click();
+  assert.strictEqual(lastAppearance().shadows, "floating");
+  assert.strictEqual(ids["shadows-choice"].textContent, "Floating windows", "shown at once");
+  assert.strictEqual(ids["shadow-size-row"].hidden, true, "macOS's own shadows have no size tide sets");
+  assert.ok(ids["shadows-mac"].textContent.includes("every window casts one"));
+  sandbox.tide.update({ clockFiles: [], appearanceFiles: { shared: '{"shadows": "none"}' } });
+  assert.strictEqual(ids["shadows-choice"].textContent, "None");
+  assert.strictEqual(ids["shadows-prev"].disabled, true, "None is the first");
+  assert.strictEqual(ids["shadows-mac"].textContent, "");
+}
+
 // Appearance's dim, as tide's page has it: tide's 12% until a file sets it,
 // − and + a point at a time into appearance.local.json, keeping what else
 // it says, and none at the bottom.

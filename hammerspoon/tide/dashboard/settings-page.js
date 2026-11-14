@@ -44,6 +44,7 @@ import {
   BAR_CHOICES, MODE_CHOICES, POSITION_CHOICES, WALLPAPER_COLORS, clockTime, dimStrength, formatDim, loadAppearance, locationRow,
   parseAppearance, resetLocation, withLocation, GALLERY_MODES, galleryCollections, galleryFiltered, galleryModeFor, galleryRows,
   positionAt, steppedDim, steppedModeAt, steppedPositionAt, steppedTimePast, wallpaperColor,
+  SHADOW_CHOICES, formatPixels, shadowSize, shadowsAt, steppedShadow, steppedShadowsAt,
   withSetting as withAppearance,
 } from "./tide-appearance.js";
 import {
@@ -1276,6 +1277,27 @@ function renderAppearance() {
   document.getElementById("dim-strength").textContent = formatDim(dim);
   document.getElementById("dim-less").disabled = errors.length > 0 || steppedDim(dim, -1) === dim;
   document.getElementById("dim-more").disabled = errors.length > 0 || steppedDim(dim, 1) === dim;
+  renderShadows(settings, errors.length > 0);
+}
+
+// Which windows cast a shadow, as tide's Borders page steps them. macOS
+// shadows every window or none, so tide paints the focused one's itself,
+// the only one the size changes (shadow.lua, dim_hs.lua).
+const SHADOWS_ON_MAC = {
+  floating: "macOS can't shadow only floating windows, so every window casts one.",
+};
+function renderShadows(settings, bad) {
+  const at = shadowsAt(settings);
+  const choice = SHADOW_CHOICES[at];
+  document.getElementById("shadows-choice").textContent = choice.label;
+  document.getElementById("shadows-prev").disabled = bad || steppedShadowsAt(at, -1) === at;
+  document.getElementById("shadows-next").disabled = bad || steppedShadowsAt(at, 1) === at;
+  const size = shadowSize(settings);
+  document.getElementById("shadow-size-row").hidden = choice.shadows !== "focused";
+  document.getElementById("shadow-size").textContent = formatPixels(size);
+  document.getElementById("shadow-less").disabled = bad || steppedShadow(size, -1) === size;
+  document.getElementById("shadow-more").disabled = bad || steppedShadow(size, 1) === size;
+  document.getElementById("shadows-mac").textContent = SHADOWS_ON_MAC[choice.shadows] ?? "";
 }
 
 // The wallpapers' rows, and the colors under one if they're open; none
@@ -1335,6 +1357,16 @@ function positionFor(w, settings, bad) {
 const currentDim = () => dimStrength(loadAppearance(appearanceText("shared"), appearanceText("local")).settings);
 document.getElementById("dim-less").addEventListener("click", () => setAppearance("dimStrength", steppedDim(currentDim(), -1)));
 document.getElementById("dim-more").addEventListener("click", () => setAppearance("dimStrength", steppedDim(currentDim(), 1)));
+const currentAppearance = () => loadAppearance(appearanceText("shared"), appearanceText("local")).settings;
+const stepShadows = (by) => {
+  const at = shadowsAt(currentAppearance());
+  const next = steppedShadowsAt(at, by);
+  if (next !== at) setAppearance("shadows", SHADOW_CHOICES[next].shadows);
+};
+document.getElementById("shadows-prev").addEventListener("click", () => stepShadows(-1));
+document.getElementById("shadows-next").addEventListener("click", () => stepShadows(1));
+document.getElementById("shadow-less").addEventListener("click", () => setAppearance("shadowSize", steppedShadow(shadowSize(currentAppearance()), -1)));
+document.getElementById("shadow-more").addEventListener("click", () => setAppearance("shadowSize", steppedShadow(shadowSize(currentAppearance()), 1)));
 
 document.getElementById("clipboard-history").addEventListener("click", () => {
   setClipboard("history", !clipboardSettings().settings.history);
