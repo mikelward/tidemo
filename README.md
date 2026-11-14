@@ -36,20 +36,14 @@ It brings tide for Linux's desktop to macOS:
 - the switcher, with Tab moving between apps and commands, the workspaces,
   open tabs, and the windows wanting attention: Super+Space opens it on
   apps, a lone Super tap on apps too and Super+A on attention (§9);
-- Super+Return to go to a workspace by name and Super+Shift+Return to move
-  a window to one, Super+Tab to flip between "in" and the last workspace,
-  Super+End to the last one other than "in", Super+1…9 to the Nth
-  workspace on the bar (Super+1 is "in") and Super+Shift+1…9 to send a
-  window there, Super+0 and Super+Shift+0 the same for the last workspace
-  on the bar, and Alt+Tab to swap with the master, with tide's Karabiner
-  rule (§7.2);
-- Super and an arrow to select the window that way, going on to the next
-  display at the edge, and Super+Shift and an arrow to move it there;
-  Super+X to maximize and Super+Shift+X for full screen; Super+Shift+R
-  to reload tide, as on tide for Linux;
-  Super+PgUp and PgDn for the previous and next workspace with windows,
-  with Shift to move the window there, and a three-finger swipe left or
-  right on the trackpad for the next or previous (§7.2);
+- tide for Linux's workspace and window keys: go to a workspace or move a
+  window to one by name, flip between "in" and the last workspace, the Nth
+  workspace on the bar, the window that way across displays, maximize,
+  full screen and reload. tide for Linux's
+  [SPEC.md §6.6](https://github.com/mikelward/tide/blob/main/SPEC.md#66-keys)
+  lists them for every platform. Alt+Tab, swap with the master, needs
+  tide's Karabiner rule, and a three-finger swipe steps between
+  workspaces (§7.2);
 - a middle click that pastes the selection, as on Linux, without
   touching the clipboard to read it, when turned on under Mouse on Tide
   Settings' macOS page, or in `macos.json` (§5.3);
