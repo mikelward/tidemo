@@ -1020,6 +1020,10 @@ end
 -- next move.
 function M:place_float(id, f)
     local s = self:screen_for(f.frame)
+    -- With no display, it's placed when one comes (M:sync).
+    if not s then
+        return
+    end
     local area = s.area
     local w = math.min(f.frame.w, math.floor(area.w * M.FLOAT_CAP))
     local h = math.min(f.frame.h, math.floor(area.h * M.FLOAT_CAP))
@@ -1261,16 +1265,20 @@ function M:add(id)
         -- on this display.
         local ws = self:part_of(w)
         local anchor = self.a.focused()
-        if anchor == id or not (anchor and layout.index_of(ws.order, anchor)) then
+        if anchor == id or not (ws and anchor and layout.index_of(ws.order, anchor)) then
             anchor = nil
-            for _, m in ipairs(self.mru[w.ws]) do
+            for _, m in ipairs(ws and self.mru[w.ws] or {}) do
                 if layout.index_of(ws.order, m) then
                     anchor = m
                     break
                 end
             end
         end
-        layout.insert(ws, id, anchor, self.layout)
+        -- With no display there's no part yet: it joins one when a display
+        -- comes, as any window the part doesn't hold does (M:sync).
+        if ws then
+            layout.insert(ws, id, anchor, self.layout)
+        end
     end
     -- Known windows go to the back of the recently-used list, so a
     -- workspace always has something to focus, even straight after a
@@ -3560,24 +3568,37 @@ function A.swap_master(self)
     end
 end
 
+-- Each does nothing with no display, so no part to change.
 function A.mfact(self, sign)
-    layout.mfact((self:current_part()), sign * self.layout.mfact_step)
-    self:retile()
+    local ws = self:current_part()
+    if ws then
+        layout.mfact(ws, sign * self.layout.mfact_step)
+        self:retile()
+    end
 end
 
 function A.nmaster(self, delta)
-    layout.nmaster((self:current_part()), delta)
-    self:retile()
+    local ws = self:current_part()
+    if ws then
+        layout.nmaster(ws, delta)
+        self:retile()
+    end
 end
 
 function A.cycle(self, delta)
-    layout.cycle((self:current_part()), delta, self.layout)
-    self:retile()
+    local ws = self:current_part()
+    if ws then
+        layout.cycle(ws, delta, self.layout)
+        self:retile()
+    end
 end
 
 function A.monocle(self)
-    layout.toggle_monocle((self:current_part()))
-    self:retile()
+    local ws = self:current_part()
+    if ws then
+        layout.toggle_monocle(ws)
+        self:retile()
+    end
 end
 
 function A.last_layout(self)
