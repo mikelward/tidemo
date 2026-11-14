@@ -2767,8 +2767,8 @@ on the display you're on, in place of the switcher.
   log says so.
 
 - **Opened by the same keys,** each on its own scope, and by the bar's
-  logo, which also closes it. tide for Chrome's scopes are Launch, Tabs, Workspaces
-  and Actions:
+  logo, which also closes it. tide for Chrome's scopes are Launch, Tabs, Workspaces,
+  Attention and Actions:
   - Launch: the Mac's apps and System Settings' panes, as tide for Chrome's app
     rows, most recently used first; Tide Settings; tide for Chrome's Browser window
     (`Super+G`'s browser). Tide Settings' sections and tide's commands
@@ -2777,10 +2777,14 @@ on the display you're on, in place of the switcher.
     arrive. A window is found by its title or its app.
   - Workspaces: tide for Chrome's rows, from tide's bar. Typing a name no
     workspace has makes it, as the name prompt does.
+  - Attention, on `Super+A`: the switcher's Attention rows (§9), the most
+    recent first, by title, with their workspace. Return goes there with
+    its workspace, as on Tabs. With none it says "No window wants
+    attention". tide sends them as tide for Chrome's marks: each window's id on
+    Tabs, the newest last. tide counts no unread messages, so no row
+    shows a count.
   - Actions: the switcher's Actions tab (§9), in its order, then tide's
     commands.
-  - The `Super+A` key opens it on Tabs, since tide for Chrome has no Attention
-    scope.
 - **A switcher key pressed while it's open** closes it on that key's
   scope, and otherwise moves there, as the switcher does. Esc, a choice,
   or clicking away closes it, and Esc gives focus back to the window you
@@ -2793,8 +2797,8 @@ on the display you're on, in place of the switcher.
   page says `{ typed }` as the search goes from empty to not and back, so
   a key typed while the page is still waking may not have said so yet, and
   Esc then closes it.
-- **tide for Chrome's files are copied unchanged:** `launcherview.js`, `launcher.js`
-  and what they import (`apps.js`, `workspaces.js`, `platform.js`,
+- **tide for Chrome's files are copied unchanged:** `launcherview.js`, `launcher.js`,
+  `launcher.css` and what they import (`apps.js`, `workspaces.js`, `platform.js`,
   `extras.js`, `unread.js`, `watchers.js`, `keepawake.js`), and
   `launcher.html`'s markup in `dashboard/launcherpage.html`. `make
   check-tideco` compares them with tide for Chrome's.
@@ -2806,8 +2810,9 @@ on the display you're on, in place of the switcher.
   Tide Settings' (`SETTINGS_SECTIONS`). Its settings are tide for Linux's clocks
   (`launcher-settings.js`).
 - **Not yet, against the switcher:** `Cmd+Return`'s new workspace, `Cmd+M`'s
-  mute, the Attention scope, a window's "minimized" and "muted", and app
-  icons (TODO.md).
+  mute on Tabs and Attention, a window's "minimized" and "muted", and app
+  icons (TODO.md). tide for Chrome's page has no mute, so a site or app is muted
+  from the switcher or Tide Settings' Notifications section.
 - **Opens at once:** its webview is made, hidden, as it's chosen or
   tide starts, and loads the page then. A key moves it to the display
   you're on, fills it and shows it. Closing hides it. Each open starts with
