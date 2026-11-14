@@ -24,7 +24,7 @@ It brings tide for Linux's desktop to macOS:
 - app keys: Super+T a terminal (kitty, iTerm2 or Terminal), Super+G
   Chrome or Safari, Super+F Safari, Super+I Messages, Super+C Calendar,
   Super+Y Music, Super+H Finder and Super+N TextEdit, or with mikelward/scripts its helpers; and your own,
-  added on the settings window's Keyboard page, under Your app keys, or
+  added on Tide Settings' Keyboard page, under Your app keys, or
   in `~/.config/tide/apps.json`:
 
   ```json
@@ -41,7 +41,7 @@ It brings tide for Linux's desktop to macOS:
   Super+End to the last one other than "in", Super+1…9 to the Nth
   workspace on the bar (Super+1 is "in") and Super+Shift+1…9 to send a
   window there, Super+0 and Super+Shift+0 the same for the last workspace
-  on the bar, and Alt+Tab to swap with the master, with conf's Karabiner
+  on the bar, and Alt+Tab to swap with the master, with tide's Karabiner
   rule (§7.2);
 - Super and an arrow to select the window that way, going on to the next
   display at the edge, and Super+Shift and an arrow to move it there;
@@ -92,7 +92,7 @@ It brings tide for Linux's desktop to macOS:
   (SPEC.md §6.9). The installer frees the two keys. The cards show app
   icons, or each window's picture if you turn that on under Appearance,
   which needs Screen Recording;
-- a settings window, from the launcher or the dashboard, with tide for Linux's
+- a settings window, Tide Settings, from the launcher or the dashboard, with tide for Linux's
   Clocks, Start at login and Clipboard settings, sharing tide for Linux's
   `~/.config/tide/clocks*.json`, `startup*.json` and `clipboard*.json`, and
   the muted apps and sites, and a Floating section for the rules that
@@ -117,12 +117,12 @@ It brings tide for Linux's desktop to macOS:
   links each to its list in Privacy & Security, and lists the Desktop &
   Dock, Lock Screen and Notifications settings to change, to tick off
   (§10, §15);
-- an Appearance page in the settings window with tide for Linux's light
+- an Appearance page in Tide Settings with tide for Linux's light
   or dark by the clock or by sunrise and sunset, a city picker for where
   (Find asks macOS's Location Services, on a click only), and a
   wallpaper for each, picked from a grid of macOS's and yours
   (`~/Pictures/Wallpapers`), your screen's shape first, or any file (§10, §15);
-- a macOS page in the settings window for macOS's own settings that
+- a macOS page in Tide Settings for macOS's own settings that
   `setup-macos` used to set: Finder's hidden files, path bar and
   extensions, the screenshot folder and thumbnail, the Spaces order, hot
   corners and Mission Control's swipes, Stage Manager and window tiling,
@@ -208,7 +208,7 @@ keys, and Cmd+Tab to a parked window brings its workspace along.
 used to: Mission Control shows only the workspace on screen, but every
 switch animates. The default is `hide = "park"` (SPEC.md §6).
 
-The Switcher row under Keyboard in tide for Linux's settings swaps the `hs.chooser`
+The Switcher row under Keyboard in Tide Settings swaps the `hs.chooser`
 switcher for tide for Chrome's dashboard page, still being tried, at once (SPEC.md
 §9.2). Until it's chosen there, `tide.start({ launcher = "dashboard" })`
 does; the default is `launcher = "chooser"`.
@@ -245,7 +245,7 @@ tide.start({ workspace_settings = { ["in"] = { askForName = true, pinnedApps = {
 tide for Linux's `standing`, `inApps` and `workspaceSettings`, in
 `~/.config/tide/workspaces.json` and `workspaces.local.json`, take the place
 of `workspaces`, `home_apps` and `workspace_settings` where a file sets them,
-and the settings window's Workspaces section edits them.
+and Tide Settings' Workspaces section edits them.
 `inApps` can name Mac apps alongside tide for Linux's entries: names match ignoring
 case, with hyphens as spaces, and at login only the ones that are Mac apps
 start.
@@ -275,7 +275,7 @@ tide.start({ rules = { { app = "com.apple.finder", title = "^Info$", action = "f
 ```
 
 Each title is a Lua pattern, found anywhere in the title. They come before
-the rules the settings window's Floating section keeps in
+the rules Tide Settings' Floating section keeps in
 `~/.config/tide/floating-macos.local.json`, which only float (SPEC.md §15).
 
 tide was called tilemo, and timo before that. An install from then keeps
@@ -287,7 +287,7 @@ starts; and `~/Library/Caches/tilemo` moves to `~/Library/Caches/tide`, with
 a link left in its place. `~/.hammerspoon/tilemo/` and `~/.hammerspoon/timo/`
 can go once `init.lua` says `require("tide")`.
 
-Super is the PC keyboard's Win key. With conf's Karabiner rule, it arrives
+Super is the PC keyboard's Win key. With tide's Karabiner rule, it arrives
 as Ctrl+Option+Command, so Option keeps its own meanings. Without it, tide
 falls back to Option, and says so once (SPEC.md §7.1).
 
