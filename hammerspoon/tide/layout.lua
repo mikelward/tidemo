@@ -141,7 +141,7 @@ end
 function M.mfact(ws, delta)
     local o = ws.opts[ws.mode]
     if o and o.mfact then
-        o.mfact = geometry.clamp(o.mfact + delta, 0.1, 0.9)
+        o.mfact = geometry.clamp(o.mfact + delta, geometry.mfact_min, geometry.mfact_max)
     end
 end
 
