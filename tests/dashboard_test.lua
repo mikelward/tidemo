@@ -29,8 +29,7 @@ t.test("each module gets its own scope, with its imports and exports wired", fun
     t.eq(js:find("return { a, B };", 1, true) ~= nil, true)
     t.eq(js:find("return { c };", 1, true) ~= nil, true)
     t.eq(js:find("export ", 1, true), nil)
-    t.eq(js:find('const { DAY, DEFAULT_CLOCKS, WORK, abbreviation, checkZone } = modules["./clocks.js"];', 1, true) ~= nil,
-        true)
+    t.eq(js:find('const { DAY, WORK, abbreviation, checkZone } = modules["./clocks.js"];', 1, true) ~= nil, true)
 end)
 
 t.test("an import renamed with as becomes a renamed binding", function()

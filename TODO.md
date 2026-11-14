@@ -1398,11 +1398,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **The dashboard is on Super+Shift+Space,** next to the launcher on
   Super+Space; tide for Linux has no dashboard key to match. Reversible: one line in
   `keys.lua`.
-- **With no clocks file, the clocks are tide for Chrome's,** Sydney, Los Angeles,
-  New York and London (SPEC.md §8), not tide for Linux's San Francisco, New York and
-  London; tide for Linux's `clocks.json` or `clocks.local.json` sets them on both.
-  tide for Linux's `hour24` and `dedupeLocal` aren't followed, since tide for Chrome's view is
-  always 24-hour and always hides local. Reversible: `DEFAULT_FILE` in
+- **With no clocks file, the clocks are tide for Linux's,** SF, NYC and
+  LON (SPEC.md §8, 2026-11-14), from its copied clocks module, not tide
+  for Chrome's `DEFAULT_CLOCKS`; tide for Linux's `clocks.json` or
+  `clocks.local.json` sets them on both. tide for Linux's `hour24` and
+  `dedupeLocal` aren't followed, since tide for Chrome's view is always
+  24-hour and always hides local. Reversible: `DEFAULT_FILE` in
   `dashboard/settings.js`.
 - **The dashboard has no search;** the launcher stays `hs.chooser`, with
   tide for Chrome's scopes (Launch, Tabs, Attention) moved between with Tab. The
