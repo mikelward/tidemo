@@ -10,7 +10,8 @@
 #                 clocks, startup, clipboard, steps, layouts, input, fuzzy,
 #                 workspaces, bar settings, settings search and cities modules,
 #                 character and city lists and key presets with a tide checkout
-#                 (TIDE=../tide by default)
+#                 (TIDE=../tide by default), and the layout defaults and standing
+#                 workspaces tide restates with its
 #   make check-tideco   compare the dashboard's copies of tide for Chrome's clock
 #                 modules and launcher page with a tideco checkout
 #                 (TIDECO=../tideco by default)
@@ -82,7 +83,9 @@ install:
 # same on both desktops; so is its clocks module, so this reads and writes tide
 # for Linux's clocks files as it does, and its startup, clipboard and input modules, for startup.json, clipboard.json and input.json, and its Workspaces page's, for workspaces.json; so is the picker's character list, the Appearance page's city picker and its list, and
 # the logo, which `make icons` renders. The bar's chips and the settings
-# window take tide for Linux's palette's colors.
+# window take tide for Linux's palette's colors. layout.lua's defaults and
+# wm.lua's standing workspaces restate tide for Linux's, so they're compared
+# too (ci/check_defaults.lua), deliberate differences listed there.
 check-tide:
 	cmp $(TIDE)/hypr/tide/geometry.lua hammerspoon/tide/geometry.lua
 	cmp $(TIDE)/hypr/tide/direction.lua hammerspoon/tide/direction.lua
@@ -109,6 +112,7 @@ check-tide:
 	$(LUA) ci/check_chip_colors.lua $(TIDE)/theme/palette.json hammerspoon/tide/dashboard/bar.html
 	$(LUA) ci/check_settings_colors.lua $(TIDE)/theme/palette.json hammerspoon/tide/dashboard/settings.html
 	$(LUA) ci/check_keymaps.lua $(TIDE)/shell/lib/keymaps.mjs
+	$(LUA) ci/check_defaults.lua $(TIDE)
 
 check-geometry: check-tide
 

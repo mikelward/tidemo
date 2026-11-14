@@ -290,6 +290,11 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
   - the default layout by the display's shape, the lone-window widths
     (80% from an aspect of 2.1, 60% from 3.2) and the `mfact` bounds;
   - floats and full-screen windows don't count toward "one window".
+
+  `layout.lua` restates tide for Linux's defaults (each layout's `mfact`
+  and master count, the default layouts, the lone-window widths, the
+  cycle, where a new window goes, the `mfact` step), and `wm.lua` its
+  standing workspaces; `make check-tide` compares those too.
 - **New windows join the end of the stack,** and the master stays put. A
   setting puts them at the top of the stack, after the focused window, or
   in as master (tide for Linux §6.1). A window moved in from another workspace, or

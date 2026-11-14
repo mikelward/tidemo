@@ -39,7 +39,7 @@ jobs:
         with:
           persist-credentials: false
       # tide's geometry, clocks, startup and clipboard modules are copied here unchanged; check
-      # they still match.
+      # they still match, and that the defaults restated here are still tide's.
       - uses: actions/checkout@v4
         with:
           repository: mikelward/tide
