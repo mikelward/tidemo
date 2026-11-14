@@ -434,6 +434,11 @@ function M.start(config)
         -- A paste under way has the selection on the pasteboard: the
         -- clipboard goes back first.
         self.middle_paste.stop()
+        -- macOS's own shadows back on, which the shadows setting may have
+        -- turned off for every window (SPEC.md §5.7).
+        if self.dim then
+            self.dim.stop()
+        end
     end
     self.resize = resize_mode(self)
     self.wm.enter_resize_mode = function()

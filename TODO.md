@@ -490,6 +490,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **Shadows on a Mac default to tide's Focused window** (SPEC.md §5.7),
+  as on tide for Linux, so macOS's own shadows go off and tide paints the
+  focused one's. If `hs.window.setShadows` doesn't work on macOS 26, every
+  window keeps macOS's shadow and the focused one gets a second: then the
+  default should be All on a Mac, or tide should stop painting.
 - **Middle click paste remembers the last selection made with the mouse**
   (SPEC.md §5.3, 2026-11-13), read 0.1 s after a drag, a double click or
   a Shift click, rather than reading the app in front at the click: with

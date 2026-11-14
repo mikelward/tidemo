@@ -2300,6 +2300,19 @@ end
 -- settings window, a launcher), they sit over the layer, and every window
 -- under it is dimmed: { above = {} }, with no focused frame.
 function M:dim_scene()
+    local s = self:focus_scene()
+    -- A lone window isn't dimmed (nor is anything else).
+    if s and s.focused and s.alone then
+        return nil
+    end
+    return s
+end
+
+-- The focused window and the windows in front of it, as dim_scene, for the
+-- shadow tide paints round it (shadow.lua): a lone window casts one too,
+-- marked `alone`. { above = {} } with Hammerspoon in front, nil with no
+-- focused window showing or one full screen.
+function M:focus_scene()
     if self.a.own_front() then
         return { above = {} }
     end
@@ -2322,10 +2335,10 @@ function M:dim_scene()
             end
         end
     end
-    if not next(others) then
-        return nil
-    end
     local above = {}
+    if not next(others) then
+        return { focused = st.frame, above = above, alone = true }
+    end
     for _, oid in ipairs(self.a.ordered()) do
         if oid == id then
             break
