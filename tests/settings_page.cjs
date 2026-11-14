@@ -103,7 +103,7 @@ const lastWrite = () => JSON.parse(sent[sent.length - 1].write);
 
 // No files: tide's defaults, and local last.
 sandbox.tide.update({ clockFiles: [] });
-assert.deepStrictEqual(zones(), ["Australia/Sydney", "America/Los_Angeles", "America/New_York", "Europe/London"]);
+assert.deepStrictEqual(zones(), ["America/Los_Angeles", "America/New_York", "Europe/London"]);
 assert.match(ids.source.textContent, /tide's defaults/);
 assert.match(ids["clock-list"].children.at(-1).textContent, /\(local\)$/);
 

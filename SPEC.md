@@ -255,7 +255,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | Super+A lists the windows wanting attention, newest first (tide for Linux §14.4, tide for Chrome §10.3) | Notifications, bells, and apps activating themselves (§14.2) | **partial**: a banner a Focus hides marks nothing |
 | Minimize by key, restore from a tray of icons in the corner (tide for Linux's design) | `Super+Z` and an `hs.canvas` tray per display (§6.7) | **yes** *(unverified on a Mac)* |
 | Full-width bar with workspaces and urgency (tide for Linux §7) | tide's own bar over an auto-hidden menu bar, with its own status items (§8) | **partial**: app menus and other apps' status items still need the menu bar revealed |
-| SYD / LAX / NYC / LON clocks (tide for Chrome `src/clocks.js`) | bar clocks, and tide for Chrome's clock panel in the dashboard | **yes** |
+| SF / NYC / LON clocks (tide for Linux §7.3) | bar clocks, and tide for Chrome's clock panel in the dashboard (§8) | **yes** |
 | One switcher with tabs: launcher, workspaces, windows, attention (tide for Linux §8) | tide's switcher, an `hs.chooser`; the lone Super tap needs an event tap or Karabiner (§7, §9) | **yes** |
 | Clipboard history and characters by name on Super+V (tide for Linux §8.4) | an `hs.pasteboard` watcher and an `hs.chooser` with two tabs (§9.1) | **partial**: text only |
 | Browser tabs in the Windows tab (tide for Chrome §9.4) | Chrome, Brave and Safari tabs through AppleScript (§2.5) | **yes**, with Automation granted |
@@ -2448,8 +2448,8 @@ stock keys:
   - **Which clocks** is tide for Linux's setting, read from tide for Linux's `clocks.json` and
     `clocks.local.json` (§15) with tide for Linux's own module, `shell/lib/clocks.mjs`,
     copied unchanged as `dashboard/tide-clocks.js` and checked against
-    tide for Linux's in CI. With neither file, they're tide for Chrome's: Sydney, Los Angeles,
-    New York and London. A label of `"abbr"` shows the zone's abbreviation
+    tide for Linux's in CI. With neither file, they're tide for Linux's
+    defaults from that module: SF, NYC and LON. A label of `"abbr"` shows the zone's abbreviation
     from Intl, which says `GMT+1` for London in summer (tide for Linux §7.3).
   - **Which are in the bar** is tide for Linux's setting too (tide for Linux §7.3): every zone
     is unless its entry says `"bar": false`, and the dashboard's clock

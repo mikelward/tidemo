@@ -2,16 +2,15 @@
 // the settings tileco's clock modules need. The clocks come from tide's
 // ~/.config/tide/clocks.json and clocks.local.json (SPEC.md §15), read with
 // tide's own module, so one file serves both desktops. With neither, they're
-// SPEC.md §8's, tileco's defaults.
+// tide for Linux's defaults, from that module too (SPEC.md §8).
 
-import { DAY, DEFAULT_CLOCKS, WORK, abbreviation, checkZone } from "./clocks.js";
-import { cityLabel, loadClocks } from "./tide-clocks.js";
+import { DAY, WORK, abbreviation, checkZone } from "./clocks.js";
+import { DEFAULT_CLOCKS, cityLabel, loadClocks } from "./tide-clocks.js";
 
-export const DEFAULT_SETTINGS = { clocks: DEFAULT_CLOCKS, day: DAY, work: WORK };
-
-// tide's default list as clocks.json would hold it. It stands in for that
-// file where there's none, so the settings page starts from the clocks the
-// bar shows, and its first change copies them into clocks.local.json.
+// tide for Linux's default list as clocks.json would hold it. It stands in
+// for that file where there's none, so the settings page starts from the
+// clocks the bar shows, and its first change copies them into
+// clocks.local.json.
 export const DEFAULT_FILE = JSON.stringify(DEFAULT_CLOCKS.map(({ zone, label }) => ({ zone, label })));
 
 // The two files' texts as tide's module takes them, from tide's
@@ -47,6 +46,8 @@ function tilecoClock(c) {
     bar: c.bar !== false,
   };
 }
+
+export const DEFAULT_SETTINGS = { clocks: JSON.parse(DEFAULT_FILE).map(tilecoClock), day: DAY, work: WORK };
 
 // The settings from tide's files, as { settings, errors }. A file that
 // doesn't parse, or names a zone Intl doesn't know, keeps `last`'s clocks,

@@ -76,10 +76,10 @@ assert.strictEqual(ids.title.textContent, "Chat (1)");
 assert.ok(ids.clocks.children.length >= 1, "the clocks row");
 assert.ok(ids["clock-detail"].children.some((c) => c.className === "calendar"), "the calendar");
 
-// With no clocks files, SPEC.md §8's clocks; Dublin is local, so London's
-// shows.
+// With no clocks files, tide for Linux's clocks (SPEC.md §8); Dublin is
+// local, so London's shows.
 const labels = () => ids.clocks.children.map((li) => li.children[0].textContent).join(" ");
-assert.match(labels(), /^SYD LAX NYC LON /);
+assert.match(labels(), /^SF NYC LON /);
 
 // tide's clocks.local.json replaces the list, and "abbr" is the zone's
 // abbreviation.
@@ -122,7 +122,7 @@ assert.strictEqual(
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(sent.filter((m) => m.goodClocks))).map((m) => m.goodClocks.map((c) => c.zone)),
   [
-    ["Australia/Sydney", "America/Los_Angeles", "America/New_York", "Europe/London"],
+    ["America/Los_Angeles", "America/New_York", "Europe/London"],
     ["Asia/Tokyo", "America/Chicago"],
   ],
 );
