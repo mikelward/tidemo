@@ -219,11 +219,30 @@ t.test("each binding says its keys as they're printed on the keyboard, and what 
         ["Shift+Print"] = "Screenshot of a region",
         ["Super+Print"] = "Screenshot of a region",
         ["Alt+Tab"] = "Swap with the master",
+        ["Super+Shift+R"] = "Reload the config",
     }
     for label, does in pairs(want) do
         local b = labeled(list, label)
         t.eq(b and b.does, does, label)
     end
+end)
+
+t.test("Super+Shift+R reloads, as on tide for Linux, and resize mode has no key but can be given one", function()
+    local reload, resize
+    for _, b in ipairs(keys.map) do
+        if b.key == "r" and b.shift then
+            reload = b
+        end
+        t.eq(b.action ~= "resize_mode", true, "resize mode isn't bound to a key")
+    end
+    t.eq(reload.action, "reload")
+    t.eq(reload.name, "reload", "tide for Linux's name, so the presets' reload keys reach it")
+    for _, b in ipairs(keys.named_map()) do
+        if b.name == "resize_mode" then
+            resize = b
+        end
+    end
+    t.eq(resize ~= nil and resize.key, nil, "named, with no key of its own")
 end)
 
 t.test("every binding has a description, and no two the same keys", function()

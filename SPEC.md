@@ -249,7 +249,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | Drop a dragged tile on another to swap them (tide for Chrome §5.3) | Accessibility's move notification (§5.3) | **yes** |
 | Super+middle-click maximizes the window under the pointer (tide for Linux §6.6) | the same event tap (§5.3) | **yes** |
 | Middle click pastes the selection (Linux's primary selection) | `macos.json`'s `mouse.middleClickPaste` (the macOS page's Mouse), off unless turned on: the selection read through Accessibility, pasted where you click (§5.3) | **partial**: text fields only, and not from an app that doesn't say what's selected. CI's Mac pastes between TextEdit windows; a real middle button, Chrome and Electron apps are *(unverified on a Mac)* |
-| Resize mode for floats, Super+Shift+R (tide for Linux §6.6) | a tide key mode (§5.3) | **yes** |
+| Super+Shift+R reloads (tide for Linux §6.6) | reloads Hammerspoon, and so tide (§7.2) | **yes** |
 | Focus follows mouse (KDE) | tide's own (§5.2) | **yes**, but focusing raises (§13) |
 | Nothing steals focus (tide for Linux §14) | macOS activation rules, plus tide's focus guard (§14) | **partial**: apps can still activate themselves |
 | Super+A lists the windows wanting attention, newest first (tide for Linux §14.4, tide for Chrome §10.3) | Notifications, bells, and apps activating themselves (§14.2) | **partial**: a banner a Focus hides marks nothing |
@@ -801,9 +801,12 @@ handling (tide for Chrome §5.3):
     Accessibility reads after each selecting gesture, what's focused and
     what's selected there, and a few more on a middle click: what's under the pointer, up to six of its parents, and
     the selection. Each is given up after the adapter's timeout (§5.2).
-- **Super+Shift+R** enters resize mode for a float. In it, H J K L or the
-  arrows resize the window, and Esc or Return leaves. This is tide for Linux's resize
-  mode (tide for Linux §6.6). It needs only keys.
+- **Resize mode** resizes a float from the keyboard. In it, H J K L or
+  the arrows resize the window, and Esc or Return leaves. It's tide's
+  own: tide for Linux has none, and its `Super+Shift+R` reloads (tide for
+  Linux §6.6), as it does here. So it has no key. The switcher's "Resize
+  the window" enters it, and Keyboard's shortcuts can give it one
+  (`resize_mode`, §7.2).
 - **Focus follows the mouse during none of this** (§5.2). While a button is
   held, focus doesn't change.
 
@@ -1671,7 +1674,7 @@ tide registers each with `RegisterEventHotKey`, which needs no permission
 | `Super+X` / `Super+Shift+X` | maximize / full screen on or off (§5.4) | hotkey |
 | `Super+Shift+F`, `Super+Insert` | float or tile | hotkey |
 | `Super+Shift+I` | the settings window's Floating section, filled in for the focused window (§15), tide for Linux's `Super+Alt+F` | hotkey |
-| `Super+Shift+R` | resize mode for a float (§5.3) | hotkey, then plain keys until Esc |
+| `Super+Shift+R` | reload tide, as on tide for Linux (tide for Linux §6.6) | hotkey; `hs.reload()`, as the switcher's Reload tide does |
 | `Super`+drag, `Super`+right-drag, `Super`+middle-click | move, resize, maximize (§5.3) | event tap |
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
 | `Print` / `Alt+Print` / `Shift+Print`, `Super+Print` | screenshot screen / window / region, Super+Print a region too (§10) | hotkey on F13, which a PC keyboard's Print sends *(unverified)* |

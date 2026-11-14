@@ -688,6 +688,8 @@ for _, c in ipairs({
     { title = "Dashboard: workspaces, clocks and calendar", action = "dashboard" },
     { title = "Monocle", action = "monocle" },
     { title = "Float or tile the window", action = "toggle_float" },
+    -- Resize mode has no key of its own (keys.lua's keyless).
+    { title = "Resize the window", action = "resize_mode", sub = "A floating window, with H J K L or the arrows; Esc stops" },
     { title = "Maximize the window", action = "maximize" },
     { title = "Full screen", action = "fullscreen" },
     -- The Actions tab: the session, power, toggles and screenshots.
