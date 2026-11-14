@@ -674,6 +674,13 @@ t.test("Network and Bluetooth are each found as their own page", function()
     t.eq(launcher.rank("bluetooth", items, { scope = "launch" })[1].title, "Tide Settings: Bluetooth")
 end)
 
+t.test("resize mode, which has no key, is a command in the switcher", function()
+    local items = launcher.items({}, {}, launcher.COMMANDS, {})
+    local row = launcher.rank("resize", items, { scope = "launch" })[1]
+    t.eq(row.title, "Resize the window")
+    t.eq(row.action, "resize_mode")
+end)
+
 t.test("Tide Settings is an app on Launch, with nothing typed, opening tide's settings window", function()
     local items = launcher.items({ { name = "Safari", path = "/Applications/Safari.app" } }, {}, launcher.COMMANDS, {})
     local found = launcher.rank("", items, { scope = "launch" })

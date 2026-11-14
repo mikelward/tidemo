@@ -14,7 +14,8 @@ macOS won't let tide fix.
 
 It brings tide for Linux's desktop to macOS:
 - tide for Linux's layouts and window keys (SPEC.md §5, §7.2);
-- the mouse: edge drags, Super+drag and resize mode;
+- the mouse: edge drags and Super+drag, and resize mode for a float, from
+  the switcher;
 - focus follows mouse;
 - named workspaces, each spanning every display with a layout of its own
   on each, in the order you made them, with "in" first for the apps you keep open all day (§6). An empty one
@@ -44,7 +45,8 @@ It brings tide for Linux's desktop to macOS:
   rule (§7.2);
 - Super and an arrow to select the window that way, going on to the next
   display at the edge, and Super+Shift and an arrow to move it there;
-  Super+X to maximize and Super+Shift+X for full screen;
+  Super+X to maximize and Super+Shift+X for full screen; Super+Shift+R
+  to reload tide, as on tide for Linux;
   Super+PgUp and PgDn for the previous and next workspace with windows,
   with Shift to move the window there, and a three-finger swipe left or
   right on the trackpad for the next or previous (§7.2);

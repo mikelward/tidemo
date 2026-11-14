@@ -598,6 +598,23 @@ t.test("resize mode grows and shrinks the focused float, not a tile", function()
     t.eq(a.calls, {})
 end)
 
+t.test("Super+Shift+R's reload asks init.lua to reload, and resize mode enters only when asked", function()
+    local _, wm = setup(1)
+    local reloads, entered = 0, 0
+    wm.reload_config = function()
+        reloads = reloads + 1
+    end
+    wm.enter_resize_mode = function()
+        entered = entered + 1
+    end
+    wm:act("reload")
+    t.eq(reloads, 1)
+    t.eq(entered, 0)
+    wm:act("resize_mode")
+    t.eq(entered, 1)
+    t.eq(reloads, 1)
+end)
+
 t.test("Super+drag over picture-in-picture doesn't grab the tile under it", function()
     local a, wm = setup(2)
     a.add(3, { title = "Picture in Picture", frame = { x = 100, y = 100, w = 300, h = 200 } })

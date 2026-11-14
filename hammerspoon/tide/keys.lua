@@ -51,7 +51,9 @@ M.map = {
     -- Super+Z, not Super+Delete, which a PC keyboard may send as Backspace
     -- (SPEC.md §6.7).
     { key = "z", action = "minimize", name = "minimize" },
-    { key = "r", shift = true, action = "resize_mode", name = "resize_mode" },
+    -- Super+Shift+R reloads tide, as it reloads the config on tide for
+    -- Linux (tide SPEC.md §6.6). Resize mode has no key (M.keyless).
+    { key = "r", shift = true, action = "reload", name = "reload" },
     -- The arrows go between windows, across displays at the edge; PgUp
     -- and PgDn between workspaces (SPEC.md §7.2).
     { key = "left", action = "select", arg = -1, name = "focus_left" },
@@ -234,8 +236,11 @@ M.karabiner_only = {
     { mods = { "ctrl", "alt", "shift" }, key = "tab", action = "swap_master", label = "Alt+Tab" },
 }
 
--- Resize mode (tide's): each key grows or shrinks the focused float by
--- 40 px; Esc or Return leaves.
+-- Resize mode: each key grows or shrinks the focused float by 40 px; Esc
+-- or Return leaves. It has no key of its own, since tide for Linux has no
+-- resize mode and its Super+Shift+R reloads; the switcher's "Resize the
+-- window" enters it, and Keyboard shortcuts can give it a key (SPEC.md
+-- §5.3).
 M.resize = {
     { key = "h", d = { -40, 0 } },
     { key = "l", d = { 40, 0 } },
@@ -248,13 +253,14 @@ M.resize = {
 }
 M.resize_exit = { "escape", "return" }
 
--- Named bindings with no key of their own, as on tide: bound only once
+-- Named bindings with no key of their own, as on tide for Linux: bound once
 -- your keys give them one (shortcuts.lua). dwm's preset gives the layout
 -- used last Super+Space.
 M.keyless = {
     { action = "last_layout", name = "last_layout" },
     -- Super+X and Super+Shift+X toggle maximize and full screen.
     { action = "restore", name = "restore" },
+    { action = "resize_mode", name = "resize_mode" },
 }
 
 -- keys.lua's map with the keyless bindings after it, for shortcuts.lua.
@@ -313,6 +319,7 @@ M.DOES = {
     close = "Close the window",
     minimize = "Minimize the window",
     resize_mode = "Resize mode",
+    reload = "Reload the config",
     step = by_sign("Previous workspace", "Next workspace"),
     select = by_sign("Select the window to the left", "Select the window to the right"),
     select_vertical = by_sign("Select the window above", "Select the window below"),

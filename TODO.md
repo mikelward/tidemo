@@ -6,7 +6,8 @@ The Hammerspoon version, in the order SPEC.md §18 sets:
 
 1. Tiling and keys: layouts, floats, the window keys.
 2. The mouse: edge drags set the split, Super+drag moves and resizes,
-   Super+middle-click maximizes, resize mode (SPEC.md §5.3).
+   Super+middle-click maximizes, resize mode from the switcher (SPEC.md
+   §5.3).
 3. Focus follows mouse (SPEC.md §5.2).
 4. Workspaces by parking (or minimizing), displays and restarts (SPEC.md §6).
 5. The launcher, app keys and the Super tap (SPEC.md §7.2, §9).
@@ -517,6 +518,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **Super+Shift+R reloads tide, and resize mode has no key** (2026-11-14),
+  as tide for Linux's `Super+Shift+R` reloads and it has no resize mode
+  (tide SPEC.md §6.6). Every free Super key may yet be tide for Linux's,
+  so none was taken: the switcher's "Resize the window" enters it, and
+  Keyboard's shortcuts can give `resize_mode` a key. Reversible: one line
+  each in `keys.lua`'s `map` and `keyless`.
 - **Shadows on a Mac default to tide's Focused window** (SPEC.md §5.7),
   as on tide for Linux, so macOS's own shadows go off and tide paints the
   focused one's. If `hs.window.setShadows` doesn't work on macOS 26, every

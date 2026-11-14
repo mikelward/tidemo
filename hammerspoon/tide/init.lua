@@ -444,6 +444,11 @@ function M.start(config)
     self.wm.enter_resize_mode = function()
         self.resize:enter()
     end
+    -- Super+Shift+R, as the switcher's Reload tide does.
+    self.wm.reload_config = function()
+        self.adapter.log("reloading, as Super+Shift+R asked")
+        hs.reload()
+    end
     -- Middle click pastes the selection (SPEC.md §5.3), once macos.json's
     -- switch turns it on, below.
     self.middle_paste = middlepaste_hs.new(hs, {

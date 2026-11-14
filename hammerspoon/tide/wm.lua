@@ -3718,8 +3718,8 @@ function A.close(self)
     end
 end
 
--- Resize mode (Super+Shift+R): grow or shrink the focused float by dx, dy,
--- keeping it on its display.
+-- Resize mode: grow or shrink the focused float by dx, dy, keeping it on
+-- its display.
 function A.resize_by(self, d)
     local id = self.a.focused()
     local w = self.windows[id or false]
@@ -3736,11 +3736,19 @@ function A.resize_by(self, d)
     })
 end
 
--- Super+Shift+R: the keys for resize mode are Hammerspoon's to bind
--- (init.lua), so this only enters it.
+-- The switcher's "Resize the window", or a key you give it: the keys for
+-- resize mode are Hammerspoon's to bind (init.lua), so this only enters it.
 function A.resize_mode(self)
     if self.enter_resize_mode then
         self.enter_resize_mode()
+    end
+end
+
+-- Super+Shift+R: reload tide, as tide for Linux's reloads its config
+-- (tide SPEC.md §6.6). Hammerspoon's reload is init.lua's to call.
+function A.reload(self)
+    if self.reload_config then
+        self.reload_config()
     end
 end
 
