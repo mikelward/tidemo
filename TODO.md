@@ -360,8 +360,10 @@ page's test, against a fake DOM, cover it.
     `hs.webview` has gained a way since, and apply it to both.
 - **The dashboard launcher's gaps against the switcher,** to close before
   it's the default:
-  - `Cmd+Return`'s new workspace, and `Cmd+M` or a right-click to mute a row;
-  - an Attention scope: `Super+A` opens it on Tabs;
+  - `Cmd+Return`'s new workspace, and `Cmd+M` or a right-click to mute a row,
+    on Tabs and Attention: tide for Chrome's page has no mute;
+  - unread counts on Attention rows, which tide for Chrome's page shows from
+    `state.unread`: tide counts no unread messages;
   - a window's "minimized" and "muted", and the app's name, in its row:
     tide for Chrome's page says "tab on <workspace>" for every row on Tabs;
   - app icons on Launch and Tabs, which tide for Chrome's page takes as `favIconUrl`;
@@ -528,6 +530,17 @@ tide. INFEASIBLE.md lists what can't be fixed.
   (2026-11-14 spec review).
 
 ## Decisions needing review
+
+- **The dashboard launcher's Attention rows have no mute** (2026-11-14),
+  as tide for Chrome's page has none: muting stays on the switcher's
+  `Cmd+M` and Tide Settings' Notifications section. The dashboard
+  launcher is off by default, and its Tabs scope, where `Super+A` used to
+  open it, had no mute either, so nobody loses one. Reversible: a key the
+  page's stand-ins send as a `mute` message, if tide for Chrome adds one.
+- **An Attention row's Return runs its window's row** (2026-11-14):
+  `{ activate }` from the page is a `row` message for the window's id on
+  Tabs, so it comes forward with its workspace as from Tabs or the
+  switcher's Attention tab. Reversible: `launcherpage.message`.
 
 - **The switcher's first tab stays "Launch"** (2026-11-14), where tide for
   Linux says Apps (tide SPEC.md §8.1): the dashboard launcher is tide for
