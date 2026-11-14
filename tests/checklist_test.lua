@@ -149,6 +149,8 @@ t.test("the checklist asks for the menu bar shown, from Control Center", functio
     t.eq(item ~= nil, true)
     t.eq(item.link, "control_center")
     t.eq(item.how:find("Never", 1, true) ~= nil, true)
+    t.eq(item.how:find("Bar page", 1, true) ~= nil, true, "Position is on the Bar page")
+    t.eq(item.how:find("Appearance", 1, true), nil)
 end)
 
 t.done("checklist")

@@ -1983,7 +1983,8 @@ stock keys:
   - **What still needs the menu bar:** the app's own menus, the Apple menu,
     and other apps' status items (a VPN, an IT agent, Zoom). The Apple
     logo opens tide's copy of the Apple menu (below); the app's menus
-    and status items still need the pointer at the top edge.
+    and status items need Show Menu Bar, or the Bar page's Other apps'
+    icons (below).
   - **The pointer is kept off the bar's top row while the menu bar
     hides,** one point down (`bar.off_top`, `bar.keeps_off_top`), so the
     hidden menu bar no longer slides over the bar each time the pointer
@@ -1995,10 +1996,10 @@ stock keys:
     anything else that needs the very top edge are lost on displays with a
     shown bar; under a full-screen window, where the bar hides, the menu bar
     shows as usual *(unverified that one point is enough on every macOS)*.
-    Tide Settings' Bar page has the switch, "Menu bar kept hidden"
-    (only for a bar at the top),
-    on by default and kept in `hs.settings` as tide's own; off, the menu
-    bar shows at the top edge as on any Mac.
+    The Bar page's Menu bar switch, "Hidden menu bar stays hidden" (only
+    for a bar at the top), turns this off: on by default and kept in
+    `hs.settings` as tide's own (`tide.keep_menu_bar_hidden`); off, a
+    hidden menu bar slides in at the top edge as on any Mac.
   - **The Bar page's Icons list chooses which status icons show, and
     their order.** Each icon has a switch, and ↑ and ↓ move it; the bar
     redraws at once (`settings_hs.choose_bar_icons`). The list is this
@@ -2023,7 +2024,7 @@ stock keys:
     are tide for Linux's (`barPosition` in its `appearance.json`,
     `BAR_CHOICES` in its appearance module), but the choice is this Mac's
     own, in `hs.settings`
-    (`bar.POSITION_KEY`), as "Menu bar kept hidden" is: what works best
+    (`bar.POSITION_KEY`), as the Menu bar switch is: what works best
     turns on macOS's menu bar and Dock, which Linux doesn't have. A change
     places the bars again and re-tiles at once, with no reload
     (`settings_hs.choose_bar_position`).

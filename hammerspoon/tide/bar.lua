@@ -290,7 +290,7 @@ function M.off_top(frames, x, y)
 end
 
 -- Whether to keep the pointer off the bars' top row: only while the
--- Appearance page's "Menu bar kept hidden" is on (`keep`, on unless false)
+-- Bar page's "Hidden menu bar stays hidden" is on (`keep`, on unless false)
 -- and macOS hides the menu bar (`hides`), since only a hidden menu bar
 -- slides in at the top edge. With it shown, as tide's installer sets it,
 -- moving the pointer there does nothing, and moving it down on every move

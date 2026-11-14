@@ -1957,15 +1957,16 @@ function renderMac() {
   document.getElementById("mac-error").textContent = typeof macState?.error === "string" ? macState.error : "";
 }
 
-// The Bar page's Menu bar switch: whether tide keeps the hidden
-// menu bar from sliding over its bar (SPEC.md §8). A click sends
+// The Bar page's Menu bar switch: whether, while macOS hides the menu
+// bar, tide keeps the pointer off the top edge so the menu bar doesn't
+// slide over its bar (SPEC.md §8). A shown menu bar never slides in. A click sends
 // { keepMenuBarHidden: on }, and tide answers with tide.update().
 let menuBarHidden = true;
 function renderMenuBar(menuBar) {
   const toggle = document.getElementById("menubar-hidden");
   const on = menuBar.hidden !== false;
   menuBarHidden = on;
-  toggle.textContent = on ? "Menu bar kept hidden" : "Menu bar shows at the top edge";
+  toggle.textContent = on ? "Hidden menu bar stays hidden" : "Hidden menu bar slides in at the top edge";
   toggle.setAttribute("aria-pressed", String(on));
 }
 

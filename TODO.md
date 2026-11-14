@@ -610,11 +610,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
   Bar goes, as nothing covers the menu bar. Drop the logo there if it
   feels doubled.
 - **The Bar page's Position is this Mac's own, in `hs.settings`**
-  (2026-11-11), as "Menu bar kept hidden" is, not `barPosition` in the
+  (2026-11-11), as the Menu bar switch is, not `barPosition` in the
   shared `appearance.json` that tide for Linux reads: what fits turns on
   the menu bar and the Dock. The page's and row's names are tide for
   Linux's.
-- **"Menu bar kept hidden" moved to the Bar page** (2026-11-11), from
+- **The Menu bar switch moved to the Bar page** (2026-11-11), from
   Appearance: it's about the bar covering the menu bar, and sits under
   Position, which decides whether it applies. The Bar page also has
   buttons for macOS's Menu bar and Dock settings.
