@@ -402,6 +402,33 @@ hiding the system menu bar for good, so tide's bar is the only one:
   at the same level, or under it, which decides whether the bar must hide
   while the menu bar is out.
 
+## Upstream to Hammerspoon
+
+What tide works around that Hammerspoon could fix for everyone. Check
+Hammerspoon's source and issues first: each may be fixed or reported
+already. Filing is the user's, under their account; a patch, with a test,
+beats a report.
+
+- [ ] **`hs.battery.percentage()` is NaN on a Mac with no battery**, a Mac
+  mini, where its docs and every other getter say nil. That NaN made the
+  bar show "nan%" and, through `hs.json.encode`, stopped the bar's state
+  reaching the page (`bar.lua`'s `no_battery` works around it). A fix
+  returns nil with no internal battery.
+- [ ] **`hs.json.encode` fails with only "Object cannot be serialised as
+  JSON"** and returns nil: it names no key, so one NaN, a function or text
+  that isn't UTF-8 deep in a table loses everything, silently but for that
+  line (`jsonsafe.lua` works around it). Ask for the error to name the
+  key path, and perhaps an option to leave such values out.
+- [ ] **`hs.window.setShadows`, if it doesn't work on macOS 26** (SPEC.md
+  §5.7, unverified): a report that it no longer turns shadows off, or its
+  docs updated, once tried on a real Mac.
+- [ ] **No way to order an `hs.canvas` just above or below another app's
+  window**, which is why the dim and the painted shadow lie over other
+  windows (SPEC.md §5.6, §5.7). First check whether macOS allows ordering
+  a window relative to another process's window (NSWindow
+  `orderWindow:relativeTo:` with its window number); if it does, ask for
+  `hs.canvas:orderAbove(windowID)` and `orderBelow`.
+
 ## From the parity review (2026-11-07)
 
 What the user picked from a list of what else would bring a Mac closer to
