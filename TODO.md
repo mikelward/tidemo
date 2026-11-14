@@ -520,14 +520,15 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Compare default constants with tide for Linux's
 
-- [ ] Extend `make check-tide` (and `check-tideco`) to compare the
-  defaults this repo restates or keeps apart from the copied files with
-  tide for Linux's: the layout defaults in `layout.lua` (each layout's
-  `mfact` and master count, the cycle, the lone-window rules, the `mfact`
-  step and bounds), the standing workspaces, the default clocks, and the
-  key bindings `keys.lua` names after conf's. Today the checks compare
-  only whole copied files, so a default that drifts goes unseen
-  (2026-11-14 spec review).
+- [x] Extend `make check-tide` to compare the defaults this repo restates
+  apart from the copied files with tide for Linux's: the layout defaults
+  in `layout.lua` (each layout's `mfact` and master count, the cycle, the
+  lone-window rules, the `mfact` step) and the standing workspaces
+  (`ci/check_defaults.lua`). The `mfact` bounds and default clocks are
+  in copied files, which it already compared whole (2026-11-14 spec
+  review).
+- [ ] The key bindings `keys.lua` names after conf's, compared with
+  conf's.
 
 ## Decisions needing review
 
