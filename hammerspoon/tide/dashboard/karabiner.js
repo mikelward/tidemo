@@ -323,8 +323,14 @@ const sameDevice = (d, id) =>
 // product_id }. Karabiner runs these before any rule, for every keyboard,
 // one that comes later included. The swap goes in the profile's
 // simple_modifications, for every keyboard, and each Apple keyboard gets
-// its own in its device entry, which Karabiner uses first. `owned` is the
-// entries tide added before, so it takes out only those. { text, owned }:
+// its own in its device entry, which Karabiner uses first. Only the
+// selected profile changes, the one Karabiner runs. `owned` is the entries
+// tide added before, by profile name, so it takes out only those, and
+// another profile's own swaps never read as tide's. A list is an older
+// tide's, the selected profile's. A profile renamed since keeps them: with
+// none under its name, it takes those of a name no profile has now, which
+// `renamed` then names, so they're dropped. { text, profile, owned,
+// renamed }: the profile's name and the entries tide owns there now, and
 // no text when nothing changed. Or an { error }.
 export function withSwaps(configText, want, owned) {
   const p = parse(configText);
@@ -332,8 +338,21 @@ export function withSwaps(configText, want, owned) {
   const s = selectedProfile(p.config);
   if (s.error) return s;
   const profile = s.profile;
+  const name = typeof profile.name === "string" ? profile.name : "";
   const before = JSON.stringify(p.config);
-  const had = new Set(Array.isArray(owned) ? owned : []);
+  let mine = [];
+  const renamed = [];
+  if (Array.isArray(owned)) mine = owned;
+  else if (isObject(owned) && Array.isArray(owned[name])) mine = owned[name];
+  else if (isObject(owned)) {
+    const names = new Set(p.config.profiles.filter(isObject).map((x) => x.name));
+    for (const [old, list] of Object.entries(owned)) {
+      if (names.has(old) || !Array.isArray(list)) continue;
+      mine = mine.concat(list);
+      renamed.push(old);
+    }
+  }
+  const had = new Set(mine);
   const w = isObject(want) ? want : {};
   if (profile.simple_modifications === undefined) profile.simple_modifications = [];
   if (!Array.isArray(profile.simple_modifications)) return { error: "karabiner.json's simple_modifications isn't a list" };
@@ -363,7 +382,7 @@ export function withSwaps(configText, want, owned) {
     now.push(...bring(d.simple_modifications, wanted ? APPLE_SWAP : {}, had, prefix));
   }
   const after = JSON.stringify(p.config);
-  return { text: after === before ? undefined : text(p.config), owned: now.sort() };
+  return { text: after === before ? undefined : text(p.config), profile: name, owned: now.sort(), renamed };
 }
 
 // The Apple keyboards in `karabiner_cli --list-connected-devices`'s list,
