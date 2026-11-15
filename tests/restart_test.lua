@@ -360,7 +360,7 @@ end)
 t.test("a relaunched app's window launched to a workspace you named goes there, not to its old place", function()
     local a = fake.new()
     a.add(1, { app = "browser", pid = 10, title = "New Tab" })
-    local wm = start(a, {})
+    local wm = start(a, {}, { workspace_settings = { ["in"] = { askForName = true } } })
     a.focus_ = 1
     wm:act("send", "web")
     -- It quits, leaving its place on "web".

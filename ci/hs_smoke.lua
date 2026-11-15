@@ -1252,7 +1252,8 @@ end
 local ok, err = xpcall(function()
     tide = require("tide")
     -- TextEdit is one of "in"'s apps here, so its windows tile on "in"
-    -- rather than wait on the name prompt, which nothing answers in CI.
+    -- and never wait on the name prompt, which nothing answers in CI, even
+    -- with home's askForName on.
     tide.start({ home_apps = { "TextEdit" } })
 end, debug.traceback)
 if not ok then

@@ -219,7 +219,7 @@ end
 
 -- `workspace_settings` is checked when tide starts, as tide checks
 -- workspaceSettings, so a typo is an error naming the setting. Nil is
--- tide's default: home asks for a name and nothing is pinned.
+-- tide's default: no workspace asks for a name and nothing is pinned.
 function M.check_workspace_settings(value)
     if value == nil then
         return nil
@@ -325,7 +325,7 @@ function M.new(adapter, config)
         float_rules = {},
         home_apps = M.check_home_apps(config.home_apps or M.HOME_APPS),
         -- Each workspace's own settings (SPEC.md §6.2): tide's
-        -- workspaceSettings, or nil for its default, home asking.
+        -- workspaceSettings, or nil for its default, none asking.
         workspace_settings = M.check_workspace_settings(config.workspace_settings),
         -- How hidden workspaces hide: "park" or "minimize" (M.check_hide).
         hide = M.check_hide(config.hide),
@@ -637,7 +637,7 @@ end
 -- Workspace `name`'s own settings, { askForName, pinnedApps } (SPEC.md
 -- §6.2): tide's workspaceSettings, matched ignoring case.
 function M:ws_setting(name)
-    return standing_mod.setting(self.workspace_settings, self.home, name)
+    return standing_mod.setting(self.workspace_settings, name)
 end
 
 -- Whether a new window on workspace `name`, or a launch from it, asks for a
@@ -1241,10 +1241,10 @@ function M:add(id)
     -- Every window is on the display it opened on, in its workspace,
     -- unless it's going back to one.
     w.screen = w.screen or self:screen_of_frame(f.frame)
-    -- Any other app's new window on a workspace whose askForName is on,
-    -- home by default, asks for a name first. Dialogs and other floats go
-    -- where their parent is, and a window coming back to its place, or
-    -- launched to the workspace you named, doesn't ask.
+    -- Any other app's new window on a workspace whose askForName is on
+    -- asks for a name first. Dialogs and other floats go where their
+    -- parent is, and a window coming back to its place, or launched to the
+    -- workspace you named, doesn't ask.
     if self.ready and kind == "tile" and self:asks_for_name(w.ws) and not (saved and saved.ws) and not launched
         and not self:is_home_app(w) then
         self.asking[#self.asking + 1] = { window = id, ws = w.ws }
@@ -2571,8 +2571,8 @@ end
 
 -- Before a launch tide makes (the switcher's Launch tab, an app key,
 -- Cmd+Return), the workspace it's for (SPEC.md §6.2, §9): from a
--- workspace whose askForName is on (home by default), or for Cmd+Return
--- (`opts.fresh`) from anywhere, it asks for a name first,
+-- workspace whose askForName is on, or for Cmd+Return (`opts.fresh`)
+-- from anywhere, it asks for a name first,
 -- with `opts.default` typed in, unless the app is one of home's
 -- (`opts.home_app`, and never for Cmd+Return). `opts.app` is the bundle
 -- ID, if known, which the launch's window is matched by (launch_to). The question waits its turn

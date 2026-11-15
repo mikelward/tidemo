@@ -64,12 +64,12 @@ end
 
 -- Loading ------------------------------------------------------------------
 
-t.test("with no workspaceSettings in either file, it's unset, for start()'s or tide's default", function()
+t.test("with no workspaceSettings in either file, it's unset, and then no workspace asks", function()
     local s = load({ ["workspaces.json"] = '{"standing": ["in", "re"]}' })
     t.eq(s.workspaceSettings, nil)
-    t.eq(standing.settings_of(nil, "in"), { ["in"] = { askForName = true } })
-    t.eq(standing.setting(nil, "in", "IN"), { askForName = true, pinnedApps = {} })
-    t.eq(standing.setting(nil, "in", "re"), { askForName = false, pinnedApps = {} })
+    t.eq(standing.settings_of(nil), {})
+    t.eq(standing.setting(nil, "IN"), { askForName = false, pinnedApps = {} }, "home doesn't ask")
+    t.eq(standing.setting(nil, "re"), { askForName = false, pinnedApps = {} })
 end)
 
 t.test("a .local file's workspaceSettings replaces the shared one whole", function()
@@ -78,9 +78,9 @@ t.test("a .local file's workspaceSettings replaces the shared one whole", functi
         ["workspaces.local.json"] = '{"workspaceSettings": {"re": {"askForName": true}}}',
     })
     t.eq(s.from.workspaceSettings, "workspaces.local.json")
-    t.eq(standing.setting(s.workspaceSettings, "in", "in"), { askForName = false, pinnedApps = {} },
+    t.eq(standing.setting(s.workspaceSettings, "in"), { askForName = false, pinnedApps = {} },
         "home isn't listed, so it doesn't ask")
-    t.eq(standing.setting(s.workspaceSettings, "in", "RE"), { askForName = true, pinnedApps = {} },
+    t.eq(standing.setting(s.workspaceSettings, "RE"), { askForName = true, pinnedApps = {} },
         "names match ignoring case; a missing field is off")
 end)
 
@@ -139,9 +139,14 @@ t.test("a new window on a workspace whose askForName is on asks, home or not", f
     t.eq(wm.windows[3].ws, "in")
 end)
 
-t.test("with home's askForName off, nothing asks, home included", function()
-    for _, ws in ipairs({ {}, { ["in"] = { askForName = false, pinnedApps = { "Gmail" } } } }) do
-        local a, wm, asked, launches = setup({ workspace_settings = ws })
+t.test("with no workspace_settings, an empty one or home's askForName off, nothing asks, home included", function()
+    local configs = {
+        {},
+        { workspace_settings = {} },
+        { workspace_settings = { ["in"] = { askForName = false, pinnedApps = { "Gmail" } } } },
+    }
+    for _, config in ipairs(configs) do
+        local a, wm, asked, launches = setup(config)
         open(a, wm, 2)
         t.eq(asked, {})
         t.eq(wm.windows[2].ws, "in")
@@ -150,6 +155,17 @@ t.test("with home's askForName off, nothing asks, home included", function()
         t.eq(#a.launched, 1)
         t.eq(a.envs[1], { TIDE_WORKSPACE = "in" })
     end
+end)
+
+t.test("with home's askForName on, a new window and a launch there ask", function()
+    local a, wm, asked, launches = setup({ workspace_settings = { ["in"] = { askForName = true } } })
+    open(a, wm, 2)
+    t.eq(asked, { 2 })
+    t.eq(wm.windows[2].ws, "in", "it stays put until you answer")
+    wm:answer(2, "in")
+    wm:act("app", app_key("g"))
+    t.eq(#launches, 1)
+    t.eq(#a.launched, 0, "nothing starts until you answer")
 end)
 
 t.test("a launch from a workspace that asks asks first; named for it, its window doesn't ask again", function()
@@ -176,13 +192,14 @@ end)
 
 t.test("a workspace's settings from tide's files apply as they change", function()
     local a, wm, asked = setup()
-    wm:set_workspace_settings({ re = { askForName = true } })
+    wm:set_workspace_settings({ ["in"] = { askForName = true } })
     open(a, wm, 2)
-    t.eq(asked, {}, "home no longer asks")
-    t.eq(pcall(wm.set_workspace_settings, wm, { re = { askForName = "on" } }), false, "checked as start()'s are")
+    t.eq(asked, { 2 }, "home asks once it says so")
+    wm:answer(2, "in")
+    t.eq(pcall(wm.set_workspace_settings, wm, { ["in"] = { askForName = "on" } }), false, "checked as start()'s are")
     wm:set_workspace_settings(nil)
     open(a, wm, 3)
-    t.eq(asked, { 3 }, "back to tide's default: home asks")
+    t.eq(asked, { 2 }, "back to tide's default: nothing asks")
 end)
 
 -- pinnedApps ---------------------------------------------------------------

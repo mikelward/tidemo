@@ -9,13 +9,14 @@ local keys = require("tide.keys")
 
 -- tide started with `n` windows, ready to ask, with every question
 -- recorded: `asked` holds window ids, `launches` the launch prompts'
--- { default, done }.
+-- { default, done }. Home's askForName is on, so its new windows and
+-- launches ask; by default nothing asks (workspace_settings_test.lua).
 local function setup(n)
     local a = fake.new()
     for i = 1, n or 0 do
         a.add(i, {})
     end
-    local wm = wm_mod.new(a, {})
+    local wm = wm_mod.new(a, { workspace_settings = { ["in"] = { askForName = true } } })
     wm:sync()
     wm:reconcile()
     wm:retile()
@@ -331,10 +332,10 @@ t.test("a launch asked while a window's prompt is open waits its turn, and neith
     t.eq(asked, { 2, 3 }, "then the window behind it, still on home")
 end)
 
-t.test("the prompt is the home workspace's, whatever it's called", function()
+t.test("a home not called \"in\" asks when its askForName is on, and \"in\" doesn't", function()
     local a = fake.new()
     a.add(1, {})
-    local wm = wm_mod.new(a, { workspaces = { "work", "in" } })
+    local wm = wm_mod.new(a, { workspaces = { "work", "in" }, workspace_settings = { work = { askForName = true } } })
     wm:sync()
     local asked = {}
     wm.ask_name = function(id)

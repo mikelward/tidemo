@@ -1581,8 +1581,8 @@ function changeWorkspaces(key, fn) {
 }
 
 // A change to standing workspace `name`'s own settings, as tide's page makes
-// it: the first copies the workspaceSettings in effect, home asking by
-// default, into workspaces.local.json.
+// it: the first copies the workspaceSettings in effect, if any, into
+// workspaces.local.json.
 function changeWorkspace(name, fn) {
   const r = editedWorkspace(workspaceShared(), workspaceText("local"), name, fn);
   if (r.error) {

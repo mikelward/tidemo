@@ -124,11 +124,11 @@ function M.settings_problem(value, key)
 end
 
 -- Each workspace's settings in effect (tide SPEC.md §6.5): `all`, as a file
--- or start() set them, or, with neither setting any, home's asking for a
--- name and nothing pinned, `home` being the home workspace's name.
-function M.settings_of(all, home)
+-- or start() set them, or, with neither setting any, none, so no workspace
+-- asks for a name and nothing is pinned.
+function M.settings_of(all)
     if all == nil then
-        return { [home] = { askForName = true } }
+        return {}
     end
     return all
 end
@@ -137,9 +137,9 @@ end
 -- workspaceSetting has them: its entry's, the name matched ignoring case. A
 -- workspace with no entry, or a field the entry doesn't set, doesn't ask
 -- and pins nothing.
-function M.setting(all, home, name)
+function M.setting(all, name)
     local want = name and fold(name)
-    for k, v in pairs(M.settings_of(all, home)) do
+    for k, v in pairs(M.settings_of(all)) do
         if want and fold(k) == want then
             return { askForName = v.askForName == true, pinnedApps = v.pinnedApps or {} }
         end
