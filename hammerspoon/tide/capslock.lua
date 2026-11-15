@@ -161,8 +161,12 @@ M.key = key
 -- wanted entry added where its key isn't mapped yet, and each unwanted one
 -- that tide added (`owned`, a set of M.key) taken out, so a mapping that
 -- was never tide's is left alone, the same one included. Returns the new
--- list, the entries added and the ones taken out, or nil when nothing
--- changes.
+-- list, the entries added and the ones taken out, or nil when there's
+-- nothing to set. With anything wanted, the list is set even when it's
+-- already as wanted: macOS gives a mapping only to the keyboards there when
+-- it's set, so one that came later, Karabiner's virtual keyboard after a
+-- login, a wake or a restart of Karabiner, has none until it's set again,
+-- though reading it back says it's there.
 function M.desired(list, want, owned)
     local wanted = {}
     if want.caps then
@@ -197,7 +201,7 @@ function M.desired(list, want, owned)
             added[#added + 1] = e
         end
     end
-    if #added == 0 and #dropped == 0 then
+    if #added == 0 and #dropped == 0 and #wanted == 0 then
         return nil
     end
     return out, added, dropped

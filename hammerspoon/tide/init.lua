@@ -92,6 +92,10 @@ M.KARABINER_CHECK = 30
 -- How long after the last device plugged in, or a wake, to set the mouse
 -- and check Karabiner's rules: a KVM brings several at once (SPEC.md §10).
 M.PLUG_DELAY = 1
+-- When to set the key mapping again after tide starts, in seconds: at
+-- login Karabiner's virtual keyboard can come up after tide, and gets no
+-- mapping until it's set again (capslock.desired).
+M.KEYS_AGAIN = { 10, 60 }
 -- How often to read window titles, and clear the focused window's marks.
 M.ATTENTION_POLL = 2
 
@@ -1133,6 +1137,14 @@ function M.start(config)
     end
     -- The keyboard type's Karabiner side, now that its rules are read.
     self.apply_keys()
+    -- And the mapping again once Karabiner's virtual keyboard is likely up,
+    -- since at login Karabiner can start after tide, and a mapping reaches
+    -- only the keyboards there when it's set (capslock.desired).
+    for _, delay in ipairs(M.KEYS_AGAIN) do
+        self.adapter.after(delay, function()
+            self.apply_keys()
+        end)
+    end
     -- tide's Mouse settings, applied to LinearMouse (SPEC.md §10).
     local sources, missing = {}, nil
     for _, name in ipairs(linearmouse.MODULES) do
