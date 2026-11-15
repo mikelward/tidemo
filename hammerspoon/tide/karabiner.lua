@@ -43,6 +43,15 @@ M.CONF_FILES = {
 -- The rules tide has seen, by description, in hs.settings: one it hasn't
 -- is turned on once, and one you turn off stays off.
 M.SEEN_KEY = "tide.karabiner_seen"
+-- tide's key swaps in karabiner.json (SPEC.md §7.1), in hs.settings: whether
+-- the modifier swap is Karabiner's, so its rules are written for it from
+-- the start; the entries tide added, so it takes out only those; and the
+-- Apple keyboards seen, so each keeps its own swap while it's away.
+M.SWAP_KEY = "tide.karabiner_swap"
+M.SWAP_OWNED_KEY = "tide.karabiner_swap_owned"
+M.APPLE_KEY = "tide.apple_keyboards"
+-- Karabiner's command line, which lists the keyboards connected.
+M.CLI = "/Library/Application Support/org.pqrs/Karabiner-Elements/bin/karabiner_cli"
 -- dashboard/karabiner.js, beside this file.
 local HERE = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
 M.SOURCE_PATH = HERE .. "/dashboard/karabiner.js"
@@ -57,10 +66,12 @@ M.SUPER_CHOICES = {
     { value = "win", label = "Win, with the PC keyboard rotation", file = "tide.json" },
     { value = "none", label = "Option, without Karabiner" },
 }
--- tide's rule that swaps a Mac keyboard's option and command, so its keys
--- sit in a PC keyboard's order, for the PC keyboard type (capslock.lua): in
--- karabiner/ beside this file, put in Karabiner's folder only while it's on.
+-- The Apple keyboard reorder rule an older tide put in Karabiner's folder,
+-- for the PC keyboard type, which swapped an Apple keyboard's option and
+-- command. Only its rule saw that, so Karabiner's own swap for each Apple
+-- keyboard took its place (set_swaps), and tide takes it out.
 M.MAC_KEYBOARDS_FILE = "tide-mac-keyboards.json"
+M.MAC_KEYBOARDS_DESCRIPTION = "Mac keyboards: option and command swap, so control, option and command act as a PC keyboard's Ctrl, Win and Alt (tide's PC keyboard type)"
 
 -- The left Option rule's description starts so; any other tide rule is the
 -- Win key's.
@@ -94,6 +105,9 @@ function M.new(deps)
     local config_path = (deps.home or "") .. M.CONFIG
     local assets = (deps.home or "") .. M.ASSETS
     local last
+    -- Whether the modifier swap is Karabiner's, so each rule is copied as
+    -- Karabiner runs it after the swap (karabiner.js's swapRule).
+    self.swap = deps.get(M.SWAP_KEY) == true
 
     -- The rule files, sorted by name, as { name, text }.
     local function files()
@@ -121,6 +135,7 @@ function M.new(deps)
                 return "{name:" .. js(f.name) .. ",text:" .. js(f.text) .. "}"
             end) .. ";",
             "const ORDER = " .. js_list(M.ORDER, js) .. ";",
+            "const SWAP = " .. (self.swap and "true" or "false") .. ";",
         }
         for name, value in pairs(bind or {}) do
             vars[#vars + 1] = "const " .. name .. " = " .. value .. ";"
@@ -182,21 +197,22 @@ function M.new(deps)
     -- Read the files again, bring karabiner.json up to date with them, and
     -- give the state the section shows: { rules = { { description, label,
     -- file, on } }, problem }. Nothing runs when nothing changed, unless
-    -- `force`.
-    function self.check(force)
+    -- `force`. `quiet` says nothing of copies brought up to date, as when
+    -- the swap moves and every copy changes with it.
+    function self.check(force, quiet)
         local config = deps.read(config_path)
         local list = files()
         local key = (config or "") .. "\0"
         for _, f in ipairs(list) do
             key = key .. f.name .. "\0" .. f.text .. "\0"
         end
-        key = key .. tostring(deps.running())
+        key = key .. tostring(deps.running()) .. tostring(self.swap)
         if key == last and not force then
             return self.state
         end
         last = key
         local v, err = run([[
-            const a = K.assetRules(FILES);
+            const a = K.assetRules(FILES, SWAP);
             const rules = a.rules;
             const view = (states) => rules.map((r, i) => ({
                 description: r.description, label: r.label, file: r.file, on: states ? states[i].on : false,
@@ -256,7 +272,7 @@ function M.new(deps)
                         or ("tide turned off " .. old .. ", whose file is gone, so Super is plain Option."))
                         .. " Choose the Super key under Keyboard in tide's settings.")
                 end
-                if #(v.updated or {}) > 0 then
+                if #(v.updated or {}) > 0 and not quiet then
                     deps.notify("tide brought Karabiner's copy up to date with conf: " .. labels(v.updated, by) .. ".")
                 end
                 -- What's in the file now, not what was.
@@ -285,7 +301,7 @@ function M.new(deps)
             return nil, M.NO_CONFIG
         end
         local list = files()
-        local v, err = run("return K.withRule(CONFIG, K.assetRules(FILES).rules, DESC, ON, ORDER);", list, {
+        local v, err = run("return K.withRule(CONFIG, K.assetRules(FILES, SWAP).rules, DESC, ON, ORDER);", list, {
             CONFIG = js(config),
             DESC = js(description),
             ON = on and "true" or "false",
@@ -377,50 +393,121 @@ function M.new(deps)
         return self.set(description, true)
     end
 
-    -- Turn the Mac keyboard rule on, putting it in Karabiner's folder, or
-    -- off, taking it out again. Returns true, or nil and why.
-    function self.set_mac_keyboards(on)
-        local text = deps.read(M.SUPER_DIR .. "/" .. M.MAC_KEYBOARDS_FILE)
-        local rule = text and deps.decode(text)
-        local description = type(rule) == "table" and type(rule.rules) == "table" and rule.rules[1]
-            and rule.rules[1].description
-        if type(description) ~= "string" then
-            return nil, "couldn't read tide's rule " .. M.SUPER_DIR .. "/" .. M.MAC_KEYBOARDS_FILE .. ": install tide again"
-        end
-        local path = assets .. "/" .. M.MAC_KEYBOARDS_FILE
-        local function state()
-            self.check(true)
-            for _, r in ipairs(self.state.rules) do
-                if r.description == description then
-                    return r.on
-                end
-            end
-            return nil
-        end
-        if on then
-            if deps.read(path) ~= text then
-                local ok, err = deps.write(path, text)
-                if not ok then
-                    return nil, "couldn't write " .. path .. ": " .. tostring(err)
-                end
-            end
-            if state() ~= true then
-                return self.set(description, true)
-            end
-            return true
-        end
-        if state() == true then
-            local ok, err = self.set(description, false)
-            if not ok then
+    -- Take out the Apple keyboard reorder rule an older tide put in, copy
+    -- and file: Karabiner's own swap for each Apple keyboard does its work
+    -- now (set_swaps), where every rule sees it. Returns true, or nil and
+    -- why.
+    function self.remove_mac_keyboards()
+        local changed = false
+        local config = deps.read(config_path)
+        if config and config:find(M.MAC_KEYBOARDS_DESCRIPTION, 1, true) then
+            local v, err = run("return K.withoutRule(CONFIG, DESC);", {}, {
+                CONFIG = js(config),
+                DESC = js(M.MAC_KEYBOARDS_DESCRIPTION),
+            })
+            if not v then
                 return nil, err
             end
+            if v.error then
+                return nil, v.error
+            end
+            if type(v.text) == "string" then
+                if not save(v.text) then
+                    return nil, "couldn't save karabiner.json"
+                end
+                changed = true
+            end
         end
+        local path = assets .. "/" .. M.MAC_KEYBOARDS_FILE
         if deps.read(path) ~= nil then
             local ok, err = (deps.remove or os.remove)(path)
             if not ok then
                 return nil, "couldn't remove " .. path .. ": " .. tostring(err)
             end
+            changed = true
+        end
+        if changed then
             self.check(true)
+        end
+        return true
+    end
+
+    -- Whether Karabiner has written its settings, so tide can put its key
+    -- swaps there.
+    function self.has_config()
+        return deps.read(config_path) ~= nil
+    end
+
+    -- The Apple keyboards `out`, `karabiner_cli --list-connected-devices`'s
+    -- output, names, added to those seen before, which are kept in
+    -- hs.settings: each { vendor_id, product_id }. nil out reads as none.
+    function self.apple_keyboards(out)
+        local seen_list = deps.get(M.APPLE_KEY)
+        seen_list = type(seen_list) == "table" and seen_list or {}
+        if type(out) ~= "string" or out:match("^%s*$") then
+            return seen_list
+        end
+        local v, err = run("return K.appleKeyboards(JSON.parse(OUT));", {}, { OUT = js(out) })
+        if not v then
+            deps.log("keyboards: couldn't read Karabiner's list of keyboards: " .. tostring(err))
+            return seen_list
+        end
+        local list, added = {}, false
+        for _, k in ipairs(seen_list) do
+            list[#list + 1] = k
+        end
+        for _, k in ipairs(v) do
+            local known = false
+            for _, s in ipairs(list) do
+                if s.vendor_id == k.vendor_id and s.product_id == k.product_id then
+                    known = true
+                end
+            end
+            if not known then
+                list[#list + 1] = { vendor_id = k.vendor_id, product_id = k.product_id }
+                added = true
+            end
+        end
+        if added then
+            deps.set(M.APPLE_KEY, list)
+        end
+        return list
+    end
+
+    -- tide's key swaps in karabiner.json brought to `want`: { swap, compose,
+    -- apple } (karabiner.js's withSwaps), and the rules' copies with them.
+    -- Returns true, or nil and why.
+    function self.set_swaps(want)
+        local config = deps.read(config_path)
+        if not config then
+            return nil, M.NO_CONFIG
+        end
+        local owned = deps.get(M.SWAP_OWNED_KEY)
+        local list = {}
+        for _, k in ipairs(want.apple or {}) do
+            list[#list + 1] = "{vendor_id:" .. math.tointeger(k.vendor_id) .. ",product_id:" .. math.tointeger(k.product_id) .. "}"
+        end
+        local v, err = run("return K.withSwaps(CONFIG, WANT, OWNED);", {}, {
+            CONFIG = js(config),
+            WANT = "{swap:" .. tostring(want.swap == true) .. ",compose:" .. tostring(want.compose == true)
+                .. ",apple:[" .. table.concat(list, ",") .. "]}",
+            OWNED = js_list(type(owned) == "table" and owned or {}, js),
+        })
+        if not v then
+            return nil, err
+        end
+        if v.error then
+            return nil, v.error
+        end
+        if type(v.text) == "string" and not save(v.text) then
+            return nil, "couldn't save karabiner.json"
+        end
+        deps.set(M.SWAP_OWNED_KEY, v.owned or {})
+        local swap = want.swap == true
+        if swap ~= self.swap then
+            self.swap = swap
+            deps.set(M.SWAP_KEY, swap)
+            self.check(true, true)
         end
         return true
     end

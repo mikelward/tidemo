@@ -532,6 +532,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **While Karabiner isn't running, the keys aren't swapped** (2026-11-15):
+  once Karabiner has written its settings, the PC keyboard type's swap is
+  Karabiner's alone, and macOS's mapping isn't used as a fallback. Going
+  back and forth as Karabiner stops and starts could swap the keys twice,
+  and tide's settings already say Karabiner isn't running. Reversible:
+  `apply_keys` in `init.lua`.
 - **tide for Linux's SPEC.md §6.6 holds the one key table** (2026-11-14),
   with a macOS column, so §7.2 keeps only how keys are bound, the keys
   that differ and tide for macOS's own, and the README points there.
@@ -1453,6 +1459,21 @@ tide. INFEASIBLE.md lists what can't be fixed.
   tide for Chrome's scopes (Launch, Tabs, Attention) moved between with Tab. The
   alternative is tide for Chrome's whole launcher page in the webview, which needs a
   stand-in for the Chrome APIs it calls. Reversible: add the page later.
+
+## Check the keyboard swap in Karabiner on a real Mac
+
+Only the tests have run these (SPEC.md §7.1):
+
+- With the PC keyboard type, Karabiner's Simple Modifications list Ctrl,
+  Win and Alt's swap for all devices, and the built-in keyboard has its
+  own, with option kept as option.
+- Right after a login, Ctrl+V pastes and Ctrl+U in kitty deletes the
+  line, with no wait.
+- On the built-in keyboard, option+E is Super+E, command+B in kitty moves
+  back a word, and command+Tab swaps with the master.
+- `karabiner_cli --list-connected-devices` lists the built-in keyboard
+  with `is_apple` or `is_built_in_keyboard`.
+- `hidutil property --get UserKeyMapping` no longer lists the swap.
 
 ## Check the Bar page's icons on a real Mac
 
