@@ -153,9 +153,14 @@ t.test("the PC keyboard type adds the rotation, keeps Caps Lock's F18, and takes
     for _, e in ipairs(added) do
         owned[capslock.key(e)] = true
     end
-    t.eq(capslock.desired(new, { caps = true, pc = true }, owned), nil, "nothing to do")
+    -- Set again though it's as wanted: a keyboard that came since, such as
+    -- Karabiner's virtual one, has none until it is.
+    local again, none_added, none_dropped = capslock.desired(new, { caps = true, pc = true }, owned)
+    t.eq(again, new, "set again, as it is")
+    t.eq({ #none_added, #none_dropped }, { 0, 0 }, "nothing new is tide's")
     t.eq((capslock.desired(new, { caps = true }, owned)), { caps }, "Mac again: tide's rotation out")
-    t.eq(capslock.desired(new, { caps = true }, {}), nil, "a rotation tide never added stays")
+    t.eq((capslock.desired(new, { caps = true }, {})), new, "a rotation tide never added stays")
+    t.eq(capslock.desired({ caps }, {}, {}), nil, "nothing wanted and nothing of tide's: nothing set")
     -- Part of it there already, as setup-macos's: only the rest is tide's.
     local _, part = capslock.desired({ capslock.ROTATION[1] }, { pc = true }, {})
     t.eq(#part, 5)

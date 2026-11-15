@@ -1624,6 +1624,15 @@ together (§6). tide turns it off (§6.6), and has its own.
     keeps in `hs.settings` across reloads, so the same rotation set by
     something else stays. One change runs at a time, so a later setting
     can't be written over by an earlier one.
+  - **The mapping is set again each time, even when it reads as set.**
+    macOS gives it only to the keyboards there when it's set; one that
+    comes later gets none, though `--get` still lists it. Karabiner's
+    virtual keyboard, which every key goes through, is one: at login it
+    can come up after tide, and then Ctrl reached apps as Control (no
+    copy or paste) and Karabiner's terminal rule's Option stayed Option
+    (`^[u` for Ctrl+U in kitty). So tide sets it as it starts, 10 s and
+    60 s later (`init.KEYS_AGAIN`), after a wake or a keyboard plugged in,
+    and as the files change.
   - **A Mac keyboard's keys sit in a different order** (fn, control,
     option, command), so tide's Karabiner rule `tide-mac-keyboards.json`,
     in Karabiner's folder only for PC, swaps option and command on the
