@@ -190,8 +190,10 @@ To update, `git pull` and run the installer again (or `make install`, or `setup`
 reloads itself a second after the new copy lands in
 `~/.hammerspoon/tide`, so there's no reload to do by hand.
 
-`tide.start({ bar = false })` leaves the bar out and shows tide's logo and
-the workspaces in the menu bar instead.
+To keep macOS's menu bar and drop tide's bar, set Tide Settings › Bar ›
+Position to Menu bar: tide's logo and the workspaces show among the menu
+bar's icons on the right. `tide.start({ bar = false })` does the same
+for good.
 
 A workspace that isn't showing parks its windows off screen, as AeroSpace
 does, so a switch is instant: all but a 1 pt sliver of each goes past a

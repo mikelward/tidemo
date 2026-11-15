@@ -238,7 +238,10 @@ function M.new(tide)
     local open_url = tide.adapter.open_url
 
     function self.refresh()
-        read_icons()
+        -- With no bar (Position: Menu bar), nothing reads the icons.
+        if bar.drawn(tide.wm.bar_position) then
+            read_icons()
+        end
         self.update()
         if self.volume_popover then
             self.volume_popover.refresh()
@@ -393,7 +396,8 @@ function M.new(tide)
     }
     self.output_ops = popover_ops
 
-    -- Which edge the bars run along, "top" or "bottom": the wm's, which the
+    -- Which edge the bars run along, "top" or "bottom", or "menubar" for
+    -- none: the wm's, which the
     -- Bar page's Position row sets (settings_hs.choose_bar_position).
     local function at()
         return tide.wm.bar_position
@@ -764,7 +768,8 @@ function M.new(tide)
 
     local function sync_views()
         local present = {}
-        for _, s in ipairs(tide.adapter.screens()) do
+        -- With no bar (Position: Menu bar), every display's goes.
+        for _, s in ipairs(bar.drawn(at()) and tide.adapter.screens() or {}) do
             present[s.uuid] = true
             local frame = bar.place(s, bar.HEIGHT, nil, at())
             local v = self.views[s.uuid]

@@ -405,6 +405,36 @@ hiding the system menu bar for good, so tide's bar is the only one:
   at the same level, or under it, which decides whether the bar must hide
   while the menu bar is out.
 
+## The workspaces in the middle of the menu bar
+
+Position: Menu bar puts the workspaces among macOS's status items, on the
+right (SPEC.md §8). Consider drawing them in the menu bar's empty middle
+instead, as a small tide window over the gap between the app's menus and
+the status items:
+
+- **The gap moves with every app.** Read the front app's menus' extent
+  (`AXMenuBar`'s children's frames) on each app switch, and the leftmost
+  status item, and shrink or hide the names when they don't fit, as with
+  Xcode's long menus.
+- **The notch is the middle** on a MacBook's display, so the names go to
+  one side of it there.
+- **Clicks there** must land on the names alone, never on a menu.
+- **Check first, on a Mac:** that a window shows over a shown menu bar's
+  middle at the status level, and that reading the menus' frames is quick
+  enough on every app switch.
+
+## Check Position: Menu bar on a real Mac
+
+Only the tests have run these (SPEC.md §8):
+
+- Bar, Position: Menu bar removes every display's bar, shows tide's logo
+  and the workspaces in the menu bar, and windows tile up to the menu
+  bar; Top or Bottom brings the bar back and removes the item, both
+  without a reload.
+- The item's menu lists the workspaces and a click switches.
+- On a MacBook's display, whether macOS hides the item under an app with
+  many menus; if so, tide should notice (`hs.menubar`'s `frame`) and say so.
+
 ## Upstream to Hammerspoon
 
 What tide works around that Hammerspoon could fix for everyone. Check

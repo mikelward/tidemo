@@ -1984,8 +1984,9 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(sent, [{ keepMenuBarHidden: true }]);
 }
 
-// The Bar page's Position row: Top unless tide says Bottom, named as
-// tide's Bar page names them, and ‹ or › asks for the other.
+// The Bar page's Position row: Top unless tide says Bottom or Menu bar,
+// Top and Bottom named as tide's Bar page names them, and ‹ or › asks for
+// the one before or after.
 {
   sandbox.tide.update({ clockFiles: [], bar: { position: "top" } });
   const row = () => ids["bar-position"].children;
@@ -1997,7 +1998,19 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(row()[2].textContent, "Bottom");
   sent.length = 0;
   row()[1].listeners.click();
-  assert.deepStrictEqual(sent, [{ barPosition: "top" }], "‹ wraps round to Top");
+  assert.deepStrictEqual(sent, [{ barPosition: "top" }], "‹ goes back to Top");
+  assert.strictEqual(ids["bar-drawn"].hidden, false, "a bar has icons to choose");
+  sent.length = 0;
+  row()[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ barPosition: "menubar" }], "› goes on to Menu bar");
+  sandbox.tide.update({ clockFiles: [], bar: { position: "menubar" } });
+  assert.strictEqual(row()[2].textContent, "Menu bar");
+  assert.strictEqual(ids["bar-drawn"].hidden, true, "no bar, so no icons or menu bar switch");
+  sent.length = 0;
+  row()[3].listeners.click();
+  assert.deepStrictEqual(sent, [{ barPosition: "top" }], "› wraps round to Top");
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top" } });
+  assert.strictEqual(ids["bar-drawn"].hidden, false);
 }
 
 // The Bar page's Icons list: each icon in tide's order with ↑, ↓ and a

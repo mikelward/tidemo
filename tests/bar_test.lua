@@ -104,6 +104,29 @@ t.test("the position is top unless it's bottom", function()
     t.eq(bar.position("top"), "top")
     t.eq(bar.position(nil), "top", "unset")
     t.eq(bar.position("left"), "top", "anything else")
+    t.eq(bar.position("menubar"), "menubar")
+end)
+
+-- Position: Menu bar (SPEC.md §8): no bar, and windows tile under macOS's
+-- menu bar, which keeps the app's menus and every status item.
+t.test("with Position: Menu bar there's no bar, and windows take macOS's whole frame", function()
+    t.eq(bar.drawn("menubar"), false)
+    t.eq(bar.drawn("top"), true)
+    t.eq(bar.drawn("bottom"), true)
+    t.eq(bar.keeps_off_top(true, true, "menubar"), false, "a hidden menu bar slides in over nothing of tide's")
+    local s = { area = { x = 0, y = 24, w = 1920, h = 1056 }, full = { x = 0, y = 0, w = 1920, h = 1080 }, menu_bar = true }
+    local strip, area = bar.place(s, 36, 68, "menubar")
+    t.eq(strip.h, 0, "no strip")
+    t.eq(area, s.area, "under the menu bar, with no floor")
+    local a = fake.new()
+    a.screens_[1] = { uuid = "A", area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
+    a.add(1, { title = "Notes" })
+    local wm = wm_mod.new(a, { top = bar.HEIGHT, bar_position = "menubar", workspaces = { "in" } })
+    wm:sync()
+    wm:reconcile()
+    wm:retile()
+    t.eq(a.wins[1].frame.y, 32, "from just under the menu bar")
+    t.eq(a.wins[1].frame.y + a.wins[1].frame.h, 32 + 950, "to the bottom of macOS's frame")
 end)
 
 t.test("a bar along the bottom takes the bottom of the area, and windows tile above it", function()

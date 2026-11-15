@@ -1975,15 +1975,24 @@ document.getElementById("menubar-hidden").addEventListener("click", () => {
 });
 
 // The Bar page's Position row: which edge the bar runs along, Top or
-// Bottom, as tide's Bar page names them (BAR_CHOICES), with ‹ and ›
-// to the other, which send { barPosition: position }; tide places the bars
-// again and answers with tide.update() (SPEC.md §8).
+// Bottom, as tide's Bar page names them (BAR_CHOICES), or the Mac's own
+// Menu bar, no bar and the workspaces in macOS's menu bar, with ‹ and ›
+// to the others, which send { barPosition: position }; tide places the
+// bars again or swaps them for the menu bar item, and answers with
+// tide.update() (SPEC.md §8). With no bar, its Icons and Menu bar
+// sections hide.
+const BAR_POSITION_CHOICES = Object.freeze([
+  ...BAR_CHOICES,
+  Object.freeze({ position: "menubar", label: "Menu bar" }),
+]);
 function renderBar(b) {
   const box = document.getElementById("bar-position");
   box.replaceChildren();
-  const i = Math.max(0, BAR_CHOICES.findIndex((c) => c.position === b?.position));
-  const step = (d) => send({ barPosition: BAR_CHOICES[(i + d + BAR_CHOICES.length) % BAR_CHOICES.length].position });
-  const shown = el("span", BAR_CHOICES[i].label);
+  const choices = BAR_POSITION_CHOICES;
+  const i = Math.max(0, choices.findIndex((c) => c.position === b?.position));
+  const step = (d) => send({ barPosition: choices[(i + d + choices.length) % choices.length].position });
+  document.getElementById("bar-drawn").hidden = choices[i].position === "menubar";
+  const shown = el("span", choices[i].label);
   shown.className = "value";
   box.append(
     el("span", "Position"),
