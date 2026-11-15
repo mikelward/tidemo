@@ -4246,6 +4246,22 @@ function M:attention_windows()
     return list
 end
 
+-- The next window wanting attention (SPEC.md §14.2), on no key until you
+-- give it one: the Attention tab's top row, with its workspace. Its marks
+-- clear now, as focusing it would, so a second press before macOS reports
+-- the focus goes to the next. With none, nothing: no fallback to the last
+-- window.
+function A.next_attention(self)
+    local id = self:attention_windows()[1]
+    if not id then
+        return
+    end
+    local w = self.windows[id]
+    self:activate(id)
+    self.attention:focused(id, w.app, self.tab_hosts[id])
+    self:changed()
+end
+
 -- `app` sent a notification, from browser site `site` or nil (SPEC.md
 -- §14.2). The app you're in needs no mark: you're looking at it.
 function M:notified(app, site)

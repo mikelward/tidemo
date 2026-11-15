@@ -1887,6 +1887,8 @@ Linux §6.6), all but its `Super+B` and `Super+Shift+B` (below).
     tide for Linux. The layout used last (`last_layout`: the mode before this one, so
     two presses come back) has no key of its own, as there; dwm's preset
     gives it `Super+Space`.
+    Going to the next window wanting attention (`next_attention`, §14.2)
+    has none either, in any preset.
   - Your keys are in `keys.json` and `keys.local.json` in tide's folder,
     as tide for Linux writes them: `{ "preset": "dwm", "keys": {
     "terminal": ["SUPER + D"], "lock": [] } }`, Hyprland's key strings,
@@ -3394,6 +3396,11 @@ Each one names a workaround, or says there is none.
   list.
 - **The list covers every workspace,** most recent first. With nothing
   waiting, it says so.
+- **Go to the next window wanting attention** (`next_attention`) goes
+  straight to the list's top row, with its workspace, and clears its
+  marks, so the next press goes to the next. With nothing waiting it does
+  nothing. It has no key, as on tide for Linux; Keyboard's shortcuts can
+  give it one (§15) (maintainer, 2026-11-15).
 - **Mute** (`muted`, §15): an app such as Google Chat that flags all day
   can be muted, so it never counts as wanting attention. Empty by default.
   - **It's a backstop.** The usual fix is the app's own notification
