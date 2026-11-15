@@ -2732,6 +2732,12 @@ three tabs. V as in paste. `Super+;` opens it on Characters and
       `openssl`, its key derived with PBKDF2 from a random 256-bit secret
       kept in the login keychain as "tide clipboard history" through
       `security`. The secret is made the first time a copy is saved.
+    - **A wrong key always fails.** CBC alone can't tell one: about 1
+      time in 256 its padding still checks out, and garbage comes back.
+      So the plain text starts with a known line, which must come back
+      too. A history saved before that is base64 and opens as it did;
+      the next save writes the new kind, raw. This tells a wrong key,
+      not a file changed on purpose.
     - **How it runs:** each save or read is one short `sh` script, run
       with `io.popen`, that fetches the secret itself and hands it to
       `openssl` in its environment, so it never passes through

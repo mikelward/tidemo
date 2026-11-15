@@ -1,6 +1,11 @@
 -- Encrypting the saved clipboard history (SPEC.md §9.1) with a key kept in
 -- the login keychain, through macOS's own `security` and `openssl`:
 -- AES-256-CBC, its key derived with PBKDF2 from a random 256-bit secret.
+-- CBC alone can't tell a wrong key: about 1 time in 256 its padding still
+-- checks out, and garbage comes back. So the plain text starts with
+-- M.MAGIC, which must come back too. A file sealed before that is base64
+-- (openssl's -a) and opens as it did; the next save writes the new kind,
+-- raw, which is how the two are told apart.
 -- The keychain unlocks at login, so nothing asks; any program running as
 -- you can read the secret through `security` too, so this keeps the history
 -- from backups, copies and other accounts, not from those.
@@ -24,6 +29,11 @@ M.TOOLS = { security = "/usr/bin/security", openssl = "/usr/bin/openssl", sh = "
 M.SERVICE = "tide clipboard history"
 M.ACCOUNT = "tide"
 M.ENV = "TIDE_CLIPBOARD_KEY"
+-- What the plain text starts with, which only the right key gives back.
+M.MAGIC = "tide clipboard history 2\n"
+-- What a file sealed before M.MAGIC starts with: openssl's "Salted__",
+-- in base64.
+M.OLD = "U2FsdGVkX1"
 
 -- The scripts' exit statuses, besides openssl's own.
 local NO_KEY, KEYCHAIN, MAKE_KEY = 90, 91, 92
@@ -42,7 +52,7 @@ function M.new(popen, tools)
     local self = {}
     local sec, ssl = q(tools.security), q(tools.openssl)
     local item = "-s " .. q(M.SERVICE) .. " -a " .. q(M.ACCOUNT)
-    local cipher = "enc -aes-256-cbc -pbkdf2 -md sha256 -salt -a -pass env:" .. M.ENV
+    local cipher = "enc -aes-256-cbc -pbkdf2 -md sha256 -salt -pass env:" .. M.ENV
 
     -- The secret into $k: made and kept the first time if `make`, as
     -- `security find-generic-password` says 44 for an item that isn't
@@ -78,12 +88,28 @@ function M.new(popen, tools)
     -- Encrypts `text` into the file at `path`, made readable by you alone:
     -- `done(true)` or `done(nil, why)`.
     function self.seal(text, path, done)
-        done(run("umask 077; " .. fetch(true) .. "exec " .. ssl .. " " .. cipher .. " -out " .. q(path), "w", text))
+        done(run("umask 077; " .. fetch(true) .. "exec " .. ssl .. " " .. cipher .. " -out " .. q(path), "w",
+            M.MAGIC .. text))
     end
 
-    -- The file at `path` decrypted: `done(text)` or `done(nil, why)`.
+    -- The file at `path` decrypted: `done(text)` or `done(nil, why)`. The
+    -- script says which kind it read first, "o" for one sealed before
+    -- M.MAGIC, "n" for one with it.
     function self.open(path, done)
-        done(run(fetch(false) .. "exec " .. ssl .. " " .. cipher .. " -d -in " .. q(path), "r"))
+        local out, err = run(fetch(false) .. "case $(head -c " .. #M.OLD .. " " .. q(path) .. ") in "
+            .. M.OLD .. ") printf o; exec " .. ssl .. " " .. cipher .. " -a -d -in " .. q(path) .. ";; "
+            .. "*) printf n; exec " .. ssl .. " " .. cipher .. " -d -in " .. q(path) .. ";; esac", "r")
+        if not out then
+            return done(nil, err)
+        end
+        local kind, text = out:sub(1, 1), out:sub(2)
+        if kind == "o" then
+            return done(text)
+        end
+        if text:sub(1, #M.MAGIC) ~= M.MAGIC then
+            return done(nil, "it doesn't open with the keychain's key: it was saved under another one")
+        end
+        done(text:sub(#M.MAGIC + 1))
     end
 
     return self

@@ -153,7 +153,31 @@ t.test("a file under another key won't open, and says why", function()
     f:close()
     local text, err = open(k, k.dir .. "/a")
     t.eq(text, nil)
-    t.eq(err:find("^openssl failed") ~= nil, true)
+    -- openssl's padding check catches most; the header the rest.
+    t.eq(err:find("^openssl failed") ~= nil or err:find("saved under another one", 1, true) ~= nil, true, err)
+    k.done()
+end)
+
+-- Under a wrong key, CBC's padding still checks out about 1 time in 256,
+-- and openssl gives back garbage: as here, without the header.
+t.test("what opens without the header is a wrong key, not the history", function()
+    local k = keychain()
+    seal(k, "x", k.dir .. "/a")
+    sh("cd '" .. k.dir .. "' && " .. clipcrypt.ENV .. "=$(cat secret) && export " .. clipcrypt.ENV
+        .. " && printf garbage | '" .. OPENSSL .. "' enc -aes-256-cbc -pbkdf2 -md sha256 -salt -pass env:"
+        .. clipcrypt.ENV .. " -out b")
+    t.eq({ open(k, k.dir .. "/b") }, { nil, "it doesn't open with the keychain's key: it was saved under another one" })
+    k.done()
+end)
+
+t.test("a history saved before the header still opens", function()
+    local k = keychain()
+    seal(k, "x", k.dir .. "/a")
+    sh("cd '" .. k.dir .. "' && " .. clipcrypt.ENV .. "=$(cat secret) && export " .. clipcrypt.ENV
+        .. " && printf '[1]' | '" .. OPENSSL .. "' enc -aes-256-cbc -pbkdf2 -md sha256 -salt -a -pass env:"
+        .. clipcrypt.ENV .. " -out old")
+    t.eq(k.read("old"):sub(1, #clipcrypt.OLD), clipcrypt.OLD)
+    t.eq({ open(k, k.dir .. "/old") }, { "[1]" })
     k.done()
 end)
 
