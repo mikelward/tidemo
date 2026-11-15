@@ -106,7 +106,7 @@ end)
 
 t.test("every binding names an action the window manager has", function()
     local wm = require("tide.wm")
-    for _, b in ipairs(keys.map) do
+    for _, b in ipairs(keys.named_map()) do
         t.eq(type(wm.actions[b.action]), "function", b.action)
     end
 end)
@@ -243,6 +243,21 @@ t.test("Super+Shift+R reloads, as on tide for Linux, and resize mode has no key 
         end
     end
     t.eq(resize ~= nil and resize.key, nil, "named, with no key of its own")
+end)
+
+t.test("going to the next window wanting attention has no key but can be given one", function()
+    local next_attention
+    for _, b in ipairs(keys.map) do
+        t.eq(b.action ~= "next_attention", true, "it isn't bound to a key")
+    end
+    for _, b in ipairs(keys.named_map()) do
+        if b.name == "next_attention" then
+            next_attention = b
+        end
+    end
+    t.eq(next_attention ~= nil, true, "tide for Linux's name, so your keys and the presets reach it")
+    t.eq(next_attention.key, nil)
+    t.eq(keys.does(next_attention), "Go to the next window wanting attention")
 end)
 
 t.test("every binding has a description, and no two the same keys", function()

@@ -261,6 +261,8 @@ M.keyless = {
     -- Super+X and Super+Shift+X toggle maximize and full screen.
     { action = "restore", name = "restore" },
     { action = "resize_mode", name = "resize_mode" },
+    -- The Attention tab's top row, without the switcher (SPEC.md §14.2).
+    { action = "next_attention", name = "next_attention" },
 }
 
 -- keys.lua's map with the keyless bindings after it, for shortcuts.lua.
@@ -319,6 +321,7 @@ M.DOES = {
     close = "Close the window",
     minimize = "Minimize the window",
     resize_mode = "Resize mode",
+    next_attention = "Go to the next window wanting attention",
     reload = "Reload the config",
     step = by_sign("Previous workspace", "Next workspace"),
     select = by_sign("Select the window to the left", "Select the window to the right"),

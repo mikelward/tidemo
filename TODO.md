@@ -556,6 +556,12 @@ tide. INFEASIBLE.md lists what can't be fixed.
   but tide never loads `hs.ipc`, so a shell can't reach it. Quitting
   Hammerspoon brings every hidden window back, which the spec now says
   instead.
+- **Going to the next window wanting attention isn't in the switcher**
+  (2026-11-15): `next_attention` is a binding with no key, in Keyboard's
+  shortcuts, but not an Actions row, since Super+A's list already goes
+  there. It clears the window's marks at once, not on macOS's focus
+  event, so a quick second press goes to the next. Reversible:
+  `keys.lua`'s `keyless` and `A.next_attention` in `wm.lua`.
 - **Super+Shift+R reloads tide, and resize mode has no key** (2026-11-14),
   as tide for Linux's `Super+Shift+R` reloads and it has no resize mode
   (tide SPEC.md §6.6). Every free Super key may yet be tide for Linux's,
