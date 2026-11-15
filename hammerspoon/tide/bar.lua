@@ -22,9 +22,11 @@ M.HEIGHT = 36
 
 -- Which edge the bar runs along: the Bar page's Position row, kept in
 -- hs.settings under POSITION_KEY, top unless set (SPEC.md §8). "top" and
--- "bottom" are tide for Linux's appearance.json `barPosition`'s; "menubar"
--- is the Mac's own: no bar, and the workspaces in macOS's menu bar.
-M.POSITIONS = { "top", "bottom", "menubar" }
+-- "bottom" are tide for Linux's appearance.json `barPosition`'s;
+-- "menubar" and "menubar-middle" are the Mac's own: no bar, and the
+-- workspaces in macOS's menu bar, on the right as a menu bar item or
+-- drawn in its middle, beside the notch (notchbar.lua).
+M.POSITIONS = { "top", "bottom", "menubar", "menubar-middle" }
 M.POSITION_KEY = "tide.bar_position"
 
 -- A stored position as one of M.POSITIONS: anything else is top.
@@ -37,10 +39,11 @@ function M.position(v)
     return "top"
 end
 
--- Whether a bar at position `at` is drawn: not for "menubar", where the
--- workspaces show in macOS's menu bar instead.
+-- Whether a bar at position `at` is drawn: only at the top or bottom; in
+-- the others the workspaces show in macOS's menu bar instead.
 function M.drawn(at)
-    return M.position(at) ~= "menubar"
+    local p = M.position(at)
+    return p == "top" or p == "bottom"
 end
 
 -- The status icons the Bar page lists, in the bar's order unless you
@@ -230,7 +233,7 @@ function M.place(s, h, floor, at)
     local area = s.area
     -- No bar: an empty strip at the top, and the whole area for windows,
     -- under macOS's menu bar.
-    if at == "menubar" then
+    if at == "menubar" or at == "menubar-middle" then
         return { x = area.x, y = area.y, w = area.w, h = 0 }, area
     end
     if at == "bottom" then
@@ -313,7 +316,7 @@ end
 -- moving the pointer there does nothing, and moving it down on every move
 -- along the top only made the pointer drag. A bar along the bottom (`at`)
 -- isn't in the menu bar's way, so it's never needed there, nor with no bar
--- ("menubar").
+-- ("menubar", "menubar-middle").
 function M.keeps_off_top(keep, hides, at)
     return M.position(at) == "top" and keep ~= false and hides == true
 end

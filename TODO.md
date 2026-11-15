@@ -405,23 +405,22 @@ hiding the system menu bar for good, so tide's bar is the only one:
   at the same level, or under it, which decides whether the bar must hide
   while the menu bar is out.
 
-## The workspaces in the middle of the menu bar
+## Check Position: Middle of menu bar on a real Mac
 
-Position: Menu bar puts the workspaces among macOS's status items, on the
-right (SPEC.md §8). Consider drawing them in the menu bar's empty middle
-instead, as a small tide window over the gap between the app's menus and
-the status items:
+Only the tests and CI's smoke test have run these (SPEC.md §8):
 
-- **The gap moves with every app.** Read the front app's menus' extent
-  (`AXMenuBar`'s children's frames) on each app switch, and the leftmost
-  status item, and shrink or hide the names when they don't fit, as with
-  Xcode's long menus.
-- **The notch is the middle** on a MacBook's display, so the names go to
-  one side of it there.
-- **Clicks there** must land on the names alone, never on a menu.
-- **Check first, on a Mac:** that a window shows over a shown menu bar's
-  middle at the status level, and that reading the menus' frames is quick
-  enough on every app switch.
+- The names sit just left of a MacBook's notch, as tall as the menu bar,
+  on top of it, and in the middle of a plain display's menu bar.
+- `auxiliaryTopLeftArea` reads the notch's edges; where it doesn't, the
+  200 pt guess clears the notch.
+- They move aside as the front app changes, and give way to the menu bar
+  item when an app's menus (Xcode's, say) reach them, within the 2 s poll.
+- A click on a name switches to it and takes no focus.
+- Their colors suit the menu bar over a light and a dark wallpaper; macOS
+  26 tints the menu bar's text by the wallpaper, not by Dark Mode, so
+  `hs.host.interfaceStyle` may be the wrong guide.
+- How far status items reach on a plain display, against the 62% guess.
+- The cost of reading the app's menus every 2 s through Accessibility.
 
 ## Check Position: Menu bar on a real Mac
 
@@ -561,6 +560,13 @@ tide. INFEASIBLE.md lists what can't be fixed.
   conf's.
 
 ## Decisions needing review
+
+- **Position: Middle of menu bar** (2026-11-15): a fourth Position rather
+  than a switch under Menu bar; named for where the names go on every
+  display, since only a MacBook's own has a notch. The names sit left of
+  the notch (not right, where the status items are), centered without
+  one, and fall back to the menu bar item whenever they don't fit on a
+  display or no menu bar shows, so they're never lost.
 
 - **While Karabiner isn't running, the keys aren't swapped** (2026-11-15):
   once Karabiner has written its settings, the PC keyboard type's swap is
