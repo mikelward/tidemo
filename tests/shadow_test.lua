@@ -21,7 +21,7 @@ local function setup(n)
 end
 
 t.test("tide's defaults until a file says, the local file's over the shared one's", function()
-    t.eq({ shadow.load(nil, nil, json.decode) }, { { mode = "focused", size = 8 }, {} })
+    t.eq({ shadow.load(nil, nil, json.decode) }, { { mode = "focused", size = 16 }, {} })
     t.eq({ shadow.load('{"shadows": "all", "shadowSize": 12}', '{"shadows": "none"}', json.decode) },
         { { mode = "none", size = 12 }, {} })
 end)
@@ -35,7 +35,7 @@ t.test("a bad value is said, naming the setting, and the one before it stands", 
         "appearance.local.json: shadowSize must be a whole number from 0 to 32",
     })
     s, errors = shadow.load('{"shadowSize": 2.5}', "{", json.decode)
-    t.eq(s, { mode = "focused", size = 8 })
+    t.eq(s, { mode = "focused", size = 16 })
     t.eq(errors, {
         "appearance.json: shadowSize must be a whole number from 0 to 32",
         "appearance.local.json isn't a JSON object",
