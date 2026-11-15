@@ -194,9 +194,59 @@ function M.new(deps)
         return table.concat(out, "; ")
     end
 
+    -- tide's swap entries, by Karabiner profile name, as karabiner.js's
+    -- withSwaps takes them; an older tide's list stays a list.
+    local function owned_js()
+        local owned = deps.get(M.SWAP_OWNED_KEY)
+        if type(owned) ~= "table" or next(owned) == nil then
+            return "{}"
+        end
+        if owned[1] ~= nil then
+            return js_list(owned, js)
+        end
+        local parts = {}
+        for name, list in pairs(owned) do
+            if type(name) == "string" and type(list) == "table" then
+                parts[#parts + 1] = js(name) .. ":" .. js_list(list, js)
+            end
+        end
+        return "{" .. table.concat(parts, ",") .. "}"
+    end
+
+    local function want_js()
+        local w = self.want
+        if not w then
+            return "null"
+        end
+        local list = {}
+        for _, k in ipairs(w.apple or {}) do
+            list[#list + 1] = "{vendor_id:" .. math.tointeger(k.vendor_id) .. ",product_id:" .. math.tointeger(k.product_id) .. "}"
+        end
+        return "{swap:" .. tostring(w.swap == true) .. ",compose:" .. tostring(w.compose == true)
+            .. ",apple:[" .. table.concat(list, ",") .. "]}"
+    end
+
+    local function remember_owned(profile, list, renamed)
+        local owned = deps.get(M.SWAP_OWNED_KEY)
+        if type(owned) ~= "table" or owned[1] ~= nil then
+            owned = {}
+        end
+        local copy = {}
+        for k, v in pairs(owned) do
+            copy[k] = v
+        end
+        for _, old in ipairs(renamed or {}) do
+            copy[old] = nil
+        end
+        copy[profile] = list
+        deps.set(M.SWAP_OWNED_KEY, copy)
+    end
+
     -- Read the files again, bring karabiner.json up to date with them, and
     -- give the state the section shows: { rules = { { description, label,
-    -- file, on } }, problem }. Nothing runs when nothing changed, unless
+    -- file, on } }, problem }. The selected profile's key swaps come first,
+    -- once set_swaps has said what they are, so a profile you switch to
+    -- gets them before rules copied for them. Nothing runs when nothing changed, unless
     -- `force`. `quiet` says nothing of copies brought up to date, as when
     -- the swap moves and every copy changes with it.
     function self.check(force, quiet)
@@ -206,7 +256,8 @@ function M.new(deps)
         for _, f in ipairs(list) do
             key = key .. f.name .. "\0" .. f.text .. "\0"
         end
-        key = key .. tostring(deps.running()) .. tostring(self.swap)
+        local want = want_js()
+        key = key .. tostring(deps.running()) .. tostring(self.swap) .. want
         if key == last and not force then
             return self.state
         end
@@ -218,23 +269,31 @@ function M.new(deps)
                 description: r.description, label: r.label, file: r.file, on: states ? states[i].on : false,
             }));
             if (CONFIG === null) return { rules: view(null), errors: a.errors, missing: true };
-            const s = K.synced(CONFIG, rules, SEEN, ORDER, SUPER_FILE, SUPER_PREFIXES, a.errors.length > 0);
+            const sw = WANT === null ? null : K.withSwaps(CONFIG, WANT, OWNED);
+            if (sw && sw.error) return { rules: view(null), errors: a.errors, error: sw.error, swapError: sw.error };
+            const config = (sw && sw.text) ?? CONFIG;
+            const s = K.synced(config, rules, SEEN, ORDER, SUPER_FILE, SUPER_PREFIXES, a.errors.length > 0);
             if (s.error) return { rules: view(null), errors: a.errors, error: s.error };
-            const st = K.ruleStates(s.text ?? CONFIG, rules);
+            const st = K.ruleStates(s.text ?? config, rules);
             // No text, not a null one, when nothing changed: a JSON null
             // needn't come back to Lua as nil. `before` is the rules as the
             // file has them now, for when the new text can't be saved.
             return {
                 rules: view(st.states), before: view(K.ruleStates(CONFIG, rules).states), errors: a.errors,
-                text: s.text ?? undefined, updated: s.updated, enabled: s.enabled, replaced: s.replaced, super: s.super,
+                text: s.text ?? (sw && sw.text) ?? undefined, updated: s.updated, enabled: s.enabled, replaced: s.replaced, super: s.super,
+                swaps: sw ? { profile: sw.profile, owned: sw.owned, renamed: sw.renamed } : undefined,
             };
         ]], list, {
             CONFIG = config and js(config) or "null",
             SEEN = js_list(seen(), js),
             SUPER_FILE = js(M.SUPER_FILE),
             SUPER_PREFIXES = js_list(keys.RULE_PREFIXES, js),
+            WANT = want,
+            OWNED = owned_js(),
         })
+        self.swap_error = nil
         if not v then
+            self.swap_error = self.want and err or nil
             deps.log(err)
             self.state = { rules = {}, problem = err }
             return self.state
@@ -258,9 +317,13 @@ function M.new(deps)
         for _, e in ipairs(v.errors or {}) do
             problems[#problems + 1] = "Karabiner's " .. e .. "."
         end
+        self.swap_error = v.swapError
         local saved = true
         if type(v.text) == "string" then
             saved = save(v.text)
+            if not saved and self.want then
+                self.swap_error = "couldn't save karabiner.json"
+            end
             if saved then
                 if #(v.enabled or {}) > 0 then
                     deps.notify("tide turned on conf's Karabiner rules: " .. labels(v.enabled, by)
@@ -288,6 +351,9 @@ function M.new(deps)
         -- write: one not saved is turned on again next time.
         if saved and not v.missing and not v.error then
             remember(rules)
+            if v.swaps then
+                remember_owned(v.swaps.profile, v.swaps.owned or {}, v.swaps.renamed)
+            end
         end
         self.state = { rules = rules, problem = table.concat(problems, " ") }
         return self.state
@@ -476,38 +542,20 @@ function M.new(deps)
 
     -- tide's key swaps in karabiner.json brought to `want`: { swap, compose,
     -- apple } (karabiner.js's withSwaps), and the rules' copies with them.
-    -- Returns true, or nil and why.
+    -- Kept, so each later check brings a profile you select to them too
+    -- before its rules. Returns true, or nil and why.
     function self.set_swaps(want)
-        local config = deps.read(config_path)
-        if not config then
+        if not deps.read(config_path) then
             return nil, M.NO_CONFIG
         end
-        local owned = deps.get(M.SWAP_OWNED_KEY)
-        local list = {}
-        for _, k in ipairs(want.apple or {}) do
-            list[#list + 1] = "{vendor_id:" .. math.tointeger(k.vendor_id) .. ",product_id:" .. math.tointeger(k.product_id) .. "}"
-        end
-        local v, err = run("return K.withSwaps(CONFIG, WANT, OWNED);", {}, {
-            CONFIG = js(config),
-            WANT = "{swap:" .. tostring(want.swap == true) .. ",compose:" .. tostring(want.compose == true)
-                .. ",apple:[" .. table.concat(list, ",") .. "]}",
-            OWNED = js_list(type(owned) == "table" and owned or {}, js),
-        })
-        if not v then
-            return nil, err
-        end
-        if v.error then
-            return nil, v.error
-        end
-        if type(v.text) == "string" and not save(v.text) then
-            return nil, "couldn't save karabiner.json"
-        end
-        deps.set(M.SWAP_OWNED_KEY, v.owned or {})
+        self.want = want
         local swap = want.swap == true
-        if swap ~= self.swap then
-            self.swap = swap
-            deps.set(M.SWAP_KEY, swap)
-            self.check(true, true)
+        local moved = swap ~= self.swap
+        self.swap = swap
+        deps.set(M.SWAP_KEY, swap)
+        self.check(true, moved)
+        if self.swap_error then
+            return nil, self.swap_error
         end
         return true
     end

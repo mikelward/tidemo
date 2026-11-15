@@ -1651,8 +1651,12 @@ together (§6). tide turns it off (§6.6), and has its own.
     sends them. Which way the swap goes is kept in `hs.settings`, so the
     copies aren't rewritten at each start.
   - **tide adds only what's missing and takes out only what it added,**
-    kept in `hs.settings`: a key you swapped yourself in Karabiner stays
-    yours. In macOS's mapping, the swap's entries go whoever added them,
+    kept in `hs.settings` for each Karabiner profile: a key you swapped
+    yourself in Karabiner stays yours, in any profile; a profile you
+    rename keeps tide's under its new name. Only the selected
+    profile, the one Karabiner runs, is changed, and a profile you switch
+    to gets the swaps at tide's next check of Karabiner's rules, within
+    30 s. In macOS's mapping, the swap's entries go whoever added them,
     since they would swap Karabiner's keys a second time.
   - **While Karabiner isn't running,** the keys aren't swapped, and tide's
     settings say Karabiner isn't running (§15).

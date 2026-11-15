@@ -701,4 +701,54 @@ t.test("tide's own rule, copied for Karabiner's swap, still reads as complete", 
     t.eq(keys.unswap(copy).manipulators, json.decode(file).rules[1].manipulators, "the file's rule again")
 end)
 
+-- Karabiner runs the selected profile, and you can switch: tide's swaps
+-- follow it, and another profile's own swaps stay yours. The config is
+-- switched as text: the tests' JSON would turn empty lists into objects.
+local TWO_PROFILES = '{"profiles": [{"name": "A", "selected": true, "simple_modifications": [],'
+    .. ' "complex_modifications": {"rules": []}}, {"name": "B", "selected": false,'
+    .. ' "simple_modifications": [{"from": {"key_code": "left_control"}, "to": [{"key_code": "escape"}]}]}]}'
+
+local function switch(m)
+    m.files[CONFIG] = m.files[CONFIG]:gsub('"selected": true', "SEL"):gsub('"selected": false', '"selected": true')
+        :gsub("SEL", '"selected": false')
+end
+
+local function swaps_in(m, i)
+    return swaps_of(json.decode(m.files[CONFIG]).profiles[i].simple_modifications)
+end
+
+t.test("a profile you switch to keeps its own swaps, and tide's stay in the first", function()
+    local m = machine(with_assets(TWO_PROFILES, { ["pc-terminal.json"] = SWAP_RULE }))
+    t.eq(m.k.set_swaps({ swap = true, apple = {} }), true)
+    switch(m)
+    t.eq(m.k.set_swaps({ swap = true, apple = {} }), true)
+    t.eq(swaps_in(m, 2).left_control, "escape", "yours, in B")
+    t.eq(swaps_in(m, 2).left_command, "left_option", "tide's, where B has none")
+    t.eq(swaps_in(m, 1), PC_SWAP, "A's, as they were")
+    -- Back on A, and off: only A's are tide's to take out there.
+    switch(m)
+    t.eq(m.k.set_swaps({ swap = false, apple = {} }), true)
+    t.eq(swaps_in(m, 1), {})
+    t.eq(swaps_in(m, 2).left_control, "escape")
+end)
+
+t.test("a profile you switch to gets the swaps at the next check", function()
+    local m = machine(with_assets(TWO_PROFILES, { ["pc-terminal.json"] = SWAP_RULE }))
+    t.eq(m.k.set_swaps({ swap = true, compose = true, apple = {} }), true)
+    switch(m)
+    m.k.check()
+    t.eq(swaps_in(m, 2).left_command, "left_option")
+    t.eq(swaps_in(m, 2).caps_lock, "f18")
+    t.eq(swaps_in(m, 2).left_control, "escape", "yours stays")
+end)
+
+t.test("a profile you rename keeps tide's swaps as tide's", function()
+    local m = machine(with_assets(TWO_PROFILES, { ["pc-terminal.json"] = SWAP_RULE }))
+    t.eq(m.k.set_swaps({ swap = true, compose = true, apple = {} }), true)
+    m.files[CONFIG] = m.files[CONFIG]:gsub('"name": "A"', '"name": "Work"')
+    t.eq(m.k.set_swaps({ swap = false, compose = false, apple = {} }), true)
+    t.eq(swaps_in(m, 1), {}, "taken out under its new name")
+    t.eq(m.settings[karabiner.SWAP_OWNED_KEY].A, nil, "the old name's gone")
+end)
+
 t.done("karabiner")
