@@ -21,7 +21,7 @@
 -- is each workspace's own, as tide's workspaceSettings: { ["in"] = {
 -- askForName = true, pinnedApps = { "Gmail" } } }, whether a new window
 -- there asks for a name and the apps whose windows tide's close keys
--- leave open there (SPEC.md §6.2); it defaults to home asking. tide's
+-- leave open there (SPEC.md §6.2); unset, no workspace asks. tide's
 -- `standing`, `inApps` and `workspaceSettings`, in workspaces.json and
 -- workspaces.local.json, take the place of each where a file sets it
 -- (SPEC.md §15).

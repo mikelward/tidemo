@@ -1513,8 +1513,8 @@ Only the tests have run these (SPEC.md §5.1, §15):
 ## Check workspace settings on a real Mac
 
 Only the tests have run (SPEC.md §6.2): with a workspace's `askForName` on,
-a new window and a launch there ask; with "in"'s off, nothing does. Pin
-Gmail on "in" and check Super+Backspace, the prompt's Esc, Cmd+W,
+a new window and a launch there ask; with none on, as by default, nothing
+does. Pin Gmail on "in" and check Super+Backspace, the prompt's Esc, Cmd+W,
 Cmd+Shift+W and Cmd+Q each leave it open with a notification, that another
 app's window still gets Cmd+W, and how soon after a click on the pinned
 window Cmd+W is held.

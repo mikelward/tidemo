@@ -228,9 +228,9 @@ tide.start({ home_apps = { "Mail", "Messages", "Calendar", "Music" } })
 
 `workspace_settings` is each workspace's own, as tide for Linux's `workspaceSettings`:
 whether a new window there asks for a name (`askForName`), and the apps,
-by app name, whose windows stay open there (`pinnedApps`). Unset, home asks
-and nothing is pinned; set, a workspace it doesn't list, or a field it
-leaves out, is off:
+by app name, whose windows stay open there (`pinnedApps`). Unset, no
+workspace asks and nothing is pinned; set, a workspace it doesn't list, or
+a field it leaves out, is off:
 
 ```lua
 tide.start({ workspace_settings = { ["in"] = { askForName = true, pinnedApps = { "Gmail", "Google Chat" } } } })
@@ -244,7 +244,7 @@ and Tide Settings' Workspaces section edits them.
 case, with hyphens as spaces, and at login only the ones that are Mac apps
 start.
 
-Any other window opening on a workspace whose `askForName` is on, "in" by
+Any other window opening on a workspace whose `askForName` is on, none by
 default, asks for a workspace name, and so does a launch from there: Enter
 makes or uses the workspace and moves there, the one it's on included, and
 Esc closes the window, or launches where you are (Cmd+Return's Esc cancels

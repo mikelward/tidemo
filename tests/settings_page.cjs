@@ -1784,24 +1784,38 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   };
   const pinned = (i) => part(i).list.children.map((li) => li.children.length > 0 ? li.children[0].textContent : li.textContent);
   const base = { standing: ["in", "re", "oc", "me"], inApps: ["Mail"] };
-  // No file sets it: home asks, as tide's default has it, and nothing's pinned.
+  // No file sets it: no workspace asks, home included, and nothing's pinned.
   sandbox.tide.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { local: '{"muted": ["com.example.chat"]}' } });
   assert.strictEqual(sections().length, 4);
   assert.deepStrictEqual([part(0).heading, part(1).heading], ["in · home", "re"]);
   assert.strictEqual(part(0).label, "New windows ask for a workspace");
-  assert.deepStrictEqual([part(0).toggle.textContent, part(0).toggle.getAttribute("aria-pressed")], ["On", "true"]);
+  assert.deepStrictEqual([part(0).toggle.textContent, part(0).toggle.getAttribute("aria-pressed")], ["Off", "false"]);
   assert.deepStrictEqual([part(1).toggle.textContent, part(1).toggle.getAttribute("aria-pressed")], ["Off", "false"]);
   assert.deepStrictEqual(pinned(0), ["None yet."]);
   assert.strictEqual(part(0).input.placeholder, "Pin an app or web address, such as gmail");
 
-  // Turning on another's copies what's in effect, so home's stays on.
+  // Turning on another's writes only that one, and home's stays off.
   sent.length = 0;
   part(1).toggle.listeners.click();
   assert.deepStrictEqual(lastWs(), {
     muted: ["com.example.chat"],
-    workspaceSettings: { in: { askForName: true }, re: { askForName: true, pinnedApps: [] } },
+    workspaceSettings: { re: { askForName: true, pinnedApps: [] } },
   });
-  assert.strictEqual(part(1).toggle.textContent, "On");
+  assert.deepStrictEqual([part(0).toggle.textContent, part(1).toggle.textContent], ["Off", "On"]);
+
+  // On turns home's question on, and changing another leaves it on.
+  part(0).toggle.listeners.click();
+  assert.deepStrictEqual(lastWs().workspaceSettings, {
+    in: { askForName: true, pinnedApps: [] },
+    re: { askForName: true, pinnedApps: [] },
+  });
+  assert.deepStrictEqual([part(0).toggle.textContent, part(0).toggle.getAttribute("aria-pressed")], ["On", "true"]);
+  part(1).toggle.listeners.click();
+  assert.deepStrictEqual(lastWs().workspaceSettings, {
+    in: { askForName: true, pinnedApps: [] },
+    re: { askForName: false, pinnedApps: [] },
+  });
+  assert.strictEqual(part(0).toggle.textContent, "On");
 
   // Pinning adds to the workspace's list; one listed already is refused.
   const input = part(0).input;
@@ -1820,6 +1834,11 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.deepStrictEqual(lastWs().workspaceSettings.in.pinnedApps, []);
   part(0).toggle.listeners.click();
   assert.deepStrictEqual(lastWs().workspaceSettings.in, { askForName: false, pinnedApps: [] });
+
+  // workspaces.json's askForName true is on, as before.
+  sandbox.tide.update({ clockFiles: [], workspaceBase: base, workspaceFiles: { shared: '{"workspaceSettings": {"in": {"askForName": true}}}' } });
+  assert.deepStrictEqual([part(0).toggle.textContent, part(0).toggle.getAttribute("aria-pressed")], ["On", "true"]);
+  assert.strictEqual(part(1).toggle.textContent, "Off");
 
   // start()'s workspace_settings stands in where no file sets it.
   sandbox.tide.update({ clockFiles: [], workspaceBase: { ...base, workspaceSettings: { re: { askForName: true, pinnedApps: ["Notes"] } } } });

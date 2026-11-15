@@ -237,7 +237,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | New windows join the end of the stack, with a setting for elsewhere (tide for Linux §6.1) | tide state (§5) | **yes** |
 | Layout, `mfact`, master count per workspace, and per display within it | tide state | **yes** |
 | Named workspaces, "in" first, Super+Home to "in", Super+Return to go and Super+Shift+Return to move (tide for Linux §6.5) | windows parked off screen, as AeroSpace does, or minimized as tide for Chrome does, named in tide's state (§6) | **partial**: Mission Control would show every workspace's windows, so setup turns it off and tide's overview takes its keys (§6.9); a sliver of each parked window shows in a corner; minimizing instead animates each switch |
-| A new window on a workspace that asks, "in" by default, asks for a workspace name (tide for Linux §6.5) | tide's name prompt, an `hs.chooser` (§6.2) | **yes** |
+| A new window on a workspace that asks, none by default, asks for a workspace name (tide for Linux §6.5) | tide's name prompt, an `hs.chooser` (§6.2) | **yes** |
 | Pinned apps stay open on their workspace (tide for Linux §6.5) | the close key and the prompt's Esc leave them open; Cmd+W, Cmd+Shift+W and Cmd+Q are hotkeys while one has focus (§6.2) | **partial**: by app name; the close button still closes |
 | `TIDE_WORKSPACE` in launched apps (tide for Linux §6.5) | `hs.task`'s environment, `open --env`, and kitty's remote control (§6.3) | **partial**: an app already running keeps its own |
 | One workspace spans every monitor, each with its own part (tide for Linux §6.5) | one workspace spans every display, each display with its own layout in it (§6.1) | **yes** |
@@ -993,8 +993,8 @@ numbered ones:
 - **The first is the home workspace,** "in" by default. It's the first
   standing workspace that's special, not the name "in": whatever the list
   names first gets everything this spec says of "in". tide makes it at
-  start. It can't be removed or renamed, holds the apps you keep open all
-  day, and, unless its `askForName` is off, asks for a name for any other
+  start. It can't be removed or renamed, and holds the apps you keep open
+  all day. With its `askForName` on, it asks for a name for any other
   window (§6.2).
 - **The other standing workspaces:**
   - they're always listed, on the bar and in the switcher, in the
@@ -1055,8 +1055,8 @@ numbered ones:
   where its last one was, so Super+T with the pointer on the internal display
   could open the terminal on the external one. Until tide first places
   it, the app moving it doesn't count as you moving it.
-- **A new window opening on "in"** that isn't one of its apps asks for a
-  workspace name first (§6.2).
+- **A new window opening on a workspace that asks** that isn't one of
+  "in"'s apps asks for a workspace name first (§6.2).
 
 **One rule decides what's on screen:** a window shows if its workspace is
 showing and you haven't minimized it. Every operation
@@ -1137,11 +1137,12 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   - **`pinnedApps`:** the apps whose windows stay open there (Pinned apps,
     below).
   - With no `workspaceSettings` in either file, nor `workspace_settings`
-    in `start()`, it's tide for Linux's default: "in" asks, and nothing is pinned.
-    Once one is set, a workspace it doesn't list, or a field it leaves out,
-    is off: with "in"'s `askForName` off, nothing asks, "in" included.
-- **Any other window opening on a workspace that asks asks for a name,**
-  "in" by default. That includes a link a browser opens as a new window.
+    in `start()`, it's tide for Linux's default: no workspace asks, and
+    nothing is pinned. "in" used to ask by default. A prompt for every new
+    window got in the way, so now it's off until you turn it on.
+  - A workspace it doesn't list, or a field it leaves out, is off.
+- **Any other window opening on a workspace that asks asks for a name.**
+  That includes a link a browser opens as a new window.
   - One of "in"'s apps never asks: its window goes to "in", wherever you
     are.
   - Dialogs and other windows that follow a parent (§5.1), and
@@ -1170,8 +1171,7 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   - Focus follows mouse pauses while it's open (§5.2), and the window
     stays put until you answer.
 - **tide's own launches from a workspace that asks ask before
-  launching,** "in" by default: the switcher's Launch tab, app keys and
-  Cmd+Return (§9). From any other, they launch where you are.
+  launching:** the switcher's Launch tab, app keys and Cmd+Return (§9). From any other, they launch where you are.
   - The process then starts with the right `TIDE_WORKSPACE` (§6.3), and its
     first window goes straight to the named workspace.
   - Esc launches on the workspace you launched from. For Cmd+Return, which
@@ -3669,7 +3669,7 @@ Each one names a workaround, or says there is none.
     list of app names, tide's eight by default (§6.2), and
     `workspace_settings`, a table as tide for Linux's `workspaceSettings`, `{ ["in"]
     = { askForName = true, pinnedApps = { "Gmail" } } }`, unset by default:
-    "in" asks and nothing is pinned (§6.2).
+    no workspace asks and nothing is pinned (§6.2).
   - `workspaceSettings` is checked as tide for Linux checks it: a key that isn't a
     workspace's name, one named twice ignoring case, a field other than
     `askForName` and `pinnedApps`, an `askForName` that isn't `true` or
@@ -3718,10 +3718,9 @@ Each one names a workaround, or says there is none.
       `askForName`, and its pinned apps, each with a ✕, over a box that
       pins one with Enter. The first change copies the `workspaceSettings`
       in effect into `workspaces.local.json`, as a list's first change
-      does: with none set, that's "in" asking, so turning on another
-      workspace's switch leaves "in"'s on. It's tide for Linux's own
-      `editedWorkspace`, `withAskForName`, `withPinned` and
-      `withoutPinned`.
+      does, so changing one workspace leaves the others as they were. It's
+      tide for Linux's own `editedWorkspace`, `withAskForName`,
+      `withPinned` and `withoutPinned`.
     - The standing workspaces and the patterns, whose order counts, have
       arrows that move one; each entry has a ✕ that takes it out. Moving
       another first makes it home.
