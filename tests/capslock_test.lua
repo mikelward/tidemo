@@ -226,4 +226,17 @@ t.test("a mapping it can't read, or hidutil failing, is logged and changes nothi
     t.eq(logs, { "capslock: couldn't run /usr/bin/hidutil to read the key mapping" })
 end)
 
+t.test("once Karabiner swaps, the swap leaves macOS's mapping, whoever set it", function()
+    local caps = { src = capslock.CAPS_LOCK, dst = capslock.F18 }
+    local list = { caps }
+    for _, e in ipairs(capslock.ROTATION) do
+        list[#list + 1] = e
+    end
+    local out, added, dropped = capslock.desired(list, { caps = true, karabiner = true }, {})
+    t.eq(out, { caps }, "set by hand, still taken out: it would swap Karabiner's keys again")
+    t.eq(#added, 0)
+    t.eq(#dropped, #capslock.ROTATION)
+    t.eq(capslock.desired({ caps }, { caps = true, karabiner = true }, {}), { caps }, "nothing to take out")
+end)
+
 t.done("capslock")

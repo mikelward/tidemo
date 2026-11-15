@@ -70,7 +70,7 @@ local EMPTY_CONFIG = '{"global": {"show_in_menu_bar": true}, "profiles": [{"name
 -- A Mac with these files, Karabiner running unless `running` is false.
 local function machine(files, opts)
     opts = opts or {}
-    local m = { files = files, settings = {}, notices = {}, logs = {}, writes = {}, runs = 0, running = opts.running ~= false }
+    local m = { files = files, settings = opts.settings or {}, notices = {}, logs = {}, writes = {}, runs = 0, running = opts.running ~= false }
     local deps = {
         home = HOME,
         source = SOURCE,
@@ -411,53 +411,34 @@ t.test("choosing plain Option turns tide's rule off and leaves its file", functi
     t.eq(m.k.super(), "none")
 end)
 
--- The PC keyboard type's Mac keyboard rule: in Karabiner's folder and on
--- while it's on; off and gone again for Mac.
-t.test("the Mac keyboard rule goes in, on, for PC, and off and out for Mac", function()
-    local rule = read_file("hammerspoon/tide/karabiner/" .. karabiner.MAC_KEYBOARDS_FILE)
-    local description = json.decode(rule).rules[1].description
+-- The Apple keyboard reorder rule an older tide put in: Karabiner's swap
+-- for each Apple keyboard does its work now, so it goes, copy and file.
+t.test("an older tide's Apple keyboard reorder rule is taken out, copy and file", function()
+    local rule = json.encode({ title = "tide: Mac keyboards", rules = { {
+        description = karabiner.MAC_KEYBOARDS_DESCRIPTION,
+        manipulators = { { type = "basic", from = { key_code = "left_option" }, to = { { key_code = "left_command" } } } },
+    } } })
     local m = super_machine()
-    m.files[karabiner.SUPER_DIR .. "/" .. karabiner.MAC_KEYBOARDS_FILE] = rule
     local path = ASSETS .. "/" .. karabiner.MAC_KEYBOARDS_FILE
-    t.eq(m.k.set_mac_keyboards(true), true)
-    t.eq(m.files[path], rule)
-    t.eq(has(enabled(m), description), true)
-    t.eq(m.k.super(), "win", "not taken for a Super key rule")
-    t.eq(m.k.set_mac_keyboards(true), true, "again: nothing to do")
-    t.eq(m.k.set_mac_keyboards(false), true)
-    t.eq(has(enabled(m), description), false)
+    m.files[path] = rule
+    m.k.set(karabiner.MAC_KEYBOARDS_DESCRIPTION, true)
+    t.eq(has(enabled(m), karabiner.MAC_KEYBOARDS_DESCRIPTION), true)
+    t.eq(m.k.remove_mac_keyboards(), true)
+    t.eq(has(enabled(m), karabiner.MAC_KEYBOARDS_DESCRIPTION), false)
     t.eq(m.files[path], nil)
-    t.eq(m.k.set_mac_keyboards(false), true, "again: nothing to do")
+    t.eq(m.k.super(), "win", "the Super rule stays")
+    local writes = #m.writes
+    t.eq(m.k.remove_mac_keyboards(), true)
+    t.eq(#m.writes, writes, "again: nothing to do")
 end)
 
-t.test("the Mac keyboard rule swaps option and command on Apple's keyboards alone", function()
-    local r = json.decode(read_file("hammerspoon/tide/karabiner/" .. karabiner.MAC_KEYBOARDS_FILE)).rules[1]
-    -- Karabiner's copy is found by this, so it never changes: a renamed rule
-    -- would leave the old one on.
-    t.eq(r.description, "Mac keyboards: option and command swap, so control, option and command act as a PC keyboard's Ctrl, Win and Alt (tide's PC keyboard type)")
-    local pairs_ = {}
-    for _, m in ipairs(r.manipulators) do
-        pairs_[m.from.key_code] = m.to[1].key_code
-        t.eq(m.conditions[1].type, "device_if")
-        t.eq(m.conditions[1].identifiers, { { is_built_in_keyboard = true }, { vendor_id = 1452 }, { vendor_id = 76 } })
-    end
-    t.eq(pairs_, { left_option = "left_command", left_command = "left_option", right_option = "right_command", right_command = "right_option" })
-    -- Karabiner uses one rule per key, so the Win rule's lone tap never sees
-    -- an option this rule took: it carries the same tap.
-    local win = json.decode(read_file("hammerspoon/tide/karabiner/tide.json")).rules[1]
-    local tap
-    for _, m in ipairs(win.manipulators) do
-        if m.from.key_code == "left_command" then
-            tap = m.to_if_alone
-        end
-    end
-    for _, m in ipairs(r.manipulators) do
-        if m.from.key_code == "left_option" then
-            t.eq(m.to_if_alone, tap)
-        else
-            t.eq(m.to_if_alone, nil)
-        end
-    end
+t.test("a copy with no file left goes too", function()
+    local m = super_machine()
+    local config = json.decode(m.files[CONFIG])
+    table.insert(config.profiles[1].complex_modifications.rules, { description = karabiner.MAC_KEYBOARDS_DESCRIPTION, manipulators = {} })
+    m.files[CONFIG] = json.encode(config)
+    t.eq(m.k.remove_mac_keyboards(), true)
+    t.eq(has(enabled(m), karabiner.MAC_KEYBOARDS_DESCRIPTION), false)
 end)
 
 t.test("a linked rule is replaced, not written through", function()
@@ -562,6 +543,162 @@ t.test("an unknown Super key, or a missing rule file, says why", function()
     t.eq(ok, nil)
     t.eq(why:find("install tide again", 1, true) ~= nil, true, why)
     t.eq(m.k.super(), "win", "the rule in use stays on")
+end)
+
+-- The PC keyboard type's modifier swap, in Karabiner (SPEC.md §7.1): it
+-- runs before every rule, for every keyboard, Apple's each by its own spots.
+
+-- A rule as conf writes it: the Ctrl spot's key, as a PC keyboard sends it,
+-- with U, sends Option+U, which macOS's mapping made Control+U; the Win
+-- spot's alone taps Super; Alt with Tab. And generic and one-key modifiers.
+local SWAP_RULE = json.encode({ title = "PC keyboard terminals", rules = { {
+    description = TERMINAL,
+    manipulators = {
+        { type = "basic", from = { key_code = "u", modifiers = { mandatory = { "left_control" }, optional = { "shift" } } },
+            to = { { key_code = "u", modifiers = { "left_option" } } } },
+        { type = "basic", from = { key_code = "left_command", modifiers = { optional = { "any" } } },
+            to = { { key_code = "left_command" } },
+            to_if_alone = { { key_code = "f20", modifiers = { "left_option", "left_command", "left_control" } } } },
+        { type = "basic", from = { key_code = "tab", modifiers = { mandatory = { "option" } } },
+            to = { { key_code = "tab", modifiers = "right_control" } } },
+    },
+} } })
+
+local function swap_machine(settings)
+    return machine(with_assets(EMPTY_CONFIG, { ["pc-terminal.json"] = SWAP_RULE }), { settings = settings })
+end
+
+local function profile(m)
+    return json.decode(m.files[CONFIG]).profiles[1]
+end
+
+local function swaps_of(list)
+    local out = {}
+    for _, e in ipairs(list or {}) do
+        out[e.from.key_code] = e.to[1].key_code
+    end
+    return out
+end
+
+local PC_SWAP = {
+    left_control = "left_command", left_command = "left_option", left_option = "left_control",
+    right_control = "right_command", right_command = "right_option", right_option = "right_control",
+}
+local APPLE = {
+    left_control = "left_command", left_option = "left_option", left_command = "left_control",
+    right_control = "right_command", right_option = "right_option", right_command = "right_control",
+}
+
+t.test("the swap goes in Karabiner for every keyboard, and each Apple keyboard gets its own", function()
+    local m = swap_machine()
+    m.k.check()
+    t.eq(m.k.set_swaps({ swap = true, compose = true, apple = { { vendor_id = 1452, product_id = 832 } } }), true)
+    local p = profile(m)
+    local want = { caps_lock = "f18" }
+    for k, v in pairs(PC_SWAP) do
+        want[k] = v
+    end
+    t.eq(swaps_of(p.simple_modifications), want)
+    t.eq(#p.devices, 1)
+    t.eq(p.devices[1].identifiers, { is_keyboard = true, product_id = 832, vendor_id = 1452 })
+    t.eq(swaps_of(p.devices[1].simple_modifications), APPLE, "its option stays Option: it sits where Win does")
+    local writes = #m.writes
+    t.eq(m.k.set_swaps({ swap = true, compose = true, apple = { { vendor_id = 1452, product_id = 832 } } }), true)
+    t.eq(#m.writes, writes, "again: nothing to write")
+end)
+
+t.test("a rule's copy names the keys as Karabiner hands them on, after its swap", function()
+    local m = swap_machine()
+    m.k.check()
+    t.eq(m.k.set_swaps({ swap = true, apple = {} }), true)
+    local ms = profile(m).complex_modifications.rules[1].manipulators
+    -- The Ctrl spot is Command to the rule, and it sends Control+U itself.
+    t.eq(ms[1].from.modifiers, { mandatory = { "left_command" }, optional = { "shift" } })
+    t.eq(ms[1].to, { { key_code = "u", modifiers = { "left_control" } } })
+    -- The Win spot is Option; Super's tap, all three, is as it was.
+    t.eq(ms[2].from.key_code, "left_option")
+    t.eq(ms[2].to, { { key_code = "left_option" } })
+    local tap = ms[2].to_if_alone[1]
+    table.sort(tap.modifiers)
+    t.eq(tap, { key_code = "f20", modifiers = { "left_command", "left_control", "left_option" } })
+    -- The Alt spot is Control, either side.
+    t.eq(ms[3].from.modifiers, { mandatory = { "control" } })
+    t.eq(ms[3].to[1].modifiers, "right_command")
+    t.eq(m.notices[#m.notices]:find("up to date", 1, true), nil, "the move isn't news")
+    -- The rule file itself still names the keys a PC keyboard sends.
+    t.eq(m.files[ASSETS .. "/pc-terminal.json"], SWAP_RULE)
+    t.eq(m.k.check(true).rules[1].on, true)
+end)
+
+t.test("back on macOS's mapping, the rules are as their files say again, and tide's swaps go", function()
+    local m = swap_machine()
+    m.k.check()
+    m.k.set_swaps({ swap = true, compose = true, apple = { { vendor_id = 1452, product_id = 832 } } })
+    t.eq(m.k.set_swaps({ swap = false, compose = false, apple = { { vendor_id = 1452, product_id = 832 } } }), true)
+    local p = profile(m)
+    t.eq(swaps_of(p.simple_modifications), {})
+    t.eq(swaps_of(p.devices[1].simple_modifications), {})
+    t.eq(p.complex_modifications.rules[1].manipulators, json.decode(SWAP_RULE).rules[1].manipulators)
+end)
+
+t.test("a swap of yours stays, and only the keys it leaves are tide's", function()
+    local config = json.decode(EMPTY_CONFIG)
+    config.profiles[1].simple_modifications = { { from = { key_code = "caps_lock" }, to = { { key_code = "escape" } } } }
+    local m = machine(with_assets(json.encode(config)))
+    t.eq(m.k.set_swaps({ swap = true, compose = true, apple = {} }), true)
+    t.eq(swaps_of(profile(m).simple_modifications).caps_lock, "escape")
+    t.eq(m.k.set_swaps({ swap = false, compose = false, apple = {} }), true)
+    t.eq(swaps_of(profile(m).simple_modifications), { caps_lock = "escape" }, "yours, left alone")
+end)
+
+t.test("the swap's place is kept, so the rules aren't rewritten at each start", function()
+    local m = swap_machine({ [karabiner.SWAP_KEY] = true })
+    m.k.check()
+    t.eq(profile(m).complex_modifications.rules[1].manipulators[1].from.modifiers.mandatory, { "left_command" })
+end)
+
+t.test("without Karabiner's settings there's nowhere to swap", function()
+    local m = machine({})
+    t.eq(m.k.has_config(), false)
+    local ok, why = m.k.set_swaps({ swap = true })
+    t.eq(ok, nil)
+    t.eq(why, karabiner.NO_CONFIG)
+end)
+
+-- karabiner_cli --list-connected-devices, trimmed.
+local DEVICES = json.encode({
+    { device_identifiers = { vendor_id = 1452, product_id = 832, is_keyboard = true }, is_apple = true, is_built_in_keyboard = true },
+    { device_identifiers = { vendor_id = 1452, product_id = 832, is_pointing_device = true }, is_apple = true },
+    { device_identifiers = { vendor_id = 1133, product_id = 50503, is_keyboard = true } },
+    { device_identifiers = { vendor_id = 76, product_id = 615, is_keyboard = true }, is_apple = true },
+    { device_identifiers = { vendor_id = 5824, product_id = 10203, is_keyboard = true, is_virtual_device = true } },
+})
+
+t.test("Apple's keyboards are picked from Karabiner's list and kept while they're away", function()
+    local m = machine({})
+    t.eq(m.k.apple_keyboards(DEVICES), {
+        { vendor_id = 1452, product_id = 832 },
+        { vendor_id = 76, product_id = 615 },
+    })
+    local later = json.encode({ { device_identifiers = { vendor_id = 1452, product_id = 641, is_keyboard = true }, is_apple = true } })
+    t.eq(#m.k.apple_keyboards(later), 3)
+    t.eq(#m.k.apple_keyboards(nil), 3, "no list: the ones seen")
+    t.eq(#m.k.apple_keyboards("list-connected-devices error:"), 3)
+    t.eq(#m.logs > 0, true, "said")
+end)
+
+t.test("tide's own rule, copied for Karabiner's swap, still reads as complete", function()
+    local keys = require("tide.keys")
+    local file = read_file("hammerspoon/tide/karabiner/tide.json")
+    local m = machine(with_assets(EMPTY_CONFIG, { ["tide.json"] = file }))
+    m.k.check()
+    t.eq(m.k.set_swaps({ swap = true, apple = {} }), true)
+    local read = function(path)
+        return m.files[path]
+    end
+    t.eq(keys.rule_gaps(read, HOME, json.decode, true), {})
+    local copy = profile(m).complex_modifications.rules[1]
+    t.eq(keys.unswap(copy).manipulators, json.decode(file).rules[1].manipulators, "the file's rule again")
 end)
 
 t.done("karabiner")

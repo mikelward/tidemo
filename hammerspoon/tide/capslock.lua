@@ -157,7 +157,7 @@ local function key(m)
 end
 M.key = key
 
--- `list` with what tide manages brought to `want` ({ caps, pc }): each
+-- `list` with what tide manages brought to `want` ({ caps, pc, karabiner }): each
 -- wanted entry added where its key isn't mapped yet, and each unwanted one
 -- that tide added (`owned`, a set of M.key) taken out, so a mapping that
 -- was never tide's is left alone, the same one included. Returns the new
@@ -166,7 +166,9 @@ M.key = key
 -- already as wanted: macOS gives a mapping only to the keyboards there when
 -- it's set, so one that came later, Karabiner's virtual keyboard after a
 -- login, a wake or a restart of Karabiner, has none until it's set again,
--- though reading it back says it's there.
+-- though reading it back says it's there. With `karabiner`, Karabiner
+-- swaps the modifiers itself, so the swap's entries go, whoever added them:
+-- left in, they would swap every key Karabiner sends a second time.
 function M.desired(list, want, owned)
     local wanted = {}
     if want.caps then
@@ -182,8 +184,12 @@ function M.desired(list, want, owned)
         is_wanted[key(e)] = true
     end
     local out, added, dropped = {}, {}, {}
+    local swap = {}
+    for _, e in ipairs(M.ROTATION) do
+        swap[key(e)] = true
+    end
     for _, m in ipairs(list) do
-        if owned[key(m)] and not is_wanted[key(m)] then
+        if (owned[key(m)] or (want.karabiner and swap[key(m)])) and not is_wanted[key(m)] then
             dropped[#dropped + 1] = m
         else
             out[#out + 1] = m

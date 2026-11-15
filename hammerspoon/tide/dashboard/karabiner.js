@@ -24,9 +24,53 @@ export function label(description) {
   return cut > 0 ? description.slice(0, cut) : description;
 }
 
+// The modifier swap of tide's PC keyboard type (SPEC.md §7.1), as
+// Karabiner's key codes: each key as a PC keyboard sends it, in the Ctrl,
+// Win and Alt spots, to the key it acts as, Command, Option and Control.
+// The generic names are for a rule's modifiers.
+export const SWAP = {
+  left_control: "left_command", left_command: "left_option", left_option: "left_control",
+  right_control: "right_command", right_command: "right_option", right_option: "right_control",
+  control: "command", command: "option", option: "control",
+};
+// An Apple keyboard's own swap to the same keys by spot: its control sits
+// where Ctrl does, its option where Win does and its command where Alt does.
+export const APPLE_SWAP = {
+  left_control: "left_command", left_option: "left_option", left_command: "left_control",
+  right_control: "right_command", right_option: "right_option", right_command: "right_control",
+};
+// The key Caps Lock sends as tide's Compose (capslock.lua).
+export const COMPOSE = { caps_lock: "f18" };
+
+const swapName = (v) => (typeof v === "string" && Object.hasOwn(SWAP, v) ? SWAP[v] : v);
+
+// `rule` as it reads once Karabiner swaps the modifiers itself: a rule file
+// names the keys a PC keyboard sends, as macOS's mapping wants, where
+// Karabiner runs its rules after its own swap. Each key code and modifier
+// in it is swapped, in what the rule takes and what it sends: what it sent
+// was swapped by macOS after it. A copy; the rest is as it was.
+export function swapRule(rule) {
+  const walk = (v) => {
+    if (Array.isArray(v)) return v.map(walk);
+    if (!isObject(v)) return v;
+    const out = {};
+    for (const [k, x] of Object.entries(v)) {
+      if (k === "key_code") out[k] = swapName(x);
+      else if (k === "modifiers" && (typeof x === "string" || Array.isArray(x))) out[k] = Array.isArray(x) ? x.map(swapName) : swapName(x);
+      else if (k === "modifiers" && isObject(x)) {
+        out[k] = {};
+        for (const [kind, list] of Object.entries(x)) out[k][kind] = Array.isArray(list) ? list.map(swapName) : swapName(list);
+      } else out[k] = walk(x);
+    }
+    return out;
+  };
+  return walk(rule);
+}
+
 // The rules in `files`, a list of { name, text }: each { file, title,
 // description, label, rule }, and what's wrong with any file, by name.
-export function assetRules(files) {
+// With `swap`, each rule as swapRule gives it, as Karabiner should run it.
+export function assetRules(files, swap) {
   const rules = [];
   const errors = [];
   for (const f of Array.isArray(files) ? files : []) {
@@ -51,7 +95,7 @@ export function assetRules(files) {
         errors.push(`${f.name} repeats the rule "${label(rule.description)}"`);
         continue;
       }
-      rules.push({ file: f.name, title: typeof parsed.title === "string" ? parsed.title : "", description: rule.description, label: label(rule.description), rule });
+      rules.push({ file: f.name, title: typeof parsed.title === "string" ? parsed.title : "", description: rule.description, label: label(rule.description), rule: swap ? swapRule(rule) : rule });
     }
   }
   return { rules, errors };
@@ -162,6 +206,21 @@ export function withRule(configText, rules, description, on, order) {
   return { text: text(p.config) };
 }
 
+// karabiner.json's text with every copy of the rule named `description`
+// taken out, whether or not a file has it: { text }, no text when there was
+// none. Or an { error }.
+export function withoutRule(configText, description) {
+  const p = parse(configText);
+  if (p.error) return p;
+  const r = profileRules(p.config);
+  if (r.error) return r;
+  const n = r.list.length;
+  for (let i = r.list.length - 1; i >= 0; i--) {
+    if (isObject(r.list[i]) && r.list[i].description === description) r.list.splice(i, 1);
+  }
+  return r.list.length === n ? {} : { text: text(p.config) };
+}
+
 // karabiner.json brought up to date with the rule files: every copy that
 // differs from its file replaced in place, and every rule not in `seen`
 // that's off turned on, once, so a new rule from conf starts on and one you
@@ -216,4 +275,109 @@ export function synced(configText, rules, seen, order, superFile, superPrefixes,
     text: updated.length + enabled.length + replaced.length > 0 ? text(p.config) : null,
     updated, enabled, replaced: replaced.map(label), super: replaced.length > 0 && superRule ? superRule.label : undefined,
   };
+}
+
+// The selected profile in parsed karabiner.json `config`, or an { error }.
+function selectedProfile(config) {
+  if (!isObject(config) || !Array.isArray(config.profiles) || config.profiles.length === 0) {
+    return { error: "karabiner.json has no profiles" };
+  }
+  const profile = config.profiles.find((p) => isObject(p) && p.selected === true) ?? config.profiles[0];
+  return isObject(profile) ? { profile } : { error: "karabiner.json's profile isn't an object" };
+}
+
+// A key swap in a simple_modifications list: its from key, and its one to
+// key, or undefined for anything else.
+const fromKey = (e) => (isObject(e) && isObject(e.from) && typeof e.from.key_code === "string" ? e.from.key_code : undefined);
+const toKey = (e) => (isObject(e) && Array.isArray(e.to) && e.to.length === 1 && isObject(e.to[0]) ? e.to[0].key_code : undefined);
+const entry = (from, to) => ({ from: { key_code: from }, to: [{ key_code: to }] });
+
+// `list` brought to `want` ({ from: to }), where each of tide's entries is
+// `owned` as prefix + from: tide's entries no longer wanted, or wanted to
+// another key, go; a wanted key not swapped yet is added and tide's. One
+// swapped by you is yours and left alone. Gives the keys tide owns now.
+function bring(list, want, owned, prefix) {
+  const now = [];
+  for (let i = list.length - 1; i >= 0; i--) {
+    const from = fromKey(list[i]);
+    if (from === undefined || !owned.has(prefix + from)) continue;
+    if (Object.hasOwn(want, from) && toKey(list[i]) === want[from]) now.push(prefix + from);
+    else list.splice(i, 1);
+  }
+  for (const [from, to] of Object.entries(want)) {
+    if (list.some((e) => fromKey(e) === from)) continue;
+    list.push(entry(from, to));
+    now.push(prefix + from);
+  }
+  return now;
+}
+
+const deviceKey = (id) => `device:${id.vendor_id}:${id.product_id}:`;
+const sameDevice = (d, id) =>
+  isObject(d) && isObject(d.identifiers) && d.identifiers.vendor_id === id.vendor_id &&
+  d.identifiers.product_id === id.product_id && d.identifiers.is_keyboard === true && d.identifiers.is_pointing_device !== true;
+
+// karabiner.json's text with tide's key swaps (SPEC.md §7.1) brought to
+// `want`: { swap, compose, apple }, the PC keyboard type's modifier swap,
+// Caps Lock as Compose, and the Apple keyboards seen, each a { vendor_id,
+// product_id }. Karabiner runs these before any rule, for every keyboard,
+// one that comes later included. The swap goes in the profile's
+// simple_modifications, for every keyboard, and each Apple keyboard gets
+// its own in its device entry, which Karabiner uses first. `owned` is the
+// entries tide added before, so it takes out only those. { text, owned }:
+// no text when nothing changed. Or an { error }.
+export function withSwaps(configText, want, owned) {
+  const p = parse(configText);
+  if (p.error) return p;
+  const s = selectedProfile(p.config);
+  if (s.error) return s;
+  const profile = s.profile;
+  const before = JSON.stringify(p.config);
+  const had = new Set(Array.isArray(owned) ? owned : []);
+  const w = isObject(want) ? want : {};
+  if (profile.simple_modifications === undefined) profile.simple_modifications = [];
+  if (!Array.isArray(profile.simple_modifications)) return { error: "karabiner.json's simple_modifications isn't a list" };
+  const all = {};
+  if (w.swap) {
+    for (const k of ["left_control", "left_command", "left_option", "right_control", "right_command", "right_option"]) all[k] = SWAP[k];
+  }
+  if (w.compose) Object.assign(all, COMPOSE);
+  const now = bring(profile.simple_modifications, all, had, "profile:");
+  const apple = w.swap && Array.isArray(w.apple) ? w.apple.filter((id) => isObject(id) && Number.isInteger(id.vendor_id) && Number.isInteger(id.product_id)) : [];
+  if (profile.devices === undefined) profile.devices = [];
+  if (!Array.isArray(profile.devices)) return { error: "karabiner.json's devices isn't a list" };
+  for (const id of apple) {
+    if (!profile.devices.some((d) => sameDevice(d, id))) {
+      profile.devices.push({ identifiers: { is_keyboard: true, product_id: id.product_id, vendor_id: id.vendor_id } });
+    }
+  }
+  for (const d of profile.devices) {
+    if (!isObject(d) || !isObject(d.identifiers)) continue;
+    const id = d.identifiers;
+    const wanted = apple.some((a) => sameDevice(d, a));
+    const prefix = deviceKey(id);
+    const mine = [...had].some((k) => k.startsWith(prefix));
+    if (!wanted && !mine) continue;
+    if (d.simple_modifications === undefined) d.simple_modifications = [];
+    if (!Array.isArray(d.simple_modifications)) continue;
+    now.push(...bring(d.simple_modifications, wanted ? APPLE_SWAP : {}, had, prefix));
+  }
+  const after = JSON.stringify(p.config);
+  return { text: after === before ? undefined : text(p.config), owned: now.sort() };
+}
+
+// The Apple keyboards in `karabiner_cli --list-connected-devices`'s list,
+// parsed: each { vendor_id, product_id }, Karabiner's own keyboard left out.
+export function appleKeyboards(devices) {
+  const out = [];
+  for (const d of Array.isArray(devices) ? devices : []) {
+    if (!isObject(d) || !isObject(d.device_identifiers)) continue;
+    const id = d.device_identifiers;
+    if (id.is_keyboard !== true || id.is_virtual_device === true) continue;
+    if (d.is_apple !== true && d.is_built_in_keyboard !== true) continue;
+    if (!Number.isInteger(id.vendor_id) || !Number.isInteger(id.product_id)) continue;
+    if (out.some((k) => k.vendor_id === id.vendor_id && k.product_id === id.product_id)) continue;
+    out.push({ vendor_id: id.vendor_id, product_id: id.product_id });
+  }
+  return out;
 }

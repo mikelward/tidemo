@@ -92,9 +92,10 @@ M.KARABINER_CHECK = 30
 -- How long after the last device plugged in, or a wake, to set the mouse
 -- and check Karabiner's rules: a KVM brings several at once (SPEC.md §10).
 M.PLUG_DELAY = 1
--- When to set the key mapping again after tide starts, in seconds: at
--- login Karabiner's virtual keyboard can come up after tide, and gets no
--- mapping until it's set again (capslock.desired).
+-- When to bring the key swaps to the settings again after tide starts, in
+-- seconds: at login Karabiner can come up after tide, and without its
+-- settings macOS's mapping reaches its virtual keyboard only once set again
+-- (capslock.desired); with them, an Apple keyboard can show up late.
 M.KEYS_AGAIN = { 10, 60 }
 -- How often to read window titles, and clear the focused window's marks.
 M.ATTENTION_POLL = 2
@@ -167,7 +168,8 @@ end
 -- (keys.rule_gaps), said once each time that changes, so a key that can't
 -- work is flagged rather than silently dead.
 local function check_rule(self)
-    local gaps = self.karabiner and keys.rule_gaps(self.adapter.read, os.getenv("HOME") or "", self.adapter.decode)
+    local gaps = self.karabiner and keys.rule_gaps(self.adapter.read, os.getenv("HOME") or "", self.adapter.decode,
+        self.karabiner_rules ~= nil and self.karabiner_rules.swap)
         or {}
     self.rule_gaps = gaps
     local said = table.concat(gaps, "\n")
@@ -818,23 +820,63 @@ function M.start(config)
             hs.settings.set(capslock.OWNED_KEY, owned)
         end,
     }
-    -- tide's key mapping brought to the settings (capslock.lua): the PC
-    -- keyboard type's rotation, and Caps Lock as Compose once Compose is
-    -- made. A keyboard type set in the files also turns the Mac keyboard
-    -- rule on or off and picks the Super key, once Karabiner's rules are
-    -- read (below); left unset, both stay as they are.
+    -- tide's key swaps brought to the settings (SPEC.md §7.1): the PC
+    -- keyboard type's modifier swap, and Caps Lock as Compose once Compose
+    -- is made. Karabiner's, once it has written its settings: it swaps
+    -- every keyboard, Apple's each by its own spots, before its rules, and
+    -- one that comes later too. macOS's mapping (capslock.lua) only without
+    -- it, since it reaches only the keyboards there when it's set; tide's
+    -- entries there are taken out once Karabiner swaps, or the keys would
+    -- swap twice. An older tide's Apple keyboard reorder rule is taken out,
+    -- and a keyboard type set in the files picks the Super key, once
+    -- Karabiner's rules are read (below); left unset, it stays as it is.
     function self.apply_keys()
-        local pc = self.keyboard_type == "pc"
-        capslock.follow(self.caps_state, { caps = self.compose ~= nil and self.caps_compose, pc = pc },
-            self.adapter.run, self.adapter.log)
-        if self.keyboard_type == nil or not self.karabiner_rules then
+        -- Not before Karabiner's rules are read, below: which of the two
+        -- swaps depends on them, and the wrong one even for a moment could
+        -- swap the keys twice.
+        if not self.keys_ready then
             return
         end
-        local ok, why = self.karabiner_rules.set_mac_keyboards(pc)
+        local pc = self.keyboard_type == "pc"
+        local caps = self.compose ~= nil and self.caps_compose
+        local kr = self.karabiner_rules
+        local in_karabiner = kr ~= nil and kr.has_config()
+        if in_karabiner then
+            capslock.follow(self.caps_state, { caps = false, pc = false, karabiner = true }, self.adapter.run,
+                self.adapter.log)
+            local function swaps(out)
+                local ok, why = kr.set_swaps({ swap = pc, compose = caps, apple = kr.apple_keyboards(out) })
+                if not ok then
+                    self.adapter.log("keyboard swaps: " .. tostring(why))
+                end
+            end
+            -- The Apple keyboards connected, each given its own swap.
+            local started = pc and self.adapter.run(karabiner.CLI, { "--list-connected-devices" }, function(code, err, out)
+                if code ~= 0 then
+                    self.adapter.log("keyboards: karabiner_cli exited " .. tostring(code) .. ": " .. tostring(err))
+                end
+                swaps(code == 0 and out or nil)
+            end)
+            if pc and not started then
+                self.adapter.log("keyboards: couldn't run " .. karabiner.CLI .. ", so only Apple keyboards seen before get their own swap")
+            end
+            if not started then
+                swaps(nil)
+            end
+        else
+            capslock.follow(self.caps_state, { caps = caps, pc = pc }, self.adapter.run, self.adapter.log)
+        end
+        if not kr then
+            return
+        end
+        local ok, why = kr.remove_mac_keyboards()
         if not ok then
             self.adapter.log("keyboard type: " .. tostring(why))
         end
-        local super = self.karabiner_rules.super()
+        if self.keyboard_type == nil then
+            return
+        end
+        local super = kr.super()
         local want = pc and "win" or "option"
         if super ~= "none" and super ~= want then
             settings_hs.choose_super(self, want)
@@ -1135,11 +1177,11 @@ function M.start(config)
         self.adapter.log(why)
         self.adapter.notify(why)
     end
-    -- The keyboard type's Karabiner side, now that its rules are read.
+    -- The keyboard type's swap and Karabiner side, now that its rules are
+    -- read.
+    self.keys_ready = true
     self.apply_keys()
-    -- And the mapping again once Karabiner's virtual keyboard is likely up,
-    -- since at login Karabiner can start after tide, and a mapping reaches
-    -- only the keyboards there when it's set (capslock.desired).
+    -- And again once Karabiner is likely up (M.KEYS_AGAIN).
     for _, delay in ipairs(M.KEYS_AGAIN) do
         self.adapter.after(delay, function()
             self.apply_keys()

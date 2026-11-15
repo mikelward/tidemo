@@ -1581,9 +1581,11 @@ together (§6). tide turns it off (§6.6), and has its own.
   - Option+`, E, I, N and U are dead keys for accents on US layouts
     *(unverified on Dvorak)*.
 - **Decided: Karabiner turns Super+key into a combination nothing else
-  uses** (Ctrl+Option+Command+key), and tide registers that. Karabiner sees
-  the physical key before the rotation (conf `config/karabiner/README.md`),
-  so Option's own meanings stay intact. Depending on Karabiner is accepted,
+  uses** (Ctrl+Option+Command+key), and tide registers that. The rule files
+  name the keys as a PC keyboard sends them, before the swap (conf
+  `config/karabiner/README.md`), so Option's own meanings stay intact. Where
+  Karabiner swaps the modifiers itself, tide copies each rule with the swap
+  applied (below). Depending on Karabiner is accepted,
   but tide must work without it.
   - **tide ships both rules,** in `hammerspoon/tide/karabiner/`: `tide.json` for the Win key
     under the rotation, and `tide-option.json` for left Option without it.
@@ -1616,33 +1618,63 @@ together (§6). tide turns it off (§6.6), and has its own.
   under Keyboard on the macOS page), is Mac unless set: the keys stay
   macOS's.
   - **PC** puts Ctrl, Win and Alt, the three keys left of the space bar,
-    on every keyboard, whatever their caps say: Ctrl acts as Command, Win
-    as Option, Alt as Control, and the right side the same. tide adds the
-    rotation to `hidutil`'s `UserKeyMapping` (`capslock.lua`), as it
-    starts, after a wake or a keyboard plugged in, and as the files
-    change, and takes it out for Mac: only the entries it added, which it
-    keeps in `hs.settings` across reloads, so the same rotation set by
-    something else stays. One change runs at a time, so a later setting
-    can't be written over by an earlier one.
-  - **The mapping is set again each time, even when it reads as set.**
-    macOS gives it only to the keyboards there when it's set; one that
-    comes later gets none, though `--get` still lists it. Karabiner's
-    virtual keyboard, which every key goes through, is one: at login it
-    can come up after tide, and then Ctrl reached apps as Control (no
-    copy or paste) and Karabiner's terminal rule's Option stayed Option
-    (`^[u` for Ctrl+U in kitty). So tide sets it as it starts, 10 s and
-    60 s later (`init.KEYS_AGAIN`), after a wake or a keyboard plugged in,
-    and as the files change.
-  - **A Mac keyboard's keys sit in a different order** (fn, control,
-    option, command), so tide's Karabiner rule `tide-mac-keyboards.json`,
-    in Karabiner's folder only for PC, swaps option and command on the
-    built-in keyboard and Apple's (vendors 1452 and 76) first. Karabiner
-    sees physical keys, before the rotation, so every Karabiner rule then
-    sees Ctrl, Win and Alt as a PC keyboard sends them. Karabiner uses one
-    rule per key, so the rule gives option the Win rule's lone tap too.
-    Without Karabiner
-    a MacBook's keys stay in its own order *(the device match is
-    unverified on a Mac)*.
+    on every keyboard, by where they sit, whatever their caps say: Ctrl
+    acts as Command, Win as Option, Alt as Control, and the right side the
+    same. On an Apple keyboard, control sits where Ctrl does, option where
+    Win does and command where Alt does.
+  - **Karabiner swaps them, once it has written its settings.** tide puts
+    the swap in karabiner.json's `simple_modifications`, which Karabiner
+    runs before any rule, for every keyboard, one that comes later
+    included. macOS's mapping (`hidutil`'s `UserKeyMapping`) reaches only
+    the keyboards there when it's set, and every key goes through
+    Karabiner's virtual keyboard, which can come up after tide. When it
+    did, Ctrl reached apps as Control, so Ctrl+V didn't paste, and the
+    terminal rule's Ctrl+U arrived as Alt+U. Caps Lock as Compose goes
+    there too.
+  - **Each Apple keyboard gets its own swap,** in its device entry, which
+    Karabiner uses before the one for every keyboard: control to Command,
+    option kept as Option, command to Control. Karabiner names a keyboard
+    by its vendor and product, so tide asks `karabiner_cli
+    --list-connected-devices` for the Apple keyboards connected, and keeps
+    each in `hs.settings`, so one that's away keeps its swap. It asks as it
+    starts, 10 s and 60 s later (`init.KEYS_AGAIN`), after a wake or a
+    device plugged in, and as the files change. One it hasn't seen yet gets
+    the PC keyboard's swap, so its option and command act as Alt and Win
+    until then. *(Unverified on a Mac: the command's list, and a keyboard's
+    own swap coming before the one for every keyboard, read from
+    Karabiner's source.)*
+  - **The rules see the keys after the swap.** Karabiner runs its rules
+    after its own swap, so tide copies each rule into karabiner.json with
+    the swap applied (`karabiner.js`'s `swapRule`), to what it takes and
+    what it sends: the Ctrl spot's key is Command to it, and it sends
+    Control+U itself. The rule files still name the keys as a PC keyboard
+    sends them. Which way the swap goes is kept in `hs.settings`, so the
+    copies aren't rewritten at each start.
+  - **tide adds only what's missing and takes out only what it added,**
+    kept in `hs.settings`: a key you swapped yourself in Karabiner stays
+    yours. In macOS's mapping, the swap's entries go whoever added them,
+    since they would swap Karabiner's keys a second time.
+  - **While Karabiner isn't running,** the keys aren't swapped, and tide's
+    settings say Karabiner isn't running (§15).
+  - **Without Karabiner's settings,** tide adds the swap to `hidutil`'s
+    `UserKeyMapping` instead (`capslock.lua`), and takes it out for Mac:
+    only the entries it added, which it keeps in `hs.settings`, so the same
+    swap set by something else stays. It sets it as it starts, 10 s and
+    60 s later, after a wake or a keyboard plugged in, and as the files
+    change, even when it reads as set, since a keyboard that came later
+    has none. One change runs at a time, so a later setting can't be
+    written over by an earlier one. An Apple keyboard's keys stay in its
+    own order.
+  - **Menus show the keys after the swap:** ⌘ for Ctrl, ⌥ for Win and ⌃
+    for Alt, since apps only see what macOS hands them. Copy reads ⌘C and
+    is Ctrl+C. tide's own screens name the keys you press.
+  - **The Apple keyboard reorder rule is gone.** An older tide put
+    `tide-mac-keyboards.json` in Karabiner's folder, a rule that swapped an
+    Apple keyboard's option and command. Only that rule saw its swap, so
+    the other rules took option+key as Alt and command+key as Win:
+    option+E typed an accent instead of Super+E, and command+B in kitty
+    ran Super+B instead of moving back a word. tide takes it out, copy
+    and file.
   - **The Super key follows it,** once it's set: Win for PC, left Option
     for Mac, as the Super key row would set it. Left unset, the row's
     choice stands.
@@ -1839,9 +1871,8 @@ Linux §6.6), all but its `Super+B` and `Super+Shift+B` (below).
     tab (§9) stands in. So does physical right Ctrl+Tab, on a keyboard
     that has a right Ctrl: the rotation makes it Cmd+Tab, and conf's Tab
     rule only takes left Ctrl.
-  - A Mac keyboard's Cmd+Tab doesn't switch apps. `setup-macos` applies
-    the rotation to every keyboard, the built-in one included, so its
-    Command key sends Option.
+  - An Apple keyboard's command+Tab doesn't switch apps either: its
+    command key sits where Alt does, so it's Alt+Tab (§7.1).
   - Without Karabiner, tide doesn't take Ctrl+Tab, since that would take
     every app's next tab. Swap with the master has no key then *(a guess,
     to confirm)*.
@@ -4370,9 +4401,9 @@ Each one names a workaround, or says there is none.
 5. **Dimming inactive windows:** decided (2026-11-04), tide's own, a layer over the
    windows with a hole for the focused one (§5.6), in place of HazeOver.
 6. **Karabiner for Super:** decided, yes (§7.1).
-7. **The built-in keyboard:** decided, the PC keyboard type rotates every
-   keyboard, the built-in one included, with `tide-mac-keyboards.json`
-   putting a Mac keyboard's keys in a PC's order first (§7.1).
+7. **The built-in keyboard:** decided, the PC keyboard type swaps every
+   keyboard by where its keys sit, the built-in one included, in
+   Karabiner's settings, with each Apple keyboard's own swap (§7.1).
 8. **A key to toggle focus follows mouse:** decided, none. The switcher's
    "Focus follows mouse on or off" (§9), `tide.toggle_focus_follows_mouse()`
    from Hammerspoon's console, or `focus_follows_mouse = false` in

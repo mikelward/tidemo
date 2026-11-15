@@ -656,12 +656,48 @@ function M.rule_key(rule)
     return "left_command"
 end
 
+-- Each key a rule names, as its file names it, from the key Karabiner's
+-- modifier swap made it (karabiner.js's SWAP, run backwards): a copy tide
+-- made for that swap reads as its file again.
+M.UNSWAP = {
+    left_command = "left_control", left_option = "left_command", left_control = "left_option",
+    right_command = "right_control", right_option = "right_command", right_control = "right_option",
+    command = "control", option = "command", control = "option",
+}
+
+function M.unswap(v, key)
+    if type(v) == "string" then
+        return (key == "key_code" or key == "modifiers") and M.UNSWAP[v] or v
+    end
+    if type(v) ~= "table" then
+        return v
+    end
+    local out = {}
+    for k, x in pairs(v) do
+        local named = key
+        if k == "key_code" or k == "modifiers" then
+            named = k
+        elseif type(k) == "string" and key == "modifiers" then
+            named = "modifiers"
+        elseif type(k) == "string" then
+            named = nil
+        end
+        out[k] = M.unswap(x, named)
+    end
+    return out
+end
+
 -- What the installed tide rule is missing, as M.RULE_FEATURES' `what`s,
 -- in order; empty if it's up to date or there's no rule (karabiner_ready
 -- says that). Read from karabiner.json, as karabiner_ready reads it.
-function M.rule_gaps(read, home, decode)
+-- `swapped`: Karabiner swaps the modifiers, so tide's copy has the swap in
+-- it (karabiner.lua's swap).
+function M.rule_gaps(read, home, decode, swapped)
     local text = read(home .. "/.config/karabiner/karabiner.json")
     local rule = text and our_rule(decode(text))
+    if rule and swapped then
+        rule = M.unswap(rule)
+    end
     local out = {}
     if not rule then
         return out
