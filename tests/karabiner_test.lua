@@ -751,4 +751,18 @@ t.test("a profile you rename keeps tide's swaps as tide's", function()
     t.eq(m.settings[karabiner.SWAP_OWNED_KEY].A, nil, "the old name's gone")
 end)
 
+t.test("a profile you delete leaves its swaps behind, not on the profile selected next", function()
+    local m = machine(with_assets(TWO_PROFILES, { ["pc-terminal.json"] = SWAP_RULE }))
+    t.eq(m.k.set_swaps({ swap = true, apple = {} }), true)
+    -- A goes, and B, with your own Ctrl swap, is selected.
+    local config = m.files[CONFIG]
+    local b = config:find('{%s*"name": "B"')
+    local text = '{"profiles": [' .. config:sub(b):gsub('"selected": false', '"selected": true')
+    m.files[CONFIG] = text
+    t.eq(m.k.set_swaps({ swap = true, apple = {} }), true)
+    t.eq(swaps_in(m, 1).left_control, "escape", "yours stays")
+    t.eq(m.k.set_swaps({ swap = false, apple = {} }), true)
+    t.eq(swaps_in(m, 1).left_control, "escape", "yours stays when the swap goes")
+end)
+
 t.done("karabiner")
