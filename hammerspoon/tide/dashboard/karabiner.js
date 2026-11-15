@@ -346,9 +346,24 @@ export function withSwaps(configText, want, owned) {
   else if (isObject(owned) && Array.isArray(owned[name])) mine = owned[name];
   else if (isObject(owned)) {
     const names = new Set(p.config.profiles.filter(isObject).map((x) => x.name));
+    // A name gone may be a profile deleted, not this one renamed: only
+    // entries this profile has exactly as tide sets them are taken, so
+    // your own swap of the same key stays yours.
+    const sets = (key) => {
+      const m = /^profile:(.+)$/.exec(key);
+      if (m) {
+        const to = Object.hasOwn(SWAP, m[1]) && !m[1].match(/^(control|command|option)$/) ? SWAP[m[1]] : COMPOSE[m[1]];
+        return Array.isArray(profile.simple_modifications) && profile.simple_modifications.some((e) => fromKey(e) === m[1] && toKey(e) === to);
+      }
+      const d = /^device:(\d+):(\d+):(.+)$/.exec(key);
+      if (!d || !Object.hasOwn(APPLE_SWAP, d[3]) || !Array.isArray(profile.devices)) return false;
+      const id = { vendor_id: Number(d[1]), product_id: Number(d[2]) };
+      return profile.devices.some((x) => sameDevice(x, id) && Array.isArray(x.simple_modifications) &&
+        x.simple_modifications.some((e) => fromKey(e) === d[3] && toKey(e) === APPLE_SWAP[d[3]]));
+    };
     for (const [old, list] of Object.entries(owned)) {
       if (names.has(old) || !Array.isArray(list)) continue;
-      mine = mine.concat(list);
+      mine = mine.concat(list.filter(sets));
       renamed.push(old);
     }
   }
