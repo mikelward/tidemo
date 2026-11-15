@@ -59,12 +59,30 @@ _G.hs = setmetatable({
         return anything()
     end,
 })
+-- The names in the menu bar's middle, standing in for notchbar_hs: whether
+-- they fit is the test's to say.
+local fits = true
+local strips = {}
+package.loaded["tide.notchbar_hs"] = {
+    new = function(_, changed)
+        local strip = { stopped = false, changed = changed }
+        function strip.update()
+            return fits
+        end
+        function strip.stop()
+            strip.stopped = true
+        end
+        strips[#strips + 1] = strip
+        return strip
+    end,
+}
 local tide = require("tide")
+package.loaded["tide.notchbar_hs"] = nil
 
 -- What sync_menubar_item reads of tide: the bar, its position, the wm and
 -- the adapter.
 local function fake_tide(has_bar, position)
-    local self = { logs = {}, notes = {}, shown = {} }
+    local self = { logs = {}, notes = {}, shown = {}, sync_menubar_item = tide.sync_menubar_item }
     self.bar = has_bar and {} or nil
     self.bar_position = position
     self.adapter = {
@@ -148,6 +166,40 @@ t.test("an item macOS won't make is logged and said", function()
     t.eq(self.menubar, nil)
     t.eq(#self.logs, 1)
     t.eq(self.notes, { "Couldn't show the workspaces in the menu bar." })
+end)
+
+t.test("Middle of menu bar draws the names there, with no menu bar item while they fit", function()
+    made, strips, fits = {}, {}, true
+    local self = fake_tide(true, "menubar-middle")
+    tide.sync_menubar_item(self)
+    t.eq(#strips, 1, "the names drawn")
+    t.eq(self.menubar, nil, "and no item")
+    tide.sync_menubar_item(self)
+    t.eq(#strips, 1, "drawn by the same one")
+end)
+
+t.test("names that don't fit in the middle show in the menu bar item until they do", function()
+    made, strips, fits = {}, {}, false
+    local self = fake_tide(true, "menubar-middle")
+    tide.sync_menubar_item(self)
+    t.eq(self.menubar ~= nil, true, "never lost")
+    t.eq(self.menubar.title, "[in] web")
+    local item = self.menubar
+    fits = true
+    strips[1].changed()
+    t.eq(self.menubar, nil, "the front app's menus shrank")
+    t.eq(item.deleted, true)
+end)
+
+t.test("leaving Middle of menu bar stops drawing the names there", function()
+    made, strips, fits = {}, {}, true
+    local self = fake_tide(true, "menubar-middle")
+    tide.sync_menubar_item(self)
+    self.bar_position = "menubar"
+    tide.sync_menubar_item(self)
+    t.eq(strips[1].stopped, true)
+    t.eq(self.notchbar, nil)
+    t.eq(self.menubar ~= nil, true, "the item on the right instead")
 end)
 
 _G.hs = was

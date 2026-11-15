@@ -2067,7 +2067,7 @@ stock keys:
       those icons. Along the bottom the menu bar already shows, so the bar
       leaves it out. A right-click on it opens the Bar page.
   - **Or along the bottom: Tide Settings' Bar page, Position: Top or
-    Bottom** (or Menu bar, below). Top is the default. The Bar page sits after Appearance, as
+    Bottom** (or Menu bar or Middle of menu bar, below). Top is the default. The Bar page sits after Appearance, as
     tide for Linux's does, and holds the Menu bar switch too, with buttons
     for macOS's Menu bar and Dock settings. Its search finds it by "bar",
     "panel", "taskbar", "top", "bottom", "menu bar", "dock", "icons", "status", "tray" and "order". The names
@@ -2157,6 +2157,46 @@ stock keys:
       between the app's menus and the notch, and says nothing. A long list
       of workspaces may vanish under an app with many menus *(unverified
       on a Mac; tide doesn't yet notice)*.
+  - **Or drawn in the menu bar's middle: Position, Middle of menu bar.**
+    No bar, and no menu bar item while the names fit: tide draws the
+    workspaces' names over the menu bar, just left of a MacBook's notch,
+    or in the middle of a plain display's (`notchbar.place`). The app's
+    menus are to their left and the status items to their right, both
+    untouched.
+    - **Drawn as the menu bar draws,** at 13 pt, as tall as the menu bar,
+      in an `hs.canvas` per display at the bar's level over a shown menu
+      bar (`bar.level`). The current one is semibold on a faint pill, an
+      empty one faint, and one wanting attention amber. Names are cut at
+      16 characters as on the bar. A click on one switches to it
+      (`notchbar.hit`); the canvas never takes focus.
+    - **Where the notch is:** NSScreen's `auxiliaryTopLeftArea` and
+      `auxiliaryTopRightArea` (macOS 12 and later) give the menu bar's
+      room either side of it, read through JXA when the displays change
+      (`notchbar.SCREENS_SCRIPT`). Where that fails, a display with a
+      notch by its room gets a 200 pt one, centered *(a guess)*.
+    - **Where the app's menus end:** the front app's `AXMenuBar` items'
+      frames, read through Accessibility on each app switch and every
+      2 s, since an app's menus change without it changing
+      (`notchbar.menus_end`). With Hammerspoon in front (tide's launcher,
+      Settings or the console), the last app's menus stand in, since
+      Accessibility can't ask Hammerspoon about itself without stalling.
+      Menus that can't be read count as no room,
+      so the names never cover them. macOS gives no way to read where other
+      apps' status items start, so on a plain display the names reach no
+      more than 62% across *(a guess)*.
+    - **Never lost:** where the names don't fit on a display, as when an
+      app's menus reach the notch, or a display has no menu bar tide can
+      see (no room kept above its frame, or the menu bar hidden), the
+      menu bar item on the right shows too, until they fit again
+      (`notchbar.enough`, `init.sync_menubar_item`). With Displays have
+      separate Spaces off, a second display has no menu bar, so the item
+      always shows as well. The log says why, once.
+    - **Hidden** under a full-screen window, as the bar is
+      (`bar.hidden`), and on a display with no menu bar of its own.
+    - *(Unverified on a Mac: the colors over a light and a dark wallpaper,
+      since macOS 26 tints the menu bar by the wallpaper and tide goes by
+      Dark Mode; CI's smoke test checks the strip sits over the menu bar,
+      and that the notch and menus read without an error.)*
   - Either way, the workspace's name shows briefly in the middle of the
     screen on each switch, at about the size of macOS's own alerts
     (28 pt), not across the screen.

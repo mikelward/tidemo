@@ -64,6 +64,7 @@ local middlepaste_hs = require("tide.middlepaste_hs")
 local bar = require("tide.bar")
 local selfreload = require("tide.selfreload")
 local bar_hs = require("tide.bar_hs")
+local notchbar_hs = require("tide.notchbar_hs")
 local tray_hs = require("tide.tray_hs")
 local dim_hs = require("tide.dim_hs")
 local names = require("tide.names")
@@ -255,8 +256,22 @@ end
 -- macOS tints to suit the menu bar, then the workspaces' names, and a
 -- click lists them to switch to. Made when it's wanted and removed when
 -- it isn't, so choosing a Position swaps it with the bar at once.
+--
+-- At Middle of menu bar the names are drawn in the menu bar's middle,
+-- beside the notch (notchbar_hs.lua), and the item shows only while they
+-- don't fit there on every display, so they're never lost.
 function M:sync_menubar_item()
-    local wanted = not self.bar or not bar.drawn(self.bar_position)
+    local at = self.bar and bar.position(self.bar_position) or "menubar"
+    if at == "menubar-middle" then
+        self.notchbar = self.notchbar or notchbar_hs.new(self, function()
+            self:sync_menubar_item()
+        end)
+    elseif self.notchbar then
+        self.notchbar.stop()
+        self.notchbar = nil
+    end
+    local drawn = self.notchbar ~= nil and self.notchbar.update()
+    local wanted = not bar.drawn(at) and not drawn
     if not wanted then
         if self.menubar then
             self.menubar:delete()
@@ -1141,8 +1156,8 @@ function M.start(config)
         if self.bar then
             self.bar.update()
         end
-        if self.menubar then
-            self.menubar:setTitle(bar.title(self.wm:bar_state()))
+        if self.menubar or self.notchbar then
+            self:sync_menubar_item()
         end
         self.tray.update()
         self.dim.update()
@@ -1166,6 +1181,11 @@ function M.start(config)
         -- changed.
         if self.bar then
             self.bar.update()
+        end
+        -- The app's menus can grow or shrink without it changing, and the
+        -- names in the menu bar's middle make room or give way.
+        if self.notchbar then
+            self:sync_menubar_item()
         end
     end)
     -- conf's Karabiner rules, switched by the settings window's Keyboard

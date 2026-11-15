@@ -1571,6 +1571,72 @@ if not ok then
     fail("launcher: %s", err)
 end
 
+-- The bar's Position at Middle of menu bar, then Menu bar, then Top again
+-- (SPEC.md §8): the bars go and come back, and in the middle the names are
+-- drawn over each display's menu bar, or else in the menu bar item, with
+-- the notch and the app's menus read without an error.
+local function check_menubar_positions(next)
+    local settings_hs = require("tide.settings_hs")
+    local notchbar = require("tide.notchbar")
+    local function choose(v)
+        local ok, why = settings_hs.choose_bar_position(tide, v, hs.settings)
+        if not ok then
+            fail("Position %s: %s", v, tostring(why))
+        end
+    end
+    local function bars_shown()
+        local n = 0
+        for _, f in pairs(tide.bar.frames()) do
+            if not f.hidden then
+                n = n + 1
+            end
+        end
+        return n
+    end
+    choose("menubar-middle")
+    if bars_shown() ~= 0 then
+        fail("Middle of menu bar: %d bar(s) still up", bars_shown())
+    end
+    if not tide.notchbar then
+        fail("Middle of menu bar: nothing draws the names")
+    else
+        for what, err in pairs(tide.notchbar.failed) do
+            fail("Middle of menu bar: %s: %s", what, err)
+        end
+        local drawn = 0
+        for _, s in ipairs(tide.adapter.screens()) do
+            local c = tide.notchbar.canvases[s.uuid]
+            if notchbar.has_menu_bar(s) and c and c.shown then
+                local f = c.canvas:frame()
+                if math.abs(f.y - s.full.y) > SLACK or math.abs(f.h - (s.area.y - s.full.y)) > SLACK then
+                    fail("Middle of menu bar: at %d,%d %dx%d, not over the menu bar", f.x, f.y, f.w, f.h)
+                end
+                drawn = drawn + 1
+            end
+        end
+        if drawn == 0 and not tide.menubar then
+            fail("Middle of menu bar: the names are neither drawn nor in the menu bar item")
+        end
+        say("Middle of menu bar: drawn on %d display(s), menu bar item %s", drawn, tide.menubar and "shown" or "not shown")
+    end
+    choose("menubar")
+    if tide.notchbar then
+        fail("Menu bar: the names are still drawn in the middle")
+    end
+    if not tide.menubar then
+        fail("Menu bar: no menu bar item")
+    end
+    choose("top")
+    if tide.menubar then
+        fail("Top: the menu bar item stayed")
+    end
+    if bars_shown() == 0 then
+        fail("Top: the bars didn't come back")
+    end
+    say("Position: Middle of menu bar, Menu bar and Top switched")
+    next()
+end
+
 -- The settings window opened on Start at login: that page alone shows,
 -- beside the sidebar's pages under tide's three groups (SPEC.md §15), as
 -- the bundled script draws them in WebKit.
@@ -1722,9 +1788,11 @@ smoke_timer = hs.timer.doAfter(3, function()
         end
         check_failing_helper(function()
             check_settings_page(function()
-                check_screenshot(function()
-                    check_moved_screenshot(function()
-                        wait_for_bar(check_tiling)
+                check_menubar_positions(function()
+                    check_screenshot(function()
+                        check_moved_screenshot(function()
+                            wait_for_bar(check_tiling)
+                        end)
                     end)
                 end)
             end)

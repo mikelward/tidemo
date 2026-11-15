@@ -192,8 +192,9 @@ reloads itself a second after the new copy lands in
 
 To keep macOS's menu bar and drop tide's bar, set Tide Settings › Bar ›
 Position to Menu bar: tide's logo and the workspaces show among the menu
-bar's icons on the right. `tide.start({ bar = false })` does the same
-for good.
+bar's icons on the right, or to Middle of menu bar: the workspaces are
+drawn just left of a MacBook's notch, or in the middle of the menu bar.
+`tide.start({ bar = false })` does the same as Menu bar for good.
 
 A workspace that isn't showing parks its windows off screen, as AeroSpace
 does, so a switch is instant: all but a 1 pt sliver of each goes past a

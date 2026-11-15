@@ -105,6 +105,7 @@ t.test("the position is top unless it's bottom", function()
     t.eq(bar.position(nil), "top", "unset")
     t.eq(bar.position("left"), "top", "anything else")
     t.eq(bar.position("menubar"), "menubar")
+    t.eq(bar.position("menubar-middle"), "menubar-middle")
 end)
 
 -- Position: Menu bar (SPEC.md §8): no bar, and windows tile under macOS's
@@ -113,6 +114,8 @@ t.test("with Position: Menu bar there's no bar, and windows take macOS's whole f
     t.eq(bar.drawn("menubar"), false)
     t.eq(bar.drawn("top"), true)
     t.eq(bar.drawn("bottom"), true)
+    t.eq(bar.drawn("menubar-middle"), false)
+    t.eq(bar.place({ area = { x = 0, y = 24, w = 100, h = 50 } }, 36, nil, "menubar-middle").h, 0, "no strip in the middle either")
     t.eq(bar.keeps_off_top(true, true, "menubar"), false, "a hidden menu bar slides in over nothing of tide's")
     local s = { area = { x = 0, y = 24, w = 1920, h = 1056 }, full = { x = 0, y = 0, w = 1920, h = 1080 }, menu_bar = true }
     local strip, area = bar.place(s, 36, 68, "menubar")
