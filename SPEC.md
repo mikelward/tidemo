@@ -885,7 +885,7 @@ These work as on tide for Linux (tide for Linux §6.3), on the same workspace:
 **Which windows cast a shadow is tide's `shadows` in appearance.json**
 (tide for Linux §6.2's Borders page): none, floating windows, the focused
 window, or all, the focused one by default; `shadowSize` is how far it
-reaches, 8 px by default. Tide Settings' Appearance page steps
+reaches, 16 px by default. Tide Settings' Appearance page steps
 through the same four choices, writing appearance.local.json, and a bad
 value is logged, naming the setting (`shadow.load`).
 

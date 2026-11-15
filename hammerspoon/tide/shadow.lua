@@ -12,7 +12,7 @@ local M = {}
 -- SHADOW_SIZE_MAX.
 M.MODES = { none = true, floating = true, focused = true, all = true }
 M.DEFAULT = "focused"
-M.SIZE = 8
+M.SIZE = 16
 M.SIZE_MAX = 32
 M.SHARED_FILE = "appearance.json"
 M.LOCAL_FILE = "appearance.local.json"
