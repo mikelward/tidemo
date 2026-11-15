@@ -21,14 +21,26 @@ local M = {}
 M.HEIGHT = 36
 
 -- Which edge the bar runs along: the Bar page's Position row, kept in
--- hs.settings under POSITION_KEY, top unless set (SPEC.md §8). The names
--- are tide for Linux's appearance.json `barPosition`'s.
-M.POSITIONS = { "top", "bottom" }
+-- hs.settings under POSITION_KEY, top unless set (SPEC.md §8). "top" and
+-- "bottom" are tide for Linux's appearance.json `barPosition`'s; "menubar"
+-- is the Mac's own: no bar, and the workspaces in macOS's menu bar.
+M.POSITIONS = { "top", "bottom", "menubar" }
 M.POSITION_KEY = "tide.bar_position"
 
--- A stored position as one of M.POSITIONS: anything but "bottom" is top.
+-- A stored position as one of M.POSITIONS: anything else is top.
 function M.position(v)
-    return v == "bottom" and "bottom" or "top"
+    for _, p in ipairs(M.POSITIONS) do
+        if v == p then
+            return p
+        end
+    end
+    return "top"
+end
+
+-- Whether a bar at position `at` is drawn: not for "menubar", where the
+-- workspaces show in macOS's menu bar instead.
+function M.drawn(at)
+    return M.position(at) ~= "menubar"
 end
 
 -- The status icons the Bar page lists, in the bar's order unless you
@@ -216,6 +228,11 @@ end
 -- notch keep their room, and `floor` doesn't apply.
 function M.place(s, h, floor, at)
     local area = s.area
+    -- No bar: an empty strip at the top, and the whole area for windows,
+    -- under macOS's menu bar.
+    if at == "menubar" then
+        return { x = area.x, y = area.y, w = area.w, h = 0 }, area
+    end
     if at == "bottom" then
         local rest = math.max(0, area.h - h)
         return { x = area.x, y = area.y + rest, w = area.w, h = math.min(h, area.h) },
@@ -295,9 +312,10 @@ end
 -- slides in at the top edge. With it shown, as tide's installer sets it,
 -- moving the pointer there does nothing, and moving it down on every move
 -- along the top only made the pointer drag. A bar along the bottom (`at`)
--- isn't in the menu bar's way, so it's never needed there.
+-- isn't in the menu bar's way, so it's never needed there, nor with no bar
+-- ("menubar").
 function M.keeps_off_top(keep, hides, at)
-    return at ~= "bottom" and keep ~= false and hides == true
+    return M.position(at) == "top" and keep ~= false and hides == true
 end
 
 -- A rate limit for the pointer's moves over the bar (SPEC.md §8), so each

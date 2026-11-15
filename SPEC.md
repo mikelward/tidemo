@@ -2067,7 +2067,7 @@ stock keys:
       those icons. Along the bottom the menu bar already shows, so the bar
       leaves it out. A right-click on it opens the Bar page.
   - **Or along the bottom: Tide Settings' Bar page, Position: Top or
-    Bottom.** Top is the default. The Bar page sits after Appearance, as
+    Bottom** (or Menu bar, below). Top is the default. The Bar page sits after Appearance, as
     tide for Linux's does, and holds the Menu bar switch too, with buttons
     for macOS's Menu bar and Dock settings. Its search finds it by "bar",
     "panel", "taskbar", "top", "bottom", "menu bar", "dock", "icons", "status", "tray" and "order". The names
@@ -2133,12 +2133,30 @@ stock keys:
       uses the app's menus or other apps' status items, at the cost of the
       menu bar's height. The top keeps the most room and looks like tide
       for Linux.
-  - **Option 2 stays as the fallback,** with `bar = false` in `start()`: a
+  - **Option 2 stays, as the Bar page's third Position, Menu bar,** and
+    with `bar = false` in `start()`: a
     menu bar item draws tide's logo, as a template image macOS tints for a
     light or dark menu bar, then the workspaces' names as text, current,
     occupied, and wanting attention, with no app icons. Its tooltip says
-    tide. A click switches. It sits on the right, since
-    the menu bar's left side is the Apple menu and the app's menus.
+    tide. A click lists the workspaces to switch to. It sits on the right,
+    since the menu bar's left side is the Apple menu and the app's menus;
+    Cmd-drag moves it among the other icons there, and nothing lets an app
+    put one in the middle.
+    - **Choosing it** swaps the bars for the item at once, with no reload
+      (`settings_hs.choose_bar_position`, `init.sync_menubar_item`), and
+      windows tile in macOS's whole frame, under the menu bar
+      (`bar.place` with `"menubar"`). The name is the Mac's own, since
+      Linux has no menu bar; the Bar page adds it to tide for Linux's
+      Top and Bottom, and hides its Icons and Menu bar sections, which are
+      the bar's.
+    - **What's lost** is what the bar alone draws: tide's clocks, its status
+      icons, the title, the Apple logo's menu and the switcher's logo.
+      macOS's own clock and status items stay. The Dock and menu bar
+      notices (`checklist.DOCK_NOTICE`, `MENU_BAR_NOTICE`) don't apply.
+    - **On a notched display,** macOS hides a status item that doesn't fit
+      between the app's menus and the notch, and says nothing. A long list
+      of workspaces may vanish under an app with many menus *(unverified
+      on a Mac; tide doesn't yet notice)*.
   - Either way, the workspace's name shows briefly in the middle of the
     screen on each switch, at about the size of macOS's own alerts
     (28 pt), not across the screen.

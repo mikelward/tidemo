@@ -278,6 +278,16 @@ t.test("a Bar choice is kept and places the bars and tiles again at once", funct
     t.eq(why, "the bar can't go along left")
     t.eq(stored[bar.POSITION_KEY], "bottom", "nothing changed")
     t.eq(logged, { "settings: the bar can't go along left" })
+    -- Menu bar swaps the bar for the menu bar item, at once.
+    did, said = {}, {}
+    function tide:sync_menubar_item()
+        did[#did + 1] = "menu bar item for " .. self.bar_position
+    end
+    t.eq(settings_hs.choose_bar_position(tide, "menubar", store), true)
+    t.eq(stored[bar.POSITION_KEY], "menubar")
+    t.eq(tide.wm.bar_position, "menubar")
+    t.eq(did, { "place", "menu bar item for menubar", "retile" })
+    t.eq(said, {}, "a Dock that hides at the bottom covers nothing of tide's")
 end)
 
 t.test("the Bar page's icons are kept whole and drawn at once", function()

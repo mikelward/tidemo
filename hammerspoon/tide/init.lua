@@ -10,7 +10,8 @@
 -- make on the settings window's Floating page and the built-in ones
 -- (tide/rules.lua, floating.lua), and `keep_focus` names more apps, by bundle ID,
 -- that keep focus while they're in front. `bar = false` leaves out the bar
--- along the top and shows the workspaces in the menu bar instead.
+-- along the top and shows the workspaces in the menu bar instead, as the
+-- settings window's Bar page's Position: Menu bar does.
 -- `swipe = false` turns off the three-finger swipe between workspaces,
 -- and `compose = false` Caps Lock as Compose.
 -- `workspaces` names the standing workspaces, always listed and never
@@ -249,6 +250,48 @@ local function check_karabiner_rules(self)
     end
 end
 
+-- The workspaces in macOS's menu bar, with no bar or with the bar's
+-- Position at Menu bar (SPEC.md §8): tide's logo, as a template image
+-- macOS tints to suit the menu bar, then the workspaces' names, and a
+-- click lists them to switch to. Made when it's wanted and removed when
+-- it isn't, so choosing a Position swaps it with the bar at once.
+function M:sync_menubar_item()
+    local wanted = not self.bar or not bar.drawn(self.bar_position)
+    if not wanted then
+        if self.menubar then
+            self.menubar:delete()
+            self.menubar = nil
+        end
+        return
+    end
+    if not self.menubar then
+        self.menubar = hs.menubar.new()
+        if not self.menubar then
+            self.adapter.log("bar: macOS didn't make the workspaces' menu bar item")
+            self.adapter.notify("Couldn't show the workspaces in the menu bar.")
+            return
+        end
+        local logo = self.adapter.logo(brand.TEMPLATE)
+        if logo then
+            self.menubar:setIcon(logo, true)
+        end
+        self.menubar:setTooltip(brand.NAME)
+        self.menubar:setMenu(function()
+            local items = {}
+            for _, n in ipairs((self.wm:listed())) do
+                items[#items + 1] = {
+                    title = n,
+                    fn = function()
+                        self.wm:act("show", n)
+                    end,
+                }
+            end
+            return items
+        end)
+    end
+    self.menubar:setTitle(bar.title(self.wm:bar_state()))
+end
+
 -- What `tide doctor` (SPEC.md §15) checks so far: Accessibility,
 -- Karabiner and tide's rule, and LinearMouse. Each problem is one line, with what it costs and
 -- the fix; with none, one line saying so. From Hammerspoon's console, or
@@ -266,7 +309,7 @@ function M.doctor()
         middle_paste = M.middle_paste_on == true,
         pictures = M.overview_pictures == true,
         screen_recording = recording,
-        menu_bar_hidden = M.bar ~= nil and M.bar_position ~= "bottom" and hides ~= nil and hides(),
+        menu_bar_hidden = M.bar ~= nil and M.bar_position == "top" and hides ~= nil and hides(),
         dock_covers = M.bar ~= nil and M.adapter ~= nil and M.adapter.dock ~= nil
             and checklist.dock_covers(M.bar_position, M.adapter.dock()),
     })) do
@@ -1088,45 +1131,24 @@ function M.start(config)
     -- bar on or off (SPEC.md §6.7).
     self.tray = tray_hs.new(self)
     -- The workspaces, in the bar or else in the menu bar, and the name
-    -- shown on each switch (SPEC.md §8).
+    -- shown on each switch (SPEC.md §8). The bar's Position can be Menu
+    -- bar, which swaps one for the other with no reload
+    -- (settings_hs.choose_bar_position, M:sync_menubar_item).
     if config.bar ~= false then
         self.bar = bar_hs.new(self)
-        self.wm.on_change = function()
-            self.bar.update()
-            self.tray.update()
-            self.dim.update()
-            self.publish_workspace()
-        end
-    else
-        self.menubar = hs.menubar.new()
-        -- tide's logo before the workspaces, tinted by macOS to suit the
-        -- menu bar, and tide as its tooltip.
-        local logo = self.adapter.logo(brand.TEMPLATE)
-        if logo then
-            self.menubar:setIcon(logo, true)
-        end
-        self.menubar:setTooltip(brand.NAME)
-        self.wm.on_change = function()
-            if self.menubar then
-                self.menubar:setTitle(bar.title(self.wm:bar_state()))
-            end
-            self.tray.update()
-            self.dim.update()
-            self.publish_workspace()
-        end
-        self.menubar:setMenu(function()
-            local items = {}
-            for _, n in ipairs((self.wm:listed())) do
-                items[#items + 1] = {
-                    title = n,
-                    fn = function()
-                        self.wm:act("show", n)
-                    end,
-                }
-            end
-            return items
-        end)
     end
+    self.wm.on_change = function()
+        if self.bar then
+            self.bar.update()
+        end
+        if self.menubar then
+            self.menubar:setTitle(bar.title(self.wm:bar_state()))
+        end
+        self.tray.update()
+        self.dim.update()
+        self.publish_workspace()
+    end
+    self:sync_menubar_item()
     -- Super+Shift+M, with the bar on or off.
     self.wm.toggle_mic = function()
         bar_hs.toggle_mic(self.adapter.log)
@@ -1255,7 +1277,7 @@ function M.start(config)
     check_karabiner_rules(self)
     choose_super(self, true)
     check_linearmouse(self)
-    if self.bar and self.bar_position ~= "bottom" and self.adapter.hides_menu_bar and self.adapter.hides_menu_bar() then
+    if self.bar and self.bar_position == "top" and self.adapter.hides_menu_bar and self.adapter.hides_menu_bar() then
         self.adapter.notify(checklist.MENU_BAR_NOTICE)
     end
     if self.bar and checklist.dock_covers(self.bar_position, self.adapter.dock()) then

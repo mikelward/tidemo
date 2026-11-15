@@ -297,14 +297,15 @@ function M.choose_super(tide, value)
     return nil, why
 end
 
--- Put the bar along `value`'s edge ("top" or "bottom"), the Bar page's
--- Position row: kept in `store` (hs.settings) as tide's own, and followed
--- at once, the bars placed again and the windows tiled beside them, with
+-- Put the bar along `value`'s edge ("top" or "bottom"), or swap it for the
+-- workspaces in macOS's menu bar ("menubar"), the Bar page's Position row:
+-- kept in `store` (hs.settings) as tide's own, and followed at once, the
+-- bars placed again or removed and the windows tiled beside them, with
 -- no reload. Choosing Bottom with the Dock hiding itself there says it
 -- will slide over the bar (checklist.dock_covers). Returns true, or nil and
 -- why, which the log keeps.
 function M.choose_bar_position(tide, value, store)
-    if value ~= "top" and value ~= "bottom" then
+    if bar.position(value) ~= value then
         local why = "the bar can't go along " .. tostring(value)
         tide.adapter.log("settings: " .. why)
         return nil, why
@@ -318,6 +319,9 @@ function M.choose_bar_position(tide, value, store)
     end
     if tide.bar then
         tide.bar.update()
+    end
+    if tide.sync_menubar_item then
+        tide:sync_menubar_item()
     end
     if tide.wm then
         tide.wm:retile()
