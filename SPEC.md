@@ -4036,6 +4036,12 @@ Each one names a workaround, or says there is none.
     - Power: the battery's level and what it's doing, as the bar's hover
       says it, or that the Mac has none. Low Power Mode needs an
       administrator's `pmset`, so it stays in Battery settings.
+    - tide for Linux's On AC power and On battery (its SPEC.md §16,
+      `onAC` and `onBattery` in `power.json`) are `pmset`'s, set by
+      `setup-macos` as it runs, not here (maintainer, 2026-11-16): Power
+      saver is Low Power Mode, Balanced Automatic and Performance High
+      Power where the Mac has it *(unverified: `powermode 2`)*. A change
+      to them waits for the next setup.
     - The pages read every 5 s while the window's open, so they follow
       the battery and the network with the bar off too, and again two
       seconds after the switch, as Wi-Fi takes a moment. A VPN is told as
