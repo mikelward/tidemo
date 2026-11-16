@@ -33,6 +33,19 @@ t.test("reads hidutil's mapping, none or some", function()
     t.eq(why:find("without a source and destination", 1, true) ~= nil, true, why)
 end)
 
+-- macOS 26's hidutil: a table, one row per keyboard.
+t.test("reads macOS 26's table of keyboards, none or some", function()
+    t.eq(capslock.parse("RegistryID  Key                   Value\n100000a4e   UserKeyMapping   (null)\n"
+        .. "100000b12   UserKeyMapping   (null)\n"), {})
+    t.eq(capslock.parse("RegistryID  Key                   Value\n"), {})
+    local rows = "RegistryID  Key                   Value\n100000a4e   UserKeyMapping   " .. ROTATION
+        .. "100000b12   UserKeyMapping   (null)\n100000c01   UserKeyMapping   " .. ROTATION
+    t.eq(capslock.parse(rows), {
+        { src = 0x7000000E0, dst = 0x7000000E3 },
+        { src = 0x7000000E3, dst = 0x7000000E2 },
+    }, "each entry once, whichever keyboard has it")
+end)
+
 t.test("adds Caps Lock to F18 to what's there, and leaves a Caps Lock already mapped", function()
     local rotation = capslock.parse(ROTATION)
     local new = capslock.with_compose(rotation)
