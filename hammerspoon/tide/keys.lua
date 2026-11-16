@@ -98,7 +98,6 @@ M.APPS = {
     { name = "irc", key = "i", does = "IRC", spec = { run = "irc", fallback = { "com.apple.MobileSMS" } } },
     { name = "meet", key = "m", does = "Google Meet", spec = { run = "google-meet" } },
     { name = "notepad", key = "n", does = "Notepad", spec = { run = "notepad", fallback = { "com.apple.TextEdit" } } },
-    { name = "remote_desktop", key = "r", does = "Remote desktop", spec = { run = "remote-desktop" } },
     { name = "music", key = "y", does = "YouTube Music", spec = { run = "youtube-music", home_app = true,
         fallback = { "com.apple.Music", "com.apple.iTunes" } } },
     { name = "files", key = "e", does = "Files", spec = { run = "kitty -e yazi" } },
