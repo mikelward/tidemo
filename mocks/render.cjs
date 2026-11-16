@@ -158,6 +158,20 @@ const STATES = [
   },
 ];
 
+// The Bar page's layout (SPEC.md §8): the workspaces centered and the
+// title at the left; then, narrower, with a right side wider than its
+// half, so the workspaces move over to clear it and the title gives way.
+const LAYOUT = [
+  { id: "logo", zone: "left", shown: true },
+  { id: "title", zone: "left", shown: true },
+  { id: "workspaces", zone: "center", shown: true },
+  { id: "icons", zone: "right", shown: true },
+];
+STATES.push(
+  { name: "bar-layout", width: 1440, state: { ...STATES[0].state, barLayout: LAYOUT } },
+  { name: "bar-layout-crowded", width: 1100, state: { ...STATES[0].state, barLayout: LAYOUT } },
+);
+
 // Hover, as tide tells the page where the pointer is: over an item's
 // edge, so the mock shows its whole target, in light and dark.
 const HOVER = {

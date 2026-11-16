@@ -20,12 +20,41 @@ body {
   background: var(--bar);
   overflow: hidden;
 }
-/* tide's logo, then the chips: tileco's #logo styles place and color it.
-   A click opens the switcher, as Super+Space does. */
-#left {
+/* The bar's three zones (SPEC.md §8): left from the bar's left edge, right
+   ending at its right edge, each as wide as what it holds, and center on
+   the bar's true middle, which bar.js moves over only as far as it must to
+   clear the sides. The sides never shrink: only the title gives way. Each
+   holds its items in order (bar.js's arrange); an item that's off, or has
+   nothing to show, waits in #unplaced. */
+.bar-zone {
   display: flex;
   align-items: center;
 }
+#left,
+#right {
+  flex: none;
+}
+#center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+}
+#unplaced {
+  display: none;
+}
+/* Items in a zone sit 8px apart, as tide's (its barlayout.mjs's GAP); the
+   logo keeps tileco's own 4px from the chips (#logo + nav). */
+.bar-zone > .item-start:not(:first-child):not(#logo + nav) {
+  margin-left: 8px;
+}
+/* The status icons' parts sit 2px apart, as the icons do. */
+#icons-lead + #clocks,
+#clocks + #icons {
+  margin-left: 2px;
+}
+/* tide's logo, then the chips: tileco's #logo styles place and color it.
+   A click opens the switcher, as Super+Space does. */
 #logo svg {
   display: block;
 }
@@ -190,6 +219,13 @@ nav > button:first-child::after,
 #title {
   z-index: 0;
 }
+/* In a zone, tileco's centering is the zone's. As specific as tileco's
+   `.bar:not(.zoned) #title`, and after it, so it wins. */
+.bar .bar-zone > #title {
+  position: relative;
+  left: auto;
+  transform: none;
+}
 /* From the chip's border edge, not its padding's. */
 nav > button::before,
 nav > button::after {
@@ -235,12 +271,7 @@ nav button .app.none.win:hover {
 /* The clocks pad their sides as a status icon does, and sit the icons' gap
    from them, so each target shows on hover with the same room around its
    content: the clocks' inner end reaches no further than their box. */
-#right {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-#right #clocks {
+#bar #clocks {
   padding: 0 6px;
 }
 /* Turned off on the Bar page: hidden, over the launcher's display: flex. */
@@ -321,16 +352,17 @@ nav button .app.none.win:hover {
 </head>
 <body>
 <header class="bar" id="bar">
-<div id="left">
+<div id="left" class="bar-zone">
 <button type="button" id="apple" aria-label="Apple menu" data-tip="Apple menu"></button><button type="button" id="logo" aria-label="Switcher"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.75 6.25q2.083-2 4.167 0t4.166 0t4.167 0"/><path d="M1.75 10.75q2.083-2 4.167 0t4.166 0t4.167 0"/></svg></button>
 <nav id="workspaces" aria-label="Workspaces"></nav>
 </div>
-<span id="title"><span id="title-text"></span></span>
-<div id="right">
+<div id="center" class="bar-zone"><span id="title"><span id="title-text"></span></span></div>
+<div id="right" class="bar-zone">
 <div id="icons-lead"></div>
 <ol id="clocks"></ol>
 <div id="icons"></div>
 </div>
+<div id="unplaced" hidden></div>
 </header>
 <script>
 /*TIDE_SCRIPT*/

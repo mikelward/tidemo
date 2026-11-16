@@ -386,6 +386,9 @@ function M.start(config)
     self.bar_position = bar.position(hs.settings.get(bar.POSITION_KEY))
     -- The Bar page's icons (bar.icon_list), or nil for the default.
     self.bar_icons = hs.settings.get(bar.ICONS_KEY)
+    -- The Bar page's layout (bar.layout_list), or nil for the default; a
+    -- bad one is logged, naming the setting, and the default stands.
+    self.bar_layout = bar.loaded_layout(hs.settings.get(bar.LAYOUT_KEY), self.adapter.log)
     -- The Appearance page's Overview switch: window pictures on the
     -- overview's cards, off unless turned on there (SPEC.md §6.9).
     self.overview_pictures = hs.settings.get(overview.PICTURES_KEY) == true

@@ -2053,6 +2053,52 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   sandbox.document.activeElement = null;
 }
 
+// The Bar page's Layout list: the items by zone, each with its zone, ↑, ↓
+// and a switch; ↑ and ↓ move one past its zone's end into the next, and
+// any of them sends the whole list back, changed.
+{
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top", layout: [
+    { id: "logo", label: "Logo", zone: "left", shown: true },
+    { id: "workspaces", label: "Workspaces", zone: "left", shown: true },
+    { id: "title", label: "Window title", zone: "center", shown: true },
+    { id: "icons", label: "Status icons", zone: "right", shown: true },
+  ] } });
+  const rows = () => ids["bar-layout"].children;
+  assert.deepStrictEqual(rows().map((li) => li.children.map((c) => c.textContent)), [
+    ["Logo", "Left", "↑", "↓", "On"],
+    ["Workspaces", "Left", "↑", "↓", "On"],
+    ["Window title", "Center", "↑", "↓", "On"],
+    ["Status icons", "Right", "↑", "↓", "On"],
+  ]);
+  assert.strictEqual(rows()[0].children[2].disabled, true, "the first can't go left");
+  assert.strictEqual(rows()[3].children[3].disabled, true, "the last can't go right");
+  assert.strictEqual(rows()[1].children[3].disabled, false);
+  const list = (...items) => [{ barLayout: items.map(([id, zone, shown]) => ({ id, zone, shown })) }];
+  sent.length = 0;
+  rows()[1].children[3].listeners.click();
+  assert.deepStrictEqual(sent, list(["logo", "left", true], ["workspaces", "center", true], ["title", "center", true], ["icons", "right", true]),
+    "↓ past the left zone's end starts the center");
+  sent.length = 0;
+  rows()[0].children[3].listeners.click();
+  assert.deepStrictEqual(sent, list(["workspaces", "left", true], ["logo", "left", true], ["title", "center", true], ["icons", "right", true]),
+    "within a zone, ↓ swaps it with the next");
+  sent.length = 0;
+  rows()[2].children[4].listeners.click();
+  assert.deepStrictEqual(sent, list(["logo", "left", true], ["workspaces", "left", true], ["title", "center", false], ["icons", "right", true]),
+    "a switch turns it off");
+  // tide's list shows by zone, and what it leaves out goes after the item
+  // it follows by default.
+  sandbox.tide.update({ clockFiles: [], bar: { position: "bottom", layout: [{ id: "icons", zone: "left", shown: false }] } });
+  assert.deepStrictEqual(rows().map((li) => li.children.slice(0, 2).map((c) => c.textContent).join(" ")),
+    ["Logo Left", "Workspaces Left", "Status icons Left", "Window title Center"]);
+  assert.strictEqual(rows()[2].children[4].textContent, "Off");
+  // With no bar, the Layout list hides with the rest.
+  sandbox.tide.update({ clockFiles: [], bar: { position: "menubar-middle" } });
+  assert.strictEqual(ids["bar-drawn"].hidden, true);
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top" } });
+  sent.length = 0;
+}
+
 // The Appearance page's Overview switch: icons unless tide says pictures
 // are on, a click asks for the other, and pictures on without Screen
 // Recording say so.

@@ -2066,11 +2066,62 @@ stock keys:
       Esc, Return or a click below them, and macOS's menu bar shows with
       those icons. Along the bottom the menu bar already shows, so the bar
       leaves it out. A right-click on it opens the Bar page.
+  - **The Bar page's Layout list places the bar's items left, center or
+    right,** as tide for Linux's does (tide for Linux §7.1). The items are
+    the logo (the Apple logo and tide's, together), the workspaces, the
+    window title, and the status icons with the clocks as one group. Each
+    goes in a zone, in the order given, or is turned off. Only a bar along
+    the top or bottom has it: Menu bar and Middle of menu bar stay as they
+    are, and the page hides the list with them.
+    - By default the bar is as it's always been: the logos and the
+      workspaces left, the title centered, the icons and clocks right.
+    - The list shows the items by zone, Left, Center, then Right. Each has
+      its zone, ↑ and ↓, which move it, past its zone's end into the next,
+      and an On or Off switch. The bar redraws at once
+      (`settings_hs.choose_bar_layout`).
+    - It's `barLayout`, the key and values of tide for Linux's
+      `appearance.json`: a list of `{"id": …, "zone": …, "shown": …}`,
+      ids `logo`, `workspaces`, `title` and `icons`. It's this Mac's own,
+      in `hs.settings` (`bar.LAYOUT_KEY`), as the icons are.
+      `bar.layout_list`, and tide for Linux's `barlayout.mjs` (copied as
+      `dashboard/tide-barlayout.js`, checked by `make check-tide`), make a
+      stored list whole: an unknown or repeated id is dropped, an unknown
+      zone is the item's own, and a missing item goes in after the one it
+      follows by default. Anything but such a list fails at load, naming
+      the setting in the log, and the default stands (`bar.check_layout`).
+    - The left zone starts at the bar's left edge, and the right zone ends
+      at its right edge. Neither shrinks.
+    - The center zone sits on the bar's true middle. It moves over only as
+      far as it must to keep 24 px clear of each side; too crowded to
+      clear both, it keeps clear of the left, as tide for Linux's does
+      (`bar.js`'s `centerAt`).
+    - The title takes the room its zone leaves, and ends in an ellipsis
+      (`titleSpace`). Centered, it gets the bar less twice the wider side,
+      so it stays centered. Next to a side, it runs to the center zone, or
+      to the other side. The clocks shrink to local time when the title
+      would get narrower than 200 px, wherever it is.
+    - An item with nothing to show, such as the title with no window
+      focused here, takes no room.
+    - Items in a zone sit 8 px apart, as tide for Linux's; the logo keeps
+      its 4 px from the workspaces.
+    - Click targets follow the zones. The first item at the left reaches
+      the bar's left edge, so the corner still opens the Apple menu, and
+      the last at the right reaches the right edge. The free bar on either
+      side of the title is its target.
+    - **Over a notch** the bar's middle is clear (`NOTCH_ROOM`), so the
+      center zone's items go to the end of the left zone, beside the notch,
+      as Middle of menu bar draws the workspaces there. There's no title
+      over a notch, wherever it goes. Workspaces that would reach the notch
+      hide behind "+n", from either side: on the left, counting what
+      follows them in their zone; on the right, counting what comes
+      before them.
+    See [`bar-layout.png`](mocks/bar-layout.png) and, with a right side
+    wider than its half, [`bar-layout-crowded.png`](mocks/bar-layout-crowded.png).
   - **Or along the bottom: Tide Settings' Bar page, Position: Top or
     Bottom** (or Menu bar or Middle of menu bar, below). Top is the default. The Bar page sits after Appearance, as
     tide for Linux's does, and holds the Menu bar switch too, with buttons
     for macOS's Menu bar and Dock settings. Its search finds it by "bar",
-    "panel", "taskbar", "top", "bottom", "menu bar", "dock", "icons", "status", "tray" and "order". The names
+    "panel", "taskbar", "top", "bottom", "menu bar", "dock", "icons", "status", "tray", "order", "layout", "center", "logo" and "title". The names
     are tide for Linux's (`barPosition` in its `appearance.json`,
     `BAR_CHOICES` in its appearance module), but the choice is this Mac's
     own, in `hs.settings`

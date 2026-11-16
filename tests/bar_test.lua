@@ -299,6 +299,67 @@ t.test("the Bar page lists every icon once, in the order you chose", function()
         "the clocks where you put them, off")
 end)
 
+t.test("the Bar page's layout lists every item once, in its zone", function()
+    local ids = function(list)
+        local out = {}
+        for i, e in ipairs(list) do
+            out[i] = e.id .. ":" .. e.zone .. (e.shown and "" or "-")
+        end
+        return table.concat(out, " ")
+    end
+    t.eq(ids(bar.layout_list(nil)), "logo:left workspaces:left title:center icons:right",
+        "unless set, the bar as it's always been")
+    t.eq(ids(bar.layout_list({
+        { id = "icons", zone = "left", shown = true },
+        { id = "nonsense", zone = "left", shown = true },
+        { id = "title", zone = "middle", shown = false },
+        { id = "icons", zone = "right", shown = false },
+        "junk",
+    })), "logo:left workspaces:left icons:left title:center-",
+        "unknown and repeated ids dropped, an unknown zone the item's own, a missing item after the one it follows")
+    t.eq(ids(bar.layout_list({ { id = "workspaces", zone = "center" } })),
+        "logo:left workspaces:center title:center icons:right", "a missing shown is the item's own")
+    t.eq(ids(bar.layout_list("top")), ids(bar.layout_list(nil)), "anything but a list is the default")
+    t.eq(bar.layout_list(nil)[3].label, "Window title")
+    t.eq(bar.stored_layout({ { id = "title", zone = "left", shown = true } }), {
+        { id = "logo", zone = "left", shown = true },
+        { id = "workspaces", zone = "left", shown = true },
+        { id = "title", zone = "left", shown = true },
+        { id = "icons", zone = "right", shown = true },
+    }, "kept whole, without labels")
+end)
+
+t.test("a bad layout fails at load, naming the setting, and the default stands", function()
+    t.eq(bar.check_layout(nil), true)
+    t.eq(bar.check_layout({}), true)
+    t.eq(bar.check_layout({ { id = "workspaces", zone = "center", shown = true }, { id = "newer", zone = "left", shown = false } }), true,
+        "an id this bar doesn't know is dropped later, not an error")
+    for _, bad in ipairs({
+        "top",
+        { { id = "workspaces", zone = "middle", shown = true } },
+        { { id = "workspaces", zone = "center" } },
+        { { id = "workspaces", zone = "center", shown = "yes" } },
+        { { id = "Workspaces", zone = "center", shown = true } },
+        { { id = "workspaces", zone = "center", shown = true, extra = 1 } },
+        { key = { id = "workspaces", zone = "center", shown = true } },
+        { "workspaces" },
+    }) do
+        local ok, why = bar.check_layout(bad)
+        t.eq(ok, nil)
+        t.eq(why:find(bar.LAYOUT_KEY, 1, true) ~= nil, true, why)
+    end
+    local logged = {}
+    local log = function(s)
+        logged[#logged + 1] = s
+    end
+    t.eq(bar.loaded_layout("top", log), nil)
+    t.eq(logged, { "bar: " .. bar.LAYOUT_KEY
+        .. ' must be a list like [{"id": "workspaces", "zone": "center", "shown": true}]; using the default layout' })
+    local good = { { id = "title", zone = "left", shown = true } }
+    t.eq(bar.loaded_layout(good, log), good)
+    t.eq(#logged, 1, "a good one says nothing")
+end)
+
 t.test("the bar draws the shown icons, other apps' only at the top", function()
     local stored = {}
     for i, e in ipairs(bar.icon_list(nil)) do
@@ -946,14 +1007,23 @@ t.test("the Apple logo's menu is the Apple menu's entries, each opening or doing
     t.eq(ran, { "menubar", "sleep", "restart", "shutdown", "lock", "logout" }, "Show Menu Bar, then the session menu's own actions")
 end)
 
-t.test("the Apple logo opens the Apple menu, from its own bar", function()
+t.test("the Apple logo opens the Apple menu, from its own bar, under itself", function()
     local got
-    bar.handle(nil, { uuid = "B", menubar = true }, {
-        menubar = function(uuid)
-            got = uuid
+    bar.handle(nil, { uuid = "B", menubar = { x = 900 } }, {
+        menubar = function(uuid, where)
+            got = { uuid, where.x }
         end,
     })
-    t.eq(got, "B")
+    t.eq(got, { "B", 900 })
+    -- Moved to the center, the menu opens there; without an x, at the left.
+    t.eq(bar.apple_x({ x = 1440 }, { x = 900 }), 2340)
+    t.eq(bar.apple_x({ x = 1440 }, {}), 1444)
+    bar.handle(nil, { uuid = "B", menubar = true }, {
+        menubar = function(uuid, where)
+            got = { uuid, where.x }
+        end,
+    })
+    t.eq(got, { "B", nil })
 end)
 
 t.test("the session icon opens the menu under itself, on its own bar", function()
@@ -1139,6 +1209,36 @@ t.test("the bar's page draws the chips, title, clocks and icons", function()
     os.remove(path)
     if not ok then
         error(out)
+    end
+end)
+
+t.test("the bar's zones in a browser: a wide side keeps its width, the center clears it", function()
+    if not io.popen("command -v node"):read("l") then
+        print("SKIP the bar's zones in a browser: no node")
+        return
+    end
+    local sources = {}
+    for _, name in ipairs(dashboard.BAR_MODULES) do
+        sources[name] = read(name)
+    end
+    -- As .html, so the browser reads it as a page.
+    local base = os.tmpname()
+    local path = base .. ".html"
+    local f = assert(io.open(path, "w"))
+    f:write(dashboard.page(read("bar.html"), read("launcher.css"), sources, dashboard.BAR_MODULES))
+    f:close()
+    -- Playwright, where it's installed globally; tests/bar_render.cjs
+    -- skips with a note without it.
+    local p = io.popen('NODE_PATH="$(npm root -g 2>/dev/null)" node tests/bar_render.cjs ' .. path .. " 2>&1")
+    local out = p:read("a")
+    local ok = p:close()
+    os.remove(path)
+    os.remove(base)
+    if not ok then
+        error(out)
+    end
+    if out:find("SKIP", 1, true) then
+        io.write(out)
     end
 end)
 

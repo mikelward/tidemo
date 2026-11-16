@@ -715,6 +715,18 @@ tide. INFEASIBLE.md lists what can't be fixed.
 - **The "system tray" is a way to macOS's menu bar** (2026-11-11): Other
   apps' icons, three dots, off unless turned on, does Show Menu Bar, since
   other apps' status items can't be drawn in tide's bar (INFEASIBLE.md).
+- **The bar's layout is this Mac's own, in `hs.settings`** (2026-11-16),
+  as its icons are, with tide for Linux's key and values (`barLayout`), not
+  shared through `appearance.json`.
+- **The Apple logo goes with tide's logo in the bar's layout**
+  (2026-11-16): one Logo item, so the Apple menu moves and turns off with
+  it. Make it an item of its own if someone wants tide's logo without it.
+- **Over a notch, the center zone's items end the left zone**
+  (2026-11-16), beside the notch, as Middle of menu bar draws the
+  workspaces; the title still shows nowhere over a notch, wherever it's
+  placed.
+- **A bad stored layout is only logged** (2026-11-16), naming the
+  setting, as a bad launcher choice is, not notified at every load.
 - **Order is changed with ↑ and ↓, not dragging** (2026-11-11), as
   Tide Settings' other lists are.
 - **The menu height for menus opened above a bottom bar is a guess**
@@ -1519,6 +1531,20 @@ Only the tests have run these (SPEC.md §8):
   and the list is the same after a reload.
 - Other apps' icons hides the bars so macOS's menu bar shows, and Esc or a
   click below brings them back.
+
+## Check the bar's layout on a real Mac
+
+Only the tests, and Chromium standing in for WebKit, have run these
+(SPEC.md §8):
+
+- With no layout set, every display's bar looks as before.
+- Moving an item, or turning it off, on the Bar page redraws every bar at
+  once, and the list is the same after a reload.
+- The workspaces centered with a wide right side move left to clear it,
+  and a title at the left ends in an ellipsis before them.
+- Over a notch, centered workspaces sit left of it, and chips that would
+  reach it hide behind "+n", at the left or the right.
+- Menu bar and Middle of menu bar hide the Layout list and draw as before.
 
 ## Check the bar at the bottom on a real Mac
 

@@ -1,6 +1,7 @@
 // tide's bar (SPEC.md §8): tide's bar along the top of each display, with
 // the workspaces left, the focused window's title in the middle, and the
-// clocks and status icons right. tide fills it with tide.update(state),
+// clocks and status icons right, unless the Bar page's Layout places them
+// otherwise (state.barLayout). tide fills it with tide.update(state),
 // says where the pointer is with tide.pointer(x, y), and hears back through the "tide" message handler: { uuid, show: n },
 // { uuid, step: 1 or -1 }, { uuid, focus: window id } from an attention icon,
 // { open: "battery" | "wifi" | "network" | "volume" | "bluetooth" | "sysmon" },
@@ -8,13 +9,14 @@
 // { sound: { right } } from the speaker, its right edge,
 // { volume: 1 or -1 }, { session: { x } } from the session icon at x,
 // { settings: page } from a right-click, "" for the first page,
-// { dashboard: true }, { switcher: true } from the logo, { menubar: true } from the Apple logo, { maximize: true }, { tip: { text, x } } while
+// { dashboard: true }, { switcher: true } from the logo, { menubar: { x } } from the Apple logo at x, { maximize: true }, { tip: { text, x } } while
 // an item with a tip is hovered and { tip: { text: "" } } once none is, { clockErrors } naming a clocks file that's wrong, or
 // { goodClocks }, the clocks to keep while one is.
 
 import { renderClocks } from "./clockview.js";
 import { DEFAULT_SETTINGS, nextSettings } from "./settings.js";
 import { page as tidePage } from "./tide-barsettings.js";
+import { layoutList } from "./tide-barlayout.js";
 
 // Each bar item, by the selector its element matches and its name in
 // tide's map (tide-barsettings.js), first match winning. The Apple logo
@@ -67,6 +69,72 @@ export const MIN_TITLE = 200;
 // less twice the wider side, and a gap each side.
 export function titleRoom(width, left, right, gap = 24) {
   return width - 2 * Math.max(left, right) - 2 * gap;
+}
+
+// The bar's layout (SPEC.md §8): each item in a zone, left, center or
+// right, as tide's barLayout (tide-barlayout.js), and the elements of
+// bar.html each item moves. The Apple logo goes with tide's logo, and the
+// clocks with the status icons, among which they sit.
+const ELEMENTS = {
+  logo: ["apple", "logo"],
+  workspaces: ["workspaces"],
+  title: ["title"],
+  icons: ["icons-lead", "clocks", "icons"],
+};
+// The gap between two items in a zone, as tide's (bar.html's .item-start).
+export const ITEM_GAP = 8;
+
+// Where each of bar.html's elements goes, as { left, center, right,
+// unplaced }, each a list of element ids in order, from a stored barLayout:
+// an item that's off, or that `has` says has nothing to show (has[id] ===
+// false), is unplaced, so it takes no room. Over a notch the bar's middle
+// is clear, so the center zone's items end the left zone, beside the
+// notch, as Middle of menu bar draws the workspaces there.
+export function arrangement(stored, { notch = false, has = {} } = {}) {
+  const out = { left: [], center: [], right: [], unplaced: [] };
+  for (const z of ["left", "center", "right"]) {
+    for (const e of layoutList(stored)) {
+      if (e.zone !== z) continue;
+      const zone = !e.shown || has[e.id] === false ? "unplaced" : notch && z === "center" ? "left" : z;
+      out[zone].push(...ELEMENTS[e.id]);
+    }
+  }
+  return out;
+}
+
+// The zone the title goes in, unless it's turned off (null).
+function titleZone(stored) {
+  const e = layoutList(stored).find((i) => i.id === "title");
+  return e.shown ? e.zone : null;
+}
+
+// Where the center zone starts on a bar `width` wide, holding `center` px,
+// between sides `left` and `right` px wide (from the bar's edges): on the
+// bar's middle, moved over only as far as it must to keep `gap` from each
+// side, since the sides never shrink. Too crowded to clear both, it keeps
+// clear of the left.
+export function centerAt(width, left, right, center, gap = 24) {
+  const lo = left > 0 ? left + gap : gap;
+  const hi = width - (right > 0 ? right + gap : gap);
+  return Math.max(lo, Math.min((width - center) / 2, hi - center));
+}
+
+// The room the title has in `zone`, from each zone's width without it
+// ({ left, center, right }): centered, the bar's width less twice the wider
+// side, a gap each side and the center's other items (titleRoom), so it
+// stays centered; at a side, from its zone's other items to the center
+// zone, or to the other side.
+export function titleSpace(width, { left = 0, center = 0, right = 0 }, zone, gap = 24) {
+  if (zone === "center") return titleRoom(width, left, right, gap) - (center > 0 ? center + ITEM_GAP : 0);
+  if (zone === "left") {
+    const end = center > 0 ? centerAt(width, left, right, center, gap) : width - right;
+    return end - gap - (left > 0 ? left + ITEM_GAP : 0);
+  }
+  if (zone === "right") {
+    const start = center > 0 ? centerAt(width, left, right, center, gap) + center : left;
+    return width - (right > 0 ? right + ITEM_GAP : 0) - gap - start;
+  }
+  return Infinity;
 }
 
 // Whether the title would get narrower than MIN_TITLE with every clock
@@ -460,11 +528,28 @@ function fitNotch() {
   // Unmeasured, as before the page lays out: nothing to hide yet.
   if (!(width > 0) || boxes.some((b) => !(b.width > 0))) return;
   const gap = boxes.length > 1 ? Math.max(0, boxes[1].left - boxes[0].right) : 4;
-  const limit = width / 2 - NOTCH_ROOM / 2;
   // Room for "+99", measured as tide's chips are sized.
   const more = 40;
   const keep = chips.findIndex((c) => c.classList.contains("current"));
-  const shown = new Set(notchChips(boxes[0].left - bar.left, boxes.map((b) => b.width), gap, limit, more, keep));
+  // The rest of the chips' zone stays clear of the notch too: what follows
+  // them on the left, or what comes before them on the right, where they
+  // end at the bar's right edge and give way from their start.
+  const others = [...nav.parentNode.children].filter((e) => e !== nav && e.getBoundingClientRect().width > 0);
+  const navBox = nav.getBoundingClientRect();
+  let start;
+  let limit;
+  if (nav.parentNode.id === "right") {
+    const before = others.filter((e) => e.getBoundingClientRect().right <= navBox.left);
+    const lead = before.length > 0 ? navBox.left - before[0].getBoundingClientRect().left : 0;
+    start = 0;
+    limit = boxes[boxes.length - 1].right - bar.left - (width / 2 + NOTCH_ROOM / 2) - lead;
+  } else {
+    const after = others.filter((e) => e.getBoundingClientRect().left >= navBox.right);
+    const tail = after.length > 0 ? after[after.length - 1].getBoundingClientRect().right - navBox.right : 0;
+    start = boxes[0].left - bar.left;
+    limit = width / 2 - NOTCH_ROOM / 2 - tail;
+  }
+  const shown = new Set(notchChips(start, boxes.map((b) => b.width), gap, limit, more, keep));
   if (shown.size === chips.length) return;
   chips.forEach((c, i) => {
     if (!shown.has(i)) c.style.display = "none";
@@ -476,31 +561,90 @@ function fitNotch() {
   nav.append(moreChip);
 }
 
+// Each zone's width without the title, { left, center, right }: the
+// title's own width, and its gap from the zone's other items, taken off.
+function zoneWidths() {
+  const title = document.getElementById("title");
+  const out = {};
+  for (const z of ["left", "center", "right"]) {
+    const zone = document.getElementById(z);
+    let w = zone.offsetWidth || 0;
+    if (title.parentNode === zone) w = Math.max(0, w - (title.offsetWidth || 0) - (zone.children.length > 1 ? ITEM_GAP : 0));
+    out[z] = w;
+  }
+  return out;
+}
+
+// The clickable elements of an element of bar.html, in order: a group's
+// own (the chips, the status icons), or itself.
+function targets(e) {
+  if (e.id === "workspaces" || e.id === "icons" || e.id === "icons-lead") return [...e.children];
+  return e.id === "title" ? [] : [e];
+}
+
 function fit() {
   fitNotch();
   const clocks = document.getElementById("clocks");
-  const side = document.getElementById("right");
   clocks.classList.toggle("compact", false);
   const width = document.getElementById("bar").clientWidth;
-  const left = document.getElementById("left").offsetWidth;
-  let right = side.offsetWidth;
-  const tight = crowded(width, left, right);
+  // The title keeps MIN_TITLE where it goes, unless it's turned off.
+  const zone = titleZone(layout);
+  let widths = zoneWidths();
+  const tight = zone !== null && titleSpace(width, widths, zone) < MIN_TITLE;
   clocks.classList.toggle("compact", tight);
-  if (tight) right = side.offsetWidth;
-  const room = titleRoom(width, left, right);
+  if (tight) widths = zoneWidths();
+  const room = titleSpace(width, widths, zone);
   // Unmeasured, as before the page lays out, leaves the title as it is.
   if (Number.isFinite(room)) document.getElementById("title-text").style.maxWidth = `${Math.max(0, room)}px`;
+  // The center zone on the bar's middle, or moved over to clear the sides
+  // (centerAt); left to bar.html's centering while it's there.
+  const center = document.getElementById("center");
+  const left = document.getElementById("left").offsetWidth || 0;
+  const right = document.getElementById("right").offsetWidth || 0;
+  const cw = center.offsetWidth || 0;
+  const at = centerAt(width, left, right, cw);
+  const moved = width > 0 && Math.abs(at - (width - cw) / 2) >= 0.5;
+  center.style.left = moved ? `${Math.round(at)}px` : "";
+  center.style.transform = moved ? "none" : "";
   const bar = document.getElementById("bar").getBoundingClientRect();
-  // The Apple logo first, reaching the bar's left edge, so the corner opens
-  // the Apple menu as on a Mac, then tide's logo, then the chips.
-  const lefts = reach(bar, [document.getElementById("apple"), document.getElementById("logo"), ...document.getElementById("workspaces").children], { start: true });
-  const rights = reach(bar, [...document.getElementById("icons-lead").children, document.getElementById("clocks"), ...document.getElementById("icons").children], { end: true });
-  // An empty title has no target: there's no window there to maximize.
+  // Each zone's items, split at the title, are a group: the left zone's
+  // first group reaches the bar's left edge (so the corner opens the Apple
+  // menu, as on a Mac) and the right zone's last its right edge; the rest
+  // stop at their items, leaving the room between them to the title.
   const title = document.getElementById("title");
+  const runs = [];
+  for (const z of ["left", "center", "right"]) {
+    let run = { items: [] };
+    runs.push(run);
+    for (const e of document.getElementById(z).children) {
+      if (e === title) {
+        run = { items: [] };
+        runs.push(run);
+      } else {
+        run.items.push(...targets(e));
+      }
+    }
+  }
+  for (const run of runs) reach(bar, run.items, { start: run === runs[0], end: run === runs[runs.length - 1] });
+  // An empty title has no target: there's no window there to maximize.
   const box = title.getBoundingClientRect();
-  const leftEnd = lefts.length ? lefts[lefts.length - 1].right : bar.left;
-  const rightStart = rights.length ? rights[0].left : bar.right;
-  setReach(title, box.width > 0 ? titleInsets(bar, box, leftEnd, rightStart) : null);
+  if (title.parentNode?.id === "unplaced" || !(box.width > 0)) {
+    setReach(title, null);
+    return;
+  }
+  // The free bar beside the title: from the last item left of it to the
+  // first right of it.
+  let leftEnd = bar.left;
+  let rightStart = bar.right;
+  for (const run of runs) {
+    for (const e of run.items) {
+      const r = e.getBoundingClientRect();
+      if (!(r.width > 0)) continue;
+      if (r.right <= box.left) leftEnd = Math.max(leftEnd, r.right);
+      if (r.left >= box.right) rightStart = Math.min(rightStart, r.left);
+    }
+  }
+  setReach(title, titleInsets(bar, box, leftEnd, rightStart));
 }
 
 // Where the pointer is on this bar, from tide, or null off it; kept so a
@@ -547,6 +691,31 @@ function tick() {
 
 // Whether this bar is over a notch (SPEC.md §8), from tide.
 let notch = false;
+// The Bar page's layout, as tide sent it (barLayout): the default unless
+// it sent one.
+let layout = undefined;
+
+// Puts each of bar.html's elements in its zone, in order (arrangement()),
+// moving only what isn't there already. The first element of each item
+// after the first in its zone is .item-start, which spaces it from the one
+// before.
+function arrange(where) {
+  for (const z of ["left", "center", "right", "unplaced"]) {
+    const zone = document.getElementById(z);
+    const want = where[z].map((id) => document.getElementById(id));
+    const have = [...zone.children];
+    if (want.length !== have.length || want.some((e, i) => e !== have[i])) {
+      for (const e of want) {
+        e.remove();
+        zone.append(e);
+      }
+    }
+  }
+  const firsts = new Set(Object.values(ELEMENTS).map((ids) => ids[0]));
+  for (const ids of Object.values(ELEMENTS)) {
+    for (const id of ids) document.getElementById(id).classList.toggle("item-start", firsts.has(id));
+  }
+}
 
 window.tide = {
   update(state) {
@@ -554,8 +723,13 @@ window.tide = {
     notch = !!state.notch;
     renderWorkspaces(document.getElementById("workspaces"), state.workspaces, state.app_icons || {});
     document.getElementById("title-text").textContent = state.title;
-    renderIcons(document.getElementById("icons"), state.icons, iconOrder(state.iconOrder),
+    const order = iconOrder(state.iconOrder);
+    renderIcons(document.getElementById("icons"), state.icons, order,
       document.getElementById("icons-lead"), document.getElementById("clocks"));
+    // An item with nothing to show takes no room: the title with no window
+    // focused here, the status icons with every one off.
+    layout = state.barLayout ?? undefined;
+    arrange(arrangement(layout, { notch, has: { title: !!state.title, icons: order.length > 0 } }));
     const loaded = nextSettings(state, settings);
     settings = loaded.settings;
     if (loaded.errors.length > 0) send({ clockErrors: loaded.errors });
@@ -602,7 +776,9 @@ document.getElementById("bar").addEventListener("contextmenu", (e) => {
   send({ settings: id });
 });
 // The Apple menu, which tide opens for real (bar_hs.lua).
-document.getElementById("apple").addEventListener("click", () => send({ menubar: true }));
+// It opens under the logo, wherever the layout put it.
+const apple = document.getElementById("apple");
+apple.addEventListener("click", () => send({ menubar: { x: Math.round(apple.getBoundingClientRect().left) } }));
 
 // The clocks open the dashboard, with its clock panel.
 document.getElementById("clocks").addEventListener("click", () => send({ dashboard: true }));
