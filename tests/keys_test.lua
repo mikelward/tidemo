@@ -227,6 +227,12 @@ t.test("each binding says its keys as they're printed on the keyboard, and what 
     end
 end)
 
+t.test("Super+R is free, as on tide for Linux", function()
+    for _, b in ipairs(keys.map) do
+        t.eq(b.key == "r" and not b.shift, false, "nothing on Super+R")
+    end
+end)
+
 t.test("Super+Shift+R reloads, as on tide for Linux, and resize mode has no key but can be given one", function()
     local reload, resize
     for _, b in ipairs(keys.map) do

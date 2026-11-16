@@ -3324,7 +3324,8 @@ on the display you're on, in place of the switcher.
   (§11). **Built,** as Tide Settings' last section (§15).
 - **The rest of the setup:** tide for Chrome's Appendix A lists the helper scripts
   `setup` installs (Bluetooth, the audio profile switcher, notes, IRC,
-  remote desktop, the file manager on `Super+E`). Which of them run on a
+  remote desktop, the file manager on `Super+E`); IRC and remote desktop
+  have no key. Which of them run on a
   Mac, and what stands in for the rest, is for `setup-macos` to settle,
   not tide.
 
