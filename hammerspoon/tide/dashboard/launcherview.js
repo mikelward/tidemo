@@ -7,6 +7,7 @@
 // Search+Shift+W the same for moving the window it opened over. Search+A
 // opens it on the windows wanting attention (§10.3).
 
+import { placement, ZONES } from "./barlayout.js";
 import { scrub } from "./clocks.js";
 import { stepMonth } from "./calendar.js";
 import { renderClocks, renderDetail, today } from "./clockview.js";
@@ -325,10 +326,77 @@ try {
 } catch (e) {
   console.debug("tide: couldn't read where the bar was:", e);
 }
+// The bar's items in their zones, each shown or not (§8.1), from a stored
+// barLayout. A bar without zones gets them. Kept in localStorage, as where
+// the bar is, so the page opens with them where they were.
+const BAR_LAYOUT_KEY = "tide.barLayout";
+function arrangeBar(layout) {
+  const bar = $("bar");
+  if (!bar) return;
+  const zones = Object.fromEntries(
+    ZONES.map((z) => {
+      let el = bar.querySelector(`:scope > .zone[data-zone="${z}"]`);
+      if (!el) {
+        el = Object.assign(document.createElement("div"), { className: "zone" });
+        el.dataset.zone = z;
+        bar.append(el);
+      }
+      return [z, el];
+    }),
+  );
+  for (const { id, zone, hidden } of placement(layout)) {
+    const el = $(id);
+    if (!el) continue;
+    el.hidden = hidden;
+    zones[zone].append(el);
+  }
+  bar.classList.add("zoned");
+}
+function keepBarLayout(layout) {
+  try {
+    localStorage.setItem(BAR_LAYOUT_KEY, JSON.stringify(layout ?? null));
+  } catch (e) {
+    // Only the first frame needs it; the settings arrange the bar anyway.
+    console.debug("tide: couldn't keep the bar's layout:", e);
+  }
+}
+try {
+  arrangeBar(JSON.parse(localStorage.getItem(BAR_LAYOUT_KEY) ?? "null"));
+} catch (e) {
+  console.debug("tide: couldn't read the bar's layout:", e);
+  arrangeBar(undefined);
+}
+// The bar's background in light and dark mode (§8.1), as launcher.css's
+// --bar-light and --bar-dark, or the page's own without them.
+// Kept in localStorage, as the layout is, so the page opens in them.
+const BAR_COLORS_KEY = "tide.barColors";
+function colorBar(s) {
+  for (const [mode, key] of [["light", "lightBarColor"], ["dark", "darkBarColor"]]) {
+    if (s?.[key]) document.documentElement.style.setProperty(`--bar-${mode}`, s[key]);
+    else document.documentElement.style.removeProperty(`--bar-${mode}`);
+  }
+}
+try {
+  colorBar(JSON.parse(localStorage.getItem(BAR_COLORS_KEY) ?? "null"));
+} catch (e) {
+  console.debug("tide: couldn't read the bar's colors:", e);
+}
+function keepBarColors(s) {
+  try {
+    localStorage.setItem(BAR_COLORS_KEY, JSON.stringify({ lightBarColor: s.lightBarColor, darkBarColor: s.darkBarColor }));
+  } catch (e) {
+    // Only the first frame needs them; the settings color the bar anyway.
+    console.debug("tide: couldn't keep the bar's colors:", e);
+  }
+}
 // The options page reports bad settings; here the defaults stand in.
 async function loadClocks() {
   settings = (await loadSettings(chrome.storage)).settings;
   placeBar(barAtBottom(settings));
+  arrangeBar(settings.barLayout);
+  keepBarLayout(settings.barLayout);
+  colorBar(settings);
+  keepBarColors(settings);
   renderTime();
 }
 function toggleDetail() {

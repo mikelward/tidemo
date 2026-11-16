@@ -89,6 +89,11 @@ const sandbox = {
     addEventListener: (type, fn) => (docListeners[type] ??= []).push(fn),
     dispatchEvent: (e) => fire(e.type, e),
     body: new Element("body"),
+    // The bar's colors are custom properties on the root (launcherview.js's
+    // colorBar).
+    documentElement: Object.assign(new Element("html"), {
+      style: { props: {}, setProperty(k, v) { this.props[k] = v; }, removeProperty(k) { delete this.props[k]; } },
+    }),
     activeElement: null,
   },
   location: { search: "" },

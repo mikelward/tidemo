@@ -19,7 +19,7 @@ M.MODULES = {
     "clocks.js", "calendar.js", "tide-clocks.js", "settings.js",
     "launcher-chrome.js", "launcher-settings.js",
     "clockview.js", "apps.js", "workspaces.js", "platform.js", "launcher.js", "launcher-lists.js",
-    "unread.js", "watchers.js", "extras.js", "keepawake.js",
+    "unread.js", "watchers.js", "extras.js", "keepawake.js", "barlayout.js",
     "launcherview.js", "launcher-page.js",
 }
 
