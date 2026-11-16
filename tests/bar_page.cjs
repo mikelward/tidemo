@@ -105,6 +105,18 @@ const sandbox = {
     getElementById: (id) => (ids[id] ??= byId(id)),
     elementFromPoint: () => under,
     addEventListener: () => {},
+    // The bar's colors are custom properties on the root (colorBar).
+    documentElement: {
+      style: {
+        props: {},
+        setProperty(k, v) {
+          this.props[k] = v;
+        },
+        removeProperty(k) {
+          delete this.props[k];
+        },
+      },
+    },
   },
   // The page's clock tick, which fits the bar again.
   setInterval: (fn) => {
@@ -871,6 +883,18 @@ sandbox.tide.update({
   for (const id of ["left", "right", "center", "title"]) ids[id].offsetWidth = undefined;
   sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {} });
   assert.deepStrictEqual(kids("left"), ["apple", "logo", "workspaces"]);
+  sent.length = 0;
+}
+// The Bar page's colors (SPEC.md §8): each mode's as the bar's --bar-light
+// and --bar-dark, and the bar's own again without one.
+{
+  const props = sandbox.document.documentElement.style.props;
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {}, barColors: { darkBarColor: "#13303a" } });
+  assert.deepStrictEqual(props, { "--bar-dark": "#13303a" });
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {}, barColors: { lightBarColor: "#dfe3ee" } });
+  assert.deepStrictEqual(props, { "--bar-light": "#dfe3ee" });
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {} });
+  assert.deepStrictEqual(props, {});
   sent.length = 0;
 }
 console.log("bar page: ok");

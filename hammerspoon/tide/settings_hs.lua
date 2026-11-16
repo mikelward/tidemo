@@ -374,6 +374,35 @@ function M.choose_bar_layout(tide, value, store)
     return true
 end
 
+-- The bar's background in light or dark mode, the Bar page's Light
+-- background and Dark background: `mode` is "light" or "dark", `color` a
+-- color the mode's text reads on, or nil for the bar's own. Kept in `store`
+-- (hs.settings) with the other mode's, and drawn at once. Returns true, or
+-- nil and why, which the log keeps.
+function M.choose_bar_color(tide, mode, color, store)
+    if mode ~= "light" and mode ~= "dark" then
+        local why = bar.COLORS_KEY .. ": no mode " .. tostring(mode)
+        tide.adapter.log("settings: " .. why)
+        return nil, why
+    end
+    local wanted = {}
+    for k, v in pairs(tide.bar_colors or {}) do
+        wanted[k] = v
+    end
+    wanted[mode] = color
+    local colors, why = bar.check_colors(wanted)
+    if not colors then
+        tide.adapter.log("settings: " .. why)
+        return nil, why
+    end
+    tide.bar_colors = colors
+    store.set(bar.COLORS_KEY, colors)
+    if tide.bar then
+        tide.bar.update()
+    end
+    return true
+end
+
 -- The window's height, in points, on a display tall enough for it.
 M.HEIGHT = 744
 
@@ -532,6 +561,7 @@ function M.new(tide)
                 position = bar.position(tide.bar_position),
                 icons = bar.icon_list(tide.bar_icons),
                 layout = bar.layout_list(tide.bar_layout),
+                colors = bar.page_colors(tide.bar_colors),
             },
             -- The Appearance page's Overview switch, and whether macOS
             -- lets it take pictures: nil when it can't say.
@@ -963,6 +993,15 @@ function M.new(tide)
             elseif type(body.barIcons) == "table" then
                 -- The Icons list: drawn at once, and the page shows it.
                 local ok, why = M.choose_bar_icons(tide, body.barIcons, hs.settings)
+                if not ok then
+                    tide.adapter.notify(why)
+                end
+                push()
+            elseif type(body.barColor) == "table" then
+                -- Light background or Dark background: drawn at once, and
+                -- the page shows it. A color the text can't be read on is
+                -- refused, and said.
+                local ok, why = M.choose_bar_color(tide, body.barColor.mode, body.barColor.color, hs.settings)
                 if not ok then
                     tide.adapter.notify(why)
                 end

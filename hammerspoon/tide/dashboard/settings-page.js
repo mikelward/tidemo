@@ -2040,6 +2040,37 @@ function drawBarLayout(b) {
   });
 }
 
+// The Bar page's Colors: Light background and Dark background, each a
+// color picker showing the color set, or the bar's own, and Default, which
+// takes the color out. A change sends { barColor: { mode, color } }, color
+// null for Default, and tide answers with tide.update(); one the text can't
+// be read on is refused, and tide says why. Only a bar along the top or
+// bottom has them (#bar-drawn).
+const BAR_OWN = Object.freeze({ light: "#ffffff", dark: "#101214" });
+function renderBarColors(b) {
+  keepingFocus(() => drawBarColors(b));
+}
+
+function drawBarColors(b) {
+  const list = document.getElementById("bar-colors");
+  list.replaceChildren();
+  for (const [mode, key, label] of [["light", "lightBarColor", "Light background"], ["dark", "darkBarColor", "Dark background"]]) {
+    const set = b?.colors?.[key] ?? null;
+    const li = el("li");
+    const name = el("span", label);
+    name.className = "name";
+    const pick = document.createElement("input");
+    pick.type = "color";
+    pick.value = set ?? BAR_OWN[mode];
+    pick.setAttribute("aria-label", label);
+    keyed(pick, `bar-color-${mode}`);
+    pick.addEventListener("change", () => send({ barColor: { mode, color: pick.value } }));
+    li.append(name, pick,
+      keyed(button("Default", `Default: ${label}`, set === null, () => send({ barColor: { mode, color: null } })), `bar-color-${mode}-default`));
+    list.append(li);
+  }
+}
+
 // The Bar page's Icons list: each status icon in the bar's order, with a
 // switch to show it and ↑ ↓ to move it. A change sends the whole list,
 // { barIcons: [{ id, shown }] }, and tide answers with tide.update().
@@ -2644,6 +2675,7 @@ window.tide = {
     if (isObject(state.bar)) {
       renderBar(state.bar);
       renderBarLayout(state.bar);
+      renderBarColors(state.bar);
       renderBarIcons(state.bar);
     }
     if (isObject(state.overview)) renderOverview(state.overview);
