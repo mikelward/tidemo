@@ -38,7 +38,8 @@ M.ROTATION = {
 -- hidutil's `property --get UserKeyMapping` output as a list of
 -- { src, dst }, or nil and why. It prints "(null)" for none, or an
 -- NSArray's description: entries of HIDKeyboardModifierMappingSrc and
--- HIDKeyboardModifierMappingDst, in decimal, in either order.
+-- HIDKeyboardModifierMappingDst, in decimal, in either order; or, on
+-- macOS 26, a table of those, one row per keyboard.
 function M.parse(out)
     if type(out) ~= "string" then
         return nil, "no output"
@@ -46,6 +47,28 @@ function M.parse(out)
     local text = out:match("^%s*(.-)%s*$")
     if text == "" or text == "(null)" then
         return {}
+    end
+    -- macOS 26's hidutil prints a table, one row per keyboard: its
+    -- registry ID, the key and its value, "(null)" or the list above. tide
+    -- sets one mapping for every keyboard, so the rows' entries are taken
+    -- together, each once.
+    local rows = text:match("^RegistryID%s+Key%s+Value%s*\n(.*)$")
+    if rows or text:match("^RegistryID%s+Key%s+Value$") then
+        local list, seen = {}, {}
+        for entry in (rows or ""):gmatch("{(.-)}") do
+            local one, why = M.parse("(" .. "{" .. entry .. "}" .. ")")
+            if not one then
+                return nil, why
+            end
+            for _, m in ipairs(one) do
+                local k = m.src .. ":" .. m.dst
+                if not seen[k] then
+                    seen[k] = true
+                    list[#list + 1] = m
+                end
+            end
+        end
+        return list
     end
     if not text:match("^%(") then
         return nil, "not a list: " .. text:sub(1, 80)
