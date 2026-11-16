@@ -62,7 +62,8 @@ It brings tide for Linux's desktop to macOS:
   volume keys included, network with a lock while a VPN is up, battery, CPU %, and a
   session menu to lock, log out, sleep, restart or shut down; the Bar
   page chooses which show and in what order, and can add one that shows
-  macOS's menu bar with other apps' icons), with
+  macOS's menu bar with other apps' icons, and places the logo, workspaces,
+  title and icons left, center or right), with
   Super+Shift+M to mute the microphone
   (§7.2, §8, §14.2);
 - Super+S to keep the display awake, and Super+P for presenter mode, Do
@@ -292,7 +293,8 @@ falls back to Option, and says so once (SPEC.md §7.1).
 
 `make test lint` runs everything in plain Lua 5.4, against a fake of macOS
 (`tests/fake.lua`). The dashboard and bar pages' tests also need Node, and
-skip with a note without it. It runs the installer's tests too
+skip with a note without it; the bar's layout in a real browser also needs
+Playwright's Chromium, installed globally. It runs the installer's tests too
 (`install/tide-setup_test`, or `make test-install` on its own), in bash
 with Homebrew, `defaults` and `make` mocked, so they run off a Mac.
 

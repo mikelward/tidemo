@@ -57,6 +57,7 @@ import {
 import { isZone, localText, sharedText } from "./settings.js";
 import { foundText, nearestCities, parseCities, searchCities } from "./tide-cities.js";
 import { steppedPointer } from "./linearmouse.js";
+import { ZONE_LABELS, byZone, layoutList, moved as movedBarItem, switched as switchedBarItem } from "./tide-barlayout.js";
 import { matches, searchedRows } from "./tide-settingssearch.js";
 
 const send = (msg) => window.webkit?.messageHandlers?.tide?.postMessage(msg);
@@ -2004,6 +2005,41 @@ function renderBar(b) {
   );
 }
 
+// The Bar page's Layout list: the bar's items by zone, Left, Center, then
+// Right, each with its zone, ↑ and ↓, which move it, past its zone's end
+// into the next, and a switch to show it (tide-barlayout.js, tide's own).
+// A change sends the whole list, { barLayout: [{ id, zone, shown }] }, and
+// tide answers with tide.update(). Only a bar along the top or bottom has
+// it (#bar-drawn). The keyboard stays on the button it was on.
+function renderBarLayout(b) {
+  keepingFocus(() => drawBarLayout(b));
+}
+
+function drawBarLayout(b) {
+  const list = document.getElementById("bar-layout");
+  list.replaceChildren();
+  const items = layoutList(b?.layout);
+  const send1 = (next) => {
+    if (next) send({ barLayout: next });
+  };
+  byZone(items).forEach((e, i) => {
+    const li = el("li");
+    const name = el("span", e.label);
+    name.className = "name";
+    const zone = el("span", ZONE_LABELS[e.zone]);
+    zone.className = "value";
+    const on = e.shown === true;
+    const toggle = keyed(button(on ? "On" : "Off", `${e.label}: ${on ? "on" : "off"}`, false,
+      () => send1(switchedBarItem(items, i, !on))), `bar-item-${e.id}`);
+    toggle.setAttribute("aria-pressed", String(on));
+    li.append(name, zone,
+      keyed(button("↑", `Move left: ${e.label}`, movedBarItem(items, i, -1) === null, () => send1(movedBarItem(items, i, -1))), `bar-item-${e.id}-up`),
+      keyed(button("↓", `Move right: ${e.label}`, movedBarItem(items, i, 1) === null, () => send1(movedBarItem(items, i, 1))), `bar-item-${e.id}-down`),
+      toggle);
+    list.append(li);
+  });
+}
+
 // The Bar page's Icons list: each status icon in the bar's order, with a
 // switch to show it and ↑ ↓ to move it. A change sends the whole list,
 // { barIcons: [{ id, shown }] }, and tide answers with tide.update().
@@ -2607,6 +2643,7 @@ window.tide = {
     if (state.menuBar && typeof state.menuBar === "object") renderMenuBar(state.menuBar);
     if (isObject(state.bar)) {
       renderBar(state.bar);
+      renderBarLayout(state.bar);
       renderBarIcons(state.bar);
     }
     if (isObject(state.overview)) renderOverview(state.overview);

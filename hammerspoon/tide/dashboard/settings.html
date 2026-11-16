@@ -518,6 +518,10 @@ body.settings {
 .settings #idle-steps li.switch {
   grid-template-columns: 1fr auto;
 }
+/* A bar item: its name, its zone, ↑, ↓, and On. */
+.settings #bar-layout li {
+  grid-template-columns: 1fr 5em auto auto auto;
+}
 /* A bar icon: its name, ↑, ↓, and On. */
 .settings #bar-icons li {
   grid-template-columns: 1fr auto auto auto;
@@ -943,6 +947,9 @@ body.settings {
 <p class="note">At the top, the bar covers macOS's menu bar. At the bottom, the menu bar stays, with the app's menus, and the bar sits above the Dock. Menu bar shows no bar, just the workspaces in macOS's menu bar; Middle of menu bar puts them beside the notch, or in the middle without one, when the app's menus leave room.</p>
 <div class="row choice" id="bar-position"></div>
 <div id="bar-drawn">
+<h2 id="bar-layout-title">Layout</h2>
+<p class="note">Where the bar's items go, left to right in each part: the logo with the Apple menu, the workspaces, the window title, and the status icons with the clocks. Over the notch, the center's items go to its left.</p>
+<ul id="bar-layout"></ul>
 <h2 id="bar-icons-title">Icons</h2>
 <p class="note">Which status icons and clocks the bar shows, left to right. Other apps' icons brings down macOS's menu bar, with the icons tide can't draw; along the bottom the menu bar already shows them.</p>
 <ul id="bar-icons"></ul>

@@ -570,7 +570,8 @@ assert.strictEqual(reachOf(ids.apple), "5px 5px 6px 2px");
 assert.strictEqual(reachOf(ids.logo), "5px 5px 2px 2px", "tide's logo no longer reaches the edge");
 sent.length = 0;
 ids.apple.listeners.click();
-assert.strictEqual(JSON.stringify(sent), JSON.stringify([{ uuid: "B", menubar: true }]), "a click opens the Apple menu");
+assert.strictEqual(JSON.stringify(sent), JSON.stringify([{ uuid: "B", menubar: { x: ids.apple.getBoundingClientRect().left } }]),
+  "a click opens the Apple menu under the logo");
 assert.strictEqual(ids.apple.attrs?.["data-tip"] ?? "Apple menu", "Apple menu");
 sent.length = 0;
 ids.apple.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
@@ -749,5 +750,127 @@ sandbox.tide.update({
   assert.strictEqual(pages(ids.bar), "bar", "the bar off every item opens the Bar page");
   sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: { awake: { on: true, presenting: true } } });
   assert.strictEqual(pages(ids.icons.children[0]), "muted", "Presenting opens Notifications, tide's muted page");
+}
+// The Bar page's layout (SPEC.md §8): each item's elements in its zone, in
+// order, and an item that's off, or has nothing to show, unplaced.
+{
+  const { arrangement, centerAt, titleSpace } = vm.runInContext('modules["./bar.js"]', sandbox);
+  const plain = (x) => JSON.parse(JSON.stringify(x));
+  assert.deepStrictEqual(plain(arrangement(undefined)), {
+    left: ["apple", "logo", "workspaces"],
+    center: ["title"],
+    right: ["icons-lead", "clocks", "icons"],
+    unplaced: [],
+  }, "unless set, the bar as it's always been");
+  const custom = [
+    { id: "icons", zone: "left", shown: true },
+    { id: "workspaces", zone: "center", shown: true },
+    { id: "title", zone: "left", shown: true },
+    { id: "logo", zone: "right", shown: false },
+  ];
+  assert.deepStrictEqual(plain(arrangement(custom)), {
+    left: ["icons-lead", "clocks", "icons", "title"],
+    center: ["workspaces"],
+    right: [],
+    unplaced: ["apple", "logo"],
+  }, "the Apple logo goes with tide's, the clocks with the icons");
+  assert.deepStrictEqual(plain(arrangement(undefined, { has: { title: false } })).unplaced, ["title"], "no title takes no room");
+  assert.deepStrictEqual(plain(arrangement(custom, { notch: true })).left, ["icons-lead", "clocks", "icons", "title", "workspaces"],
+    "over a notch the center's items end the left zone");
+
+  // The center zone on the bar's middle, moved over only as far as it must
+  // to clear the sides, which keep their whole width.
+  assert.strictEqual(centerAt(1000, 100, 100, 200), 400, "centered");
+  const at = centerAt(1000, 100, 600, 200);
+  assert.strictEqual(at, 176, "moved left of a side wider than its half");
+  assert.ok(at + 200 + 24 <= 1000 - 600, "clear of the right side, whole");
+  assert.ok(at >= 100 + 24, "and of the left");
+  assert.strictEqual(centerAt(1000, 600, 100, 200), 624, "moved right of a wide left side");
+  assert.strictEqual(centerAt(1000, 500, 500, 200), 524, "too crowded for both: clear of the left");
+  // Centered, the title's room is titleRoom's, less the center's other
+  // items; at a side, up to the center zone.
+  assert.strictEqual(titleSpace(1200, { left: 300, right: 500 }, "center"), 1200 - 2 * 500 - 2 * 24);
+  assert.strictEqual(titleSpace(1200, { left: 100, center: 92, right: 100 }, "center"), 1200 - 200 - 48 - 100);
+  assert.strictEqual(titleSpace(1000, { left: 30, center: 200, right: 100 }, "left"), 400 - 24 - 38);
+  assert.strictEqual(titleSpace(1000, { left: 30, center: 0, right: 100 }, "right"), 1000 - 108 - 24 - 30);
+  assert.strictEqual(titleSpace(1000, { left: 30, right: 100 }, null), Infinity, "a title turned off needs no room");
+
+  // tide's layout reaches the page: the elements move to their zones, and
+  // the center zone moves over to clear a wide right side.
+  const reset = () => {
+    for (const id of ["left", "center", "right", "unplaced"]) ids[id].children.forEach((c) => (c.parent = undefined));
+    for (const id of ["left", "center", "right", "unplaced"]) ids[id].children = [];
+  };
+  reset();
+  Object.assign(ids.bar, { clientWidth: 1000 });
+  Object.assign(ids.left, { offsetWidth: 30 });
+  Object.assign(ids.right, { offsetWidth: 600 });
+  Object.assign(ids.center, { offsetWidth: 200 });
+  const layout = [
+    { id: "logo", zone: "left", shown: true },
+    { id: "workspaces", zone: "center", shown: true },
+    { id: "title", zone: "left", shown: false },
+    { id: "icons", zone: "right", shown: true },
+  ];
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: { mic: { muted: false } }, barLayout: layout });
+  const kids = (id) => ids[id].children.map((c) => c.id);
+  assert.deepStrictEqual(kids("left"), ["apple", "logo"]);
+  assert.deepStrictEqual(kids("center"), ["workspaces"]);
+  assert.deepStrictEqual(kids("right"), ["icons-lead", "clocks", "icons"]);
+  assert.deepStrictEqual(kids("unplaced"), ["title"], "turned off");
+  assert.ok(ids.workspaces.classList.contains("item-start") && ids.apple.classList.contains("item-start"));
+  assert.ok(!ids.logo.classList.contains("item-start") && !ids.clocks.classList.contains("item-start"));
+  assert.strictEqual(ids.center.style.left, "176px", "moved over, so the icons keep their width");
+  assert.strictEqual(ids.center.style.transform, "none");
+  assert.strictEqual(ids.clocks.classList.contains("compact"), false, "no title to make room for");
+  // A narrower right side leaves it centered, as bar.html centers it.
+  Object.assign(ids.right, { offsetWidth: 300 });
+  sandbox.tick();
+  assert.strictEqual(ids.center.style.left, "");
+  assert.strictEqual(ids.center.style.transform, "");
+  // The title at the left: its room runs to the center zone. The left
+  // zone is 30 px of logos, 8 of gap and 100 of title.
+  layout[2].shown = true;
+  Object.assign(ids.left, { offsetWidth: 138 });
+  Object.assign(ids.title, { offsetWidth: 100 });
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: { mic: { muted: false } }, barLayout: layout });
+  assert.deepStrictEqual(kids("left"), ["apple", "logo", "title"]);
+  assert.ok(ids.title.classList.contains("item-start"));
+  assert.strictEqual(parseFloat(ids["title-text"].style.maxWidth), titleSpace(1000, { left: 30, center: 200, right: 300 }, "left"));
+
+  // Over a notch, workspaces at the right give way from their start, so the
+  // zone stays clear of the notch: chips 60 wide, 4 apart, ending at 900,
+  // the notch's right edge at 1000/2 + NOTCH_ROOM/2 = 610.
+  const many = Array.from({ length: 6 }, (_, i) => ({ n: `w${i}`, current: i === 5, occupied: true }));
+  const right = [
+    { id: "workspaces", zone: "right", shown: true },
+    { id: "icons", zone: "right", shown: true },
+  ];
+  ids.bar.rect = { left: 0, right: 1000, top: 0, bottom: 36, width: 1000, height: 36 };
+  ids.clocks.rect = { left: 910, right: 990, top: 10, bottom: 26, width: 80, height: 16 };
+  sandbox.tide.update({ uuid: "B", workspaces: many, title: "", icons: {}, notch: true, barLayout: right });
+  assert.strictEqual(ids.workspaces.parent, ids.right);
+  ids.workspaces.children.forEach((c, i) => (c.rect = { left: 520 + 64 * i, right: 580 + 64 * i, top: 5, bottom: 31, width: 60, height: 26 }));
+  ids.workspaces.rect = { left: 520, right: 900, top: 5, bottom: 31, width: 380, height: 26 };
+  sandbox.tick();
+  const shownChips = ids.workspaces.children.filter((c) => c.style.display !== "none" && c.className !== "more-ws").map((c) => c.children[0].textContent);
+  assert.deepStrictEqual(shownChips, ["w0", "w1", "w5"], "the current one stays");
+  assert.strictEqual(ids.workspaces.children.at(-1).textContent, "+3");
+  // Something before them in the zone takes from their room: 80 px more.
+  ids.logo.rect = { left: 440, right: 470, top: 5, bottom: 31, width: 30, height: 26 };
+  sandbox.tide.update({ uuid: "B", workspaces: many, title: "", icons: {}, notch: true, barLayout: [{ id: "logo", zone: "right", shown: true }, ...right] });
+  ids.workspaces.children.forEach((c, i) => (c.rect = { left: 520 + 64 * i, right: 580 + 64 * i, top: 5, bottom: 31, width: 60, height: 26 }));
+  sandbox.tick();
+  assert.strictEqual(ids.workspaces.children.filter((c) => c.style.display !== "none" && c.className !== "more-ws").length, 2);
+
+  // Back to the default, for anything after.
+  ids.logo.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+  ids.workspaces.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+  ids.clocks.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+  ids.bar.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+  for (const id of ["left", "right", "center", "title"]) ids[id].offsetWidth = undefined;
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {} });
+  assert.deepStrictEqual(kids("left"), ["apple", "logo", "workspaces"]);
+  sent.length = 0;
 }
 console.log("bar page: ok");

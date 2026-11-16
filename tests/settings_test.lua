@@ -328,6 +328,45 @@ t.test("the Bar page's icons are kept whole and drawn at once", function()
     t.eq(logged, { "settings: the bar's icons aren't a list: battery" })
 end)
 
+t.test("the Bar page's layout is kept whole and drawn at once", function()
+    local settings_hs = require("tide.settings_hs")
+    local bar = require("tide.bar")
+    local stored, logged, drawn = {}, {}, 0
+    local tide = {
+        adapter = {
+            log = function(text)
+                logged[#logged + 1] = text
+            end,
+        },
+        bar = {
+            update = function()
+                drawn = drawn + 1
+            end,
+        },
+    }
+    local store = {
+        set = function(k, v)
+            stored[k] = v
+        end,
+    }
+    t.eq(settings_hs.choose_bar_layout(tide, { { id = "workspaces", zone = "center", shown = true } }, store), true)
+    local kept = stored[bar.LAYOUT_KEY]
+    t.eq(kept, {
+        { id = "logo", zone = "left", shown = true },
+        { id = "workspaces", zone = "center", shown = true },
+        { id = "title", zone = "center", shown = true },
+        { id = "icons", zone = "right", shown = true },
+    })
+    t.eq(tide.bar_layout, kept)
+    t.eq(drawn, 1)
+    local ok, why = settings_hs.choose_bar_layout(tide, { { id = "logo", zone = "up", shown = true } }, store)
+    t.eq(ok, nil)
+    t.eq(why:find(bar.LAYOUT_KEY, 1, true) ~= nil, true)
+    t.eq(stored[bar.LAYOUT_KEY], kept, "nothing changed")
+    t.eq(drawn, 1)
+    t.eq(#logged, 1)
+end)
+
 t.test("the wallpaper grid reaches the page with its lists as lists, empty or not", function()
     local settings_hs = require("tide.settings_hs")
     local json = require("json")

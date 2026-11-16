@@ -354,6 +354,26 @@ function M.choose_bar_icons(tide, value, store)
     return true
 end
 
+-- Where the bar's items go, the Bar page's Layout list: `value` is
+-- { { id, zone, shown } } in order, made whole by bar.layout_list, kept in
+-- `store` (hs.settings) as tide's own and drawn at once. Returns true, or
+-- nil and why, which the log keeps.
+function M.choose_bar_layout(tide, value, store)
+    local ok, why = bar.check_layout(value)
+    if not ok or value == nil then
+        why = why or (bar.LAYOUT_KEY .. " is missing")
+        tide.adapter.log("settings: " .. why)
+        return nil, why
+    end
+    local list = bar.stored_layout(value)
+    tide.bar_layout = list
+    store.set(bar.LAYOUT_KEY, list)
+    if tide.bar then
+        tide.bar.update()
+    end
+    return true
+end
+
 -- The window's height, in points, on a display tall enough for it.
 M.HEIGHT = 744
 
@@ -507,7 +527,12 @@ function M.new(tide)
             menuBar = { hidden = tide.keep_menu_bar_hidden ~= false },
             -- The Bar page's Position row: which edge the bar runs along.
             -- and its Icons list, every icon in order (bar.icon_list).
-            bar = { position = bar.position(tide.bar_position), icons = bar.icon_list(tide.bar_icons) },
+            -- and its Layout list, every item in order (bar.layout_list).
+            bar = {
+                position = bar.position(tide.bar_position),
+                icons = bar.icon_list(tide.bar_icons),
+                layout = bar.layout_list(tide.bar_layout),
+            },
             -- The Appearance page's Overview switch, and whether macOS
             -- lets it take pictures: nil when it can't say.
             overview = {
@@ -938,6 +963,13 @@ function M.new(tide)
             elseif type(body.barIcons) == "table" then
                 -- The Icons list: drawn at once, and the page shows it.
                 local ok, why = M.choose_bar_icons(tide, body.barIcons, hs.settings)
+                if not ok then
+                    tide.adapter.notify(why)
+                end
+                push()
+            elseif type(body.barLayout) == "table" then
+                -- The Layout list: drawn at once, and the page shows it.
+                local ok, why = M.choose_bar_layout(tide, body.barLayout, hs.settings)
                 if not ok then
                     tide.adapter.notify(why)
                 end

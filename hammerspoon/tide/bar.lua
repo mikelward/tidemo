@@ -125,6 +125,130 @@ function M.shown_icons(stored, position)
     return ids
 end
 
+-- The bar's layout, the Bar page's Layout list (SPEC.md §8): its items,
+-- each in a zone, left, center or right, in order, and shown or not, as
+-- tide for Linux's appearance.json `barLayout` (its shell/lib/barlayout.mjs,
+-- which the bar's page and the Bar page use as tide-barlayout.js). "logo"
+-- is the Apple logo and tide's; "icons" is the status icons and the clocks
+-- among them. Unless set, the bar is as it's always been. It's kept in
+-- hs.settings under LAYOUT_KEY, and only a bar along the top or bottom
+-- has it: the menu bar's workspaces have no items to place.
+M.ZONES = { "left", "center", "right" }
+M.LAYOUT = {
+    { id = "logo", label = "Logo", zone = "left", shown = true },
+    { id = "workspaces", label = "Workspaces", zone = "left", shown = true },
+    { id = "title", label = "Window title", zone = "center", shown = true },
+    { id = "icons", label = "Status icons", zone = "right", shown = true },
+}
+M.LAYOUT_KEY = "tide.bar_layout"
+
+local function is_zone(z)
+    for _, v in ipairs(M.ZONES) do
+        if v == z then
+            return true
+        end
+    end
+    return false
+end
+
+-- A stored layout as every item of M.LAYOUT once, { { id, label, zone,
+-- shown } }, in the stored order, as tide's layoutList: an id it doesn't
+-- know or names twice is dropped, a zone it doesn't know is the item's
+-- own, and an item it leaves out goes in after the one it follows by
+-- default, or first. Anything but a list is the default.
+function M.layout_list(stored)
+    local known, out, seen = {}, {}, {}
+    for _, e in ipairs(M.LAYOUT) do
+        known[e.id] = e
+    end
+    for _, v in ipairs(type(stored) == "table" and stored or {}) do
+        local e = type(v) == "table" and known[v.id]
+        if e and not seen[v.id] then
+            seen[v.id] = true
+            local shown = v.shown
+            if type(shown) ~= "boolean" then
+                shown = e.shown
+            end
+            out[#out + 1] = { id = e.id, label = e.label, zone = is_zone(v.zone) and v.zone or e.zone, shown = shown }
+        end
+    end
+    for i, e in ipairs(M.LAYOUT) do
+        if not seen[e.id] then
+            local at = 1
+            for j = i - 1, 1, -1 do
+                local found
+                for n, o in ipairs(out) do
+                    if o.id == M.LAYOUT[j].id then
+                        found = n
+                    end
+                end
+                if found then
+                    at = found + 1
+                    break
+                end
+            end
+            table.insert(out, at, { id = e.id, label = e.label, zone = e.zone, shown = e.shown })
+        end
+    end
+    return out
+end
+
+-- Whether `v` is a layout to keep: nil (the default), or a list of
+-- { id, zone, shown }, the id a lowercase name, the zone left, center or
+-- right, shown true or false, as tide's appearance.json checks it. An id
+-- the bar doesn't know is layout_list's to drop. Returns true, or nil and
+-- why, naming the setting.
+function M.check_layout(v)
+    if v == nil then
+        return true
+    end
+    local why = M.LAYOUT_KEY .. ' must be a list like [{"id": "workspaces", "zone": "center", "shown": true}]'
+    if type(v) ~= "table" then
+        return nil, why
+    end
+    local n = 0
+    for _ in pairs(v) do
+        n = n + 1
+    end
+    if n ~= #v then
+        return nil, why
+    end
+    for _, e in ipairs(v) do
+        if type(e) ~= "table" or type(e.id) ~= "string" or not e.id:match("^[a-z]+$")
+            or not is_zone(e.zone) or type(e.shown) ~= "boolean" then
+            return nil, why
+        end
+        for k in pairs(e) do
+            if k ~= "id" and k ~= "zone" and k ~= "shown" then
+                return nil, why
+            end
+        end
+    end
+    return true
+end
+
+-- The layout read at load: `v` if check_layout keeps it, else nil, the
+-- default, with why logged through `log`, naming the setting.
+function M.loaded_layout(v, log)
+    local ok, why = M.check_layout(v)
+    if not ok then
+        if log then
+            log("bar: " .. why .. "; using the default layout")
+        end
+        return nil
+    end
+    return v
+end
+
+-- The layout as kept and sent to the bar's page: { { id, zone, shown } }.
+function M.stored_layout(stored)
+    local out = {}
+    for i, e in ipairs(M.layout_list(stored)) do
+        out[i] = { id = e.id, zone = e.zone, shown = e.shown }
+    end
+    return out
+end
+
 -- A long name is cut to this many characters, with an ellipsis (SPEC.md
 -- §8, a guess to confirm).
 M.NAME_MAX = 16
@@ -1037,6 +1161,13 @@ end
 -- settings(page) for a right-click's settings page, "" for the first,
 -- sound(uuid, { right }) for the volume popover under the speaker,
 -- tray(uuid) for the tray icon's Show Menu Bar, and tip(uuid, tip).
+-- Where the Apple menu opens on a bar whose frame is `frame`: under the
+-- Apple logo, at `where.x` from the page (its left edge, wherever the
+-- layout put it), or at the bar's left edge without one.
+function M.apple_x(frame, where)
+    return frame.x + (tonumber(where and where.x) or 4)
+end
+
 function M.handle(wm, body, act)
     local uuid = body.uuid
     if body.show then
@@ -1067,7 +1198,7 @@ function M.handle(wm, body, act)
     elseif body.volume then
         act.volume(tonumber(body.volume))
     elseif body.menubar and act.menubar then
-        act.menubar(uuid)
+        act.menubar(uuid, type(body.menubar) == "table" and body.menubar or {})
     elseif body.tray and act.tray then
         act.tray(uuid)
     elseif type(body.settings) == "string" and act.settings then

@@ -536,8 +536,9 @@ function M.new(tide)
     end
 
     -- The Apple logo's menu (bar.lua's copy of the Apple menu), under the
-    -- logo at the left of display `uuid`'s bar, or above it along the bottom.
-    local function open_apple_menu(uuid)
+    -- logo on display `uuid`'s bar, wherever the layout put it (`where.x`),
+    -- or above it along the bottom.
+    local function open_apple_menu(uuid, where)
         local v = uuid and self.views[uuid]
         if not v or v.hidden then
             return
@@ -560,7 +561,7 @@ function M.new(tide)
             end
         end, at())
         self.apple_popup:setMenu(menu)
-        self.apple_popup:popupMenu(bar.menu_point(v.frame, v.frame.x + 4, menu, at()))
+        self.apple_popup:popupMenu(bar.menu_point(v.frame, bar.apple_x(v.frame, where), menu, at()))
     end
 
     local function on_message(msg, from)
@@ -639,6 +640,8 @@ function M.new(tide)
         state.goodClocks = tide.good_clocks
         -- The Bar page's icons, shown and in order (bar.shown_icons).
         state.iconOrder = bar.shown_icons(tide.bar_icons, tide.bar_position)
+        -- The Bar page's layout, whole (bar.stored_layout).
+        state.barLayout = bar.stored_layout(tide.bar_layout)
         local json = encode(state)
         if not json or json == v.sent then
             return
