@@ -389,6 +389,9 @@ function M.start(config)
     -- The Bar page's layout (bar.layout_list), or nil for the default; a
     -- bad one is logged, naming the setting, and the default stands.
     self.bar_layout = bar.loaded_layout(hs.settings.get(bar.LAYOUT_KEY), self.adapter.log)
+    -- The Bar page's background colors ({ light, dark }); a bad one is
+    -- logged, naming the setting, and the bar's own stand.
+    self.bar_colors = bar.loaded_colors(hs.settings.get(bar.COLORS_KEY), self.adapter.log)
     -- The Appearance page's Overview switch: window pictures on the
     -- overview's cards, off unless turned on there (SPEC.md §6.9).
     self.overview_pictures = hs.settings.get(overview.PICTURES_KEY) == true

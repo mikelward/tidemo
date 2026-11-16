@@ -642,6 +642,8 @@ function M.new(tide)
         state.iconOrder = bar.shown_icons(tide.bar_icons, tide.bar_position)
         -- The Bar page's layout, whole (bar.stored_layout).
         state.barLayout = bar.stored_layout(tide.bar_layout)
+        -- The Bar page's background colors (bar.page_colors).
+        state.barColors = bar.page_colors(tide.bar_colors)
         local json = encode(state)
         if not json or json == v.sent then
             return

@@ -367,6 +367,36 @@ t.test("the Bar page's layout is kept whole and drawn at once", function()
     t.eq(#logged, 1)
 end)
 
+t.test("Light and Dark background set the bar's colors, keep them, and draw them at once", function()
+    local settings_hs = require("tide.settings_hs")
+    local bar = require("tide.bar")
+    local stored, drawn, logged = {}, 0, {}
+    local store = {
+        set = function(k, v)
+            stored[k] = v
+        end,
+    }
+    local tide = {
+        adapter = { log = function(m) logged[#logged + 1] = m end },
+        bar = { update = function() drawn = drawn + 1 end },
+    }
+    t.eq(settings_hs.choose_bar_color(tide, "dark", "#13303A", store), true)
+    t.eq(stored[bar.COLORS_KEY], { dark = "#13303a" })
+    t.eq(settings_hs.choose_bar_color(tide, "light", "#dfe3ee", store), true)
+    t.eq(stored[bar.COLORS_KEY], { light = "#dfe3ee", dark = "#13303a" }, "each mode's kept")
+    t.eq(drawn, 2)
+    local ok, why = settings_hs.choose_bar_color(tide, "dark", "#ffffff", store)
+    t.eq(ok, nil)
+    t.eq(why, bar.COLORS_KEY .. ".dark is too light for the bar's text; choose a darker color")
+    t.eq(stored[bar.COLORS_KEY], { light = "#dfe3ee", dark = "#13303a" }, "nothing changed")
+    t.eq(drawn, 2)
+    t.eq(#logged, 1)
+    -- Default: the bar's own again.
+    t.eq(settings_hs.choose_bar_color(tide, "dark", nil, store), true)
+    t.eq(stored[bar.COLORS_KEY], { light = "#dfe3ee" })
+    t.eq(settings_hs.choose_bar_color(tide, "sepia", "#fff", store), nil)
+end)
+
 t.test("the wallpaper grid reaches the page with its lists as lists, empty or not", function()
     local settings_hs = require("tide.settings_hs")
     local json = require("json")

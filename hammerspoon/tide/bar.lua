@@ -249,6 +249,95 @@ function M.stored_layout(stored)
     return out
 end
 
+-- The bar's background in light and dark mode, the Bar page's Light
+-- background and Dark background (SPEC.md §8), as tide for Linux's
+-- appearance.json and tide for Chrome have them (lightBarColor,
+-- darkBarColor): { light = "#rrggbb", dark = "#rrggbb" }, either missing for
+-- the bar's own. Kept in hs.settings under COLORS_KEY. The bar's text stays
+-- the mode's (launcher.css's --fg, TEXT), so a color must contrast with it
+-- by at least BAR_CONTRAST, WCAG's AAA, as tide for Chrome's barcolor.js.
+M.COLORS_KEY = "tide.bar_colors"
+M.BAR_CONTRAST = 7
+M.TEXT = { light = "#1e1e1e", dark = "#f6f5f4" }
+
+-- `v` as #rrggbb in lower case, or nil when it isn't #rrggbb or #rgb.
+function M.hex_color(v)
+    if type(v) ~= "string" then
+        return nil
+    end
+    if v:match("^#%x%x%x%x%x%x$") then
+        return v:lower()
+    end
+    if v:match("^#%x%x%x$") then
+        return ("#" .. v:sub(2, 2):rep(2) .. v:sub(3, 3):rep(2) .. v:sub(4, 4):rep(2)):lower()
+    end
+    return nil
+end
+
+-- The WCAG contrast ratio of two #rrggbb colors, from 1 to 21.
+function M.contrast(a, b)
+    local function lum(hex)
+        local c = {}
+        for i, at in ipairs({ 2, 4, 6 }) do
+            local v = tonumber(hex:sub(at, at + 1), 16) / 255
+            c[i] = v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4
+        end
+        return 0.2126 * c[1] + 0.7152 * c[2] + 0.0722 * c[3]
+    end
+    local x, y = lum(a), lum(b)
+    return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05)
+end
+
+-- The colors to keep from `v`: nil (both the bar's own), or a table of
+-- light and dark, each missing or a color the mode's text reads on.
+-- Returns them as { light, dark } in #rrggbb, or nil and why, naming the
+-- setting.
+function M.check_colors(v)
+    if v == nil then
+        return {}
+    end
+    if type(v) ~= "table" then
+        return nil, M.COLORS_KEY .. ' must be a table like {"light": "#dfe3ee", "dark": "#13303a"}'
+    end
+    local out = {}
+    for k, c in pairs(v) do
+        if k ~= "light" and k ~= "dark" then
+            return nil, M.COLORS_KEY .. ' has "' .. tostring(k) .. '", not light or dark'
+        end
+        local hex = M.hex_color(c)
+        if not hex then
+            return nil, M.COLORS_KEY .. "." .. k .. ' must be a color as #rrggbb or #rgb, such as "#1a1d2e"'
+        end
+        if M.contrast(hex, M.TEXT[k]) < M.BAR_CONTRAST then
+            local dark = k == "dark"
+            return nil, M.COLORS_KEY .. "." .. k .. " is too " .. (dark and "light" or "dark")
+                .. " for the bar's text; choose a " .. (dark and "darker" or "lighter") .. " color"
+        end
+        out[k] = hex
+    end
+    return out
+end
+
+-- The colors read at load: check_colors's, or the bar's own with why
+-- logged through `log`, naming the setting.
+function M.loaded_colors(v, log)
+    local out, why = M.check_colors(v)
+    if not out then
+        if log then
+            log("bar: " .. why .. "; using the bar's own colors")
+        end
+        return {}
+    end
+    return out
+end
+
+-- The colors as the bar's page takes them, tide for Linux's names:
+-- { lightBarColor, darkBarColor }, either nil for the bar's own.
+function M.page_colors(colors)
+    colors = colors or {}
+    return { lightBarColor = colors.light, darkBarColor = colors.dark }
+end
+
 -- A long name is cut to this many characters, with an ellipsis (SPEC.md
 -- §8, a guess to confirm).
 M.NAME_MAX = 16

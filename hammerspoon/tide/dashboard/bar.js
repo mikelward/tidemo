@@ -691,6 +691,17 @@ function tick() {
 
 // Whether this bar is over a notch (SPEC.md §8), from tide.
 let notch = false;
+// The Bar page's Light background and Dark background, as tide sent them
+// (barColors: { lightBarColor, darkBarColor }, tide for Linux's names):
+// launcher.css's --bar reads them as --bar-light and --bar-dark, and is the
+// bar's own without them.
+export function colorBar(colors, root = document.documentElement) {
+  for (const [mode, key] of [["light", "lightBarColor"], ["dark", "darkBarColor"]]) {
+    if (colors?.[key]) root.style.setProperty(`--bar-${mode}`, colors[key]);
+    else root.style.removeProperty(`--bar-${mode}`);
+  }
+}
+
 // The Bar page's layout, as tide sent it (barLayout): the default unless
 // it sent one.
 let layout = undefined;
@@ -729,6 +740,7 @@ window.tide = {
     // An item with nothing to show takes no room: the title with no window
     // focused here, the status icons with every one off.
     layout = state.barLayout ?? undefined;
+    colorBar(state.barColors);
     arrange(arrangement(layout, { notch, has: { title: !!state.title, icons: order.length > 0 } }));
     const loaded = nextSettings(state, settings);
     settings = loaded.settings;

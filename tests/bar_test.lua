@@ -1242,4 +1242,24 @@ t.test("the bar's zones in a browser: a wide side keeps its width, the center cl
     end
 end)
 
+t.test("the bar's colors are #rrggbb the mode's text reads on, or the bar's own", function()
+    t.eq(bar.hex_color("#1aF"), "#11aaff")
+    t.eq(bar.hex_color("#DFE3EE"), "#dfe3ee")
+    t.eq(bar.hex_color("blue"), nil)
+    t.eq(bar.contrast("#000000", "#ffffff"), 21.0)
+    t.eq(bar.check_colors(nil), {})
+    t.eq(bar.check_colors({ light = "#DFE3EE", dark = "#13303a" }), { light = "#dfe3ee", dark = "#13303a" })
+    local _, why = bar.check_colors({ light = "#000" })
+    t.eq(why, bar.COLORS_KEY .. ".light is too dark for the bar's text; choose a lighter color")
+    _, why = bar.check_colors({ dusk = "#000" })
+    t.eq(why:find("not light or dark", 1, true) ~= nil, true, why)
+    _, why = bar.check_colors("#000")
+    t.eq(why:find(bar.COLORS_KEY .. " must be a table", 1, true) ~= nil, true, why)
+    local logged = {}
+    t.eq(bar.loaded_colors({ dark = "#fff" }, function(m) logged[#logged + 1] = m end), {})
+    t.eq(logged[1], "bar: " .. bar.COLORS_KEY .. ".dark is too light for the bar's text; choose a darker color; using the bar's own colors")
+    t.eq(bar.page_colors({ dark = "#13303a" }), { darkBarColor = "#13303a" })
+    t.eq(bar.page_colors(nil), {})
+end)
+
 t.done("bar")

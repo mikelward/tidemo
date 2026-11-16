@@ -2066,6 +2066,23 @@ stock keys:
       Esc, Return or a click below them, and macOS's menu bar shows with
       those icons. Along the bottom the menu bar already shows, so the bar
       leaves it out. A right-click on it opens the Bar page.
+  - **The Bar page's Colors set the bar's background** in light and dark
+    mode, as tide for Linux's and tide for Chrome's do: **Light
+    background** and **Dark background**, each a color picker and
+    Default, which takes the color out. Only a bar along the top or
+    bottom has them, as with the Layout list.
+    - The bar's text stays the mode's (`launcher.css`'s `--fg`), so a
+      color must contrast with it by at least 7:1 (WCAG's AAA): a light
+      color for light mode, a dark one for dark. One that doesn't is
+      refused, and tide says why in a notification
+      (`settings_hs.choose_bar_color`).
+    - They're `{ light, dark }` in `hs.settings` (`bar.COLORS_KEY`), this
+      Mac's own as the layout is, as `#rrggbb`, either missing for the
+      bar's own. The bar's page gets them as tide for Linux's
+      `lightBarColor` and `darkBarColor`, which `launcher.css`'s `--bar`
+      reads as `--bar-light` and `--bar-dark` (`bar.js`'s `colorBar`).
+      A bad stored value is logged at load, naming the setting, and the
+      bar's own colors stand (`bar.check_colors`).
   - **The Bar page's Layout list places the bar's items left, center or
     right,** as tide for Linux's does (tide for Linux §7.1). The items are
     the logo (the Apple logo and tide's, together), the workspaces, the

@@ -2099,6 +2099,25 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   sent.length = 0;
 }
 
+// The Bar page's Colors: each mode's picker shows its color or the bar's
+// own; a change sends it, and Default, only with a color set, takes it out.
+{
+  sandbox.tide.update({ clockFiles: [], bar: { position: "top", colors: { darkBarColor: "#13303a" } } });
+  const rows = () => ids["bar-colors"].children;
+  assert.deepStrictEqual(rows().map((li) => [li.children[0].textContent, li.children[1].value, li.children[2].disabled]), [
+    ["Light background", "#ffffff", true],
+    ["Dark background", "#13303a", false],
+  ]);
+  sent.length = 0;
+  rows()[0].children[1].value = "#dfe3ee";
+  rows()[0].children[1].listeners.change();
+  assert.deepStrictEqual(sent, [{ barColor: { mode: "light", color: "#dfe3ee" } }]);
+  sent.length = 0;
+  rows()[1].children[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ barColor: { mode: "dark", color: null } }]);
+  sent.length = 0;
+}
+
 // The Appearance page's Overview switch: icons unless tide says pictures
 // are on, a click asks for the other, and pictures on without Screen
 // Recording say so.
