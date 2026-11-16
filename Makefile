@@ -27,7 +27,8 @@ TIDE ?= ../tide
 TIDECO ?= ../tideco
 # The dashboard files that are tide for Chrome's, copied unchanged.
 TIDECO_FILES := clocks.js calendar.js clockview.js launcher.css \
-	launcherview.js launcher.js extras.js keepawake.js platform.js apps.js workspaces.js unread.js watchers.js
+	launcherview.js launcher.js extras.js keepawake.js platform.js apps.js workspaces.js unread.js watchers.js \
+	barlayout.js barcolor.js
 export LUA_PATH := hammerspoon/?.lua;hammerspoon/?/init.lua;tests/?.lua;;
 
 LUA_FILES := $(wildcard hammerspoon/tide/*.lua hammerspoon/tilemo/*.lua hammerspoon/timo/*.lua tests/*.lua ci/*.lua)
