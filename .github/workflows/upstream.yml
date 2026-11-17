@@ -1,0 +1,50 @@
+name: upstream
+
+# Whether tide for Linux or tide for Chrome has moved on from the commits in
+# UPSTREAM, whose files are copied here (Makefile's sync). CI checks pull
+# requests against those commits, so a change there can't turn one red;
+# this says, once a day, when it's time to run `make sync`. A failed run
+# emails the repository's owner.
+#
+# Cost and reliability: a free sub-minute job on GitHub's runners, no
+# secrets. It reads both repositories, which are public.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: mikelward/tide
+          path: tide
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: mikelward/tideco
+          path: tideco
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y lua5.4
+      # sync copies the files and records the commits; anything changed
+      # means they've moved on. Its own checks failing says what needs a
+      # hand besides.
+      - run: |
+          status=0
+          make sync TIDE=tide TIDECO=tideco || status=$?
+          if ! git diff --quiet; then
+            echo "::error::tide for Linux or tide for Chrome has moved on: run make sync"
+            git diff --stat
+            exit 1
+          fi
+          exit "$status"

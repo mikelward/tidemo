@@ -306,6 +306,12 @@ where its layout says. That's one layout on one
 display; the checklists in SPEC.md §5.1 and §5.2 are what to try on a real
 Mac.
 
+Some files are tide for Linux's and tide for Chrome's, copied unchanged.
+`make check-tide check-tideco` compares them with checkouts beside this one,
+and CI with the commits in `UPSTREAM`, so a change there can't turn a pull
+request here red. Once a day, the `upstream` workflow fails when either has
+moved on; `make sync` then copies the files afresh and records the commits.
+
 ## License
 
 Apache-2.0; see `LICENSE`. The city list (`hammerspoon/tide/cities.tsv`) is
