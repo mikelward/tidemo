@@ -1474,6 +1474,16 @@ function M:insert_back(id, w)
     table.insert(order, at, id)
 end
 
+-- Whether window `id` is the only one left on workspace `name`.
+function M:last_on(name, id)
+    for oid, o in pairs(self.windows) do
+        if oid ~= id and o.ws == name then
+            return false
+        end
+    end
+    return true
+end
+
 -- Stop managing window `id`. `pos` is its place in its stack, if read
 -- already, and `at` the time to save its place under.
 function M:forget(id, pos, at)
@@ -1499,9 +1509,12 @@ function M:forget(id, pos, at)
             table.remove(self.gone, 1)
         end
     end
-    -- The window you were in went: macOS moving the focus on for a moment
-    -- after isn't you leaving (M:focused_window).
-    if self.history[1] == id and w.ws and self:shown(w.ws) then
+    -- The window you were in went, or the last on a workspace showing:
+    -- macOS moving the focus on for a moment after isn't you leaving
+    -- (M:focused_window). The last counts even if macOS never said it had
+    -- the focus, as for a window that took it while the name prompt was
+    -- open, so you aren't sent off the workspace it leaves empty.
+    if w.ws and self:shown(w.ws) and (self.history[1] == id or self:last_on(w.ws, id)) then
         self.closed_at = at or self.a.now()
     end
     self.windows[id] = nil
@@ -3261,7 +3274,7 @@ function M:focused_window(id)
     -- not. The focus goes to the last used window left there,
     -- or with none, to no window.
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
-        if self:just_closed(prev) or self:closed_lately() then
+        if self:just_closed(prev) or self:closed_lately() or self:just_emptied(self:current_ws()) then
             self.a.log("staying on " .. tostring(self.current) .. " after a close")
             if not self:refocus_ws(self:current_ws()) then
                 self:unfocus_parked()
@@ -3287,6 +3300,24 @@ function M:just_closed(id)
         end
     end
     return true
+end
+
+-- Whether workspace `name` had windows and every one of them is gone,
+-- before tide's sync has forgotten them (M:just_closed).
+function M:just_emptied(name)
+    if name == nil then
+        return false
+    end
+    local any = false
+    for oid, o in pairs(self.windows) do
+        if o.ws == name then
+            if not self:just_closed(oid) then
+                return false
+            end
+            any = true
+        end
+    end
+    return any
 end
 
 -- Whether the window you were in closed within the last M.GRACE seconds,

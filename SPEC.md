@@ -950,9 +950,11 @@ API: the same Accessibility move a retile makes.
     clicking a sliver, or an app's window coming to the front.
   - That's only while the window still has the focus, so a late report
     of a focus from before a switch doesn't flip you back.
-  - Nor when the window you were in just closed: macOS moving the focus
-    on to another app's window isn't you leaving, so you stay on the
-    workspace, empty or not, and an empty one is kept until you leave it.
+  - Nor when the window you were in, or the last window on the workspace,
+    just closed: macOS moving the focus on to another app's window isn't
+    you leaving, so you stay on the workspace, empty or not, and an empty
+    one is kept until you leave it. The last window counts even if macOS
+    never said it had the focus, as for one named at the prompt.
     That holds for a second after the close, whichever macOS reports
     first, so a Cmd+Tab in that second doesn't switch.
   - A switch to an empty workspace gives the focus to Hammerspoon, which
