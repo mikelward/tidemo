@@ -80,6 +80,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      # conf's Karabiner rules, which tide turns on, beside tide's own:
+      # Karabiner-Elements' own checker, as they are and as tide copies
+      # them for its modifier swap.
+      - uses: actions/checkout@v4
+        with:
+          repository: mikelward/conf
+          path: conf
+          persist-credentials: false
+      - run: ci/karabiner-lint.sh conf
+        env:
+          GH_TOKEN: ${{ github.token }}
       - run: brew install --cask hammerspoon
       - run: ci/hs-smoke.sh
 

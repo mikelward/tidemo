@@ -309,6 +309,12 @@ where its layout says. That's one layout on one
 display; the checklists in SPEC.md §5.1 and §5.2 are what to try on a real
 Mac.
 
+The same job checks the Karabiner rule files, tide's and conf's, with
+Karabiner-Elements' own checker (`ci/karabiner-lint.sh`), as they are and as
+tide copies them for its modifier swap. The smoke test also presses
+workspace keys as a person does, switching and sending windows, and
+measures a centered bar in Hammerspoon's own WebKit.
+
 Some files are tide for Linux's and tide for Chrome's, copied unchanged.
 `make check-tide check-tideco` compares them with checkouts beside this one,
 and CI with the commits in `UPSTREAM`, so a change there can't turn a pull
