@@ -313,7 +313,10 @@ The same job checks the Karabiner rule files, tide's and conf's, with
 Karabiner-Elements' own checker (`ci/karabiner-lint.sh`), as they are and as
 tide copies them for its modifier swap. The smoke test also presses
 workspace keys as a person does, switching and sending windows, and
-measures a centered bar in Hammerspoon's own WebKit.
+measures a centered bar in Hammerspoon's own WebKit. Another macOS job runs the installer for
+real on a fresh runner, then again, and checks the apps, the keys it frees,
+Karabiner's rule and that the second run changes nothing
+(`ci/install-check.sh`).
 
 Some files are tide for Linux's and tide for Chrome's, copied unchanged.
 `make check-tide check-tideco` compares them with checkouts beside this one,
