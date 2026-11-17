@@ -88,6 +88,31 @@ t.test("the room at the top is a notch, a menu bar that shows, or both", functio
         "a menu bar that shows is covered even where macOS keeps no room for it")
 end)
 
+t.test("what macOS says about a notch beats the room it keeps", function()
+    local full = { x = 1512, y = -200, w = 2560, h = 1440 }
+    local area = { x = 1512, y = -167, w = 2560, h = 1407 }
+    t.eq({ bar.top_room(area, full, false) }, { true, true }, "an external display's 33 px menu bar looks like a notch's")
+    t.eq({ bar.top_room(area, full, false, false) }, { false, true }, "but macOS says it has none")
+    t.eq({ bar.top_room(area, full, true, false) }, { false, false }, "hidden too")
+    t.eq({ bar.top_room({ x = 0, y = 0, w = 1512, h = 982 }, { x = 0, y = 0, w = 1512, h = 982 }, false, true) },
+        { true, true }, "and has one, even with no room kept")
+end)
+
+t.test("macOS's notch areas are matched to a display by its full frame", function()
+    local external = { x = 1512, y = -200, w = 2560, h = 1440 }
+    local builtin = { x = 0, y = 0, w = 1512, h = 982 }
+    local areas = {
+        { x = 0, y = 0, w = 1512, left = 662, right = 662 },
+        { x = 1512, y = -200, w = 2560, left = 0, right = 0 },
+    }
+    t.eq(bar.notch_in(builtin, areas), true)
+    t.eq(bar.notch_in(external, areas), false)
+    t.eq(bar.notch_in({ x = 0, y = -982, w = 1512, h = 982 }, areas), nil, "a display stacked above, sharing x and width")
+    t.eq(bar.notch_in(builtin, { { x = 0, y = 0, w = 1512 } }), nil, "no widths: guessed")
+    t.eq(bar.notch_in(builtin, nil), nil, "couldn't read them: guessed")
+    t.eq(bar.notch_in(builtin, "oops"), nil)
+end)
+
 t.test("with no room kept for a menu bar that shows, the bar covers it from the top, above its level", function()
     local s = { area = { x = 0, y = 0, w = 1920, h = 1080 }, full = { x = 0, y = 0, w = 1920, h = 1080 } }
     s.notch, s.menu_bar = bar.top_room(s.area, s.full, false)

@@ -396,22 +396,49 @@ end
 
 -- What the room macOS keeps at the top of a display is, from its `area`
 -- (hs.screen's frame) and `full` frame: whether it has a notch, and whether
--- it is a menu bar that shows (`hidden`: the menu bar hides itself). With
--- the menu bar hidden, the only room kept is a notch's. With it shown, the
--- room is the menu bar, and a notched display's is taller: 37 px or more,
--- where a plain one's is 24 or 25 *(heights seen on Sonoma and later;
--- unverified per model)*, so the title and chips still keep clear of it.
+-- it is a menu bar that shows (`hidden`: the menu bar hides itself).
+-- `notched` is whether macOS says the display has a notch (notch_in), or
+-- nil when it couldn't say. Then it's guessed from the room: with the menu
+-- bar hidden, the only room kept is a notch's; with it shown, the room is
+-- the menu bar, and a notched display's is taller: 37 px or more, where a
+-- plain one's is 24 or 25 *(heights seen on Sonoma and later; unverified
+-- per model)*. The guess can be wrong: on the owner's Mac it took an
+-- external display for a notched one, which hid its title.
 -- A menu bar set to show is one to cover even where macOS keeps no room
 -- for it: on the owner's Mac, set to Never, hs.screen's frame starts at
 -- the top, menu bar and all, and a bar below its level sat under it.
 M.NOTCH_MENU_BAR = 30
 
-function M.top_room(area, full, hidden)
+function M.top_room(area, full, hidden, notched)
     local room = area.y - full.y
-    if hidden then
-        return room > 0, false
+    if notched == nil then
+        notched = (hidden and room > 0) or (not hidden and room > M.NOTCH_MENU_BAR)
     end
-    return room > M.NOTCH_MENU_BAR, true
+    return notched, not hidden
+end
+
+-- The entry in `areas` for the display whose full frame is `full`: NSScreen's
+-- displays (notchbar.SCREENS_SCRIPT's JSON, decoded), matched by x, y and
+-- width, since stacked displays can share x and width. nil without one.
+function M.screen_area(full, areas)
+    for _, a in ipairs(type(areas) == "table" and areas or {}) do
+        if type(a) == "table" and a.x == full.x and a.y == full.y and a.w == full.w then
+            return a
+        end
+    end
+    return nil
+end
+
+-- Whether macOS says the display whose full frame is `full` has a notch:
+-- its menu bar has room either side of one (auxiliaryTopLeftArea and
+-- auxiliaryTopRightArea, in `areas` as left and right). nil when `areas`
+-- has no entry for it, or no widths, so top_room guesses.
+function M.notch_in(full, areas)
+    local a = M.screen_area(full, areas)
+    if not a or not tonumber(a.left) or not tonumber(a.right) then
+        return nil
+    end
+    return a.left > 0 and a.right > 0
 end
 
 -- The strip along the top of a display's area, and the tiling area left
