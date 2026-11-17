@@ -25,6 +25,30 @@ LUAC ?= $(shell command -v luac5.4 || command -v luac)
 HAMMERSPOON_DIR ?= $(HOME)/.hammerspoon
 TIDE ?= ../tide
 TIDECO ?= ../tideco
+# The files that are tide for Linux's, copied unchanged: its path=ours.
+TIDE_COPIES := hypr/tide/geometry.lua=hammerspoon/tide/geometry.lua \
+	hypr/tide/direction.lua=hammerspoon/tide/direction.lua \
+	shell/lib/clocks.mjs=hammerspoon/tide/dashboard/tide-clocks.js \
+	shell/lib/startup.mjs=hammerspoon/tide/dashboard/tide-startup.js \
+	shell/lib/clipboard.mjs=hammerspoon/tide/dashboard/tide-clipboard.js \
+	shell/lib/steps.mjs=hammerspoon/tide/dashboard/tide-steps.js \
+	shell/lib/layouts.mjs=hammerspoon/tide/dashboard/tide-layouts.js \
+	shell/lib/input.mjs=hammerspoon/tide/dashboard/tide-input.js \
+	shell/lib/appearance.mjs=hammerspoon/tide/dashboard/tide-appearance.js \
+	shell/lib/idle.mjs=hammerspoon/tide/dashboard/tide-idle.js \
+	shell/lib/dnd.mjs=hammerspoon/tide/dashboard/tide-dnd.js \
+	shell/lib/palette.mjs=hammerspoon/tide/dashboard/tide-palette.js \
+	shell/lib/fuzzy.mjs=hammerspoon/tide/dashboard/tide-fuzzy.js \
+	shell/lib/cities.mjs=hammerspoon/tide/dashboard/tide-cities.js \
+	shell/cities/cities.tsv=hammerspoon/tide/cities.tsv \
+	shell/lib/span.mjs=hammerspoon/tide/dashboard/tide-span.js \
+	shell/lib/workspacenames.mjs=hammerspoon/tide/dashboard/tide-workspacenames.js \
+	shell/lib/workspacepage.mjs=hammerspoon/tide/dashboard/tide-workspacepage.js \
+	shell/lib/barsettings.mjs=hammerspoon/tide/dashboard/tide-barsettings.js \
+	shell/lib/barlayout.mjs=hammerspoon/tide/dashboard/tide-barlayout.js \
+	shell/lib/settingssearch.mjs=hammerspoon/tide/dashboard/tide-settingssearch.js \
+	shell/chars/chars.tsv=hammerspoon/tide/chars.tsv \
+	shell/icons/tide-symbolic.svg=hammerspoon/tide/icons/tide-symbolic.svg
 # The dashboard files that are tide for Chrome's, copied unchanged.
 TIDECO_FILES := clocks.js calendar.js clockview.js launcher.css \
 	launcherview.js launcher.js extras.js keepawake.js platform.js apps.js workspaces.js unread.js watchers.js \
@@ -34,7 +58,7 @@ export LUA_PATH := hammerspoon/?.lua;hammerspoon/?/init.lua;tests/?.lua;;
 LUA_FILES := $(wildcard hammerspoon/tide/*.lua hammerspoon/tilemo/*.lua hammerspoon/timo/*.lua tests/*.lua ci/*.lua)
 TESTS := $(wildcard tests/*_test.lua)
 
-.PHONY: test test-install lint install check-tide check-geometry check-tideco mocks icons version unshallow-check
+.PHONY: test test-install lint install sync check-tide check-geometry check-tideco mocks icons version unshallow-check
 
 # The version is the number of commits, so each push to main is a higher
 # one, released by CI as v<version> (.github/workflows/release.yml).
@@ -88,35 +112,25 @@ install:
 # wm.lua's standing workspaces restate tide for Linux's, so they're compared
 # too (ci/check_defaults.lua), deliberate differences listed there.
 check-tide:
-	cmp $(TIDE)/hypr/tide/geometry.lua hammerspoon/tide/geometry.lua
-	cmp $(TIDE)/hypr/tide/direction.lua hammerspoon/tide/direction.lua
-	cmp $(TIDE)/shell/lib/clocks.mjs hammerspoon/tide/dashboard/tide-clocks.js
-	cmp $(TIDE)/shell/lib/startup.mjs hammerspoon/tide/dashboard/tide-startup.js
-	cmp $(TIDE)/shell/lib/clipboard.mjs hammerspoon/tide/dashboard/tide-clipboard.js
-	cmp $(TIDE)/shell/lib/steps.mjs hammerspoon/tide/dashboard/tide-steps.js
-	cmp $(TIDE)/shell/lib/layouts.mjs hammerspoon/tide/dashboard/tide-layouts.js
-	cmp $(TIDE)/shell/lib/input.mjs hammerspoon/tide/dashboard/tide-input.js
-	cmp $(TIDE)/shell/lib/appearance.mjs hammerspoon/tide/dashboard/tide-appearance.js
-	cmp $(TIDE)/shell/lib/idle.mjs hammerspoon/tide/dashboard/tide-idle.js
-	cmp $(TIDE)/shell/lib/dnd.mjs hammerspoon/tide/dashboard/tide-dnd.js
-	cmp $(TIDE)/shell/lib/palette.mjs hammerspoon/tide/dashboard/tide-palette.js
-	cmp $(TIDE)/shell/lib/fuzzy.mjs hammerspoon/tide/dashboard/tide-fuzzy.js
-	cmp $(TIDE)/shell/lib/cities.mjs hammerspoon/tide/dashboard/tide-cities.js
-	cmp $(TIDE)/shell/cities/cities.tsv hammerspoon/tide/cities.tsv
-	cmp $(TIDE)/shell/lib/span.mjs hammerspoon/tide/dashboard/tide-span.js
-	cmp $(TIDE)/shell/lib/workspacenames.mjs hammerspoon/tide/dashboard/tide-workspacenames.js
-	cmp $(TIDE)/shell/lib/workspacepage.mjs hammerspoon/tide/dashboard/tide-workspacepage.js
-	cmp $(TIDE)/shell/lib/barsettings.mjs hammerspoon/tide/dashboard/tide-barsettings.js
-	cmp $(TIDE)/shell/lib/barlayout.mjs hammerspoon/tide/dashboard/tide-barlayout.js
-	cmp $(TIDE)/shell/lib/settingssearch.mjs hammerspoon/tide/dashboard/tide-settingssearch.js
-	cmp $(TIDE)/shell/chars/chars.tsv hammerspoon/tide/chars.tsv
-	cmp $(TIDE)/shell/icons/tide-symbolic.svg hammerspoon/tide/icons/tide-symbolic.svg
+	$(foreach p,$(TIDE_COPIES),cmp $(TIDE)/$(word 1,$(subst =, ,$(p))) $(word 2,$(subst =, ,$(p))) &&) true
 	$(LUA) ci/check_chip_colors.lua $(TIDE)/theme/palette.json hammerspoon/tide/dashboard/bar.html
 	$(LUA) ci/check_settings_colors.lua $(TIDE)/theme/palette.json hammerspoon/tide/dashboard/settings.html
 	$(LUA) ci/check_keymaps.lua $(TIDE)/shell/lib/keymaps.mjs
 	$(LUA) ci/check_defaults.lua $(TIDE)
 
 check-geometry: check-tide
+
+# CI checks the copies against the tide for Linux and tide for Chrome commits
+# in UPSTREAM, so a change there can't turn a pull request here red. `make
+# sync` copies the files afresh from your checkouts, records their commits,
+# and checks the rest: the launcher page's markup and ci/'s checks still
+# need a hand where they differ.
+sync:
+	$(foreach p,$(TIDE_COPIES),cp $(TIDE)/$(word 1,$(subst =, ,$(p))) $(word 2,$(subst =, ,$(p))) &&) true
+	$(foreach f,$(TIDECO_FILES),cp $(TIDECO)/src/$(f) hammerspoon/tide/dashboard/$(f) &&) true
+	printf '%s\n' "# The tide for Linux and tide for Chrome commits copied here (make sync)." \
+		"tide $$(git -C $(TIDE) rev-parse HEAD)" "tideco $$(git -C $(TIDECO) rev-parse HEAD)" > UPSTREAM
+	$(MAKE) --no-print-directory check-tide check-tideco
 
 # The dashboard's clocks, calendar and styles are tide for Chrome's, so the two
 # dashboards agree; so is the dashboard launcher's page and what it imports.

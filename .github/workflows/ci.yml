@@ -38,11 +38,19 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      # The tide for Linux and tide for Chrome commits copied here (make
+      # sync), so a change there can't turn a pull request here red;
+      # upstream.yml says when they've moved on.
+      - id: upstream
+        run: |
+          echo "tide=$(awk '$1 == "tide" { print $2 }' UPSTREAM)" >> "$GITHUB_OUTPUT"
+          echo "tideco=$(awk '$1 == "tideco" { print $2 }' UPSTREAM)" >> "$GITHUB_OUTPUT"
       # tide's geometry, clocks, startup and clipboard modules are copied here unchanged; check
       # they still match, and that the defaults restated here are still tide's.
       - uses: actions/checkout@v4
         with:
           repository: mikelward/tide
+          ref: ${{ steps.upstream.outputs.tide }}
           path: tide
           persist-credentials: false
       # So are the dashboard's clock modules and the dashboard launcher's page
@@ -50,6 +58,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: mikelward/tideco
+          ref: ${{ steps.upstream.outputs.tideco }}
           path: tideco
           persist-credentials: false
       # Ubuntu packages Lua 5.4, which is what Hammerspoon embeds.
