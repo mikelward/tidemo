@@ -8,6 +8,7 @@ local brand = require("tide.brand")
 local kitty = require("tide.kitty")
 local loginenv = require("tide.loginenv")
 local middlepaste = require("tide.middlepaste")
+local notchbar = require("tide.notchbar")
 local notices = require("tide.notices")
 local rules = require("tide.rules")
 local saved = require("tide.saved")
@@ -355,6 +356,26 @@ function M.new()
         return menu_bar_hidden
     end
 
+    -- Each display's notch, from NSScreen (notchbar.SCREENS_SCRIPT): what
+    -- macOS says, not a guess from the room it keeps (bar.top_room). Read
+    -- once, and again after the displays change; nil, and logged, when it
+    -- can't be read, so the room decides.
+    local notch_areas
+    local function read_notch_areas()
+        if notch_areas == nil or displays.areas_stale then
+            displays.areas_stale = false
+            local ok, out = a.javascript(notchbar.SCREENS_SCRIPT)
+            local decoded = ok and a.decode(out)
+            if type(decoded) == "table" then
+                notch_areas = decoded
+            else
+                notch_areas = false
+                a.log("displays: couldn't read where the notch is, so it's guessed: " .. tostring(ok and "not JSON" or out))
+            end
+        end
+        return notch_areas or nil
+    end
+
     -- The displays, read once until Hammerspoon is next idle: each read
     -- of every display's ID and frames takes 20 ms or more, even on CI's
     -- Mac, and one change redraws the bar and the tray, which asked eight
@@ -393,7 +414,7 @@ function M.new()
         local out = {}
         for _, s in ipairs(hs.screen.allScreens()) do
             local area, full = box(s:frame()), box(s:fullFrame())
-            local notch, menu_bar = bar.top_room(area, full, hides_menu_bar())
+            local notch, menu_bar = bar.top_room(area, full, hides_menu_bar(), bar.notch_in(full, read_notch_areas()))
             out[#out + 1] = { uuid = s:getUUID(), area = area, full = full, notch = notch, menu_bar = menu_bar }
         end
         -- Left to right, then top to bottom, so numbering is stable.
@@ -1119,6 +1140,7 @@ function M.watch(on_change, on_focus, on_moved, on_min, on_unmin, on_title)
     local sw = hs.screen.watcher.new(function(...)
         forget_displays()
         displays.menu_bar_stale = true
+        displays.areas_stale = true
         on_change(...)
     end)
     sw:start()

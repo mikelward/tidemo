@@ -2005,7 +2005,7 @@ stock keys:
     each display's bar starts at the top of the screen, at the status
     window level just above the menu bar's (`bar.level`), as tall as the
     menu bar or 36 px, whichever is taller (`bar.place`), and windows tile
-    below it. A shown menu bar taller than 30 px is taken as a notched display's (`bar.top_room`), so the title and chips still keep clear of the notch. The Apple logo's menu starts with **Show Menu Bar**, which
+    below it. On a display macOS says has a notch (below), the title and chips still keep clear of it. The Apple logo's menu starts with **Show Menu Bar**, which
     hides every bar so the real menu bar shows, with the app's menus and
     other apps' status items, until Esc, Return, or a click or release below the bars
     (`bar.reveal_done`): a click on the menu bar or a menu's title keeps
@@ -2592,20 +2592,29 @@ stock keys:
   revealed.
 - **The notch,** on a MacBook's own display, sits where tide for Linux centers the
   title.
+  - **Which display has a notch** is what NSScreen says: room in its
+    menu bar either side of one (`auxiliaryTopLeftArea` and
+    `auxiliaryTopRightArea`, read with `notchbar.SCREENS_SCRIPT` once,
+    and again when the displays change; `bar.notch_in`). Only where that
+    can't be read is it guessed from the room macOS keeps (`bar.top_room`),
+    and the log says so. The guess took the owner's external display for
+    a notched one, and the bar kept its middle clear for a notch that
+    wasn't there.
   - **With the menu bar shown,** as tide asks (above), the bar covers it
     on that display as on any other, at the status level. A notched
     display's menu bar is taller: 37 px or more, where a plain one's is 24
-    or 25 *(seen on Sonoma and later; unverified per model)*. So a shown
-    menu bar taller than 30 px is taken as a notch's (`bar.top_room`), and
-    the title and chips keep clear of it (below). The bar is as tall as
-    the menu bar or 36 px, whichever is taller (`bar.place`).
+    or 25 *(seen on Sonoma and later; unverified per model)*. Without
+    NSScreen's word, a shown menu bar taller than 30 px is taken as a
+    notch's. The bar is as tall as the menu bar or 36 px, whichever is
+    taller (`bar.place`).
   - **With the menu bar still hiding,** macOS keeps a strip as tall as the
     notch at the top of that display, and `hs.screen`'s frame starts below
     it. A bar placed in the frame would sit under the notch, wasting the
     strip, so the bar goes up to the very top there, over the strip, and
-    windows tile below it (`bar.place`). A display counts as having a
-    notch then when its frame still starts below its full frame
-    (`_HIHideMenuBar`, read with `defaults`, says the menu bar hides).
+    windows tile below it (`bar.place`). Without NSScreen's word, a
+    display counts as having a notch then when its frame still starts
+    below its full frame (`_HIHideMenuBar`, read with `defaults`, says
+    the menu bar hides).
   - **macOS can refuse the strip:** on the owner's MacBook it moved the
     bar's window back down below the notch, so windows, tiled from the top
     of the strip, sat under the bar. So tide reads the bar's frame back

@@ -95,11 +95,9 @@ end
 -- has a notch by its room (`s.notch`) but no entry gets M.NOTCH_GUESS,
 -- centered. Returns { left, right } in screen points, or nil.
 function M.notch_of(s, areas)
-    for _, a in ipairs(areas or {}) do
-        if type(a) == "table" and a.x == s.full.x and a.y == s.full.y and a.w == s.full.w
-            and tonumber(a.left) and tonumber(a.right) and a.left > 0 and a.right > 0 then
-            return { left = s.full.x + a.left, right = s.full.x + a.w - a.right }
-        end
+    if bar.notch_in(s.full, areas) then
+        local a = bar.screen_area(s.full, areas)
+        return { left = s.full.x + a.left, right = s.full.x + a.w - a.right }
     end
     if s.notch then
         local mid = s.full.x + s.full.w / 2

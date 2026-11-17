@@ -46,6 +46,23 @@ local function stub(screens)
             end
             return s.hides and "1\n" or "0\n", true
         end,
+        -- NSScreen's notch areas (notchbar.SCREENS_SCRIPT), as JSON, or
+        -- an error when `s.areas` is false.
+        osascript = {
+            javascript = function()
+                s.scripts = (s.scripts or 0) + 1
+                if s.areas == false then
+                    return false, nil, { OSAScriptErrorMessageKey = "not allowed" }
+                end
+                return true, s.areas or "[]"
+            end,
+        },
+        json = {
+            decode = function(text)
+                local f = assert(load("return " .. text:gsub("%[", "{"):gsub("%]", "}"):gsub('"(%w+)":', "%1=")))
+                return f()
+            end,
+        },
         timer = {
             doAfter = function(_, fn)
                 s.idle = fn
@@ -53,6 +70,7 @@ local function stub(screens)
             end,
         },
         logger = { new = function() return { i = function() end } end },
+        inspect = tostring,
         task = { new = function() end },
     }
     package.loaded["tide.hs_adapter"] = nil
@@ -146,6 +164,45 @@ t.test("the menu bar's setting is read again when the displays change", function
     watch()
     t.eq(seen.menu_bar, true, "covered, without a reload")
     t.eq(s.asked, 2)
+end)
+
+-- An external display whose menu bar keeps more than 30 px, as a notched
+-- display's does.
+local TALL = { uuid = "T", frame = { x = 1440, y = 33, w = 2560, h = 1407 }, full = { x = 1440, y = 0, w = 2560, h = 1440 } }
+
+t.test("a display has a notch when macOS says so, not by its menu bar's height", function()
+    local s = stub({ LEFT, TALL })
+    s.areas = '[{"x":0,"y":0,"w":1440,"left":600,"right":600},{"x":1440,"y":0,"w":2560,"left":0,"right":0}]'
+    local list = s.adapter.screens()
+    t.eq(list[1].notch, true, "the built-in display, with only 25 px kept")
+    t.eq(list[2].notch, false, "the external one, with 33")
+end)
+
+t.test("where macOS can't say, the menu bar's height decides", function()
+    local s = stub({ TALL })
+    s.areas = false
+    t.eq(s.adapter.screens()[1].notch, true)
+end)
+
+t.test("the notch areas are read once, and again when the displays change", function()
+    local s = stub({ TALL })
+    local watch
+    hs.screen.watcher = {
+        new = function(fn)
+            watch = fn
+            return { start = function() end }
+        end,
+    }
+    hs.window.filter.ignoreAlways = {}
+    require("tide.hs_adapter").watch(function()
+        s.adapter.screens()
+    end, function() end, function() end, function() end, function() end, function() end)
+    s.adapter.screens()
+    s.settle()
+    s.adapter.screens()
+    t.eq(s.scripts, 1)
+    watch()
+    t.eq(s.scripts, 2)
 end)
 
 t.test("a caller changing its list changes no one else's", function()
