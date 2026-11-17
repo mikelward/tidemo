@@ -1166,8 +1166,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
     ask to save. A window pinned where it is stays open, and a
     notification says it's pinned there.
   - A window's title often arrives after the window. The default follows
-    the title until you type, or press Home or End *(a guess, to
-    confirm)*.
+    the title until you type, press Home or End, or pick another row
+    *(a guess, to confirm)*.
   - Focus follows mouse pauses while it's open (§5.2), and the window
     stays put until you answer.
 - **tide's own launches from a workspace that asks ask before

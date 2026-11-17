@@ -132,6 +132,14 @@ function M.new(tide)
                 if typed then
                     return
                 end
+                -- A row you've moved to with the arrows or the pointer
+                -- stays picked: new rows would select the first again,
+                -- answering with the default instead.
+                if chooser:selectedRow() ~= 1 then
+                    poll:stop()
+                    poll = nil
+                    return
+                end
                 local now = follow()
                 if now and now ~= last then
                     last = now
