@@ -1092,6 +1092,181 @@ local function check_middle_paste(after)
     end)
 end
 
+-- Press `key` with `mods` as a person does, then wait, up to KEY_WAIT,
+-- until `done()` is true: `ok` says so, or `why()` says what's wrong.
+local KEY_WAIT = 10
+
+local function press_until(mods, key, done, ok, why, next)
+    hs.eventtap.keyStroke(mods, key, 1000)
+    local started = hs.timer.secondsSinceEpoch()
+    -- A global, like smoke_timer, so it isn't collected.
+    smoke_key_poll = hs.timer.doEvery(0.25, function()
+        local yes = done()
+        if yes or hs.timer.secondsSinceEpoch() - started > KEY_WAIT then
+            smoke_key_poll:stop()
+            if yes then
+                say("%s", ok)
+            else
+                fail("%s", why())
+            end
+            next()
+        end
+    end)
+end
+
+-- Workspaces by key (SPEC.md §7.2), as a person presses them: Super+2
+-- shows the bar's second workspace, with home's windows parked; Super+1
+-- brings home back, tiled as before. Super+Shift+2 sends a window to the
+-- second, focus staying home; from there, Super+Shift+1 sends it back.
+local function check_workspace_keys(after)
+    local wm = tide.wm
+    local home = wm:current_ws()
+    local second = wm:nth_listed(2)
+    local super = tide.super
+    local shift = { "shift" }
+    for _, m in ipairs(super) do
+        shift[#shift + 1] = m
+    end
+    local tiled_here = function()
+        local n = 0
+        for _, s in ipairs(wm:screens()) do
+            for _, id in ipairs(wm:tiled(wm:current_ws(), s.uuid)) do
+                if wm.windows[id] and wm.windows[id].app == APP then
+                    n = n + 1
+                end
+            end
+        end
+        return n
+    end
+    local function back_home(next)
+        press_until(super, "1", function()
+            local misses = wm:current_ws() == home and tiling_misses(wm)
+            return misses and #misses == 0
+        end, "workspace keys: Super+1 brings home back, tiled as before", function()
+            local misses, why = tiling_misses(wm)
+            return string.format("workspace keys: after Super+1, on %s: %s", tostring(wm:current_ws()),
+                misses and table.concat(misses, "; ") or why)
+        end, next)
+    end
+    if not second then
+        fail("workspace keys: no second workspace on the bar")
+        after()
+        return
+    end
+    press_until(super, "2", function()
+        return wm:current_ws() == second and tiled_here() == 0
+    end, "workspace keys: Super+2 shows " .. second .. ", home's windows parked", function()
+        return string.format("workspace keys: after Super+2, on %s with %d TextEdit window(s) tiled",
+            tostring(wm:current_ws()), tiled_here())
+    end, function()
+        back_home(function()
+            local id = tide.adapter.focused()
+            if not (id and wm.windows[id] and wm.windows[id].app == APP) then
+                fail("workspace keys: a TextEdit window isn't focused to send")
+                after()
+                return
+            end
+            -- TextEdit may have more windows than the smoke test opened.
+            local before = tiled_here()
+            press_until(shift, "2", function()
+                return wm.windows[id].ws == second and wm:current_ws() == home and tiled_here() == before - 1
+            end, "workspace keys: Super+Shift+2 sends the window to " .. second .. ", focus staying home", function()
+                return string.format("workspace keys: after Super+Shift+2, the window's on %s, showing %s with %d tiled",
+                    tostring(wm.windows[id].ws), tostring(wm:current_ws()), tiled_here())
+            end, function()
+                press_until(super, "2", function()
+                    return wm:current_ws() == second
+                end, "workspace keys: Super+2 again", function()
+                    return "workspace keys: Super+2 didn't show " .. second
+                end, function()
+                    tide.adapter.focus(id)
+                    press_until(shift, "1", function()
+                        return wm.windows[id].ws == home
+                    end, "workspace keys: Super+Shift+1 sends it back home", function()
+                        return "workspace keys: after Super+Shift+1, the window's on " .. tostring(wm.windows[id].ws)
+                    end, function()
+                        back_home(after)
+                    end)
+                end)
+            end)
+        end)
+    end)
+end
+
+-- The workspaces and the title both centered (SPEC.md §8), in Hammerspoon's
+-- own WebKit: the workspaces end at the bar's middle and the title starts
+-- there, the gap between them split evenly; and the first and last chips'
+-- click targets reach no further than their neighbors' gaps, or the
+-- middle. Gives back "ok" or what's wrong.
+local CENTERED_JS = [==[
+(() => {
+  const bad = [];
+  const mid = innerWidth / 2;
+  const ws = document.getElementById("workspaces").getBoundingClientRect();
+  const title = document.getElementById("title").getBoundingClientRect();
+  if (!(title.width > 0)) bad.push("no title to center beside");
+  else if (Math.abs((ws.right + title.left) / 2 - mid) > 2) bad.push(`workspaces end at ${ws.right} and the title starts at ${title.left}, not either side of ${mid}`);
+  const chips = [...document.getElementById("workspaces").children].filter((c) => c.getBoundingClientRect().width > 0);
+  const reach = (c, side) => parseFloat(getComputedStyle(c).getPropertyValue("--reach-" + side)) || 0;
+  if (chips.length === 0) bad.push("no chips");
+  else {
+    if (reach(chips[0], "left") > 4) bad.push(`the first chip reaches ${reach(chips[0], "left")} px left`);
+    const last = chips[chips.length - 1];
+    if (reach(last, "right") > 4) bad.push(`the last chip reaches ${reach(last, "right")} px right`);
+  }
+  return bad.length ? bad.join("; ") : "ok";
+})()
+]==]
+local CENTERED_WAIT = 5
+
+local function check_centered_bar(after)
+    local _, v = next(tide.bar and tide.bar.views or {})
+    if not (v and v.ready) then
+        after()
+        return
+    end
+    local was = tide.bar_layout
+    local store = { set = function() end }
+    local ok, why = require("tide.settings_hs").choose_bar_layout(tide, {
+        { id = "logo", zone = "left", shown = true },
+        { id = "workspaces", zone = "center", shown = true },
+        { id = "title", zone = "center", shown = true },
+        -- Off, so the runner's 1024 px display has room on both sides to
+        -- keep the zone on the middle: a side wider than its half would
+        -- rightly move it over.
+        { id = "icons", zone = "right", shown = false },
+    }, store)
+    if not ok then
+        fail("centered bar: %s", tostring(why))
+        after()
+        return
+    end
+    local started = hs.timer.secondsSinceEpoch()
+    local function done(result)
+        tide.bar_layout = was
+        tide.bar.update()
+        after()
+    end
+    local function try()
+        v.view:evaluateJavaScript(CENTERED_JS, function(result, err)
+            if dashboard.js_failed(err) then
+                fail("centered bar: couldn't measure it: %s", hs.inspect(err))
+                done()
+            elseif result == "ok" then
+                say("centered bar: the workspaces end at the middle and the title starts there; the chips reach no further")
+                done()
+            elseif hs.timer.secondsSinceEpoch() - started < CENTERED_WAIT then
+                -- A global, like smoke_timer, so it isn't collected.
+                smoke_centered_timer = hs.timer.doAfter(0.25, try)
+            else
+                fail("centered bar: %s", tostring(result))
+                done()
+            end
+        end)
+    end
+    try()
+end
+
 local function check_tiling()
     if not hs.accessibilityState() then
         fail("tiling: Hammerspoon doesn't have Accessibility on this runner")
@@ -1132,7 +1307,11 @@ local function check_tiling()
                     check_launcher_attention()
                     check_launcher_page(function()
                         check_launcher_keys(function()
-                            check_middle_paste(finish)
+                            check_middle_paste(function()
+                                check_centered_bar(function()
+                                    check_workspace_keys(finish)
+                                end)
+                            end)
                         end)
                     end)
                 end)
@@ -1365,6 +1544,32 @@ do
         fail("Karabiner's rules in JavaScriptCore: an empty list didn't stay one")
     else
         say("Karabiner's rules switched in JavaScriptCore: %s", want)
+    end
+    -- The PC keyboard type's modifier swap and Caps Lock as Compose, in
+    -- Karabiner's settings (SPEC.md §7.1), an Apple keyboard with its own.
+    local ok, why = k.set_swaps({ swap = true, compose = true, apple = { { vendor_id = 1452, product_id = 832 } } })
+    local after = tide.adapter.decode(files[home .. karabiner.CONFIG] or "")
+    local p = after and after.profiles[1] or {}
+    local swaps = {}
+    for _, e in ipairs(p.simple_modifications or {}) do
+        swaps[e.from.key_code] = e.to[1].key_code
+    end
+    local device = p.devices and p.devices[1]
+    local own = {}
+    for _, e in ipairs(device and device.simple_modifications or {}) do
+        own[e.from.key_code] = e.to[1].key_code
+    end
+    local copy = p.complex_modifications and p.complex_modifications.rules or {}
+    if not ok then
+        fail("Karabiner's swaps in JavaScriptCore: %s", tostring(why))
+    elseif swaps.left_control ~= "left_command" or swaps.left_option ~= "left_control" or swaps.caps_lock ~= "f18" then
+        fail("Karabiner's swaps in JavaScriptCore: %s", hs.inspect(swaps))
+    elseif own.left_option ~= "left_option" or own.left_command ~= "left_control" then
+        fail("Karabiner's swaps in JavaScriptCore: the Apple keyboard's are %s", hs.inspect(own))
+    elseif #copy ~= 3 then
+        fail("Karabiner's swaps in JavaScriptCore: %d rules after", #copy)
+    else
+        say("Karabiner's swaps set in JavaScriptCore, with an Apple keyboard's own")
     end
 end
 -- tide's logo, as the menu bar, notifications and the switcher show it:
