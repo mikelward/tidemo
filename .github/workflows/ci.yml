@@ -94,13 +94,26 @@ jobs:
       - run: brew install --cask hammerspoon
       - run: ci/hs-smoke.sh
 
+  # tide's installer, for real, on a fresh Mac: Homebrew, the apps, the
+  # keys it frees, Karabiner's rule, and a second run that changes nothing.
+  install:
+    runs-on: macos-15
+    needs: classify
+    if: needs.classify.outputs.docs_only != 'true'
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: ci/install-check.sh
+
   # The one check to require: it passes when every heavy job passed, or when
   # the diff rode the docs lane and they skipped.
   lanes:
     name: lanes
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [classify, test, hammerspoon]
+    needs: [classify, test, hammerspoon, install]
     if: always()
     steps:
       - uses: actions/checkout@v5
@@ -115,3 +128,4 @@ jobs:
           results: >-
             test=${{ needs.test.result }}
             hammerspoon=${{ needs.hammerspoon.result }}
+            install=${{ needs.install.result }}
