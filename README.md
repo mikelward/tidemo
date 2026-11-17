@@ -47,6 +47,9 @@ It brings tide for Linux's desktop to macOS:
 - a middle click that pastes the selection, as on Linux, without
   touching the clipboard to read it, when turned on under Mouse on Tide
   Settings' macOS page, or in `macos.json` (§5.3);
+- Home and End as on a PC: the line's start and end in a text field,
+  the page's top and bottom elsewhere, rather than Back and Forward in a
+  browser (§10);
 - Caps Lock as Compose, as on Linux, with Linux's own sequences, when
   turned on under Keyboard on Tide Settings' macOS page, or in
   `macos.json` (§10);

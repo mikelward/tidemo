@@ -13,7 +13,8 @@
 -- along the top and shows the workspaces in the menu bar instead, as the
 -- settings window's Bar page's Position: Menu bar does.
 -- `swipe = false` turns off the three-finger swipe between workspaces,
--- and `compose = false` Caps Lock as Compose.
+-- `compose = false` Caps Lock as Compose, and `home_end = false` Home and
+-- End going to the line's ends in text fields.
 -- `workspaces` names the standing workspaces, always listed and never
 -- removed, the first being home (SPEC.md §6.1); it defaults to
 -- wm.STANDING, home being "in". `home_apps` names the apps, by app name,
@@ -61,6 +62,7 @@ local compose_hs = require("tide.compose_hs")
 local capslock = require("tide.capslock")
 local middlepaste = require("tide.middlepaste")
 local middlepaste_hs = require("tide.middlepaste_hs")
+local homeend_hs = require("tide.homeend_hs")
 local bar = require("tide.bar")
 local selfreload = require("tide.selfreload")
 local bar_hs = require("tide.bar_hs")
@@ -534,6 +536,17 @@ function M.start(config)
             return w and w.pid
         end,
     })
+    -- Home and End go to the line's ends in a text field, and are the
+    -- keys themselves elsewhere, as on a PC (SPEC.md §10).
+    if config.home_end ~= false then
+        self.home_end = homeend_hs.new(hs, {
+            log = self.adapter.log,
+            nudge = self.middle_paste.nudge,
+            prompting = function()
+                return self.prompt ~= nil and self.prompt.is_open()
+            end,
+        })
+    end
     self.mouse = adapter_mod.mouse(function(flags)
         return keys.is_super(self.super, flags)
     end, {

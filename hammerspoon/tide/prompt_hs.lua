@@ -184,6 +184,12 @@ function M.new(tide)
         open("Go to the workspace", "", on_done)
     end
 
+    -- Whether it's open, waiting for an answer: its own Home and End
+    -- are bound then (homeend_hs.lua leaves them be).
+    function self.is_open()
+        return done ~= nil
+    end
+
     -- For CI's smoke test: the rows shown, and Esc.
     function self.rows()
         return rows(chooser:query())

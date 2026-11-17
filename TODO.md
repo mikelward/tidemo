@@ -1523,6 +1523,22 @@ Only the tests have run these (SPEC.md §7.1):
   with `is_apple` or `is_built_in_keyboard`.
 - `hidutil property --get UserKeyMapping` no longer lists the swap.
 
+## Check Home and End on a real Mac
+
+Only the tests have run these, against a stand-in hs (SPEC.md §10):
+
+- In Chrome and Safari, Home and End on a page scroll to its top and
+  bottom, and never go Back or Forward.
+- In the address bar, a search box, a Google Docs page, TextEdit and
+  Notes, Home and End go to the line's start and end, and Shift+Home and
+  End select to there.
+- Chrome's first Home after tide starts: whether it already sees the
+  field, or scrolls once.
+- kitty and Terminal still get Home and End, and tide's name prompt still
+  keeps the name while moving the cursor.
+- On a MacBook, Fn+Left and Right, through conf's Karabiner rule, do the
+  same.
+
 ## Check the Bar page's icons on a real Mac
 
 Only the tests have run these (SPEC.md §8):
