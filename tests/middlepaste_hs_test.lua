@@ -102,6 +102,11 @@ local function world()
                             -- unless `w.stays` keeps another there.
                             if kind == "down" and w.under and not w.stays then
                                 w.front = w.under:pid()
+                                -- And its window, unless `w.slow` keeps
+                                -- the one before focused a while.
+                                if not w.slow then
+                                    w.focus_win = w.under_win
+                                end
                             end
                         end,
                     }
@@ -139,6 +144,18 @@ local function world()
                     return value(self, name)
                 end
                 return e
+            end,
+        },
+        window = {
+            focusedWindow = function()
+                if w.focus_win == nil then
+                    return nil
+                end
+                return {
+                    id = function()
+                        return w.focus_win
+                    end,
+                }
             end,
         },
         application = {
@@ -182,6 +199,10 @@ local function world()
                 return w.window or nil
             end
             return w.under and w.under:pid()
+        end,
+        -- And the window's id, `w.under_win`.
+        window_id = function()
+            return w.under_win
         end,
     })
     -- Run the timers still due, and those they start, in the order started.
@@ -302,6 +323,23 @@ t.test("Command+V waits for the app clicked to come to the front", function()
     w.timers[2].fn()
     t.eq(w.events, { "down 1,1", "up 1,1" }, "not yet: another app is in front")
     w.front = 2
+    w.run()
+    t.eq(w.events[3], "cmd+v pastes picked words")
+    t.eq(w.board, { [TEXT] = "the clipboard" })
+end)
+
+t.test("into another window of the same app, Command+V waits for that window to be focused", function()
+    local w = world()
+    w.paste.set(true)
+    -- Both windows are app 1's: selected in window 10, pasted in window 11.
+    w.select("picked words", 1)
+    w.focus_win = 10
+    w.under, w.under_win, w.slow = field(1), 11, true
+    w.paste.click(1, 1)
+    w.timers[1].fn()
+    w.timers[2].fn()
+    t.eq(w.events, { "down 1,1", "up 1,1" }, "not yet: the app is in front, but its other window has the keyboard")
+    w.focus_win = 11
     w.run()
     t.eq(w.events[3], "cmd+v pastes picked words")
     t.eq(w.board, { [TEXT] = "the clipboard" })

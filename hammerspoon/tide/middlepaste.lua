@@ -29,13 +29,22 @@ M.DEPTH = 6
 M.READ_AFTER = 0.1
 
 -- After the click that places the caret, Command+V waits until the app
--- clicked is in front, looking every CLICK_SETTLE seconds, FOCUS_TRIES
+-- and window clicked are in front (M.ready), looking every CLICK_SETTLE seconds, FOCUS_TRIES
 -- times at most: the keystroke goes to whichever app is in front, and a
 -- click takes a moment to bring one there. After Command+V, the clipboard
 -- is put back RESTORE_AFTER seconds later: the app pastes in its own
 -- time, so sooner would paste the old clipboard *(unverified on a Mac
 -- that this is long enough in a slow app)*.
 M.CLICK_SETTLE = 0.05
+
+-- Whether Command+V can go now: the app in front (`front_pid`) is the one
+-- clicked (`pid`), and, where tide knows the window clicked (`win`), it's
+-- the one focused (`front_win`). Two windows of one app are both in front
+-- with it, so the app alone isn't enough: before the click moves the
+-- focus, the keystroke would paste into the other window.
+function M.ready(front_pid, front_win, pid, win)
+    return front_pid ~= nil and front_pid == pid and (win == nil or front_win == win)
+end
 M.FOCUS_TRIES = 10
 M.RESTORE_AFTER = 0.3
 
