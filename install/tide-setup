@@ -606,10 +606,13 @@ configure_super() {
 # --- Keys ---
 
 # System Settings holds the shortcuts in memory while it's open and can write
-# its copy back over these when it closes.
-warn_if_settings_app_running() {
-    if ! is_command pgrep; then
-        warn "pgrep not found; quit System Settings before this run, or it can overwrite the shortcuts written below"
+# its copy back over these when it closes. So it's quit first, and whatever it
+# writes as it goes lands before these. Quitting loses nothing: it saves each
+# change as it's made.
+SETTINGS_QUIT_WAIT="${SETTINGS_QUIT_WAIT:-10}"
+quit_settings_app() {
+    if ! is_command pgrep || ! is_command killall; then
+        warn "killall/pgrep not found; quit System Settings before this run, or it can overwrite the shortcuts written below"
         return 0
     fi
     # Both names: the app was renamed in macOS 13.
@@ -620,14 +623,28 @@ warn_if_settings_app_running() {
             _settings_running=$?
         fi
         case "$_settings_running" in
-            0)
-                warn "$_settings_app is running and can overwrite these shortcuts when it closes; quit it and rerun $SETUP_COMMAND if tide's keys don't register"
-                ;;
-            1) ;;
+            0) ;;
+            1) continue ;;
             *)
                 warn "could not tell whether $_settings_app is running (pgrep exited $_settings_running); quit it before this run if it's open"
+                continue
                 ;;
         esac
+        info "Quitting $_settings_app, so it can't overwrite tide's keys"
+        if ! killall "$_settings_app"; then
+            warn "could not quit $_settings_app; quit it and rerun $SETUP_COMMAND if tide's keys don't register"
+            continue
+        fi
+        # killall only signals it: wait, a second at a time, for it to go,
+        # so it can't write after these do.
+        _waited=0
+        while app_running "$_settings_app" && test "$_waited" -lt "$SETTINGS_QUIT_WAIT"; do
+            sleep 1
+            _waited=$((_waited + 1))
+        done
+        if app_running "$_settings_app"; then
+            warn "$_settings_app is still running after ${SETTINGS_QUIT_WAIT}s and can overwrite these shortcuts when it closes; quit it and rerun $SETUP_COMMAND if tide's keys don't register"
+        fi
     done
 }
 
@@ -656,7 +673,7 @@ write_symbolic_hotkey() {
 # back on in System Settings gets the macOS default, not a blank.
 free_tide_keys() {
     info "Freeing the keys tide takes from macOS"
-    warn_if_settings_app_running
+    quit_settings_app
 
     # Spotlight on Cmd+Space (1048576 is Command), and Finder search at its
     # stock Cmd+Option+Space. Option+Space is tide's Super without the
