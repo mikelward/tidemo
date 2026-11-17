@@ -26,8 +26,16 @@ local function stub()
                     field.from, field.to = #text, #text
                     return c
                 end
+                -- As HSChooser's updateChoices: new rows select the first.
                 function c:choices(rows)
                     field.rows = rows
+                    field.row = 1
+                end
+                function c:selectedRow(row)
+                    if row == nil then
+                        return field.row
+                    end
+                    field.row = row
                 end
                 function c:placeholderText(p)
                     field.placeholder = p
@@ -95,6 +103,14 @@ local function stub()
     end
     function s.field()
         return field
+    end
+    -- Down arrow, which moves the selected row, and Enter, which answers
+    -- with it.
+    function s.down()
+        field.row = field.row + 1
+    end
+    function s.enter()
+        field.choose(field.rows[field.row].name)
     end
     function s.selected()
         return field.text:sub(field.from + 1, field.to)
@@ -247,6 +263,20 @@ t.test("Home stops the default following the title", function()
     a.wins[1].title = "ABC-123"
     s.tick()
     t.eq(s.field().text, "Loading", "the cursor isn't yanked away")
+end)
+
+t.test("a row you've moved to stays selected as the title changes", function()
+    local s, prompt, a, wm = setup("Loading")
+    a.wins[1].title = "Loading"
+    prompt.window(1)
+    t.eq(s.field().rows[2].name, "in")
+    s.down()
+    a.wins[1].title = "tidemo"
+    s.tick()
+    t.eq(s.field().row, 2, "the selection stays where you moved it")
+    s.enter()
+    t.eq(wm.windows[1].ws, "in", "the window stays on the workspace picked")
+    t.eq(wm.current, "in")
 end)
 
 t.done("prompt_hs")
