@@ -78,6 +78,7 @@ test: test-install
 # a Mac too.
 test-install:
 	install/tide-setup_test
+	ci/committed_test
 
 lint:
 	@for f in $(LUA_FILES); do $(LUAC) -p $$f || exit 1; done
@@ -126,6 +127,7 @@ check-geometry: check-tide
 # and checks the rest: the launcher page's markup and ci/'s checks still
 # need a hand where they differ.
 sync:
+	ci/committed.sh $(TIDE) $(TIDECO)
 	$(foreach p,$(TIDE_COPIES),cp $(TIDE)/$(word 1,$(subst =, ,$(p))) $(word 2,$(subst =, ,$(p))) &&) true
 	$(foreach f,$(TIDECO_FILES),cp $(TIDECO)/src/$(f) hammerspoon/tide/dashboard/$(f) &&) true
 	printf '%s\n' "# The tide for Linux and tide for Chrome commits copied here (make sync)." \
