@@ -17,9 +17,10 @@ local M = {}
 -- accessibility(ask), whether Hammerspoon has Accessibility, nil when it
 -- can't be told, having macOS ask for it with `ask`; notify(text, fn), a
 -- notification that calls fn when clicked; open_accessibility(), which
--- opens Privacy & Security's Accessibility list; and window_pid(x, y),
--- the pid of the app whose window is at a point, nil where there's none
--- or it's one of tide's own.
+-- opens Privacy & Security's Accessibility list; window_pid(x, y), the
+-- pid of the app whose window is at a point, nil where there's none or
+-- it's one of tide's own; and window_id(x, y), that window's id, nil
+-- where it's not known.
 function M.new(hs, d)
     local self = {}
     local log = d.log
@@ -126,7 +127,7 @@ function M.new(hs, d)
         end)
     end
 
-    local function paste(text, x, y, target)
+    local function paste(text, x, y, target, target_win)
         -- A paste already under way holds the real clipboard: keep that
         -- one, not the text tide put there.
         if restore_timer then
@@ -162,21 +163,26 @@ function M.new(hs, d)
             hs.eventtap.event.newMouseEvent(t.leftMouseDown, p):post()
             hs.eventtap.event.newMouseEvent(t.leftMouseUp, p):post()
         end)
-        -- Command+V goes to the app in front, so only once that's the app
-        -- clicked: the click takes a moment to bring it there, and with
-        -- focus following the mouse the pointer may have moved on to
-        -- another window, a terminal's even.
+        -- Command+V goes to the window focused, so only once that's the
+        -- one clicked (middlepaste.ready): the click takes a moment to
+        -- bring it there, even in an app already in front, and with focus
+        -- following the mouse the pointer may have moved on to another
+        -- window, a terminal's even.
         local tries = 0
         local function send()
             tries = tries + 1
             local front = try("reading the app in front", hs.application.frontmostApplication)
-            if front and front:pid() == target then
+            local win = target_win and try("reading the window focused", function()
+                local w = hs.window.focusedWindow()
+                return w and w:id()
+            end)
+            if middlepaste.ready(front and front:pid(), win, target, target_win) then
                 try("Command+V", hs.eventtap.keyStroke, { "cmd" }, "v", 0)
                 restore_timer = hs.timer.doAfter(middlepaste.RESTORE_AFTER, restore)
             elseif tries < middlepaste.FOCUS_TRIES then
                 restore_timer = hs.timer.doAfter(middlepaste.CLICK_SETTLE, send)
             else
-                log("middle click paste: the app clicked didn't come to the front, so nothing is pasted")
+                log("middle click paste: the window clicked didn't come to the front, so nothing is pasted")
                 restore()
             end
         end
@@ -238,8 +244,9 @@ function M.new(hs, d)
             return false
         end
         -- Once this event is done with, so the clicks can't cross.
+        local win = d.window_id and try("reading the window under the pointer", d.window_id, x, y)
         hs.timer.doAfter(0, function()
-            paste(text, x, y, pid)
+            paste(text, x, y, pid, win)
         end)
         return true
     end

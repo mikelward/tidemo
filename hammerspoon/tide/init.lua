@@ -535,6 +535,9 @@ function M.start(config)
             local w = id and self.wm.windows[id]
             return w and w.pid
         end,
+        window_id = function(x, y)
+            return self.wm:window_at(x, y)
+        end,
     })
     -- Home and End go to the line's ends in a text field, and are the
     -- keys themselves elsewhere, as on a PC (SPEC.md §10).

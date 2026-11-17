@@ -772,10 +772,13 @@ handling (tide for Chrome §5.3):
     clipboard, puts the text there, clicks where you clicked to place the
     caret, sends Command+V, and puts the clipboard back 0.3 s after that
     *(unverified on a Mac that it's long enough in a slow app)*.
-    Command+V goes to the app in front, so tide sends it only once that's
-    the app clicked, looking every 0.05 s, ten times at most. If another
-    app is in front by then, as when focus follows the mouse on to another
-    window, nothing is pasted and the clipboard goes back. Setting
+    Command+V goes to the window focused, so tide sends it only once
+    that's the window clicked, in the app clicked, looking every 0.05 s,
+    ten times at most (`middlepaste.ready`). The app alone isn't enough:
+    pasting into another window of the app in front, the keystroke would
+    otherwise land in the window that had the keyboard before the click.
+    If another window is in front by then, as when focus follows the mouse
+    on to another window, nothing is pasted and the clipboard goes back. Setting
     the field's text through Accessibility would skip the clipboard, but
     web pages don't take it.
     - The text is marked `org.nspasteboard.TransientType`, so tide's

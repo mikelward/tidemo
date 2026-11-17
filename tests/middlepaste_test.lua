@@ -92,6 +92,14 @@ t.test("the clipboard goes back only while the pasteboard is as tide left it", f
     t.eq(middlepaste.restores(nil, 7), false)
 end)
 
+t.test("Command+V goes once the app and window clicked are in front", function()
+    t.eq(middlepaste.ready(1, 11, 1, 11), true)
+    t.eq(middlepaste.ready(1, 10, 1, 11), false, "the app's other window still has the keyboard")
+    t.eq(middlepaste.ready(2, 11, 1, 11), false, "another app is in front")
+    t.eq(middlepaste.ready(1, nil, 1, nil), true, "a window tide doesn't know: the app is enough")
+    t.eq(middlepaste.ready(nil, nil, 1, nil), false, "nothing in front")
+end)
+
 t.test("Accessibility is asked for only with the setting on and macOS saying it's off", function()
     t.eq(middlepaste.should_ask(true, false), true)
     t.eq(middlepaste.should_ask(true, true), false)
