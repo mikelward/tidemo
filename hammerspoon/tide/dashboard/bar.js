@@ -87,15 +87,16 @@ export const ITEM_GAP = 8;
 // Where each of bar.html's elements goes, as { left, center, right,
 // unplaced }, each a list of element ids in order, from a stored barLayout:
 // an item that's off, or that `has` says has nothing to show (has[id] ===
-// false), is unplaced, so it takes no room. Over a notch the bar's middle
-// is clear, so the center zone's items end the left zone, beside the
-// notch, as Middle of menu bar draws the workspaces there.
+// false), is unplaced, so it takes no room. Over a notch the center zone
+// sits either side of it (pivotOf), and the title shows only there: at a
+// side it would run under the notch.
 export function arrangement(stored, { notch = false, has = {} } = {}) {
   const out = { left: [], center: [], right: [], unplaced: [] };
   for (const z of ["left", "center", "right"]) {
     for (const e of layoutList(stored)) {
       if (e.zone !== z) continue;
-      const zone = !e.shown || has[e.id] === false ? "unplaced" : notch && z === "center" ? "left" : z;
+      const hidden = !e.shown || has[e.id] === false || (notch && e.id === "title" && z !== "center");
+      const zone = hidden ? "unplaced" : z;
       out[zone].push(...ELEMENTS[e.id]);
     }
   }
@@ -109,14 +110,77 @@ function titleZone(stored) {
 }
 
 // Where the center zone starts on a bar `width` wide, holding `center` px,
-// between sides `left` and `right` px wide (from the bar's edges): on the
-// bar's middle, moved over only as far as it must to keep `gap` from each
-// side, since the sides never shrink. Too crowded to clear both, it keeps
-// clear of the left.
-export function centerAt(width, left, right, center, gap = 24) {
+// between sides `left` and `right` px wide (from the bar's edges): its
+// `pivot` (pivotOf; its middle unless given) on the bar's middle, moved over
+// only as far as it must to keep `gap` from each side, since the sides
+// never shrink. Too crowded to clear both, it keeps clear of the left.
+// Over a notch (`fixed`) it never moves: the notch doesn't, and what would
+// reach a side gives way instead (fitNotch, centerTitleRoom).
+export function centerAt(width, left, right, center, gap = 24, pivot = center / 2, fixed = false) {
+  if (fixed) return width / 2 - pivot;
   const lo = left > 0 ? left + gap : gap;
   const hi = width - (right > 0 ? right + gap : gap);
-  return Math.max(lo, Math.min((width - center) / 2, hi - center));
+  return Math.max(lo, Math.min(width / 2 - pivot, hi - center));
+}
+
+// Where the center zone's items split either side of the bar's middle: the
+// index of the first one after it. With an odd number and no notch, the
+// middle one is on the middle itself, so it's in neither half; over a
+// notch it goes left of it, as Middle of menu bar draws the workspaces.
+function splitAt(n, notch) {
+  return notch ? Math.ceil(n / 2) : Math.floor(n / 2);
+}
+
+// The point in the center zone that goes on the bar's middle (SPEC.md §8),
+// from its items' boxes ({ left, right }, from the zone's start, in
+// order): with an odd number, the middle one's middle; with an even
+// number, halfway across the gap between the halves, so the first ends at
+// the middle and the second starts there. Over a notch, the gap is the
+// notch (the second half's first item keeps NOTCH_ROOM from the first
+// half), and with nothing after it the first half ends at its left edge.
+export function pivotOf(boxes, notch = false) {
+  const n = boxes.length;
+  if (n === 0) return 0;
+  const s = splitAt(n, notch);
+  if (!notch && n % 2 === 1) return (boxes[s].left + boxes[s].right) / 2;
+  if (s >= n) return boxes[n - 1].right + NOTCH_ROOM / 2;
+  return (boxes[s - 1].right + boxes[s].left) / 2;
+}
+
+// The index of the center item that starts the second half over a notch,
+// so it keeps NOTCH_ROOM from the first, or -1 with none.
+export function afterNotch(n, notch) {
+  const s = splitAt(n, notch);
+  return notch && s < n ? s : -1;
+}
+
+// How much of the title's width falls before the center zone's pivot when
+// it's the `i`th of `n` center items: all of it in the first half, half as
+// the middle item, none in the second half.
+export function titleShare(n, i, notch = false) {
+  const s = splitAt(n, notch);
+  if (!notch && n % 2 === 1 && i === s) return 0.5;
+  return i < s ? 1 : 0;
+}
+
+// The room a centered title has, as tide's barlayout.mjs gives it: it grows
+// only until the zone reaches a side, so the pivot stays on the middle.
+// `pivot` and `center` are the zone's now, with the title `title` px wide,
+// `share` of it before the pivot (titleShare).
+// Over a notch (`fixed`), the zone never moves, so the title gets only what
+// its half leaves, none if that's nothing.
+export function centerTitleRoom(width, left, right, { pivot, center, title, share, fixed = false }, gap = 24) {
+  const lo = left > 0 ? left + gap : gap;
+  const hi = width - (right > 0 ? right + gap : gap);
+  const p0 = pivot - share * title;
+  const c0 = center - title;
+  // Moved over even with no title, the pivot can't stay put: the title
+  // takes what's left between the sides.
+  if (!fixed && (width / 2 - p0 < lo || width / 2 - p0 + c0 > hi)) return hi - lo - c0;
+  const room = [];
+  if (share > 0) room.push((width / 2 - p0 - lo) / share);
+  if (share < 1) room.push((hi - width / 2 + p0 - c0) / (1 - share));
+  return fixed ? Math.max(0, Math.min(...room)) : Math.min(...room);
 }
 
 // The room the title has in `zone`, from each zone's width without it
@@ -124,14 +188,14 @@ export function centerAt(width, left, right, center, gap = 24) {
 // side, a gap each side and the center's other items (titleRoom), so it
 // stays centered; at a side, from its zone's other items to the center
 // zone, or to the other side.
-export function titleSpace(width, { left = 0, center = 0, right = 0 }, zone, gap = 24) {
+export function titleSpace(width, { left = 0, center = 0, right = 0 }, zone, gap = 24, pivot = center / 2) {
   if (zone === "center") return titleRoom(width, left, right, gap) - (center > 0 ? center + ITEM_GAP : 0);
   if (zone === "left") {
-    const end = center > 0 ? centerAt(width, left, right, center, gap) : width - right;
+    const end = center > 0 ? centerAt(width, left, right, center, gap, pivot) : width - right;
     return end - gap - (left > 0 ? left + ITEM_GAP : 0);
   }
   if (zone === "right") {
-    const start = center > 0 ? centerAt(width, left, right, center, gap) + center : left;
+    const start = center > 0 ? centerAt(width, left, right, center, gap, pivot) + center : left;
     return width - (right > 0 ? right + ITEM_GAP : 0) - gap - start;
   }
   return Infinity;
@@ -538,7 +602,18 @@ function fitNotch() {
   const navBox = nav.getBoundingClientRect();
   let start;
   let limit;
-  if (nav.parentNode.id === "right") {
+  if (nav.parentNode.id === "center") {
+    // Centered, the chips sit beside the notch, in its half: they may reach
+    // back to the side zone, less the rest of their half.
+    const items = centerItems();
+    const i = items.findIndex((e) => e.id === "workspaces");
+    const s = afterNotch(items.length, notch) < 0 ? items.length : afterNotch(items.length, notch);
+    const half = i < s ? items.slice(0, s) : items.slice(s);
+    const rest = half.filter((e) => e.id !== "workspaces").reduce((sum, e) => sum + (e.right - e.left) + ITEM_GAP, 0);
+    const side = document.getElementById(i < s ? "left" : "right").offsetWidth || 0;
+    start = 0;
+    limit = width / 2 - NOTCH_ROOM / 2 - (side > 0 ? side + 24 : 24) - rest;
+  } else if (nav.parentNode.id === "right") {
     const before = others.filter((e) => e.getBoundingClientRect().right <= navBox.left);
     const lead = before.length > 0 ? navBox.left - before[0].getBoundingClientRect().left : 0;
     start = 0;
@@ -582,7 +657,61 @@ function targets(e) {
   return e.id === "title" ? [] : [e];
 }
 
+// The center zone's items, in order, each with its elements' box from the
+// zone's start: { id, els, left, right }.
+function centerItems() {
+  const center = document.getElementById("center");
+  const at = center.getBoundingClientRect().left;
+  const out = [];
+  for (const e of layoutList(layout)) {
+    if (e.zone !== "center") continue;
+    const els = ELEMENTS[e.id].map((id) => document.getElementById(id)).filter((el) => el.parentNode === center);
+    // A placed title counts even held to 0 px by the last fit, so its room
+    // is worked out where it is, not as if it were alone.
+    const boxes = els.map((el) => el.getBoundingClientRect()).filter((b) => b.width > 0 || (e.id === "title" && b.right > 0));
+    if (boxes.length === 0) continue;
+    out.push({
+      id: e.id,
+      els,
+      left: Math.min(...boxes.map((b) => b.left)) - at,
+      right: Math.max(...boxes.map((b) => b.right)) - at,
+    });
+  }
+  return out;
+}
+
+// Over a notch, the center item after it keeps NOTCH_ROOM from the one
+// before (afterNotch); every other one has its .item-start gap.
+function spaceNotch() {
+  // Every item's, not only the center's: one moved to a side keeps none.
+  for (const ids of Object.values(ELEMENTS)) {
+    for (const id of ids) document.getElementById(id).style.marginLeft = "";
+  }
+  const items = centerItems();
+  const i = afterNotch(items.length, notch);
+  if (i >= 0) items[i].els[0].style.marginLeft = `${NOTCH_ROOM}px`;
+}
+
+// The room the title has where it goes (titleSpace), the center zone's
+// from its items as they are (centerTitleRoom).
+function titleRoomNow(width, widths, zone) {
+  if (zone !== "center") return titleSpace(width, widths, zone, 24, pivotOf(centerItems(), notch));
+  const items = centerItems();
+  const i = items.findIndex((e) => e.id === "title");
+  // Not measured yet: the zone as if the title were its only item.
+  if (i < 0) return titleSpace(width, widths, zone);
+  const center = document.getElementById("center").offsetWidth || 0;
+  return centerTitleRoom(width, widths.left, widths.right, {
+    pivot: pivotOf(items, notch),
+    center,
+    title: items[i].right - items[i].left,
+    share: titleShare(items.length, i, notch),
+    fixed: notch,
+  });
+}
+
 function fit() {
+  spaceNotch();
   fitNotch();
   const clocks = document.getElementById("clocks");
   clocks.classList.toggle("compact", false);
@@ -590,19 +719,19 @@ function fit() {
   // The title keeps MIN_TITLE where it goes, unless it's turned off.
   const zone = titleZone(layout);
   let widths = zoneWidths();
-  const tight = zone !== null && titleSpace(width, widths, zone) < MIN_TITLE;
+  const tight = zone !== null && titleRoomNow(width, widths, zone) < MIN_TITLE;
   clocks.classList.toggle("compact", tight);
   if (tight) widths = zoneWidths();
-  const room = titleSpace(width, widths, zone);
+  const room = titleRoomNow(width, widths, zone);
   // Unmeasured, as before the page lays out, leaves the title as it is.
-  if (Number.isFinite(room)) document.getElementById("title-text").style.maxWidth = `${Math.max(0, room)}px`;
-  // The center zone on the bar's middle, or moved over to clear the sides
-  // (centerAt); left to bar.html's centering while it's there.
+  if (Number.isFinite(room)) document.getElementById("title-text").style.maxWidth = `${Math.max(0, Math.floor(room))}px`;
+  // The center zone's pivot on the bar's middle, or moved over to clear
+  // the sides (centerAt); left to bar.html's centering where that's the same.
   const center = document.getElementById("center");
   const left = document.getElementById("left").offsetWidth || 0;
   const right = document.getElementById("right").offsetWidth || 0;
   const cw = center.offsetWidth || 0;
-  const at = centerAt(width, left, right, cw);
+  const at = centerAt(width, left, right, cw, 24, pivotOf(centerItems(), notch), notch && centerItems().length > 0);
   const moved = width > 0 && Math.abs(at - (width - cw) / 2) >= 0.5;
   center.style.left = moved ? `${Math.round(at)}px` : "";
   center.style.transform = moved ? "none" : "";

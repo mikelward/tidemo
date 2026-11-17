@@ -2108,13 +2108,18 @@ stock keys:
       the setting in the log, and the default stands (`bar.check_layout`).
     - The left zone starts at the bar's left edge, and the right zone ends
       at its right edge. Neither shrinks.
-    - The center zone sits on the bar's true middle. It moves over only as
-      far as it must to keep 24 px clear of each side; too crowded to
-      clear both, it keeps clear of the left, as tide for Linux's does
-      (`bar.js`'s `centerAt`).
+    - The center zone sits on the bar's true middle, as tide for Linux's
+      does. With an odd number of items, the middle one is centered on it,
+      the others to its left and right; with an even number, the first
+      half ends at the middle and the second starts there, so the
+      workspaces and the title both centered meet at the middle
+      (`bar.js`'s `pivotOf`). It moves over only as far as it must to keep
+      24 px clear of each side; too crowded to clear both, it keeps clear
+      of the left (`centerAt`).
     - The title takes the room its zone leaves, and ends in an ellipsis
-      (`titleSpace`). Centered, it gets the bar less twice the wider side,
-      so it stays centered. Next to a side, it runs to the center zone, or
+      (`titleSpace`). Centered, it grows only until its zone reaches a
+      side, so the zone's middle stays put (`centerTitleRoom`): alone,
+      that's the bar less twice the wider side. Next to a side, it runs to the center zone, or
       to the other side. The clocks shrink to local time when the title
       would get narrower than 200 px, wherever it is.
     - An item with nothing to show, such as the title with no window
@@ -2125,13 +2130,19 @@ stock keys:
       the bar's left edge, so the corner still opens the Apple menu, and
       the last at the right reaches the right edge. The free bar on either
       side of the title is its target.
-    - **Over a notch** the bar's middle is clear (`NOTCH_ROOM`), so the
-      center zone's items go to the end of the left zone, beside the notch,
-      as Middle of menu bar draws the workspaces there. There's no title
-      over a notch, wherever it goes. Workspaces that would reach the notch
-      hide behind "+n", from either side: on the left, counting what
-      follows them in their zone; on the right, counting what comes
-      before them.
+    - **Over a notch** the bar's middle is clear (`NOTCH_ROOM`), and the
+      center zone sits either side of it: its first half ends at the
+      notch's left edge and its second half starts at its right edge
+      (`afterNotch`). With an odd number, the middle one goes left of the
+      notch, as Middle of menu bar draws the workspaces there. So the
+      workspaces and the title both centered sit immediately left and
+      right of the notch. The zone never moves over there, since the
+      notch doesn't: what would reach a side gives way instead, the
+      title shrinking or hiding, the workspaces behind "+n". A title at a side would run under the notch, so
+      it shows only in the center there. Workspaces that would reach the
+      notch hide behind "+n", from either side: on the left, counting what
+      follows them in their zone or half; on the right, counting what
+      comes before them.
     See [`bar-layout.png`](mocks/bar-layout.png) and, with a right side
     wider than its half, [`bar-layout-crowded.png`](mocks/bar-layout-crowded.png).
   - **Or along the bottom: Tide Settings' Bar page, Position: Top or

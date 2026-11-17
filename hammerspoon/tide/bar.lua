@@ -698,8 +698,9 @@ function M.state(wm, uuid, title, icons, icon_of)
     -- window.
     local f = wm.a.focused()
     local on = wm:screen_of(f) or wm:current_screen()
-    -- The notch sits where the title goes, so a display with one has none,
-    -- unless the bar is along the bottom, away from the notch.
+    -- Whether the bar is over a notch, unless it's along the bottom, away
+    -- from it: the page sets the center zone either side of it, and shows
+    -- the title only there (bar.js's arrangement).
     local notch = false
     for _, s in ipairs(wm.bar_position == "bottom" and {} or wm.a.screens()) do
         if s.uuid == uuid and s.notch then
@@ -709,7 +710,7 @@ function M.state(wm, uuid, title, icons, icon_of)
     return {
         uuid = uuid,
         workspaces = ws,
-        title = on == uuid and not notch and title or "",
+        title = on == uuid and title or "",
         notch = notch,
         icons = icons or {},
         app_icons = app_icons,
