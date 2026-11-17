@@ -561,6 +561,10 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **Over a notch, an odd center's middle item goes left of it**
+  (2026-11-17): the user asked for a lone middle item centered, but a
+  notch is where it would go, so it joins the first half, as Middle of
+  menu bar draws the workspaces. Reversible: `bar.js`'s `splitAt`.
 - **Position: Middle of menu bar** (2026-11-15): a fourth Position rather
   than a switch under Menu bar; named for where the names go on every
   display, since only a MacBook's own has a notch. The names sit left of
@@ -1507,6 +1511,16 @@ tide. INFEASIBLE.md lists what can't be fixed.
   tide for Chrome's scopes (Launch, Tabs, Attention) moved between with Tab. The
   alternative is tide for Chrome's whole launcher page in the webview, which needs a
   stand-in for the Chrome APIs it calls. Reversible: add the page later.
+
+## Check the centered bar items on a real Mac
+
+Only the tests have run these (SPEC.md §8):
+
+- Workspaces and title both centered: the workspaces end at the screen's
+  middle and the title starts there, on a plain display; immediately left
+  and right of the notch on a MacBook.
+- A long title stops 24 px short of the right side, and the workspaces
+  stay where they were.
 
 ## Check the keyboard swap in Karabiner on a real Mac
 

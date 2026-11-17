@@ -172,6 +172,25 @@ STATES.push(
   { name: "bar-layout-crowded", width: 1100, state: { ...STATES[0].state, barLayout: LAYOUT } },
 );
 
+// The workspaces and the title both centered: the workspaces end at the
+// bar's middle and the title starts there; over a notch, either side of
+// it.
+const CENTERED = [
+  { id: "logo", zone: "left", shown: true },
+  { id: "workspaces", zone: "center", shown: true },
+  { id: "title", zone: "center", shown: true },
+  { id: "icons", zone: "right", shown: true },
+];
+const notched = STATES.find((s) => s.name === "bar-notch");
+STATES.push(
+  { name: "bar-centered", width: 1440, state: { ...STATES[0].state, barLayout: CENTERED } },
+  {
+    name: "bar-centered-notch",
+    width: 1512,
+    state: { ...notched.state, title: "Quarterly planning — Docs", barLayout: CENTERED },
+  },
+);
+
 // Hover, as tide tells the page where the pointer is: over an item's
 // edge, so the mock shows its whole target, in light and dark.
 const HOVER = {

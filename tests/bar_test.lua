@@ -245,7 +245,7 @@ t.test("windows tile below where the bar really is, when macOS moved it down", f
     t.eq(a.wins[1].frame.h, 914)
 end)
 
-t.test("a display with a notch tiles under the raised bar, and shows no title", function()
+t.test("a display with a notch tiles under the raised bar, and sends its title for the page to place", function()
     local a = fake.new()
     a.screens_[1] = { uuid = "A", area = { x = 0, y = 32, w = 1512, h = 950 }, full = { x = 0, y = 0, w = 1512, h = 982 }, notch = true }
     a.add(1, { title = "Notes" })
@@ -256,7 +256,7 @@ t.test("a display with a notch tiles under the raised bar, and shows no title", 
     t.eq(a.wins[1].frame.y, 36)
     t.eq(a.wins[1].frame.h, 946)
     a.focus_ = 1
-    t.eq(bar.state(wm, "A", "Notes", {}).title, "", "the notch is where the title would be")
+    t.eq(bar.state(wm, "A", "Notes", {}).title, "Notes", "the page shows it beside the notch, if centered")
     t.eq(bar.state(wm, "A", "Notes", {}).notch, true, "the page keeps the middle clear")
     local opened
     bar.handle(wm, { uuid = "A", workspaces = true }, { workspaces = function(uuid) opened = uuid end })

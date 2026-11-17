@@ -787,8 +787,46 @@ sandbox.tide.update({
     unplaced: ["apple", "logo"],
   }, "the Apple logo goes with tide's, the clocks with the icons");
   assert.deepStrictEqual(plain(arrangement(undefined, { has: { title: false } })).unplaced, ["title"], "no title takes no room");
-  assert.deepStrictEqual(plain(arrangement(custom, { notch: true })).left, ["icons-lead", "clocks", "icons", "title", "workspaces"],
-    "over a notch the center's items end the left zone");
+  const notched = plain(arrangement(custom, { notch: true }));
+  assert.deepStrictEqual(notched.center, ["workspaces"], "over a notch the center stays the center, either side of it");
+  assert.deepStrictEqual(notched.left, ["icons-lead", "clocks", "icons"], "and a title at a side, under the notch, waits");
+  assert.ok(notched.unplaced.includes("title"));
+  const both = [{ id: "workspaces", zone: "center", shown: true }, { id: "title", zone: "center", shown: true }];
+  assert.deepStrictEqual(plain(arrangement(both, { notch: true })).center, ["workspaces", "title"], "a centered title shows beside it");
+
+  // The center zone's pivot (SPEC.md §8): the point on the bar's middle.
+  const { pivotOf, afterNotch, titleShare, centerTitleRoom, NOTCH_ROOM: ROOM } = vm.runInContext('modules["./bar.js"]', sandbox);
+  const box = (left, right) => ({ left, right });
+  assert.strictEqual(pivotOf([box(0, 300)]), 150, "one item: its middle");
+  assert.strictEqual(pivotOf([box(0, 300), box(308, 708)]), 304, "two: between them, so the first ends at the middle");
+  assert.strictEqual(pivotOf([box(0, 100), box(108, 508), box(516, 616)]), 308, "three: the middle one's middle");
+  assert.strictEqual(pivotOf([box(0, 300), box(300 + ROOM, 700 + ROOM)], true), 300 + ROOM / 2, "over a notch, its middle between the halves");
+  assert.strictEqual(pivotOf([box(0, 300)], true), 300 + ROOM / 2, "one item ends at the notch");
+  assert.strictEqual(afterNotch(2, true), 1, "the second half's first keeps the notch's room");
+  assert.strictEqual(afterNotch(3, true), 2, "an odd middle one goes left of it");
+  assert.strictEqual(afterNotch(1, true), -1);
+  assert.strictEqual(afterNotch(2, false), -1, "without a notch, the usual gap");
+  assert.strictEqual(titleShare(2, 1), 0, "second of two: all after the middle");
+  assert.strictEqual(titleShare(1, 0), 0.5, "alone: centered");
+  assert.strictEqual(titleShare(2, 0), 1);
+  // The workspaces 300 then a title 500 on a 1200 bar, sides 100 and 200:
+  // the title runs from the middle to 24 px short of the right side.
+  const room2 = centerTitleRoom(1200, 100, 200, { pivot: 304, center: 808, title: 500, share: 0 });
+  assert.strictEqual(room2, 1200 - 200 - 24 - (600 + 4));
+  // A first half too wide to end at the middle moves the zone over, and
+  // the title takes what's left: workspaces 700 then a title 400 on a 1280
+  // bar, sides 40 and 200.
+  const wide = centerTitleRoom(1280, 40, 200, { pivot: 704, center: 1108, title: 400, share: 0 });
+  assert.strictEqual(wide, (1280 - 200 - 24) - (40 + 24) - 708);
+  // Over a notch the zone never moves: a wide right side leaves the title
+  // right of the notch no room, rather than sliding it under the notch.
+  // A 1512 bar, sides 50 and 700, workspaces 200 then the title.
+  assert.strictEqual(centerTitleRoom(1512, 50, 700, { pivot: 310, center: 420, title: 0, share: 0, fixed: true }), 0);
+  assert.strictEqual(centerAt(1512, 50, 700, 420, 24, 310, true), 756 - 310, "the notch's gap stays on the notch");
+  // Alone, as before: twice the room to the nearer side.
+  assert.strictEqual(centerTitleRoom(1200, 300, 500, { pivot: 250, center: 500, title: 500, share: 0.5 }), 1200 - 2 * 500 - 2 * 24);
+  // The pivot on the middle, as far as the sides let it.
+  assert.strictEqual(centerAt(1200, 100, 200, 508, 24, 304), 600 - 304, "the first item ends at the middle");
 
   // The center zone on the bar's middle, moved over only as far as it must
   // to clear the sides, which keep their whole width.
@@ -818,6 +856,9 @@ sandbox.tide.update({
   Object.assign(ids.left, { offsetWidth: 30 });
   Object.assign(ids.right, { offsetWidth: 600 });
   Object.assign(ids.center, { offsetWidth: 200 });
+  // The workspaces fill the center zone, so its pivot is their middle.
+  ids.center.rect = { left: 400, right: 600, top: 5, bottom: 31, width: 200, height: 26 };
+  ids.workspaces.rect = { left: 400, right: 600, top: 5, bottom: 31, width: 200, height: 26 };
   const layout = [
     { id: "logo", zone: "left", shown: true },
     { id: "workspaces", zone: "center", shown: true },
@@ -896,5 +937,53 @@ sandbox.tide.update({
   sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", icons: {} });
   assert.deepStrictEqual(props, {});
   sent.length = 0;
+}
+// A title the last fit held to 0 px still counts where it is: 500 px of
+// centered workspaces on a 1200 bar, sides 50 and 400, leave it 172.
+{
+  const both = [
+    { id: "logo", zone: "left", shown: true },
+    { id: "workspaces", zone: "center", shown: true },
+    { id: "title", zone: "center", shown: true },
+    { id: "icons", zone: "right", shown: true },
+  ];
+  Object.assign(ids.bar, { clientWidth: 1200 });
+  Object.assign(ids.left, { offsetWidth: 50 });
+  Object.assign(ids.right, { offsetWidth: 400 });
+  Object.assign(ids.center, { offsetWidth: 508 });
+  ids.center.rect = { left: 96, right: 604, top: 5, bottom: 31, width: 508, height: 26 };
+  ids.workspaces.rect = { left: 96, right: 596, top: 5, bottom: 31, width: 500, height: 26 };
+  ids.title.rect = { left: 604, right: 604, top: 5, bottom: 31, width: 0, height: 26 };
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: {}, notch: false, barLayout: both });
+  assert.strictEqual(ids["title-text"].style.maxWidth, "172px");
+}
+
+// Over a notch, the workspaces and the title both centered sit either side
+// of it: the title keeps the notch's room from the workspaces.
+{
+  const { NOTCH_ROOM: ROOM } = vm.runInContext('modules["./bar.js"]', sandbox);
+  const both = [
+    { id: "logo", zone: "left", shown: true },
+    { id: "workspaces", zone: "center", shown: true },
+    { id: "title", zone: "center", shown: true },
+    { id: "icons", zone: "right", shown: true },
+  ];
+  ids.center.rect = { left: 300, right: 900, top: 5, bottom: 31, width: 600, height: 26 };
+  ids.workspaces.rect = { left: 300, right: 500, top: 5, bottom: 31, width: 200, height: 26 };
+  ids.title.rect = { left: 720, right: 900, top: 5, bottom: 31, width: 180, height: 26 };
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: {}, notch: true, barLayout: both });
+  assert.deepStrictEqual(ids.center.children.map((c) => c.id), ["workspaces", "title"], "the title shows beside the notch");
+  assert.strictEqual(ids.title.style.marginLeft, `${ROOM}px`, "with the notch between");
+  assert.strictEqual(ids.workspaces.style.marginLeft, "");
+  // Without the notch, the usual gap.
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: {}, notch: false, barLayout: both });
+  assert.strictEqual(ids.title.style.marginLeft, "");
+  // Moved to a side, an item leaves the notch's room behind.
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: {}, notch: true, barLayout: both });
+  assert.strictEqual(ids.title.style.marginLeft, `${ROOM}px`);
+  const moved = both.map((e) => (e.id === "title" ? { ...e, zone: "right" } : e));
+  sandbox.tide.update({ uuid: "B", workspaces: ws, title: "Notes", icons: {}, notch: false, barLayout: moved });
+  assert.strictEqual(ids.title.parent, ids.right);
+  assert.strictEqual(ids.title.style.marginLeft, "", "no 220 px gap at the side");
 }
 console.log("bar page: ok");
