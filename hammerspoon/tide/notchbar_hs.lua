@@ -32,10 +32,11 @@ function M.new(tide, changed)
     local self = { canvases = {}, failed = {} }
     local log = tide.adapter.log
 
-    -- Log a lasting failure once, and again only once it changes.
-    local function once(what, err)
-        if self.failed[what] ~= tostring(err) then
-            self.failed[what] = tostring(err)
+    -- Log a lasting failure once, and again only once it changes, kept in
+    -- self.failed under `key` until it's cleared there.
+    local function once(key, what, err)
+        if self.failed[key] ~= tostring(err) then
+            self.failed[key] = tostring(err)
             log("menu bar workspaces: " .. what .. ": " .. tostring(err))
         end
     end
@@ -58,7 +59,7 @@ function M.new(tide, changed)
                 self.failed.notch = nil
             else
                 areas = {}
-                once("couldn't read where the notch is, so it's guessed", ok and "not JSON" or out)
+                once("notch", "couldn't read where the notch is, so it's guessed", ok and "not JSON" or out)
             end
         end
         return areas
@@ -112,7 +113,7 @@ function M.new(tide, changed)
             frames = nil
         end
         if not frames then
-            once("couldn't read the app's menus, so the names show in the menu bar item", err)
+            once("menus", "couldn't read the app's menus, so the names show in the menu bar item", err)
             return nil
         end
         self.failed.menus = nil
