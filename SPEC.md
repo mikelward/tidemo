@@ -2057,9 +2057,13 @@ stock keys:
     `bar.icon_list` makes a stored list whole: an id it doesn't know or
     names twice is dropped, and an icon added since goes in after the one
     it follows by default. Every icon but one shows unless turned off.
-    - **Clocks** is in the list too, first by default, so the clocks move
-      among the icons and turn off as one does. Icons before them are
-      drawn ahead of them; turned off, the clocks hide.
+    - **The clocks aren't in the list.** They're an item of the Layout
+      list (below), as on tide for Linux, so they can go left, center or
+      right. They were once an icon, first by default: a stored list that
+      still names `clock` has it dropped, and clocks turned off there stay
+      off until the layout says otherwise. A change to the Icons list
+      stores the layout first while it doesn't name the clocks (none
+      stored yet, or one from before), so that choice isn't lost.
     - **Other apps' icons** is off unless turned on. macOS gives no way
       to draw other apps' status items (a VPN, Zoom) in tide's bar, so
       this icon, three dots, does Show Menu Bar: it hides the bars until
@@ -2086,19 +2090,22 @@ stock keys:
   - **The Bar page's Layout list places the bar's items left, center or
     right,** as tide for Linux's does (tide for Linux §7.1). The items are
     the logo (the Apple logo and tide's, together), the workspaces, the
-    window title, and the status icons with the clocks as one group. Each
+    window title, the status icons as one group, and the clocks. Each
     goes in a zone, in the order given, or is turned off. Only a bar along
     the top or bottom has it: Menu bar and Middle of menu bar stay as they
     are, and the page hides the list with them.
-    - By default the bar is as it's always been: the logos and the
-      workspaces left, the title centered, the icons and clocks right.
+    - By default the logos and the workspaces are left, the title
+      centered, and the icons then the clocks right. The clocks used to
+      come before the icons; they're last now, as on tide for Linux and
+      where macOS's own menu bar keeps its clock. Beside the icons they
+      keep the icons' 2 px gap, not an item's 8 px.
     - The list shows the items by zone, Left, Center, then Right. Each has
       its zone, ↑ and ↓, which move it, past its zone's end into the next,
       and an On or Off switch. The bar redraws at once
       (`settings_hs.choose_bar_layout`).
     - It's `barLayout`, the key and values of tide for Linux's
       `appearance.json`: a list of `{"id": …, "zone": …, "shown": …}`,
-      ids `logo`, `workspaces`, `title` and `icons`. It's this Mac's own,
+      ids `logo`, `workspaces`, `title`, `icons` and `clocks`. It's this Mac's own,
       in `hs.settings` (`bar.LAYOUT_KEY`), as the icons are.
       `bar.layout_list`, and tide for Linux's `barlayout.mjs` (copied as
       `dashboard/tide-barlayout.js`, checked by `make check-tide`), make a

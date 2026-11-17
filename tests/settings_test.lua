@@ -328,6 +328,37 @@ t.test("the Bar page's icons are kept whole and drawn at once", function()
     t.eq(logged, { "settings: the bar's icons aren't a list: battery" })
 end)
 
+t.test("changing the icons keeps clocks turned off when they were an icon", function()
+    local settings_hs = require("tide.settings_hs")
+    local bar = require("tide.bar")
+    local stored = {}
+    local tide = {
+        adapter = { log = function() end },
+        bar_icons = { { id = "clock", shown = false }, { id = "battery", shown = true } },
+    }
+    local store = {
+        set = function(k, v)
+            stored[k] = v
+        end,
+    }
+    t.eq(settings_hs.choose_bar_icons(tide, { { id = "battery", shown = false } }, store), true)
+    t.eq(stored[bar.LAYOUT_KEY][5], { id = "clocks", zone = "right", shown = false }, "the layout kept first, clocks off")
+    t.eq(tide.bar_layout, stored[bar.LAYOUT_KEY])
+    -- With a layout already kept, the icons change alone.
+    stored = {}
+    settings_hs.choose_bar_icons(tide, { { id = "battery", shown = true } }, store)
+    t.eq(stored[bar.LAYOUT_KEY], nil)
+    -- A layout kept before the clocks were an item doesn't name them: it's
+    -- kept again, its own choices and the old clocks' both.
+    stored = {}
+    tide.bar_layout = { { id = "title", zone = "left", shown = true } }
+    tide.bar_icons = { { id = "clock", shown = false } }
+    settings_hs.choose_bar_icons(tide, { { id = "battery", shown = true } }, store)
+    local kept = stored[bar.LAYOUT_KEY]
+    t.eq(kept[3], { id = "title", zone = "left", shown = true })
+    t.eq(kept[5], { id = "clocks", zone = "right", shown = false })
+end)
+
 t.test("the Bar page's layout is kept whole and drawn at once", function()
     local settings_hs = require("tide.settings_hs")
     local bar = require("tide.bar")
@@ -356,6 +387,7 @@ t.test("the Bar page's layout is kept whole and drawn at once", function()
         { id = "workspaces", zone = "center", shown = true },
         { id = "title", zone = "center", shown = true },
         { id = "icons", zone = "right", shown = true },
+        { id = "clocks", zone = "right", shown = true },
     })
     t.eq(tide.bar_layout, kept)
     t.eq(drawn, 1)

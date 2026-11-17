@@ -336,11 +336,20 @@ end
 -- Icons list: `value` is { { id, shown } } in order, made whole by
 -- bar.icon_list, kept in `store` (hs.settings) as tide's own and drawn at
 -- once. Returns true, or nil and why, which the log keeps.
+--
+-- The list no longer names the clocks. While the stored layout doesn't
+-- name them either (none yet, or one from before), the layout is stored
+-- first, so clocks turned off when they were an icon stay off
+-- (bar.layout_list).
 function M.choose_bar_icons(tide, value, store)
     if type(value) ~= "table" then
         local why = "the bar's icons aren't a list: " .. tostring(value)
         tide.adapter.log("settings: " .. why)
         return nil, why
+    end
+    if not bar.names(tide.bar_layout, "clocks") then
+        tide.bar_layout = bar.stored_layout(tide.bar_layout, tide.bar_icons)
+        store.set(bar.LAYOUT_KEY, tide.bar_layout)
     end
     local list = {}
     for i, e in ipairs(bar.icon_list(value)) do
@@ -560,7 +569,7 @@ function M.new(tide)
             bar = {
                 position = bar.position(tide.bar_position),
                 icons = bar.icon_list(tide.bar_icons),
-                layout = bar.layout_list(tide.bar_layout),
+                layout = bar.layout_list(tide.bar_layout, tide.bar_icons),
                 colors = bar.page_colors(tide.bar_colors),
             },
             -- The Appearance page's Overview switch, and whether macOS

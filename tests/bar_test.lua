@@ -297,8 +297,8 @@ t.test("the Bar page lists every icon once, in the order you chose", function()
         return table.concat(out, " ")
     end
     t.eq(ids(bar.icon_list(nil)),
-        "clock source awake camera mic bluetooth headphones volume network battery sysmon tray- session",
-        "the bar's own order, the clocks first, other apps' icons off")
+        "source awake camera mic bluetooth headphones volume network battery sysmon tray- session",
+        "the bar's own order, other apps' icons off")
     t.eq(ids(bar.icon_list({
         { id = "battery", shown = true },
         { id = "source", shown = false },
@@ -306,22 +306,16 @@ t.test("the Bar page lists every icon once, in the order you chose", function()
         { id = "battery", shown = false },
         "junk",
     })),
-        "clock battery sysmon tray- session source- awake camera mic bluetooth headphones volume network",
+        "battery sysmon tray- session source- awake camera mic bluetooth headphones volume network",
         "unknown and repeated ids are dropped; a missing one goes in after the icon it follows")
     t.eq(ids(bar.icon_list({ { id = "session" }, { id = "mic", shown = "yes" } })),
-        "clock source awake camera session mic bluetooth headphones volume network battery sysmon tray-",
+        "source awake camera session mic bluetooth headphones volume network battery sysmon tray-",
         "a missing or odd shown is the icon's own")
     t.eq(ids(bar.icon_list("top")), ids(bar.icon_list(nil)), "anything but a list is the default")
-    t.eq(bar.icon_list(nil)[2].label, "Keyboard")
-    -- The clocks move and turn off as an icon does.
-    local moved = {}
-    for i, e in ipairs(bar.icon_list(nil)) do
-        moved[i] = { id = e.id, shown = e.shown and e.id ~= "clock" }
-    end
-    table.insert(moved, 9, table.remove(moved, 1))
-    t.eq(ids(bar.icon_list(moved)),
-        "source awake camera mic bluetooth headphones volume network clock- battery sysmon tray- session",
-        "the clocks where you put them, off")
+    t.eq(bar.icon_list(nil)[1].label, "Keyboard")
+    -- The clocks were an icon once; a list from then has them dropped,
+    -- since they're the layout's now.
+    t.eq(ids(bar.icon_list({ { id = "clock", shown = false } })), ids(bar.icon_list(nil)), "no clock among the icons")
 end)
 
 t.test("the Bar page's layout lists every item once, in its zone", function()
@@ -332,18 +326,18 @@ t.test("the Bar page's layout lists every item once, in its zone", function()
         end
         return table.concat(out, " ")
     end
-    t.eq(ids(bar.layout_list(nil)), "logo:left workspaces:left title:center icons:right",
-        "unless set, the bar as it's always been")
+    t.eq(ids(bar.layout_list(nil)), "logo:left workspaces:left title:center icons:right clocks:right",
+        "unless set, the bar as it's always been, the clocks after the icons")
     t.eq(ids(bar.layout_list({
         { id = "icons", zone = "left", shown = true },
         { id = "nonsense", zone = "left", shown = true },
         { id = "title", zone = "middle", shown = false },
         { id = "icons", zone = "right", shown = false },
         "junk",
-    })), "logo:left workspaces:left icons:left title:center-",
+    })), "logo:left workspaces:left icons:left clocks:right title:center-",
         "unknown and repeated ids dropped, an unknown zone the item's own, a missing item after the one it follows")
     t.eq(ids(bar.layout_list({ { id = "workspaces", zone = "center" } })),
-        "logo:left workspaces:center title:center icons:right", "a missing shown is the item's own")
+        "logo:left workspaces:center title:center icons:right clocks:right", "a missing shown is the item's own")
     t.eq(ids(bar.layout_list("top")), ids(bar.layout_list(nil)), "anything but a list is the default")
     t.eq(bar.layout_list(nil)[3].label, "Window title")
     t.eq(bar.stored_layout({ { id = "title", zone = "left", shown = true } }), {
@@ -351,7 +345,15 @@ t.test("the Bar page's layout lists every item once, in its zone", function()
         { id = "workspaces", zone = "left", shown = true },
         { id = "title", zone = "left", shown = true },
         { id = "icons", zone = "right", shown = true },
+        { id = "clocks", zone = "right", shown = true },
     }, "kept whole, without labels")
+    -- Clocks turned off when they were an icon stay off, until the layout
+    -- says otherwise.
+    local old_icons = { { id = "clock", shown = false }, { id = "battery", shown = true } }
+    t.eq(ids(bar.layout_list(nil, old_icons)), "logo:left workspaces:left title:center icons:right clocks:right-")
+    t.eq(ids(bar.layout_list({ { id = "clocks", zone = "center", shown = true } }, old_icons)),
+        "logo:left workspaces:left title:center icons:right clocks:center", "the layout's own choice wins")
+    t.eq(bar.stored_layout(nil, old_icons)[5], { id = "clocks", zone = "right", shown = false })
 end)
 
 t.test("a bad layout fails at load, naming the setting, and the default stands", function()
@@ -390,11 +392,11 @@ t.test("the bar draws the shown icons, other apps' only at the top", function()
     for i, e in ipairs(bar.icon_list(nil)) do
         stored[i] = { id = e.id, shown = e.id == "tray" or (e.id ~= "mic" and e.id ~= "session" and e.shown) }
     end
-    table.insert(stored, 1, table.remove(stored, 12))
+    table.insert(stored, 1, table.remove(stored, 11))
     t.eq(bar.shown_icons(stored, "top"),
-        { "tray", "clock", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" })
+        { "tray", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" })
     t.eq(bar.shown_icons(stored, "bottom"),
-        { "clock", "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" },
+        { "source", "awake", "camera", "bluetooth", "headphones", "volume", "network", "battery", "sysmon" },
         "along the bottom macOS's menu bar already shows them")
 end)
 
