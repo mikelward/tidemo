@@ -868,7 +868,20 @@ start_hammerspoon() {
         return 0
     fi
     info "Starting Hammerspoon"
-    open -a "$_hs_app" || warn "could not start Hammerspoon; open it from Applications"
+    # open waits until Hammerspoon has finished launching, which a prompt
+    # in it or in tide, waiting for you, can hold up for good, as it did on
+    # CI's Mac. So open runs on its own, and this goes on once Hammerspoon
+    # is running, or says it isn't after a few seconds.
+    open -a "$_hs_app" </dev/null >/dev/null 2>&1 &
+    _hs_tries=0
+    while ! app_running Hammerspoon; do
+        _hs_tries=$((_hs_tries + 1))
+        if test "$_hs_tries" -gt "${TIDE_START_TRIES:-20}"; then
+            warn "could not start Hammerspoon; open it from Applications"
+            return 0
+        fi
+        sleep 0.5
+    done
 }
 start_hammerspoon
 

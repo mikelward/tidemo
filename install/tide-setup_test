@@ -82,9 +82,16 @@ echo "Add to init.lua: (make's own note)"
 exit 0
 MOCK
 
+    # open -a APP starts it, as pgrep then says, unless open_fails exists.
     cat > "$TEST_TMPDIR/bin/open" <<MOCK
 #!/bin/sh
 printf "%s\\n" "open \$*" >> "$CALLS"
+test -f "$TEST_TMPDIR/open_fails" && exit 1
+if test "\$1" = -a; then
+    app=\${2##*/}
+    app=\${app%.app}
+    touch "$TEST_TMPDIR/running.\$app"
+fi
 exit 0
 MOCK
 
@@ -99,7 +106,7 @@ MOCK
     chmod +x "$TEST_TMPDIR"/bin/*
 
     mkdir -p "$TEST_TMPDIR/sysbin"
-    for cmd in awk cat dirname grep mkdir mktemp mv rm sed tail tr wc; do
+    for cmd in awk cat dirname grep mkdir mktemp mv rm sed sleep tail touch tr wc; do
         ln -sf "$(command -v "$cmd")" "$TEST_TMPDIR/sysbin/$cmd"
     done
 
@@ -643,6 +650,15 @@ test_starts_hammerspoon() {
     assert_called "open -a $APPLICATIONS_DIR/Hammerspoon.app"
 }
 
+# One that doesn't start is said, and the run goes on.
+test_says_when_hammerspoon_doesnt_start() {
+    add_app Hammerspoon
+    touch "$TEST_TMPDIR/open_fails"
+    TIDE_START_TRIES=1 run_setup
+    assert_status 0 &&
+    assert_output_contains "could not start Hammerspoon; open it from Applications"
+}
+
 test_leaves_a_running_hammerspoon() {
     add_app Hammerspoon
     touch "$TEST_TMPDIR/running.Hammerspoon"
@@ -855,6 +871,7 @@ run_test "an open System Settings is quit before the writes" test_quits_system_s
 run_test "a closed System Settings is left alone" test_leaves_system_settings_alone_when_closed
 run_test "says when System Settings won't quit" test_says_when_system_settings_wont_quit
 run_test "a pgrep failure while it quits isn't read as quit" test_says_when_system_settings_quit_is_unknown
+run_test "a Hammerspoon that doesn't start is said" test_says_when_hammerspoon_doesnt_start
 run_test "a failed write stops the run" test_failed_write_stops_the_run
 run_test "a clean run says, last, that it finished" test_a_clean_run_says_it_finished
 run_test "SETUP_COLOR=always colors errors and the verdict" test_the_verdict_is_colored_with_setup_color_always
