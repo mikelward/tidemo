@@ -312,10 +312,13 @@ function bring(list, want, owned, prefix) {
   return now;
 }
 
-const deviceKey = (id) => `device:${id.vendor_id}:${id.product_id}:`;
+// Karabiner reads a missing vendor or product ID as 0, and writes a
+// MacBook's built-in keyboard, which has neither, without them.
+const idOf = (v) => (v === undefined ? 0 : v);
+const deviceKey = (id) => `device:${idOf(id.vendor_id)}:${idOf(id.product_id)}:`;
 const sameDevice = (d, id) =>
-  isObject(d) && isObject(d.identifiers) && d.identifiers.vendor_id === id.vendor_id &&
-  d.identifiers.product_id === id.product_id && d.identifiers.is_keyboard === true && d.identifiers.is_pointing_device !== true;
+  isObject(d) && isObject(d.identifiers) && idOf(d.identifiers.vendor_id) === id.vendor_id &&
+  idOf(d.identifiers.product_id) === id.product_id && d.identifiers.is_keyboard === true && d.identifiers.is_pointing_device !== true;
 
 // karabiner.json's text with tide's key swaps (SPEC.md §7.1) brought to
 // `want`: { swap, compose, apple }, the PC keyboard type's modifier swap,
@@ -402,6 +405,7 @@ export function withSwaps(configText, want, owned) {
 
 // The Apple keyboards in `karabiner_cli --list-connected-devices`'s list,
 // parsed: each { vendor_id, product_id }, Karabiner's own keyboard left out.
+// A MacBook's built-in keyboard, on the SPI bus, has no IDs: it's 0 and 0.
 export function appleKeyboards(devices) {
   const out = [];
   for (const d of Array.isArray(devices) ? devices : []) {
@@ -409,9 +413,11 @@ export function appleKeyboards(devices) {
     const id = d.device_identifiers;
     if (id.is_keyboard !== true || id.is_virtual_device === true) continue;
     if (d.is_apple !== true && d.is_built_in_keyboard !== true) continue;
-    if (!Number.isInteger(id.vendor_id) || !Number.isInteger(id.product_id)) continue;
-    if (out.some((k) => k.vendor_id === id.vendor_id && k.product_id === id.product_id)) continue;
-    out.push({ vendor_id: id.vendor_id, product_id: id.product_id });
+    const vendor = idOf(id.vendor_id);
+    const product = idOf(id.product_id);
+    if (!Number.isInteger(vendor) || !Number.isInteger(product)) continue;
+    if (out.some((k) => k.vendor_id === vendor && k.product_id === product)) continue;
+    out.push({ vendor_id: vendor, product_id: product });
   }
   return out;
 }

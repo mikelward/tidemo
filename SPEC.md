@@ -1636,13 +1636,14 @@ together (§6). tide turns it off (§6.6), and has its own.
   - **Each Apple keyboard gets its own swap,** in its device entry, which
     Karabiner uses before the one for every keyboard: control to Command,
     option kept as Option, command to Control. Karabiner names a keyboard
-    by its vendor and product, so tide asks `karabiner_cli
+    by its vendor and product. A MacBook's built-in keyboard, on the SPI
+    bus, has neither, so Karabiner reads both as 0. tide asks `karabiner_cli
     --list-connected-devices` for the Apple keyboards connected, and keeps
     each in `hs.settings`, so one that's away keeps its swap. It asks as it
     starts, 10 s and 60 s later (`init.KEYS_AGAIN`), after a wake or a
     device plugged in, and as the files change. One it hasn't seen yet gets
     the PC keyboard's swap, so its option and command act as Alt and Win
-    until then. *(Unverified on a Mac: the command's list, and a keyboard's
+    until then. *(Unverified on a Mac: a keyboard's
     own swap coming before the one for every keyboard, read from
     Karabiner's source.)*
   - **The rules see the keys after the swap.** Karabiner runs its rules

@@ -687,6 +687,45 @@ t.test("Apple's keyboards are picked from Karabiner's list and kept while they'r
     t.eq(#m.logs > 0, true, "said")
 end)
 
+-- A MacBook's built-in keyboard on the SPI bus (transport FIFO) has no
+-- vendor or product ID; Karabiner reads both as 0 and names it that way.
+local BUILT_IN = json.encode({
+    { device_id = 4294971320, device_identifiers = { is_keyboard = true }, is_apple = true,
+        is_built_in_keyboard = true, location_id = 165, manufacturer = "Apple",
+        product = "Apple Internal Keyboard / Trackpad", transport = "FIFO" },
+    { device_id = 4294971321, device_identifiers = { is_pointing_device = true }, is_apple = true,
+        location_id = 165, manufacturer = "Apple", transport = "FIFO" },
+})
+
+t.test("a MacBook's built-in keyboard, which has no IDs, counts as an Apple keyboard", function()
+    local m = machine({})
+    t.eq(m.k.apple_keyboards(BUILT_IN), { { vendor_id = 0, product_id = 0 } })
+end)
+
+t.test("the built-in keyboard gets its own swap, in the entry Karabiner keeps for it", function()
+    local m = swap_machine()
+    m.k.check()
+    local apple = m.k.apple_keyboards(BUILT_IN)
+    t.eq(m.k.set_swaps({ swap = true, apple = apple }), true)
+    local p = profile(m)
+    t.eq(#p.devices, 1)
+    t.eq(swaps_of(p.devices[1].simple_modifications), APPLE, "its command acts as Alt")
+    t.eq(p.devices[1].identifiers, { is_keyboard = true, product_id = 0, vendor_id = 0 })
+end)
+
+t.test("the built-in keyboard's swap goes in the entry Karabiner already has for it", function()
+    -- Karabiner writes the keyboard's entry without the zero IDs.
+    local config = EMPTY_CONFIG:gsub('"selected": true,', '"selected": true, "devices": [{"identifiers": {"is_keyboard": true},'
+        .. ' "ignore": false}],', 1)
+    local m = machine(with_assets(config, { ["pc-terminal.json"] = SWAP_RULE }))
+    m.k.check()
+    t.eq(m.k.set_swaps({ swap = true, apple = m.k.apple_keyboards(BUILT_IN) }), true)
+    local p = profile(m)
+    t.eq(#p.devices, 1, "no second entry")
+    t.eq(p.devices[1].identifiers, { is_keyboard = true })
+    t.eq(swaps_of(p.devices[1].simple_modifications), APPLE)
+end)
+
 t.test("tide's own rule, copied for Karabiner's swap, still reads as complete", function()
     local keys = require("tide.keys")
     local file = read_file("hammerspoon/tide/karabiner/tide.json")
@@ -749,6 +788,18 @@ t.test("a profile you rename keeps tide's swaps as tide's", function()
     t.eq(m.k.set_swaps({ swap = false, compose = false, apple = {} }), true)
     t.eq(swaps_in(m, 1), {}, "taken out under its new name")
     t.eq(m.settings[karabiner.SWAP_OWNED_KEY].A, nil, "the old name's gone")
+end)
+
+t.test("a profile you rename keeps the built-in keyboard's swap as tide's", function()
+    -- Karabiner's entry for it has no IDs.
+    local config = EMPTY_CONFIG:gsub('"selected": true,', '"selected": true, "devices": [{"identifiers": {"is_keyboard": true}}],', 1)
+    local m = machine(with_assets(config, { ["pc-terminal.json"] = SWAP_RULE }))
+    m.k.check()
+    local apple = m.k.apple_keyboards(BUILT_IN)
+    t.eq(m.k.set_swaps({ swap = true, apple = apple }), true)
+    m.files[CONFIG] = m.files[CONFIG]:gsub('"name": "Default"', '"name": "Work"')
+    t.eq(m.k.set_swaps({ swap = false, apple = apple }), true)
+    t.eq(swaps_of(profile(m).devices[1].simple_modifications), {}, "taken out under its new name")
 end)
 
 t.test("a profile you delete leaves its swaps behind, not on the profile selected next", function()
