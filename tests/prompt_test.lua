@@ -417,4 +417,42 @@ t.test("switching to an empty workspace that leaves focus on the other display u
     t.eq(seen, "web", "told after the keys moved, not before")
 end)
 
+-- A window answered onto "in" that macOS never said had the focus: the
+-- focus report can come before tide knows the window, or not at all
+-- once the prompt hands the focus back.
+local function unreported(sync_first)
+    local a, wm = setup(0)
+    a.add(1, { app = "com.example.other", pid = 200 })
+    wm:schedule()
+    a.tick()
+    wm:send(1, "work")
+    a.focus_ = 1
+    wm:focused(1)
+    wm:show("in", nil, true)
+    open(a, wm, 3, { app = "com.apple.TextEdit", pid = 300 })
+    wm:answer(3, "in")
+    t.eq(wm.parked[1], true)
+    -- Cmd+W: macOS focuses the other app's window, parked on "work".
+    a.drop(3)
+    if sync_first then
+        wm:schedule()
+        a.tick()
+    end
+    a.focus_ = 1
+    wm:focused(1)
+    return a, wm
+end
+
+t.test("closing the last window on \"in\" keeps you there, even unreported", function()
+    local _, wm = unreported(false)
+    t.eq(wm.current, "in", "the focus moving on isn't you leaving")
+    t.eq(wm.parked[1], true, "the other window stays on its workspace")
+end)
+
+t.test("closing the last window on \"in\" keeps you there when the sync comes first", function()
+    local _, wm = unreported(true)
+    t.eq(wm.current, "in")
+    t.eq(wm.parked[1], true)
+end)
+
 t.done("prompt")
