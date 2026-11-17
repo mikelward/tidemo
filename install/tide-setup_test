@@ -63,6 +63,15 @@ test -f "$TEST_TMPDIR/running.\$2" && exit 0
 exit 1
 MOCK
 
+    # killall records itself, and the app it names stops running, unless
+    # stuck.<name> says it won't go.
+    cat > "$TEST_TMPDIR/bin/killall" <<MOCK
+#!/bin/sh
+printf "%s\\n" "killall \$*" >> "$CALLS"
+test -f "$TEST_TMPDIR/stuck.\$1" || rm -f "$TEST_TMPDIR/running.\$1"
+exit 0
+MOCK
+
     cat > "$TEST_TMPDIR/bin/make" <<MOCK
 #!/bin/sh
 printf "%s\\n" "make \$*" >> "$CALLS"
@@ -512,11 +521,33 @@ test_missing_activate_settings_says_to_log_out() {
     assert_output_contains "not found; log out and back in for tide's keys to work"
 }
 
-test_warns_when_system_settings_is_open() {
+# System Settings, left open, can write its shortcuts back over tide's, so the
+# run quits it before the first write, rather than asking you to.
+test_quits_system_settings_when_open() {
     touch "$TEST_TMPDIR/running.System Settings"
     run_setup
     assert_status 0 &&
-    assert_output_contains "System Settings is running and can overwrite these shortcuts"
+    assert_called "killall System Settings" &&
+    assert_output_contains "Quitting System Settings" &&
+    assert_output_lacks "can overwrite these shortcuts" || return 1
+    _quit=$(grep -n "^killall System Settings" "$CALLS" | head -1 | cut -d: -f1)
+    _write=$(grep -n "com.apple.symbolichotkeys" "$CALLS" | head -1 | cut -d: -f1)
+    test "$_quit" -lt "$_write" || fail "System Settings was quit (call $_quit) after the first shortcut write (call $_write)"
+}
+
+test_leaves_system_settings_alone_when_closed() {
+    run_setup
+    assert_status 0 &&
+    assert_not_called "killall System Settings" &&
+    assert_output_lacks "Quitting System Settings"
+}
+
+# One that won't go is said, not waited on forever.
+test_says_when_system_settings_wont_quit() {
+    touch "$TEST_TMPDIR/running.System Settings" "$TEST_TMPDIR/stuck.System Settings"
+    SETTINGS_QUIT_WAIT=0 run_setup
+    assert_status 0 &&
+    assert_output_contains "System Settings is still running after 0s and can overwrite these shortcuts"
 }
 
 # Without --ignore-errors a failed write stops the run, naming it.
@@ -810,7 +841,9 @@ run_test "move a Space is off" test_turns_move_a_space_off
 run_test "Mission Control's keys go to the overview" test_hands_mission_control_keys_to_the_overview
 run_test "the keys apply now" test_applies_the_keys_now
 run_test "no activateSettings says to log out" test_missing_activate_settings_says_to_log_out
-run_test "an open System Settings is warned about" test_warns_when_system_settings_is_open
+run_test "an open System Settings is quit before the writes" test_quits_system_settings_when_open
+run_test "a closed System Settings is left alone" test_leaves_system_settings_alone_when_closed
+run_test "says when System Settings won't quit" test_says_when_system_settings_wont_quit
 run_test "a failed write stops the run" test_failed_write_stops_the_run
 run_test "a clean run says, last, that it finished" test_a_clean_run_says_it_finished
 run_test "SETUP_COLOR=always colors errors and the verdict" test_the_verdict_is_colored_with_setup_color_always
