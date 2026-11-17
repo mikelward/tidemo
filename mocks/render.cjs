@@ -172,6 +172,17 @@ STATES.push(
   { name: "bar-layout-crowded", width: 1100, state: { ...STATES[0].state, barLayout: LAYOUT } },
 );
 
+// The clocks centered, the title beside the workspaces on the left: the
+// clocks are an item of their own, not a status icon.
+const CLOCKS_CENTERED = [
+  { id: "logo", zone: "left", shown: true },
+  { id: "workspaces", zone: "left", shown: true },
+  { id: "title", zone: "left", shown: true },
+  { id: "clocks", zone: "center", shown: true },
+  { id: "icons", zone: "right", shown: true },
+];
+STATES.push({ name: "bar-clocks-centered", width: 1440, state: { ...STATES[0].state, barLayout: CLOCKS_CENTERED } });
+
 // The workspaces and the title both centered: the workspaces end at the
 // bar's middle and the title starts there; over a notch, either side of
 // it.

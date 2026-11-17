@@ -90,7 +90,7 @@ class Element {
 
 const ids = {};
 // The page's own elements, as bar.html has them.
-const TAGS = { bar: "header", left: "div", logo: "button", workspaces: "nav", title: "span", "title-text": "span", right: "div", "icons-lead": "div", clocks: "ol", icons: "div" };
+const TAGS = { bar: "header", left: "div", logo: "button", workspaces: "nav", title: "span", "title-text": "span", right: "div", clocks: "ol", icons: "div" };
 const byId = (id) => {
   const e = new Element(TAGS[id] ?? id);
   e.id = id;
@@ -332,19 +332,14 @@ sandbox.tide.update({
 }
 sent.length = 0;
 
-// The clocks move as an icon does: icons before them in the order go ahead
-// of them, and without "clock" they're hidden.
+// The clocks aren't an icon: a "clock" from an older tide draws nothing
+// among the icons, and the clocks stay where the layout puts them.
 sandbox.tide.update({
   uuid: "B", workspaces: ws, title: "", iconOrder: ["battery", "clock", "session"],
   icons: { battery: { percent: 50, text: "50%" } },
 });
-assert.deepStrictEqual(ids["icons-lead"].children.map((c) => c.className), ["icon battery"], "the battery left of the clocks");
-assert.deepStrictEqual(ids.icons.children.map((c) => c.className), ["icon session"], "the session icon right of them");
-assert.strictEqual(ids.clocks.hidden, false, "the clocks show");
-sandbox.tide.update({ uuid: "B", workspaces: ws, title: "", iconOrder: ["battery"], icons: { battery: { percent: 50, text: "50%" } } });
-assert.strictEqual(ids.clocks.hidden, true, "turned off, the clocks hide");
-assert.strictEqual(ids["icons-lead"].children.length, 0);
-assert.deepStrictEqual(ids.icons.children.map((c) => c.className), ["icon battery"]);
+assert.deepStrictEqual(ids.icons.children.map((c) => c.className), ["icon battery", "icon session"], "no clock among the icons");
+assert.strictEqual(ids.clocks.parentNode, ids.right, "the clocks right, after the icons");
 
 // Every icon off: tide's empty list comes through JSON as [] or {}, and
 // either draws none, not the bar's own order.
@@ -538,17 +533,18 @@ ids.bar.rect = { ...barBox, width: 400, height: 36 };
 const [inChip, webChip] = ids.workspaces.children;
 inChip.rect = { ...box(10, 40), width: 30 };
 webChip.rect = { ...box(44, 80), width: 36 };
-ids.clocks.rect = { ...box(200, 300, 10, 26), width: 100 };
+// The icons, then the clocks 14px after them, as the default layout has it.
 const micItem = ids.icons.children[0];
-micItem.rect = { ...box(314, 390), width: 76 };
+micItem.rect = { ...box(200, 276), width: 76 };
+ids.clocks.rect = { ...box(290, 390, 10, 26), width: 100 };
 sandbox.tick();
 const reachOf = (e) => ["top", "bottom", "left", "right"].map((k) => e.style[`--reach-${k}`]).join(" ");
 assert.strictEqual(reachOf(inChip), "5px 5px 10px 2px");
 assert.strictEqual(reachOf(webChip), "5px 5px 2px 0px");
-assert.strictEqual(reachOf(ids.clocks), "10px 10px 0px 7px");
-assert.strictEqual(reachOf(micItem), "5px 5px 7px 10px");
+assert.strictEqual(reachOf(micItem), "5px 5px 0px 7px");
+assert.strictEqual(reachOf(ids.clocks), "10px 10px 7px 10px");
 // The title's target is the free bar between the groups: here from the
-// "web" chip's right edge to the clocks.
+// "web" chip's right edge to the icons.
 assert.strictEqual(reachOf(ids.title), "0px 0px 0px 0px", "no target with no title");
 const { titleInsets } = vm.runInContext('modules["./bar.js"]', sandbox);
 assert.strictEqual(JSON.stringify(titleInsets(barBox, box(150, 170, 10, 26), 80, 200)), '{"top":10,"bottom":10,"left":70,"right":30}');
@@ -556,7 +552,7 @@ sandbox.tide.update({ uuid: "B", workspaces: [{ n: "in" }, { n: "web" }], title:
 const [inChip2, webChip2] = ids.workspaces.children;
 inChip2.rect = { ...box(10, 40), width: 30 };
 webChip2.rect = { ...box(44, 80), width: 36 };
-ids.icons.children[0].rect = { ...box(314, 390), width: 76 };
+ids.icons.children[0].rect = { ...box(200, 276), width: 76 };
 ids.title.rect = { ...box(150, 170, 10, 26), width: 20 };
 sandbox.tick();
 assert.strictEqual(reachOf(ids.title), "10px 10px 70px 30px");
@@ -771,9 +767,9 @@ sandbox.tide.update({
   assert.deepStrictEqual(plain(arrangement(undefined)), {
     left: ["apple", "logo", "workspaces"],
     center: ["title"],
-    right: ["icons-lead", "clocks", "icons"],
+    right: ["icons", "clocks"],
     unplaced: [],
-  }, "unless set, the bar as it's always been");
+  }, "unless set, the bar as it's always been, the clocks after the icons");
   const custom = [
     { id: "icons", zone: "left", shown: true },
     { id: "workspaces", zone: "center", shown: true },
@@ -781,15 +777,18 @@ sandbox.tide.update({
     { id: "logo", zone: "right", shown: false },
   ];
   assert.deepStrictEqual(plain(arrangement(custom)), {
-    left: ["icons-lead", "clocks", "icons", "title"],
+    left: ["icons", "title"],
     center: ["workspaces"],
-    right: [],
+    right: ["clocks"],
     unplaced: ["apple", "logo"],
-  }, "the Apple logo goes with tide's, the clocks with the icons");
+  }, "the Apple logo goes with tide's; the clocks are their own item, right by default");
+  assert.deepStrictEqual(plain(arrangement([{ id: "clocks", zone: "center", shown: true }])).center, ["title", "clocks"],
+    "the clocks go in the center as any item does");
+  assert.ok(plain(arrangement([{ id: "clocks", zone: "right", shown: false }])).unplaced.includes("clocks"), "or off");
   assert.deepStrictEqual(plain(arrangement(undefined, { has: { title: false } })).unplaced, ["title"], "no title takes no room");
   const notched = plain(arrangement(custom, { notch: true }));
   assert.deepStrictEqual(notched.center, ["workspaces"], "over a notch the center stays the center, either side of it");
-  assert.deepStrictEqual(notched.left, ["icons-lead", "clocks", "icons"], "and a title at a side, under the notch, waits");
+  assert.deepStrictEqual(notched.left, ["icons"], "and a title at a side, under the notch, waits");
   assert.ok(notched.unplaced.includes("title"));
   const both = [{ id: "workspaces", zone: "center", shown: true }, { id: "title", zone: "center", shown: true }];
   assert.deepStrictEqual(plain(arrangement(both, { notch: true })).center, ["workspaces", "title"], "a centered title shows beside it");
@@ -869,10 +868,11 @@ sandbox.tide.update({
   const kids = (id) => ids[id].children.map((c) => c.id);
   assert.deepStrictEqual(kids("left"), ["apple", "logo"]);
   assert.deepStrictEqual(kids("center"), ["workspaces"]);
-  assert.deepStrictEqual(kids("right"), ["icons-lead", "clocks", "icons"]);
+  assert.deepStrictEqual(kids("right"), ["icons", "clocks"]);
   assert.deepStrictEqual(kids("unplaced"), ["title"], "turned off");
   assert.ok(ids.workspaces.classList.contains("item-start") && ids.apple.classList.contains("item-start"));
-  assert.ok(!ids.logo.classList.contains("item-start") && !ids.clocks.classList.contains("item-start"));
+  assert.ok(!ids.logo.classList.contains("item-start"));
+  assert.ok(ids.clocks.classList.contains("item-start"), "the clocks start an item of their own");
   assert.strictEqual(ids.center.style.left, "176px", "moved over, so the icons keep their width");
   assert.strictEqual(ids.center.style.transform, "none");
   assert.strictEqual(ids.clocks.classList.contains("compact"), false, "no title to make room for");

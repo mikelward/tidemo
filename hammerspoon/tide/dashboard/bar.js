@@ -1,6 +1,6 @@
 // tide's bar (SPEC.md §8): tide's bar along the top of each display, with
 // the workspaces left, the focused window's title in the middle, and the
-// clocks and status icons right, unless the Bar page's Layout places them
+// status icons and clocks right, unless the Bar page's Layout places them
 // otherwise (state.barLayout). tide fills it with tide.update(state),
 // says where the pointer is with tide.pointer(x, y), and hears back through the "tide" message handler: { uuid, show: n },
 // { uuid, step: 1 or -1 }, { uuid, focus: window id } from an attention icon,
@@ -73,13 +73,14 @@ export function titleRoom(width, left, right, gap = 24) {
 
 // The bar's layout (SPEC.md §8): each item in a zone, left, center or
 // right, as tide's barLayout (tide-barlayout.js), and the elements of
-// bar.html each item moves. The Apple logo goes with tide's logo, and the
-// clocks with the status icons, among which they sit.
+// bar.html each item moves. The Apple logo goes with tide's logo. The
+// clocks are an item of their own, as on tide for Linux.
 const ELEMENTS = {
   logo: ["apple", "logo"],
   workspaces: ["workspaces"],
   title: ["title"],
-  icons: ["icons-lead", "clocks", "icons"],
+  icons: ["icons"],
+  clocks: ["clocks"],
 };
 // The gap between two items in a zone, as tide's (bar.html's .item-start).
 export const ITEM_GAP = 8;
@@ -267,7 +268,7 @@ export function titleInsets(bar, title, leftEnd, rightStart) {
 
 // What a click at an element reaches, innermost first: a chip's window
 // icon, then the logo, a chip, the title, the clocks or a status item.
-const TARGET = "nav > button .app.win, #apple, #logo, nav > button, #title, #clocks, #icons > button.icon, #icons-lead > button.icon";
+const TARGET = "nav > button .app.win, #apple, #logo, nav > button, #title, #clocks, #icons > button.icon";
 
 // A trackpad sends many small scrolls; one step is this much of them.
 const STEP = 50;
@@ -528,8 +529,8 @@ const DRAW = {
 };
 
 // The bar's order unless the Bar page chose another: every icon but the
-// tray, the clocks first.
-export const ICON_ORDER = ["clock", "source", "awake", "camera", "mic", "bluetooth", "headphones", "volume", "network", "battery", "sysmon", "session"];
+// tray.
+export const ICON_ORDER = ["source", "awake", "camera", "mic", "bluetooth", "headphones", "volume", "network", "battery", "sysmon", "session"];
 
 // The order tide sent: the bar's own when it sent none, and none when it
 // sent an empty list, which hs.json.encode writes as {}.
@@ -539,18 +540,13 @@ function iconOrder(sent) {
 }
 
 // The icons in `order`, the ids tide sends (bar.shown_icons); one it
-// doesn't know is skipped. "clock" is where the clocks go: icons before it
-// are drawn in `lead`, ahead of the clocks, the rest in `box`. Without it
-// the clocks are hidden.
-function renderIcons(box, icons, order = ICON_ORDER, lead = null, clocks = null) {
+// doesn't know is skipped, as is "clock" from a tide that still sends it.
+function renderIcons(box, icons, order = ICON_ORDER) {
   box.replaceChildren();
-  if (lead) lead.replaceChildren();
-  const at = order.indexOf("clock");
-  if (clocks) clocks.hidden = at < 0;
-  order.forEach((id, i) => {
-    if (!Object.hasOwn(DRAW, id)) return;
-    (lead && i < at ? lead : box).append(...DRAW[id](icons));
-  });
+  for (const id of order) {
+    if (!Object.hasOwn(DRAW, id)) continue;
+    box.append(...DRAW[id](icons));
+  }
 }
 
 // Sets each item's reach (hitInsets) as --reach-* for its ::before, which
@@ -653,7 +649,7 @@ function zoneWidths() {
 // The clickable elements of an element of bar.html, in order: a group's
 // own (the chips, the status icons), or itself.
 function targets(e) {
-  if (e.id === "workspaces" || e.id === "icons" || e.id === "icons-lead") return [...e.children];
+  if (e.id === "workspaces" || e.id === "icons") return [...e.children];
   return e.id === "title" ? [] : [e];
 }
 
@@ -790,7 +786,7 @@ function markHover() {
     hovered = target;
   }
   // The camera is no target, since a click there does nothing, but has a tip.
-  showTip(hovered ?? (pointerAt && document.elementFromPoint(pointerAt.x, pointerAt.y)?.closest("#icons > .icon, #icons-lead > .icon")));
+  showTip(hovered ?? (pointerAt && document.elementFromPoint(pointerAt.x, pointerAt.y)?.closest("#icons > .icon")));
 }
 
 // While the title, or an item with a tip, is hovered, tide shows the
@@ -864,8 +860,7 @@ window.tide = {
     renderWorkspaces(document.getElementById("workspaces"), state.workspaces, state.app_icons || {});
     document.getElementById("title-text").textContent = state.title;
     const order = iconOrder(state.iconOrder);
-    renderIcons(document.getElementById("icons"), state.icons, order,
-      document.getElementById("icons-lead"), document.getElementById("clocks"));
+    renderIcons(document.getElementById("icons"), state.icons, order);
     // An item with nothing to show takes no room: the title with no window
     // focused here, the status icons with every one off.
     layout = state.barLayout ?? undefined;

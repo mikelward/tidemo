@@ -48,9 +48,10 @@ body {
 .bar-zone > .item-start:not(:first-child):not(#logo + nav) {
   margin-left: 8px;
 }
-/* The status icons' parts sit 2px apart, as the icons do. */
-#icons-lead + #clocks,
-#clocks + #icons {
+/* The clocks sit the icons' 2px from the status icons beside them, as
+   when they were one of them, not an item's 8px. */
+.bar-zone > #icons + #clocks,
+.bar-zone > #clocks + #icons {
   margin-left: 2px;
 }
 /* tide's logo, then the chips: tileco's #logo styles place and color it.
@@ -179,7 +180,7 @@ nav button .more {
 #logo,
 nav > button,
 #clocks,
-:is(#icons, #icons-lead) > .icon {
+#icons > .icon {
   position: relative;
   z-index: 0;
 }
@@ -195,8 +196,8 @@ nav > button:first-child::after,
 #logo + nav > button:first-child::after,
 #clocks::before,
 #clocks::after,
-:is(#icons, #icons-lead) > .icon::before,
-:is(#icons, #icons-lead) > .icon::after,
+#icons > .icon::before,
+#icons > .icon::after,
 #title::before,
 #title::after {
   content: "";
@@ -209,7 +210,7 @@ nav > button:first-child::after,
 }
 #apple::after,
 #logo::after,
-:is(#icons, #icons-lead) > .icon::after,
+#icons > .icon::after,
 #title::after {
   border-radius: 6px;
   pointer-events: none;
@@ -238,8 +239,8 @@ nav > button::after {
 #logo.hover::after,
 nav > button.hover::after,
 #clocks.hover::after,
-:is(#icons, #icons-lead) > button.icon.hover::after,
-:is(#icons, #icons-lead) > button.icon:hover::after,
+#icons > button.icon.hover::after,
+#icons > button.icon:hover::after,
 #title.hover::after {
   background: var(--hover);
 }
@@ -281,14 +282,14 @@ nav button .app.none.win:hover {
 #clocks.compact li:not(:last-child) {
   display: none;
 }
-:is(#icons, #icons-lead) {
+#icons {
   display: flex;
   align-items: center;
   gap: 2px;
 }
 /* Line icons in the text color (bar.js draws them); state shows as color,
    not a background. */
-:is(#icons, #icons-lead) .icon {
+#icons .icon {
   display: flex;
   align-items: center;
   gap: 3px;
@@ -301,51 +302,51 @@ nav button .app.none.win:hover {
   font: inherit;
   cursor: pointer;
 }
-:is(#icons, #icons-lead) svg {
+#icons svg {
   display: block;
   flex: none;
 }
-:is(#icons, #icons-lead) .source {
+#icons .source {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-:is(#icons, #icons-lead) [data-state="off"],
-:is(#icons, #icons-lead) [data-state="muted"],
-:is(#icons, #icons-lead) [data-state="mute"],
-:is(#icons, #icons-lead) [data-state="none"] {
+#icons [data-state="off"],
+#icons [data-state="muted"],
+#icons [data-state="mute"],
+#icons [data-state="none"] {
   color: var(--muted);
 }
-:is(#icons, #icons-lead) [data-state="on"].awake,
-:is(#icons, #icons-lead) [data-state="in-use"] {
+#icons [data-state="on"].awake,
+#icons [data-state="in-use"] {
   color: var(--accent);
 }
 /* Presenter mode: a filled accent pill, so it's hard to miss, as tide's
    Presenting pill is. */
-:is(#icons, #icons-lead) .awake[data-state="presenting"] {
+#icons .awake[data-state="presenting"] {
   background: var(--accent);
   color: var(--on-accent);
   font-size: 11px;
   font-weight: 600;
 }
-:is(#icons, #icons-lead) .battery[data-state="low"] {
+#icons .battery[data-state="low"] {
   color: var(--urgent);
 }
-:is(#icons, #icons-lead) .battery .text,
-:is(#icons, #icons-lead) .volume .text,
-:is(#icons, #icons-lead) .sysmon .text {
+#icons .battery .text,
+#icons .volume .text,
+#icons .sysmon .text {
   font-variant-numeric: tabular-nums;
 }
 /* Held as wide as two digits and a %, as tide's, so the icons beside it
    don't move as the level changes, except at 100%. */
-:is(#icons, #icons-lead) .volume .text,
-:is(#icons, #icons-lead) .sysmon .text {
+#icons .volume .text,
+#icons .sysmon .text {
   min-width: 2.2em;
 }
-:is(#icons, #icons-lead) .sysmon[data-state="warn"] {
+#icons .sysmon[data-state="warn"] {
   color: var(--warn);
 }
-:is(#icons, #icons-lead) .sysmon[data-state="danger"] {
+#icons .sysmon[data-state="danger"] {
   color: var(--danger);
 }
 </style>
@@ -358,9 +359,8 @@ nav button .app.none.win:hover {
 </div>
 <div id="center" class="bar-zone"><span id="title"><span id="title-text"></span></span></div>
 <div id="right" class="bar-zone">
-<div id="icons-lead"></div>
-<ol id="clocks"></ol>
 <div id="icons"></div>
+<ol id="clocks"></ol>
 </div>
 <div id="unplaced" hidden></div>
 </header>

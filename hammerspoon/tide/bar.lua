@@ -50,11 +50,11 @@ end
 -- choose another: each one's id, the name the page gives it, and whether
 -- it shows unless you say. "tray" is a way to the other apps' icons that
 -- macOS keeps in its menu bar, which tide can't draw: a click hides the
--- bars so the menu bar shows (Show Menu Bar). "clock" is the clocks, which
--- move and turn off as an icon does. The Bar page's list is kept in
--- hs.settings under ICONS_KEY (SPEC.md §8).
+-- bars so the menu bar shows (Show Menu Bar). The clocks aren't here:
+-- they're an item of the bar's layout (M.LAYOUT), and a stored list that
+-- still names "clock", as one once did, has it dropped. The Bar page's
+-- list is kept in hs.settings under ICONS_KEY (SPEC.md §8).
 M.ICONS = {
-    { id = "clock", label = "Clocks", shown = true },
     { id = "source", label = "Keyboard", shown = true },
     { id = "awake", label = "Keep awake", shown = true },
     { id = "camera", label = "Camera in use", shown = true },
@@ -129,8 +129,9 @@ end
 -- each in a zone, left, center or right, in order, and shown or not, as
 -- tide for Linux's appearance.json `barLayout` (its shell/lib/barlayout.mjs,
 -- which the bar's page and the Bar page use as tide-barlayout.js). "logo"
--- is the Apple logo and tide's; "icons" is the status icons and the clocks
--- among them. Unless set, the bar is as it's always been. It's kept in
+-- is the Apple logo and tide's; "icons" is the status icons; "clocks" the
+-- clocks, after the icons unless moved. Unless set, the bar is as it's
+-- always been. It's kept in
 -- hs.settings under LAYOUT_KEY, and only a bar along the top or bottom
 -- has it: the menu bar's workspaces have no items to place.
 M.ZONES = { "left", "center", "right" }
@@ -139,6 +140,7 @@ M.LAYOUT = {
     { id = "workspaces", label = "Workspaces", zone = "left", shown = true },
     { id = "title", label = "Window title", zone = "center", shown = true },
     { id = "icons", label = "Status icons", zone = "right", shown = true },
+    { id = "clocks", label = "Clocks", zone = "right", shown = true },
 }
 M.LAYOUT_KEY = "tide.bar_layout"
 
@@ -156,7 +158,11 @@ end
 -- know or names twice is dropped, a zone it doesn't know is the item's
 -- own, and an item it leaves out goes in after the one it follows by
 -- default, or first. Anything but a list is the default.
-function M.layout_list(stored)
+--
+-- The clocks were once one of the status icons, "clock". `icons`, the
+-- stored icon list, keeps a choice made there: with no clocks in
+-- `stored`, clocks turned off among the icons stay off.
+function M.layout_list(stored, icons)
     local known, out, seen = {}, {}, {}
     for _, e in ipairs(M.LAYOUT) do
         known[e.id] = e
@@ -187,7 +193,15 @@ function M.layout_list(stored)
                     break
                 end
             end
-            table.insert(out, at, { id = e.id, label = e.label, zone = e.zone, shown = e.shown })
+            local shown = e.shown
+            if e.id == "clocks" and type(icons) == "table" then
+                for _, v in ipairs(icons) do
+                    if type(v) == "table" and v.id == "clock" and type(v.shown) == "boolean" then
+                        shown = v.shown
+                    end
+                end
+            end
+            table.insert(out, at, { id = e.id, label = e.label, zone = e.zone, shown = shown })
         end
     end
     return out
@@ -240,10 +254,23 @@ function M.loaded_layout(v, log)
     return v
 end
 
--- The layout as kept and sent to the bar's page: { { id, zone, shown } }.
-function M.stored_layout(stored)
+-- Whether a stored layout names item `id`. One from before the clocks were
+-- an item doesn't name them, so their place still comes from the old icon
+-- list (layout_list).
+function M.names(stored, id)
+    for _, v in ipairs(type(stored) == "table" and stored or {}) do
+        if type(v) == "table" and v.id == id then
+            return true
+        end
+    end
+    return false
+end
+
+-- The layout as kept and sent to the bar's page: { { id, zone, shown } },
+-- `icons` as layout_list takes it.
+function M.stored_layout(stored, icons)
     local out = {}
-    for i, e in ipairs(M.layout_list(stored)) do
+    for i, e in ipairs(M.layout_list(stored, icons)) do
         out[i] = { id = e.id, zone = e.zone, shown = e.shown }
     end
     return out

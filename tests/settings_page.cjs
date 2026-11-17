@@ -2069,28 +2069,29 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
     ["Workspaces", "Left", "↑", "↓", "On"],
     ["Window title", "Center", "↑", "↓", "On"],
     ["Status icons", "Right", "↑", "↓", "On"],
+    ["Clocks", "Right", "↑", "↓", "On"],
   ]);
   assert.strictEqual(rows()[0].children[2].disabled, true, "the first can't go left");
-  assert.strictEqual(rows()[3].children[3].disabled, true, "the last can't go right");
+  assert.strictEqual(rows()[4].children[3].disabled, true, "the last can't go right");
   assert.strictEqual(rows()[1].children[3].disabled, false);
   const list = (...items) => [{ barLayout: items.map(([id, zone, shown]) => ({ id, zone, shown })) }];
   sent.length = 0;
   rows()[1].children[3].listeners.click();
-  assert.deepStrictEqual(sent, list(["logo", "left", true], ["workspaces", "center", true], ["title", "center", true], ["icons", "right", true]),
+  assert.deepStrictEqual(sent, list(["logo", "left", true], ["workspaces", "center", true], ["title", "center", true], ["icons", "right", true], ["clocks", "right", true]),
     "↓ past the left zone's end starts the center");
   sent.length = 0;
   rows()[0].children[3].listeners.click();
-  assert.deepStrictEqual(sent, list(["workspaces", "left", true], ["logo", "left", true], ["title", "center", true], ["icons", "right", true]),
+  assert.deepStrictEqual(sent, list(["workspaces", "left", true], ["logo", "left", true], ["title", "center", true], ["icons", "right", true], ["clocks", "right", true]),
     "within a zone, ↓ swaps it with the next");
   sent.length = 0;
   rows()[2].children[4].listeners.click();
-  assert.deepStrictEqual(sent, list(["logo", "left", true], ["workspaces", "left", true], ["title", "center", false], ["icons", "right", true]),
+  assert.deepStrictEqual(sent, list(["logo", "left", true], ["workspaces", "left", true], ["title", "center", false], ["icons", "right", true], ["clocks", "right", true]),
     "a switch turns it off");
   // tide's list shows by zone, and what it leaves out goes after the item
   // it follows by default.
   sandbox.tide.update({ clockFiles: [], bar: { position: "bottom", layout: [{ id: "icons", zone: "left", shown: false }] } });
   assert.deepStrictEqual(rows().map((li) => li.children.slice(0, 2).map((c) => c.textContent).join(" ")),
-    ["Logo Left", "Workspaces Left", "Status icons Left", "Window title Center"]);
+    ["Logo Left", "Workspaces Left", "Status icons Left", "Window title Center", "Clocks Right"]);
   assert.strictEqual(rows()[2].children[4].textContent, "Off");
   // With no bar, the Layout list hides with the rest.
   sandbox.tide.update({ clockFiles: [], bar: { position: "menubar-middle" } });
