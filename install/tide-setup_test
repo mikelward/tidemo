@@ -59,6 +59,7 @@ MOCK
 #!/bin/sh
 printf "%s\\n" "pgrep \$*" >> "$CALLS"
 test -f "$TEST_TMPDIR/pgrep_fails.\$2" && exit 3
+test -f "$TEST_TMPDIR/pgrep_fails_after_kill.\$2" && test -f "$TEST_TMPDIR/killed.\$2" && exit 3
 test -f "$TEST_TMPDIR/running.\$2" && exit 0
 exit 1
 MOCK
@@ -68,6 +69,7 @@ MOCK
     cat > "$TEST_TMPDIR/bin/killall" <<MOCK
 #!/bin/sh
 printf "%s\\n" "killall \$*" >> "$CALLS"
+: > "$TEST_TMPDIR/killed.\$1"
 test -f "$TEST_TMPDIR/stuck.\$1" || rm -f "$TEST_TMPDIR/running.\$1"
 exit 0
 MOCK
@@ -542,6 +544,14 @@ test_leaves_system_settings_alone_when_closed() {
     assert_output_lacks "Quitting System Settings"
 }
 
+# A pgrep that fails while the run waits for it to go can't say it went.
+test_says_when_system_settings_quit_is_unknown() {
+    touch "$TEST_TMPDIR/running.System Settings" "$TEST_TMPDIR/pgrep_fails_after_kill.System Settings"
+    run_setup
+    assert_status 0 &&
+    assert_output_contains "could not tell whether System Settings quit (pgrep exited 3)"
+}
+
 # One that won't go is said, not waited on forever.
 test_says_when_system_settings_wont_quit() {
     touch "$TEST_TMPDIR/running.System Settings" "$TEST_TMPDIR/stuck.System Settings"
@@ -844,6 +854,7 @@ run_test "no activateSettings says to log out" test_missing_activate_settings_sa
 run_test "an open System Settings is quit before the writes" test_quits_system_settings_when_open
 run_test "a closed System Settings is left alone" test_leaves_system_settings_alone_when_closed
 run_test "says when System Settings won't quit" test_says_when_system_settings_wont_quit
+run_test "a pgrep failure while it quits isn't read as quit" test_says_when_system_settings_quit_is_unknown
 run_test "a failed write stops the run" test_failed_write_stops_the_run
 run_test "a clean run says, last, that it finished" test_a_clean_run_says_it_finished
 run_test "SETUP_COLOR=always colors errors and the verdict" test_the_verdict_is_colored_with_setup_color_always
