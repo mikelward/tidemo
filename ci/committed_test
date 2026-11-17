@@ -1,0 +1,36 @@
+#!/bin/sh
+# ci/committed.sh, which make sync runs first, against scratch checkouts.
+
+here=$(cd "$(dirname "$0")" && pwd)
+dir=$(mktemp -d) || exit 1
+trap 'rm -rf "$dir"' EXIT
+fails=0
+check() {
+    if "$@"; then echo "ok $name"; else echo "FAIL $name"; fails=$((fails + 1)); fi
+}
+repo() {
+    git init -q "$dir/$1" &&
+        printf 'one\n' >"$dir/$1/f" &&
+        git -C "$dir/$1" add f &&
+        git -C "$dir/$1" -c user.name=t -c user.email=t@example.com commit -q -m one
+}
+repo a && repo b || { echo "FAIL couldn't make the checkouts"; exit 1; }
+
+name="clean checkouts pass"
+check "$here/committed.sh" "$dir/a" "$dir/b"
+
+name="a change not staged fails, naming the checkout"
+printf 'two\n' >"$dir/b/f"
+out=$("$here/committed.sh" "$dir/a" "$dir/b" 2>&1)
+check test $? -ne 0
+check sh -c 'case "$1" in *"$2 has changes not committed"*) exit 0;; *) exit 1;; esac' - "$out" "$dir/b"
+
+name="a staged change fails too"
+git -C "$dir/b" add f
+check sh -c '! "$1" "$2" 2>/dev/null' - "$here/committed.sh" "$dir/b"
+
+name="a folder that isn't a checkout fails"
+mkdir "$dir/c"
+check sh -c '! "$1" "$2" 2>/dev/null' - "$here/committed.sh" "$dir/c"
+
+test $fails -eq 0
