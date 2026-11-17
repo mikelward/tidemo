@@ -636,15 +636,28 @@ quit_settings_app() {
             continue
         fi
         # killall only signals it: wait, a second at a time, for it to go,
-        # so it can't write after these do.
+        # so it can't write after these do. A pgrep that fails meanwhile
+        # can't say it went, so it isn't read as gone.
         _waited=0
-        while app_running "$_settings_app" && test "$_waited" -lt "$SETTINGS_QUIT_WAIT"; do
+        while true; do
+            if app_running "$_settings_app"; then
+                _settings_running=0
+            else
+                _settings_running=$?
+            fi
+            test "$_settings_running" -eq 0 && test "$_waited" -lt "$SETTINGS_QUIT_WAIT" || break
             sleep 1
             _waited=$((_waited + 1))
         done
-        if app_running "$_settings_app"; then
-            warn "$_settings_app is still running after ${SETTINGS_QUIT_WAIT}s and can overwrite these shortcuts when it closes; quit it and rerun $SETUP_COMMAND if tide's keys don't register"
-        fi
+        case "$_settings_running" in
+            0)
+                warn "$_settings_app is still running after ${SETTINGS_QUIT_WAIT}s and can overwrite these shortcuts when it closes; quit it and rerun $SETUP_COMMAND if tide's keys don't register"
+                ;;
+            1) ;;
+            *)
+                warn "could not tell whether $_settings_app quit (pgrep exited $_settings_running); quit it if it's open, or it can overwrite these shortcuts"
+                ;;
+        esac
     done
 }
 
