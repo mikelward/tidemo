@@ -3384,6 +3384,35 @@ on the display you're on, in place of the switcher.
     every app, kitty included.
   - It doesn't work during Secure Input, such as in a password field, when
     event taps don't see typed keys (§13).
+- **Home and End as on a PC** (`homeend.lua`): in a text field they go to
+  the line's start and end, and with Shift select to there; anywhere
+  else they're the keys themselves, so a page scrolls to its top and
+  bottom.
+  - A Mac's own Home and End only scroll, even in a text field. Command+Left
+    and Right go to the line's ends there, but on a page with no text
+    field focused a browser takes them as Back and Forward. Karabiner
+    can't tell the two apart, so conf's Karabiner rules leave Home and End
+    alone and tide chooses.
+  - An event tap sees each Home and End, alone or with Shift or Fn, and
+    asks Accessibility what has focus in the app in front: a text field,
+    a text area, a combo box, or anything with an `AXEditableAncestor`,
+    as a page's contenteditable has, makes the key Command+Left or Right
+    before the app sees it. Anything else, or a read that fails, leaves
+    it as it was. Each read gives up after the adapter's 0.25 s.
+  - Chrome and Electron apps build their accessibility only once asked
+    (§5.3's middle click paste nudges them the same way), so their first
+    Home may scroll *(unverified on a Mac)*.
+  - Terminals (kitty, Ghostty, Terminal, iTerm2) keep their own, and so
+    does Hammerspoon, whose name prompt binds Home and End itself (§6.2).
+  - Ctrl+Home and End, the document's start and end, are conf's Karabiner
+    rule's: Command+Up and Down are never Back, so they need no look.
+    On a MacBook, conf's rule makes Fn or Caps Lock with Left and Right
+    Home and End, which then come here.
+  - `home_end = false` in `start()` turns it off. Without Accessibility,
+    or during Secure Input, Home and End only scroll, as a Mac's do.
+  - *(Unverified on a Mac:)* that changing the event's key code and
+    flags is enough for every app, and that Chrome's fields report
+    their role once nudged.
 - **Setup checklist:** as tide for Chrome's (tide for Chrome §3.4). Each item links to its System
   Settings pane with an `x-apple.systempreferences:` URL *(unverified per
   pane on macOS 26)*. It covers the Mission Control settings (§6.6), the
@@ -3403,7 +3432,7 @@ on the display you're on, in place of the switcher.
 
 | Permission | Asked when | Buys |
 |---|---|---|
-| Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags and middle click paste (§5.3), notification banners |
+| Accessibility | first run; tiling needs it | moving windows, focus follows mouse, mouse drags and middle click paste (§5.3), Home and End in text fields (§10), notification banners |
 | Input Monitoring | only for the lone Super tap, if done by an event tap (§7) *(unverified that Accessibility alone isn't enough)* | seeing Option go down and up |
 | Screen Recording | only when you turn on the overview's window pictures (§6.9); titles come through Accessibility (§2.5), and screenshots use macOS's own keys (§10) | the overview's window pictures |
 | Automation, per browser | the first time the switcher's Windows tab lists tabs (§9) | tab titles and addresses |

@@ -244,6 +244,9 @@ function M.new(hs, d)
         return true
     end
 
+    -- Home and End ask what has focus too (homeend_hs.lua).
+    self.nudge = nudge
+
     -- Stop, putting the clipboard back now if a paste is under way.
     function self.stop()
         on, remembered = false, nil
