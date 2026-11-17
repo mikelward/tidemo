@@ -1072,6 +1072,82 @@ t.test("closing a workspace's last window keeps you on it when the sync comes fi
     t.eq(wm:find("work") ~= nil, true, "it's still listed")
 end)
 
+-- On a new, empty workspace, with window 1 parked on "in" and its app the
+-- one macOS goes back to.
+local function on_empty()
+    local a, wm = setup(1)
+    a.focus_ = 1
+    wm:focused(1)
+    wm:show("new", nil, true)
+    t.eq(wm.current, "new")
+    t.eq(wm.parked[1], true)
+    return a, wm
+end
+
+t.test("Esc from the launcher on an empty workspace stays there", function()
+    local a, wm = on_empty()
+    -- Win+Space: the launcher takes the keyboard; Esc gives it back, and
+    -- macOS gives the focus to the app that had it before.
+    wm:hold("launcher", true)
+    wm:hold("launcher", false)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "new", "the workspace you were on still shows")
+    t.eq(wm.parked[1], true, "the other window stays on its workspace")
+    wm:schedule()
+    a.tick()
+    t.eq(wm:find("new") ~= nil, true, "it's still listed")
+end)
+
+t.test("going back to a window parked elsewhere keeps the workspace showing", function()
+    local a, wm = on_empty()
+    -- The launcher found window 1 focused as it opened, and goes back to it.
+    wm:hold("launcher", true)
+    wm:hold("launcher", false)
+    wm:focus_unburied(1)
+    t.eq(a.focus_ ~= 1, true, "the parked window isn't focused")
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "new")
+    t.eq(wm:find("new") ~= nil, true)
+end)
+
+t.test("minimizing a workspace's last window keeps you on it", function()
+    local a, wm = setup(1)
+    a.add(2, { app = "com.example.other", pid = 200 })
+    wm:sync()
+    wm:send(1, "work")
+    wm:show("work", nil, true)
+    a.focus_ = 1
+    wm:focused(1)
+    a.minimize(1)
+    wm:minimized(1)
+    a.focus_ = 2
+    wm:focused(2)
+    t.eq(wm.current, "work", "the workspace you were on still shows")
+    t.eq(wm.parked[2], true)
+end)
+
+t.test("closing Tide Settings on an empty workspace stays there", function()
+    local a, wm = on_empty()
+    wm:own_window("settings", { x = 0, y = 0, w = 800, h = 600 })
+    wm:own_window("settings", nil)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "new")
+    t.eq(wm:find("new") ~= nil, true)
+end)
+
+t.test("after the grace, focusing a parked window still brings its workspace", function()
+    local a, wm = on_empty()
+    wm:hold("launcher", true)
+    wm:hold("launcher", false)
+    a.clock = a.clock + wm_mod.GRACE + 1
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "in", "an app you go to later brings its workspace")
+end)
+
 t.test("closing a window with others left on its workspace focuses one of them", function()
     local a, wm = setup(2)
     a.add(3, { app = "com.example.other", pid = 200 })

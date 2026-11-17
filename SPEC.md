@@ -950,11 +950,17 @@ API: the same Accessibility move a retile makes.
     clicking a sliver, or an app's window coming to the front.
   - That's only while the window still has the focus, so a late report
     of a focus from before a switch doesn't flip you back.
-  - Nor when the window you were in, or the last window on the workspace,
-    just closed: macOS moving the focus on to another app's window isn't
-    you leaving, so you stay on the workspace, empty or not, and an empty
-    one is kept until you leave it. The last window counts even if macOS
-    never said it had the focus, as for one named at the prompt.
+  - Nor when what you were in just went away: the window you were in, or
+    the last window on the workspace, closed or was minimized, or the
+    launcher, the name prompt, the overview, Tide Settings or another of
+    tide's own windows closed. macOS moving the focus on to another app's
+    window isn't you leaving, so you stay on the workspace, empty or not,
+    and an empty one is kept until you leave it. The last window counts
+    even if macOS never said it had the focus, as for one named at the
+    prompt.
+  - Going back to the window you were in, as Esc from the launcher does,
+    never goes to one on a workspace you've left: the workspace showing
+    keeps the focus, or with no window, nothing has it.
     That holds for a second after the close, whichever macOS reports
     first, so a Cmd+Tab in that second doesn't switch.
   - A switch to an empty workspace gives the focus to Hammerspoon, which

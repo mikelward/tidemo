@@ -1515,7 +1515,7 @@ function M:forget(id, pos, at)
     -- the focus, as for a window that took it while the name prompt was
     -- open, so you aren't sent off the workspace it leaves empty.
     if w.ws and self:shown(w.ws) and (self.history[1] == id or self:last_on(w.ws, id)) then
-        self.closed_at = at or self.a.now()
+        self:let_go(at)
     end
     self.windows[id] = nil
     if w.ws and self.workspaces[w.ws] then
@@ -1893,6 +1893,11 @@ function M:minimized(id)
         return
     end
     local w = self.windows[id]
+    -- You minimized the window you were in: macOS moving the focus on
+    -- isn't you leaving.
+    if w and w.ws and self.history[1] == id and self:shown(w.ws) then
+        self:let_go()
+    end
     -- One already yours keeps its place in the tray.
     if w and w.ws and not w.mine then
         self:mark_mine(id)
@@ -2966,6 +2971,9 @@ function M:own_window(owner, frame)
     elseif o.frame then
         o.last = type(o.frame) == "function" and o.frame() or o.frame
         o.frame, o.gone_at = nil, self.a.now()
+        -- Tide Settings or another of tide's own windows closing hands the
+        -- focus back to macOS, as M:hold's release does.
+        self:let_go()
     end
 end
 
@@ -3004,8 +3012,15 @@ end
 -- overlay closing can't release another's hold.
 function M:hold(owner, on)
     self.holds = self.holds or {}
+    local had = self.holds[owner]
     self.holds[owner] = on or nil
     self.holding_keyboard = next(self.holds) ~= nil
+    -- The launcher, prompt, overview or another of tide's own closing hands
+    -- the focus back to macOS, which may give it to a window parked on
+    -- another workspace. That isn't you leaving (M:let_go).
+    if had and not on then
+        self:let_go()
+    end
 end
 
 -- `by_pointer`: focus follows mouse moved it, which doesn't end a grant
@@ -3274,7 +3289,7 @@ function M:focused_window(id)
     -- not. The focus goes to the last used window left there,
     -- or with none, to no window.
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
-        if self:just_closed(prev) or self:closed_lately() or self:just_emptied(self:current_ws()) then
+        if self:just_closed(prev) or self:let_go_lately() or self:just_emptied(self:current_ws()) then
             self.a.log("staying on " .. tostring(self.current) .. " after a close")
             if not self:refocus_ws(self:current_ws()) then
                 self:unfocus_parked()
@@ -3320,11 +3335,18 @@ function M:just_emptied(name)
     return any
 end
 
--- Whether the window you were in closed within the last M.GRACE seconds,
--- and tide has forgotten it already: the sync can come before macOS
--- reports where the focus went.
-function M:closed_lately()
-    return self.closed_at ~= nil and self.a.now() - self.closed_at <= M.GRACE
+-- What you were in went away without you choosing somewhere else: the
+-- window you were in closed or was minimized, or one of tide's own
+-- windows closed. For M.GRACE seconds after, macOS moving the focus to a
+-- window parked on another workspace doesn't bring that workspace along.
+function M:let_go(at)
+    self.let_go_at = at or self.a.now()
+end
+
+-- Whether M:let_go was within the last M.GRACE seconds. The sync can come
+-- before macOS reports where the focus went.
+function M:let_go_lately()
+    return self.let_go_at ~= nil and self.a.now() - self.let_go_at <= M.GRACE
 end
 
 -- Take tile `id` out of its workspace's layout and float it, placed as a
@@ -3557,6 +3579,15 @@ end
 -- just took focus unasked, which focusing would count as asked for.
 function M:focus_unburied(id, avoid)
     local w = self.windows[id or false]
+    -- Going back to a window parked on a workspace you've left would bring
+    -- that workspace back: the one showing keeps the focus instead, or
+    -- with no window to take it, nothing does.
+    if w and w.ws and not self:shown(w.ws) then
+        if not self:refocus_ws(self:current_ws()) then
+            self:unfocus_parked()
+        end
+        return
+    end
     local alt = w and self:buries(id) and self:unburied_on(w.ws, id, avoid)
     self:focus_window(alt or id)
 end
