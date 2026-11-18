@@ -561,14 +561,6 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
-- **Report a bug is on `Super+B`, not `Super+Alt+B`** (2026-11-18): a
-  Mac binding is Super with Shift or not, since Super holds Option
-  already, so `Super+Alt+B` can't be one. Under the rotation physical Alt
-  adds Control, which Super holds too, so physical Win+Alt+B arrives as
-  `Super+B` and the key the maintainer named still works; Win+B alone
-  does too. tide for Linux's `Super+B` is Bluetooth, which isn't bound
-  here. Its binding is named `report_bug`, for keys.json; tide for Linux
-  should use the same name. Reversible: `keys.lua`.
 - **Report a bug is on Launch too, for a query alone** (2026-11-18), as
   Tide Settings' sections are: on Actions alone, "bug" typed after the
   Super tap found "Tide Settings: Bar" first, whose words hold b, u and
@@ -1692,7 +1684,7 @@ sign, and that holding a key repeats.
 
 Only the tests have run (SPEC.md §15): the trail's reasons against the
 fake adapter, and the report through a stand-in `hs`. On a Mac, check
-that physical Win+Alt+B and the switcher's "bug" make a report; that it's
+that Win+Shift+B and the switcher's "bug" make a report; that it's
 on the clipboard and in `~/Library/Logs/tide`; that the issue page opens
 with the body filled in; that `hs.spaces.watcher` adds a line when you
 change Space; and, the point of it, that a workspace jumping unasked

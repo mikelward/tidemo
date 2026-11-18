@@ -74,7 +74,7 @@ It brings tide for Linux's desktop to macOS:
   shortcuts you make in the Shortcuts app, "Do Not Disturb On" and "Do Not
   Disturb Off", each one Set Focus action; tide says so if they're
   missing, and keep awake works without them;
-- Report a bug, on Super+B (physical Win+Alt+B) or the switcher's
+- Report a bug, on Super+Shift+B or the switcher's
   Actions: a report of the last 30 seconds, each workspace switch and
   focus move with why, goes on the clipboard and in
   `~/Library/Logs/tide`, and tide for macOS's new issue page opens for you

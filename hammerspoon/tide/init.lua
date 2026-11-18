@@ -1050,7 +1050,7 @@ function M.start(config)
         hs.settings.set(launcherpage.SETTINGS_KEY, value)
         return true
     end
-    -- Super+B and the switcher's Report a bug (SPEC.md §15).
+    -- Super+Shift+B and the switcher's Report a bug (SPEC.md §15).
     self.report = report_hs.new(self)
     self.wm.open_report = function()
         self.report.run()

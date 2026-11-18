@@ -252,11 +252,9 @@ M.resize = {
 }
 M.resize_exit = { "escape", "return" }
 
--- Super+B: Report a bug (SPEC.md §15). tide for Linux's Super+Alt+B, but
--- Super holds Option already, and with Karabiner's rule physical Alt
--- adds Control, which Super holds too, so physical Win+Alt+B arrives as
--- Super+B. tide for Linux's Super+B, Bluetooth, isn't bound here.
-M.map[#M.map + 1] = { key = "b", action = "report_bug", name = "report_bug" }
+-- Super+Shift+B: Report a bug (SPEC.md §15), as on tide's other platforms.
+-- Super+B stays free.
+M.map[#M.map + 1] = { key = "b", shift = true, action = "report_bug", name = "report_bug" }
 -- Named bindings with no key of their own, as on tide for Linux: bound once
 -- your keys give them one (shortcuts.lua). dwm's preset gives the layout
 -- used last Super+Space.

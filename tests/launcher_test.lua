@@ -961,7 +961,7 @@ t.test("Report a bug is on the Actions tab, under tide, found by \"bug\", with i
     local hit = launcher.rank("bug", items, { scope = "launch" })[1]
     t.eq(hit.title, "Report a bug", "typed on Launch, as the Super tap opens it")
     t.eq(hit.action, "report_bug")
-    t.eq(launcher.key_hint(hit), "Super+B")
+    t.eq(launcher.key_hint(hit), "Super+Shift+B")
 end)
 
 t.done("launcher")

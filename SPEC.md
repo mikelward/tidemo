@@ -1749,7 +1749,7 @@ These are bound another way, or differ:
 | `Super+\` / `Super+/` | grow / shrink the master (`mfact` ±0.025), repeating | hotkey |
 | `Super+Insert` | float or tile, as `Super+Shift+F` | hotkey on the Mac's Help key, which a PC keyboard's Insert sends |
 | `Super+Shift+I` | Tide Settings' Floating section, filled in for the focused window (§15) | hotkey; tide for Linux's `Super+Alt+F`, but Super holds Option already |
-| `Super+B` | Report a bug (§15) | hotkey; tide for Linux's `Super+Alt+B`, but Super holds Option already, and under the rotation physical Alt adds Control, which Super holds too, so physical Win+Alt+B arrives as `Super+B` *(unverified on a Mac)*. tide for Linux's `Super+B`, Bluetooth, isn't bound here |
+| `Super+Shift+B` | Report a bug (§15) | hotkey, as on tide's other platforms. `Super+B` is free |
 | `Super`+drag, `Super`+right-drag, `Super`+middle-click | move, resize, maximize (§5.3) | event tap |
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
 | `Print` / `Alt+Print` / `Shift+Print`, `Super+Print` | screenshot screen / window / region, Super+Print a region too (§10) | hotkey on F13, which a PC keyboard's Print sends *(unverified)* |
@@ -1769,7 +1769,7 @@ Keys only tide for macOS has:
 The app keys, `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `C` /
 `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y`, are conf's (tide for
 Linux §6.6), all but its `Super+B` and `Super+Shift+B`, Bluetooth's.
-Here `Super+B` reports a bug (above).
+Here `Super+Shift+B` reports a bug (above).
 
 - **The Super tap** must not fire after Super+T, Super+drag or
   Super+click (tide for Linux §8). A mouse button or scroll counts as "another key"
@@ -4552,7 +4552,7 @@ Each one names a workaround, or says there is none.
   - Stage Manager or Sequoia's tiling on (§6.6);
   - a second bar running, such as SketchyBar.
 
-- **Report a bug,** on `Super+B` and the switcher's Actions tab, and on
+- **Report a bug,** on `Super+Shift+B` and the switcher's Actions tab, and on
   Launch for a query, so the Super tap, "bug" and Return find it. It
   makes a plain-text report of the 30 seconds before you asked, then:
   - puts it on the clipboard;
@@ -4617,7 +4617,7 @@ Each one names a workaround, or says there is none.
   table entry per switch, focus and window, trimmed as it's added; the
   report reads nothing new but the version file.
   *Unverified on a Mac:* that `hs.spaces.watcher` still fires on macOS
-  26, and that physical Win+Alt+B arrives as `Super+B` (§7.2).
+  26.
 
 ## 16. Known problems
 
