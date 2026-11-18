@@ -432,6 +432,9 @@ function M.new(adapter, config)
     end
     -- id -> the place sync() paired a new window with.
     self.paired = {}
+    -- id -> the place of a window that left macOS's list while its app
+    -- still ran, for it to go back to if it comes back (M:forget).
+    self.dropped = {}
     -- The place each of those took by title, which `release` gives back.
     self.matched = {}
     -- Which of a sync's new windows take launches, and their apps
@@ -1373,6 +1376,13 @@ end
 -- another app's now, the window saved under it is gone, and its place
 -- stays for that app.
 function M:own_place(id, f)
+    local d = self.dropped[id]
+    if d then
+        self.dropped[id] = nil
+        if d.app == f.app and self.a.now() - d.at <= M.KEEP then
+            return d
+        end
+    end
     local s = self.saved[id]
     if not s then
         return nil
@@ -1507,6 +1517,23 @@ function M:forget(id, pos, at)
     local w = self.windows[id]
     if not w then
         return
+    end
+    -- Its app still runs, so it may only have dropped out of macOS's list
+    -- for a moment, as a busy app's or a window on another Space can:
+    -- keep its place by id, so it goes back to its own workspace if it
+    -- comes back rather than joining the one showing.
+    if w.ws and w.app and self.a.pid_running(w.pid) then
+        self.dropped[id] = {
+            app = w.app, title = w.title, ws = w.ws, screen = w.screen, from = w.from, from_pos = w.from_pos,
+            mine = w.mine or false, at = at or self.a.now(),
+            pos = pos or (self:part_of(w) and layout.index_of(self:part_of(w).order, id)),
+        }
+        local now = self.a.now()
+        for did, d in pairs(self.dropped) do
+            if now - d.at > M.KEEP then
+                self.dropped[did] = nil
+            end
+        end
     end
     -- Its process quit: keep its place for when the app comes back, which
     -- may be running again already.
