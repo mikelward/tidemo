@@ -956,9 +956,11 @@ API: the same Accessibility move a retile makes.
     comes to the front by itself, or restores its own minimized window,
     is marked for attention (§14.2), and you stay. So does a click on the
     desktop, which brings up Finder's window from wherever it is.
-  - Nor does opening a new window of an app that has one elsewhere, as a
-    new Chrome window from the launcher: macOS brings the old window
-    forward first, but you stay, and the new window opens where you are.
+  - Opening a new window of an app that has one elsewhere, as a new
+    Chrome window from the launcher, chooses the app's New Window without
+    bringing the app forward, so its old window stays where it is. If the
+    app has to come forward first, you still stay, and the new window
+    opens where you are.
   - That's only while the window still has the focus, so a late report
     of a focus from before a switch doesn't flip you back.
   - Nor when what you were in just went away: the window you were in, or

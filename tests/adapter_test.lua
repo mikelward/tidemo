@@ -252,4 +252,36 @@ t.test("a Super+drag over one of tide's own windows grabs nothing", function()
     t.eq(wm:window_at(tile.x + 400, tile.y + 400), 5)
 end)
 
+-- A new window of a running app (the launcher's, Cmd+Return): `app`
+-- records what's done to a stand-in Chrome, whose New Window works while
+-- it's behind unless `menu_fails`.
+local function new_window(menu_fails)
+    local a = stood({}, {}, {})
+    local did = {}
+    local chrome = {
+        findMenuItem = function() return { enabled = true } end,
+        selectMenuItem = function()
+            did[#did + 1] = "New Window"
+            return not menu_fails
+        end,
+        activate = function()
+            did[#did + 1] = "activate"
+            return true
+        end,
+        bundleID = function() return "com.google.Chrome" end,
+    }
+    hs.application = { get = function() return chrome end }
+    hs.eventtap = { keyStroke = function() did[#did + 1] = "Cmd+N" end }
+    a.launch({ bundle = "com.google.Chrome" }, true, {})
+    return did
+end
+
+t.test("a new window of a running app doesn't bring its other windows forward first", function()
+    t.eq(new_window(false), { "New Window" })
+end)
+
+t.test("if New Window can't be chosen while it's behind, the app comes forward to choose it", function()
+    t.eq(new_window(true), { "New Window", "activate", "New Window", "Cmd+N" })
+end)
+
 t.done("adapter")
