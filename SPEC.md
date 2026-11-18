@@ -1060,7 +1060,12 @@ numbered ones:
   - A window of one of "in"'s apps always opens on "in" (§6.2).
   - A window from a launch you made, which opens after you've moved to
     another workspace, goes to the workspace you launched it from instead,
-    marked for attention (tide for Linux §14.2).
+    marked for attention (tide for Linux §14.2). A launch of an app waits a
+    minute for its window, since a cold start can be slow. A helper's,
+    whose window may be any app's, waits 5 seconds, and one of "in"'s apps
+    never takes it.
+  - One of "in"'s apps opens on "in" wherever you launch it from, even
+    when a helper runs it whose window tide can't tell is that app's.
 - **A tile from a launch you made goes to the display keys acted on as you
   launched it,** one of "in"'s apps too, not where macOS opens it. macOS opens an app's new window
   where its last one was, so Super+T with the pointer on the internal display
@@ -1351,7 +1356,8 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 - **When an app quits and relaunches,** its windows come back with new IDs.
   tide matches each to its old place by app and title, closest first, as
   tide for Chrome matches by tab addresses (tide for Chrome §14.2). A window it can't match joins
-  the workspace showing.
+  the workspace showing, as does one whose title shares nothing with any
+  of its app's places.
 - **A window that leaves macOS's list while its app still runs,** as a
   busy app's can for a moment, keeps its place by its ID for
   10 minutes. If it comes back, it goes back to its own workspace, not

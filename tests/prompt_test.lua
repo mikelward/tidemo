@@ -455,4 +455,40 @@ t.test("closing the last window on \"in\" keeps you there when the sync comes fi
     t.eq(wm.parked[1], true)
 end)
 
+t.test("one of home's apps run by a helper opens on home, from any workspace", function()
+    local a, wm = setup(1)
+    wm:send(1, "ti")
+    wm:show("ti", nil, true)
+    t.eq(wm.current, "ti")
+    -- Super+C runs Google Chat's helper, whose window is Chrome's.
+    wm.actions.app(wm, { run = "google-chat", home_app = true })
+    t.eq(a.envs[1], { TIDE_WORKSPACE = "in" })
+    open(a, wm, 2, { app = "com.google.Chrome", name = "Google Chrome" })
+    t.eq(wm.windows[2].ws, "in", "on home, not the workspace showing")
+end)
+
+t.test("a home app's window doesn't take a helper's launch", function()
+    local a, wm, asked, launches = setup(1)
+    wm.actions.app(wm, { run = "helper" })
+    launches[1].done("proj")
+    wm:show("in", nil, true)
+    -- Mail opens before the helper's window does.
+    open(a, wm, 2, { app = "com.apple.mail", name = "Mail" })
+    t.eq(wm.windows[2].ws, "in")
+    open(a, wm, 3, { app = "com.example.helper" })
+    t.eq(wm.windows[3].ws, "proj", "the helper's window still goes where you named")
+    t.eq(asked, {})
+end)
+
+t.test("a slow app's window still goes to the workspace you named for it", function()
+    local a, wm, asked, launches = setup(1)
+    wm.actions.app(wm, { bundle = "com.apple.TextEdit", name = "TextEdit" })
+    launches[1].done("notes")
+    wm:show("in", nil, true)
+    a.clock = a.clock + 20
+    open(a, wm, 2, { app = "com.apple.TextEdit" })
+    t.eq(wm.windows[2].ws, "notes")
+    t.eq(asked, {}, "it doesn't ask again")
+end)
+
 t.done("prompt")
