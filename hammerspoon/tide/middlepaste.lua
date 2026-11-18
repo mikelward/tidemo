@@ -24,14 +24,36 @@ M.KITTY_PASTE = { ctrl = true, shift = true }
 -- own mouse tap lets them through untouched.
 M.MARK = 0x7469646d
 
--- The terminals. Each pastes its own selection on a middle click, so the
--- click is left to them, all but kitty's (M.KITTY).
+-- The terminals, each sharing the one selection its own way, how a
+-- middle click pastes another app's selection into it:
+-- - "kitty": tide sends kitty's paste click (M.KITTY_PASTE).
+-- - "pasteboard": Ghostty pastes its selection pasteboard, M.GHOSTTY_BOARD,
+--   so tide writes the text there and lets the click through.
+-- - "clipboard": iTerm2's middle click pastes the clipboard, and it copies
+--   each selection there, so tide lends it the clipboard until the
+--   button comes up.
+-- - "keys": Terminal can't be told what to paste, so tide takes the click,
+--   focuses the window and sends Command+V.
+-- What's selected in each is read through Accessibility, and kitty over its
+-- socket.
 M.TERMINALS = {
-    ["net.kovidgoyal.kitty"] = true,
-    ["com.mitchellh.ghostty"] = true,
-    ["com.googlecode.iterm2"] = true,
-    ["com.apple.Terminal"] = true,
+    ["net.kovidgoyal.kitty"] = "kitty",
+    ["com.mitchellh.ghostty"] = "pasteboard",
+    ["com.googlecode.iterm2"] = "clipboard",
+    ["com.apple.Terminal"] = "keys",
 }
+
+-- Ghostty's selection pasteboard: its copy-on-select writes there, and its
+-- middle click pastes it (its NSPasteboard+Extension.swift).
+M.GHOSTTY_BOARD = "com.mitchellh.ghostty.selection"
+
+-- iTerm2 copies each selection to the clipboard, so after a selecting
+-- gesture there with Accessibility saying nothing, a clipboard that
+-- changed since the button went down holds it.
+M.ITERM = "com.googlecode.iterm2"
+
+-- How long the clipboard is lent to iTerm2 when its button never comes up.
+M.LEND_AT_MOST = 5
 
 -- How far up from what's under the pointer to look for a text field: the
 -- hit test can land on the text inside one.
@@ -100,17 +122,14 @@ function M.takes_text(chain)
 end
 
 -- Whether a middle click is tide's to look into, before the selection is
--- read: the setting is on, and it's on a text field outside a terminal,
--- or anywhere in kitty, which says nothing through Accessibility.
--- Anything else is the app's, so a link still opens in a new tab and a tab
--- still closes. Returns false and why.
+-- read: the setting is on, and it's on a text field, or anywhere in a
+-- terminal. Anything else is the app's, so a link still opens in a new tab
+-- and a tab still closes. Returns false and why.
 function M.wants(on, app, chain)
     if not on then
         return false, "off"
-    elseif app == M.KITTY then
-        return true
     elseif M.TERMINALS[app] then
-        return false, "a terminal's own"
+        return true
     elseif not M.takes_text(chain) then
         return false, "not a text field"
     end
@@ -144,11 +163,11 @@ function M.pick(remembered, front, live)
     return remembered and remembered.text or nil
 end
 
--- What a middle click in kitty (`pid`) pastes: the last selection, when it
--- came from another app. kitty's own is left to kitty, which pastes it
--- from its buffer, so a program that has the mouse there, such as vim,
+-- What a middle click in a terminal (`pid`) pastes: the last selection,
+-- when it came from another app. The terminal's own is left to it, which
+-- pastes it itself, so a program that has the mouse there, such as vim,
 -- still gets its middle click.
-function M.into_kitty(remembered, pid)
+function M.into_terminal(remembered, pid)
     if remembered and remembered.pid ~= pid and M.usable(remembered.text) then
         return remembered.text
     end

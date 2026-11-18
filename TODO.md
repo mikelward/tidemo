@@ -513,17 +513,6 @@ tide. INFEASIBLE.md lists what can't be fixed.
   in front, then the clipboard put back. It beeps with nothing selected,
   copies the whole line in some editors, and can lose a copy made in
   between.
-- **Later: one selection with the other terminals** (SPEC.md §5.3). kitty
-  shares it; Ghostty, Terminal and iTerm2 still keep their own.
-  - **From Ghostty:** read its selection pasteboard,
-    `com.mitchellh.ghostty.selection`, by name.
-  - **Into Ghostty:** write tide's selection to that pasteboard as it
-    changes, and Ghostty's own middle click pastes it.
-  - **From Terminal:** likely nothing new, if it says what's selected
-    through Accessibility *(unverified)*.
-  - **Left out: iTerm2.** It copies each selection to the clipboard by
-    default *(unverified)*, so tide would read that, or its scripting
-    API.
 - **Later: a selection made with the keyboard, pasted into another app**
   (SPEC.md §5.3). tide reads the selection only after a mouse gesture.
 - **Not yet decided:** Tab reaching every control in dialogs

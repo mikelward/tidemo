@@ -568,6 +568,9 @@ function M.start(config)
         paste = function(x, y)
             return self.middle_paste.click(x, y)
         end,
+        released = function()
+            self.middle_paste.released()
+        end,
         grab = function(kind, x, y)
             return self.wm:grab(kind, x, y)
         end,

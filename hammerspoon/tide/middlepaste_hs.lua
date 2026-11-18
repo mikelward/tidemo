@@ -195,17 +195,31 @@ function M.new(hs, d)
         restore_timer = hs.timer.doAfter(middlepaste.RESTORE_AFTER, restore)
     end
 
-    local function paste(text, x, y, target, target_win)
+    -- Paste through the clipboard and Command+V. `focus_only`, for
+    -- Terminal: the window is brought forward instead of clicked, since a
+    -- click would go to a program there that has the mouse.
+    local function paste(text, x, y, target, target_win, focus_only)
         if not hold(text) then
             return
         end
-        -- The click places the caret, and gives the window focus.
-        try("clicking", function()
-            local t = hs.eventtap.event.types
-            local p = { x = x, y = y }
-            hs.eventtap.event.newMouseEvent(t.leftMouseDown, p):post()
-            hs.eventtap.event.newMouseEvent(t.leftMouseUp, p):post()
-        end)
+        if focus_only then
+            try("focusing the window", function()
+                local w = target_win and hs.window.get(target_win)
+                if w then
+                    w:focus()
+                else
+                    hs.application.applicationForPID(target):activate()
+                end
+            end)
+        else
+            -- The click places the caret, and gives the window focus.
+            try("clicking", function()
+                local t = hs.eventtap.event.types
+                local p = { x = x, y = y }
+                hs.eventtap.event.newMouseEvent(t.leftMouseDown, p):post()
+                hs.eventtap.event.newMouseEvent(t.leftMouseUp, p):post()
+            end)
+        end
         -- Command+V goes to the window focused, so only once that's the
         -- one clicked (middlepaste.ready): the click takes a moment to
         -- bring it there, even in an app already in front, and with focus
@@ -230,6 +244,27 @@ function M.new(hs, d)
             end
         end
         restore_timer = hs.timer.doAfter(middlepaste.CLICK_SETTLE, send)
+    end
+
+    -- Lend iTerm2 the clipboard for its own middle click, which pastes it,
+    -- until the button comes up (self.released), or M.LEND_AT_MOST.
+    local lending = false
+    local function lend(text)
+        if not hold(text) then
+            return
+        end
+        lending = true
+        restore_timer = hs.timer.doAfter(middlepaste.LEND_AT_MOST, function()
+            lending = false
+            restore()
+        end)
+    end
+
+    -- Ghostty pastes its selection pasteboard on its own middle click.
+    local function to_ghostty(text)
+        if not hs.pasteboard.setContents(text, middlepaste.GHOSTTY_BOARD) then
+            log("middle click paste: couldn't write Ghostty's selection pasteboard")
+        end
     end
 
     -- Follow the setting. Turned on without Accessibility, nothing can be
@@ -275,8 +310,14 @@ function M.new(hs, d)
             return
         end
         nudge(pid)
+        -- iTerm2 copies the selection to the clipboard as the button comes
+        -- up, after this.
+        local count = bundle == middlepaste.ITERM and try("reading the clipboard's count", hs.pasteboard.changeCount)
         hs.timer.doAfter(middlepaste.READ_AFTER, function()
             local text = try("reading the selection", selected_in, focused)
+            if not middlepaste.usable(text) and count and count ~= hs.pasteboard.changeCount() then
+                text = try("reading iTerm2's copy", hs.pasteboard.readString)
+            end
             if middlepaste.usable(text) then
                 remembered = { text = text, pid = pid }
             end
@@ -290,14 +331,27 @@ function M.new(hs, d)
             return false
         end
         local chain, pid, bundle = try("reading what's under the pointer", at, x, y)
-        if bundle == middlepaste.KITTY then
-            -- kitty's own selection, or none, is kitty's to paste.
-            local text = middlepaste.into_kitty(remembered, pid)
+        local how = middlepaste.TERMINALS[bundle]
+        if how then
+            -- A terminal's own selection, or none, is its own to paste.
+            local text = middlepaste.into_terminal(remembered, pid)
             if not text then
                 return false
+            elseif how == "pasteboard" then
+                try("writing Ghostty's selection", to_ghostty, text)
+                return false
+            elseif how == "clipboard" then
+                try("lending iTerm2 the clipboard", lend, text)
+                return false
             end
+            -- Once this event is done with, so the clicks can't cross.
+            local win = how == "keys" and d.window_id and try("reading the window under the pointer", d.window_id, x, y)
             hs.timer.doAfter(0, function()
-                paste_kitty(text, x, y)
+                if how == "kitty" then
+                    paste_kitty(text, x, y)
+                else
+                    paste(text, x, y, pid, win, true)
+                end
             end)
             return true
         end
@@ -320,12 +374,25 @@ function M.new(hs, d)
         return true
     end
 
+    -- The middle button came up, on a click tide didn't take: the
+    -- clipboard lent to iTerm2 goes back once it has pasted.
+    function self.released()
+        if not lending then
+            return
+        end
+        lending = false
+        if restore_timer then
+            restore_timer:stop()
+        end
+        restore_timer = hs.timer.doAfter(middlepaste.RESTORE_AFTER, restore)
+    end
+
     -- Home and End ask what has focus too (homeend_hs.lua).
     self.nudge = nudge
 
     -- Stop, putting the clipboard back now if a paste is under way.
     function self.stop()
-        on, remembered = false, nil
+        on, remembered, lending = false, nil, false
         if restore_timer then
             restore_timer:stop()
         end
