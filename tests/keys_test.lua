@@ -675,16 +675,20 @@ t.test("an app key opening its fallback says that app", function()
     end
 end)
 
-t.test("Super+B reports a bug: physical Win+Alt+B, since Super holds Option already", function()
-    local found
+t.test("Super+Shift+B reports a bug, as on tide's other platforms, and Super+B is free", function()
+    local found, plain
     for _, b in ipairs(keys.map) do
         if b.action == "report_bug" then
             found = b
         end
+        if b.key == "b" and not b.shift then
+            plain = b
+        end
     end
     t.eq(found ~= nil, true, "bound")
     t.eq(found.key, "b")
-    t.eq(found.shift, nil)
+    t.eq(found.shift, true)
+    t.eq(plain, nil, "nothing on Super+B")
     t.eq(found.name, "report_bug")
     t.eq(keys.does(found), "Report a bug")
 end)

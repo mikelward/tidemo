@@ -4697,7 +4697,7 @@ function A.settings(self, section)
     end
 end
 
--- Super+B, or the switcher's Report a bug (SPEC.md §15).
+-- Super+Shift+B, or the switcher's Report a bug (SPEC.md §15).
 function A.report_bug(self)
     if self.open_report then
         self.open_report()
