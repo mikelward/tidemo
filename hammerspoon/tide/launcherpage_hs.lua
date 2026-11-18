@@ -106,7 +106,8 @@ function M.new(tide)
             try("hiding it", view.hide, view)
         end
         if refocus and before then
-            try("going back to the window you were in", tide.wm.focus_unburied, tide.wm, before)
+            try("going back to the window you were in", tide.wm.focus_unburied, tide.wm, before, nil,
+                "dashboard launcher closed: back to the window you were in")
         end
     end
 
@@ -154,13 +155,13 @@ function M.new(tide)
                 local on = uuid
                 close(false)
                 -- Made if it's new, as the name prompt makes one.
-                tide.wm:show(n, on, true)
+                tide.wm:show(n, on, true, "dashboard launcher: a workspace")
             else
                 close(true)
             end
         elseif m.kind == "settings" then
             close(false)
-            tide.wm:act("settings", m.value)
+            tide.wm:act("settings", m.value, "dashboard launcher: a settings section")
         elseif m.kind == "keep_awake" then
             -- The bar's cup: the page stays open, and shows it.
             tide.presenter.toggle_keep_awake()
@@ -171,7 +172,7 @@ function M.new(tide)
             close(false)
             local b = launcherpage.browser_key()
             if b then
-                tide.wm:act("app", b.spec)
+                tide.wm:act("app", b.spec, "dashboard launcher: an app")
             end
         elseif m.kind == "reload" then
             hs.reload()

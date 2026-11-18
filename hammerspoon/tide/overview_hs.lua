@@ -108,7 +108,7 @@ function M.new(tide)
         tide.wm:own_window("overview", nil)
         v:delete()
         if refocus and before then
-            tide.wm:focus_unburied(before)
+            tide.wm:focus_unburied(before, nil, "overview closed: back to the window you were in")
         end
     end
 
@@ -144,7 +144,7 @@ function M.new(tide)
                     -- Activate brings its workspace along, to this display,
                     -- and restores a window you minimized (SPEC.md §6.1).
                     close(false)
-                    wm:activate(id, uuid)
+                    wm:activate(id, uuid, "overview: a click on the window")
                 else
                     log("overview: window " .. tostring(id) .. " has gone")
                     close(true)
@@ -153,7 +153,7 @@ function M.new(tide)
                 -- As the dashboard's chips: showing a workspace focuses its
                 -- own window, on the display the overview opened on.
                 close(false)
-                wm:show(n, uuid)
+                wm:show(n, uuid, nil, "overview: a click on the workspace")
             elseif n or body.close then
                 close(true)
             end

@@ -15,6 +15,7 @@ local saved = require("tide.saved")
 local runner = require("tide.runner")
 local shots = require("tide.shots")
 local standing = require("tide.standing")
+local trail = require("tide.trail")
 
 local M = {}
 
@@ -1106,9 +1107,23 @@ function M.new()
         return pid ~= nil and hs.application.applicationForPID(pid) ~= nil
     end
 
+    -- Each line also goes in memory, with its time, for Report a bug's
+    -- last 30 s (report.lua), which Hammerspoon's console can't give by
+    -- time.
     local log = hs.logger.new(brand.NAME, "info")
+    local lines = trail.new()
+    -- Its own clock, as a.now's, so a log line never fails for want of one.
+    local function clock()
+        local timer = type(hs.timer) == "table" and hs.timer.secondsSinceEpoch
+        local now = timer and timer()
+        return type(now) == "number" and now or os.time()
+    end
     function a.log(text)
         log.i(text)
+        lines:add(clock(), "log", tostring(text), "")
+    end
+    function a.recent_log(now)
+        return lines:recent(now or clock())
     end
 
     return a
@@ -1305,6 +1320,22 @@ function M.notifications(on_notice, log, bars)
     end)
     keep.apps:start()
     return keep
+end
+
+-- Call `on_change()` when macOS changes Space: tide doesn't follow
+-- Spaces (SPEC.md §2.3), but Report a bug's trail says when one changed.
+-- Returns what to keep alive, or nil, having logged why.
+function M.spaces(on_change, log)
+    local ok, w = pcall(function()
+        return hs.spaces.watcher.new(function()
+            on_change()
+        end):start()
+    end)
+    if not ok or not w then
+        log("couldn't watch for Space changes, so a bug report won't say when one happened: " .. tostring(w))
+        return nil
+    end
+    return w
 end
 
 -- `hammerspoon://tide-bell?window=<id>`: window `id` (its CGWindowID, as

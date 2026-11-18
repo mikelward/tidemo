@@ -50,7 +50,7 @@ function M.new(tide)
         tide.wm:own_window("dashboard", nil)
         v:delete()
         if refocus and before then
-            tide.wm:focus_unburied(before)
+            tide.wm:focus_unburied(before, nil, "dashboard closed: back to the window you were in")
         end
     end
 
@@ -82,7 +82,7 @@ function M.new(tide)
                 -- On the display it opened on, whatever focus does as it
                 -- closes.
                 close(false)
-                tide.wm:show(n, uuid)
+                tide.wm:show(n, uuid, nil, "dashboard: a click on the workspace")
             elseif n then
                 -- The one already here: show() has nothing to do, so focus
                 -- goes back to the window you were in.

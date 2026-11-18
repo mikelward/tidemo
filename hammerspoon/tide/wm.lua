@@ -30,6 +30,7 @@ local standing_mod = require("tide.standing")
 local rules = require("tide.rules")
 local floating = require("tide.floating")
 local park = require("tide.park")
+local trail_mod = require("tide.trail")
 
 local M = {}
 
@@ -394,6 +395,11 @@ function M.new(adapter, config)
         granted = nil,  -- { app (nil: any), at, first_only }
         asked = {},     -- { id, app, at }, oldest first
         last_steal = nil, -- { id, at }
+        -- Every workspace switch and focus move, with why, for "Report a
+        -- bug" (trail.lua), and the reason for what's happening now
+        -- (M:because).
+        trail = trail_mod.new(),
+        why = nil,
     }, M)
     self.rules = floating.combined(self.start_rules, self.float_rules)
     rules.report = function(msg)
@@ -453,6 +459,41 @@ function M.new(adapter, config)
         return self:is_muted(m.app, m.id, m.site)
     end
     return self
+end
+
+-- Run `fn(...)` with `why` as the reason for each workspace switch and
+-- focus move it makes, and return what it returns. An error still goes
+-- on up, after the reason is put back, with its traceback.
+function M:because(why, fn, ...)
+    local before = self.why
+    self.why = why
+    local out = table.pack(xpcall(fn, debug.traceback, ...))
+    self.why = before
+    if not out[1] then
+        error(out[2], 0)
+    end
+    return table.unpack(out, 2, out.n)
+end
+
+-- Put what happened in the trail, with `why`, else the reason for what's
+-- happening now, else which of tide's functions led here.
+function M:note(kind, what, why)
+    self.trail:add(self.a.now(), kind, what, why or self.why or trail_mod.callers(2))
+end
+
+-- Window `id` as the trail names it: its app, id and workspace.
+function M:named(id)
+    local w = self.windows[id or false]
+    if not w then
+        return "window #" .. tostring(id)
+    end
+    return tostring(w.app) .. " #" .. tostring(id) .. (w.ws and (" on " .. w.ws) or "")
+end
+
+-- macOS moved to another Space (SPEC.md §2.3). tide doesn't follow Spaces,
+-- but a change can move the focus, so the trail says when one happened.
+function M:space_changed()
+    self:note("space", "macOS changed Space", "macOS")
 end
 
 -- Whether a mark for window `id` of `app` is muted: its app is in the
@@ -825,6 +866,8 @@ function M:map_screens()
             n = n or self:find(self.saved_screens[s.uuid])
         end
         self.current = n or self.home
+        self:note("workspace", "none -> " .. self.current,
+            n and "start: what showed last run" or "start: home")
         -- Only at start: later, a workspace that's gone isn't brought back.
         self.saved_current, self.saved_screens = nil, {}
     end
@@ -997,6 +1040,7 @@ function M:finish_migration()
     local n = self.current
     if n and not self:standing_name(n) and not self:occupied(n) then
         self.current = self.home
+        self:note("workspace", n .. " -> " .. self.home, "start: the numbered workspace showing was left empty")
     end
     self:prune()
 end
@@ -1218,7 +1262,10 @@ function M:add(id)
         how = "any"
     end
     local launched = false
+    -- Why it went where it did, for the trail.
+    local placed
     if saved and saved.ws then
+        placed = "its place from before"
         -- tide restarted, or the app relaunched: the window goes back where
         -- it was. One of home's apps from a numbered state goes home.
         w.ws = (saved.numbered and self:is_home_app(w)) and self.home or saved.ws
@@ -1253,11 +1300,13 @@ function M:add(id)
     elseif kind == "float" and self:parent_ws(id, f) then
         -- A dialog goes where its parent is (SPEC.md §6.2), even for one of
         -- home's apps whose window you moved elsewhere.
+        placed = "a dialog goes where its window is"
         w.ws = self:parent_ws(id, f)
         w.mine = f.minimized or false
     elseif self:is_home_app(w) then
         -- Home's apps always open there (SPEC.md §6.2), on the display a
         -- launch of one was made from.
+        placed = "one of home's apps"
         w.ws = self.home
         w.mine = f.minimized or false
         -- Only a launch of its own app: a helper's launch, for any app,
@@ -1271,6 +1320,7 @@ function M:add(id)
         -- you've moved on since, marked if that isn't showing (SPEC.md
         -- §6.1, §14.2). Its workspace was named, so it doesn't ask again.
         local l = self:launched_to(w, true, how)
+        placed = string.format("a launch for %s %.1f s before", tostring(l.ws), self.a.now() - l.at)
         w.ws = self:ensure_ws(l.ws)
         self:launched_on(w, l, kind)
         launched = true
@@ -1279,6 +1329,7 @@ function M:add(id)
             self.attention:activated(id, w.app)
         end
     else
+        placed = "the workspace showing"
         w.ws = self.current or self.home
         -- Minimized before tide knew it: you did that.
         w.mine = f.minimized or false
@@ -1286,6 +1337,7 @@ function M:add(id)
     -- Every window is on the display it opened on, in its workspace,
     -- unless it's going back to one.
     w.screen = w.screen or self:screen_of_frame(f.frame)
+    self:note("window", "opened " .. self:named(id), placed)
     -- Any other app's new window on a workspace whose askForName is on
     -- asks for a name first. Dialogs and other floats go where their
     -- parent is, and a window coming back to its place, or launched to the
@@ -1603,6 +1655,9 @@ function M:forget(id, pos, at)
     -- open, so you aren't sent off the workspace it leaves empty.
     if w.ws and self:shown(w.ws) and (self.history[1] == id or self:last_on(w.ws, id)) then
         self:let_go(at)
+    end
+    if w.ws then
+        self:note("window", "closed " .. self:named(id), "gone from macOS's list of windows")
     end
     self.windows[id] = nil
     if w.ws and self.workspaces[w.ws] then
@@ -1981,6 +2036,7 @@ function M:minimized(id)
         return
     end
     local w = self.windows[id]
+    self:note("window", "minimized " .. self:named(id), "you or the app; tide didn't ask")
     -- You minimized the window you were in: macOS moving the focus on
     -- isn't you leaving.
     if w and w.ws and self.history[1] == id and self:shown(w.ws) then
@@ -2030,7 +2086,7 @@ function M:unminimized(id)
         -- A restore can finish after show() laid out and focused without it.
         if self.focus_after == id then
             self.focus_after = nil
-            self:focus_unburied(id)
+            self:focus_unburied(id, nil, "a restore tide asked for landed")
         end
         self:schedule()
         return
@@ -2043,10 +2099,13 @@ function M:unminimized(id)
             -- comes along. An app restoring its own, as a call app does, is
             -- marked instead, and goes back with its workspace.
             if self:you_chose(id) then
-                self:activate(id)
+                self:activate(id, nil, "macOS restored " .. self:named(id) .. ", which you chose ("
+                    .. tostring(self:chose_how(id)) .. ")")
                 return
             end
             self.a.log(tostring(w.app) .. " restored its window on " .. tostring(w.ws) .. " by itself")
+            self:note("window", "restored " .. self:named(id) .. " by itself, so staying on " .. tostring(self.current),
+                "macOS")
             self.attention:activated(id, w.app)
             self:changed()
         end
@@ -2143,7 +2202,10 @@ end
 -- there's nothing to focus, the one they act on unless given. A name with
 -- no workspace does nothing, unless `make` says to make it, as the name
 -- prompt does (SPEC.md §6.2).
-function M:show(name, uuid, make)
+function M:show(name, uuid, make, why)
+    if why then
+        return self:because(why, M.show, self, name, uuid, make)
+    end
     uuid = uuid or self:current_screen()
     local s = self:screen_by_uuid(uuid)
     local n = self:find(name)
@@ -2159,6 +2221,7 @@ function M:show(name, uuid, make)
         return
     end
     self.current = n
+    self:note("workspace", tostring(cur or "none") .. " -> " .. n)
     -- The one left, then the one shown, most recent first, for Super+Tab
     -- and Super+End.
     if cur then
@@ -2185,6 +2248,7 @@ end
 function M:unfocus_parked()
     local f = self.a.focused()
     if f and self.parked[f] then
+        self:note("focus", "none: " .. self:named(f) .. " is parked")
         self.a.focus_none()
     end
 end
@@ -2261,7 +2325,10 @@ end
 -- Bring a window forward, with its workspace if that isn't showing: app
 -- keys, Super+Tab, Cmd+Tab, a Dock click, a notification. A hidden
 -- workspace comes to display `uuid` if given, else where the keys act.
-function M:activate(id, uuid)
+function M:activate(id, uuid, why)
+    if why then
+        return self:because(why, M.activate, self, id, uuid)
+    end
     local w = self.windows[id]
     if not w or not w.ws then
         return
@@ -2475,7 +2542,7 @@ function M:schedule()
         self:reconcile()
         self:retile()
         for n in pairs(lost) do
-            self:refocus(n)
+            self:because("a window closed on " .. n, M.refocus, self, n)
         end
         self:ask_next()
     end)
@@ -2587,20 +2654,21 @@ function M:answer(id, name)
         elseif name ~= nil and not n then
             table.insert(self.asking, 1, q)
         else
+            local why = "name prompt: a new window's workspace"
             if name == nil or M.fold(n) == M.fold(w.ws) then
                 -- It stays, shown and focused, as a move would leave it.
-                self:show(w.ws, self:screen_of(id))
+                self:show(w.ws, self:screen_of(id), nil, why)
                 self:reconcile()
                 self:retile()
-                self:focus_window(id)
+                self:focus_window(id, nil, why)
             else
                 local uuid = self:screen_of(id)
                 if self:send(id, n, true) then
-                    self:show(self.windows[id].ws, uuid)
+                    self:show(self.windows[id].ws, uuid, nil, why)
                     -- Already showing there, show() had nothing to do.
                     self:reconcile()
                     self:retile()
-                    self:focus_window(id)
+                    self:focus_window(id, nil, why)
                 end
             end
         end
@@ -2622,10 +2690,11 @@ function M:launch_answer(q, name)
     end
     local n = name and self:canonical(name)
     if n then
-        self:show(n, nil, true)
+        local why = "name prompt: a launch's workspace"
+        self:show(n, nil, true, why)
         n = self:find(n) or n
         self:launch_to(q.launch.app, n, q.launch.screen)
-        q.go(self:env(n))
+        self:because(why, q.go, self:env(n))
     end
     self:ask_next()
 end
@@ -2641,7 +2710,7 @@ function M:go_answer(q, name)
     self:asked_done(q)
     local n = name and self:canonical(name)
     if n then
-        self:show(n, nil, true)
+        self:show(n, nil, true, "name prompt: Super+Return's workspace")
     end
     self:ask_next()
 end
@@ -2663,11 +2732,12 @@ function M:move_answer(q, name)
         -- Reconciled once, after the show, so the window never hides on
         -- the way, as for a new window's answer.
         if self:send(id, name, true) then
-            self:show(self.windows[id].ws, uuid)
+            local why = "name prompt: moving the window"
+            self:show(self.windows[id].ws, uuid, nil, why)
             -- Already showing there, show() had nothing to do.
             self:reconcile()
             self:retile()
-            self:focus_window(id)
+            self:focus_window(id, nil, why)
         end
     end
     self:ask_next()
@@ -3026,7 +3096,7 @@ end
 function M:maximize_at(x, y)
     local id = self:window_at(x, y)
     if id then
-        self:focus_window(id)
+        self:focus_window(id, nil, "Super+middle-click")
         set_big_on(self, id, "max")
     end
 end
@@ -3117,6 +3187,12 @@ function M:hold(owner, on)
     local had = self.holds[owner]
     self.holds[owner] = on or nil
     self.holding_keyboard = next(self.holds) ~= nil
+    -- tide's own window taking the keyboard, or giving it back, is a focus
+    -- move too.
+    if (had and true or false) ~= (on and true or false) then
+        self:note("focus", (on and "tide's " .. owner .. " took the keyboard" or "tide's " .. owner .. " let it go"),
+            self.why or ("tide's " .. owner))
+    end
     -- The launcher, prompt, overview or another of tide's own closing hands
     -- the focus back to macOS, which may give it to a window parked on
     -- another workspace. That isn't you leaving (M:let_go).
@@ -3128,11 +3204,15 @@ end
 -- `by_pointer`: focus follows mouse moved it, which doesn't end a grant
 -- (M:grant): what you clicked or chose may still be on its way, and a slow
 -- app's window mustn't lose its focus to the pointer passing over a tile.
-function M:focus_window(id, by_pointer)
+function M:focus_window(id, by_pointer, why)
+    if why or (by_pointer and not self.why) then
+        return self:because(why or "focus follows mouse", M.focus_window, self, id, by_pointer)
+    end
     local w = self.windows[id]
     if not w then
         return
     end
+    self:note("focus", "tide focused " .. self:named(id))
     -- Focusing something else is a newer choice than a slow restore.
     if self.focus_after ~= id then
         self.focus_after = nil
@@ -3197,8 +3277,9 @@ function M:clicked(desktop)
     -- Whether it was on the bare desktop, for M:you_chose.
     self.click = { at = now, desktop = desktop or false }
     -- A menu item you chose is yours whatever it opens, even a window of an
-    -- app that has one already: About This Mac is System Settings'.
-    self:grant(nil, not self.a.menu_open())
+    -- app that has one already: About This Mac is System Settings'. Not in
+    -- the trail: every click would be; a focus it lets in says so.
+    self.granted = { app = nil, at = now, first_only = not self.a.menu_open() }
 end
 
 -- The focus guard (SPEC.md §14.1) -------------------------------------------
@@ -3211,6 +3292,8 @@ end
 -- Dock, Spotlight, Finder); every window that launch opens counts.
 function M:grant(app, first_only)
     self.granted = { app = app, at = self.a.now(), first_only = first_only or false }
+    self:note("grant", "a window of " .. tostring(app or "any app") .. " may take focus for " .. M.GRANT .. " s"
+        .. (first_only and ", if it's the app's first" or ""))
 end
 
 -- A key went down. Typing ends a launch's grant. A key with Command held
@@ -3224,11 +3307,12 @@ function M:key_down(key, cmd)
     if cmd and (key == "tab" or key == "`") then
         self.cmd_tab = true
     elseif key == "return" or key == "padenter" then
-        self.chose_at = now
+        self.chose_at, self.chose_by = now, "Return"
     end
     if cmd or key == "return" or key == "padenter" then
         self.last_switch = now
-        self:grant(nil, true)
+        -- Not in the trail, as for a click (M:clicked).
+        self.granted = { app = nil, at = now, first_only = true }
     end
 end
 
@@ -3238,7 +3322,7 @@ function M:modifiers(cmd)
         self.last_switch = self.a.now()
     end
     if self.cmd_down and not cmd and self.cmd_tab then
-        self.chose_at = self.a.now()
+        self.chose_at, self.chose_by = self.a.now(), "Cmd+Tab"
     end
     if not cmd or not self.cmd_down then
         self.cmd_tab = false
@@ -3254,18 +3338,25 @@ end
 -- which brings up Finder's window, isn't, nor is an app coming forward by
 -- itself. A click tide wasn't told the desktop of counts.
 function M:you_chose(id)
+    return self:chose_how(id) ~= nil
+end
+
+-- How you chose window `id` just now (M:you_chose), for the trail:
+-- "Cmd+Tab", "Return 0.3 s before", "a click 0.2 s before"; nil if you
+-- didn't.
+function M:chose_how(_)
     local now = self.a.now()
     if self.cmd_down and self.cmd_tab then
-        return true
+        return "Cmd+Tab"
     end
     if self.chose_at and now - self.chose_at <= M.GRACE then
-        return true
+        return string.format("%s %.1f s before", self.chose_by or "Return", now - self.chose_at)
     end
     local c = self.click
-    if not (c and now - c.at <= M.GRACE) then
-        return false
+    if not (c and now - c.at <= M.GRACE) or c.desktop then
+        return nil
     end
-    return not c.desktop
+    return string.format("a click %.1f s before", now - c.at)
 end
 
 -- Whether `app` had a window open before time `t`: if so, a window of
@@ -3280,29 +3371,37 @@ function M:open_before(app, t)
 end
 
 -- Whether window `id` may keep the focus macOS just gave it: yes for
--- anything you asked for, no for an app activating itself.
+-- anything you asked for, no for an app activating itself. When yes, the
+-- rule that let it, for the trail.
 function M:may_focus(id, w)
     local prev = self.history[1]
     local p = prev and self.windows[prev]
     -- The window you were in, or another of its app's: a dialog, a second
     -- window.
-    if not p or prev == id or p.app == w.app then
-        return true
+    if not p then
+        return true, "nothing tide knows had focus before"
+    elseif prev == id then
+        return true, "the window you were in"
+    elseif p.app == w.app then
+        return true, "the app you were in"
     end
     -- The window you were in went away (closed, minimized, hidden, its
     -- workspace switched away), so macOS moving focus on isn't theft.
     local st = self.a.state(prev)
     if not self:visible(prev, st) or p.mine or not (p.ws and self:shown(p.ws)) then
-        return true
+        return true, "the window you were in went away"
     end
     local now = self.a.now()
     for _, q in ipairs(self.asked) do
         if now - q.at <= M.GRACE and (q.id == id or q.app == w.app) then
-            return true
+            return true, "tide asked for it"
         end
     end
-    if self.cmd_down or now - self.last_switch <= M.GRACE then
-        return true
+    if self.cmd_down then
+        return true, "Command is down"
+    end
+    if now - self.last_switch <= M.GRACE then
+        return true, string.format("a click or a key with Command or Return %.1f s before", now - self.last_switch)
     end
     local g = self.granted
     if g and now - g.at <= M.GRANT and self.last_input <= g.at
@@ -3310,7 +3409,7 @@ function M:may_focus(id, w)
         and not (g.first_only and self:open_before(w.app, g.at)) then
         -- Used once.
         self.granted = nil
-        return true
+        return true, string.format("a launch's grant for %s %.1f s before", tostring(g.app or "any app"), now - g.at)
     end
     return false
 end
@@ -3340,7 +3439,7 @@ function M:refuse(id, w)
     -- Not a focus you moved, so it doesn't end a launch's grant.
     local g = self.granted
     -- Never to the thief itself.
-    self:focus_unburied(self.history[1], id)
+    self:focus_unburied(self.history[1], id, "macOS focused " .. self:named(id) .. ", which took it unasked")
     self.granted = g
 end
 
@@ -3371,13 +3470,18 @@ function M:focused_window(id)
         self.ffm:settled(id)
     end
     local w = self.windows[id]
+    local by = "macOS focused " .. self:named(id)
     if not w or not w.ws then
+        self:note("focus", by .. ": not a window tide places", "macOS")
         return
     end
-    if not self:may_focus(id, w) then
+    local ok, rule = self:may_focus(id, w)
+    if not ok then
+        self:note("focus", by .. ": taken back, as nothing you did asked for it", "macOS")
         self:refuse(id, w)
         return
     end
+    self:note("focus", by .. ": kept (" .. rule .. ")", "macOS")
     if self.last_steal and self.last_steal.id == id then
         self.last_steal = nil
     end
@@ -3430,35 +3534,40 @@ function M:focused_window(id)
     -- not. The focus goes to the last used window left there,
     -- or with none, to no window.
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
-        if self:just_closed(prev) or self:let_go_lately() or self:just_emptied(self:current_ws()) then
-            self.a.log("staying on " .. tostring(self.current) .. " after a close")
+        local stay = function()
             if not self:refocus_ws(self:current_ws()) then
                 self:unfocus_parked()
             end
+        end
+        if self:just_closed(prev) or self:let_go_lately() or self:just_emptied(self:current_ws()) then
+            self.a.log("staying on " .. tostring(self.current) .. " after a close")
+            self:note("focus", by .. ": the window you were in just went, so staying on " .. tostring(self.current),
+                "macOS")
+            self:because(by .. " after a close", stay)
         elseif self:launching(w.app) then
             -- A new window of an app you launched, which macOS brings
             -- forward with the app's window elsewhere first: the new one
             -- is on its way to the workspace you launched it for.
             self.a.log("staying on " .. tostring(self.current) .. " while " .. tostring(w.app) .. " opens a window")
+            self:note("focus", by .. ": " .. tostring(w.app) .. " is opening a window you launched, so staying on "
+                .. tostring(self.current), "macOS")
             remove_value(self.history, id)
             table.insert(self.history, math.min(2, #self.history + 1), id)
-            if not self:refocus_ws(self:current_ws()) then
-                self:unfocus_parked()
-            end
+            self:because(by .. " while a launch opens", stay)
         elseif not self:you_chose(id) then
             self.a.log(tostring(w.app) .. " came forward on " .. tostring(w.ws) .. " by itself; staying on "
                 .. tostring(self.current))
             -- It isn't the window you're in: that stays the one before.
             remove_value(self.history, id)
             table.insert(self.history, math.min(2, #self.history + 1), id)
+            self:note("focus", by .. ": came forward by itself, so staying on " .. tostring(self.current), "macOS")
             self.attention:activated(id, w.app)
             self:changed()
-            if not self:refocus_ws(self:current_ws()) then
-                self:unfocus_parked()
-            end
+            self:because(by .. " by itself", stay)
         else
+            local how = self:chose_how(id)
             self.a.log("following the focus to " .. tostring(w.ws))
-            self:activate(id)
+            self:activate(id, nil, by .. ", which you chose (" .. tostring(how) .. ")")
         end
     end
 end
@@ -3739,7 +3848,10 @@ end
 -- workspace that isn't goes instead, so the float stays on top; with none,
 -- `id` does after all. `avoid` is never the one instead: a window that
 -- just took focus unasked, which focusing would count as asked for.
-function M:focus_unburied(id, avoid)
+function M:focus_unburied(id, avoid, why)
+    if why then
+        return self:because(why, M.focus_unburied, self, id, avoid)
+    end
     local w = self.windows[id or false]
     -- Going back to a window parked on a workspace you've left would bring
     -- that workspace back: the one showing keeps the focus instead, or
@@ -4585,6 +4697,13 @@ function A.settings(self, section)
     end
 end
 
+-- Super+B, or the switcher's Report a bug (SPEC.md §15).
+function A.report_bug(self)
+    if self.open_report then
+        self.open_report()
+    end
+end
+
 -- Super+Shift+Space: the dashboard, or closes it (SPEC.md §8).
 function A.dashboard(self)
     if self.open_dashboard then
@@ -4610,12 +4729,14 @@ function A.layout(self, mode)
     end
 end
 
-function M:act(name, arg)
+-- Run action `name` with `arg`; `why` is what asked for it, "key
+-- Super+2" say, for the trail.
+function M:act(name, arg, why)
     local f = A[name]
     if not f then
         error("tide: no action " .. tostring(name))
     end
-    f(self, arg)
+    self:because(why or self.why or ("action " .. name), f, self, arg)
 end
 
 return M

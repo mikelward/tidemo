@@ -1315,14 +1315,14 @@ end
 function M.handle(wm, body, act)
     local uuid = body.uuid
     if body.show then
-        wm:show(tostring(body.show), uuid)
+        wm:show(tostring(body.show), uuid, nil, "bar: a click on the workspace")
     elseif body.focus ~= nil then
         local id = window_named(wm, body.focus)
         if id then
-            wm:activate(id, uuid)
+            wm:activate(id, uuid, "bar: a click on a window wanting attention")
         end
     elseif body.step and uuid then
-        wm:show(M.step(wm, uuid, tonumber(body.step)), uuid)
+        wm:show(M.step(wm, uuid, tonumber(body.step)), uuid, nil, "bar: a scroll over the workspaces")
     elseif body.open then
         local url = M.PANES[body.open]
         if url then
@@ -1331,7 +1331,7 @@ function M.handle(wm, body, act)
     elseif body.maximize then
         local _, w = wm:focused_tile()
         if w and uuid and wm:shown(w.ws) and w.screen == uuid then
-            wm:act("maximize")
+            wm:act("maximize", nil, "bar: a double-click on the title")
         end
     elseif body.dashboard then
         act.dashboard(uuid)
