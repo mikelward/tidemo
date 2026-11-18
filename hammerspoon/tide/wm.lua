@@ -1847,8 +1847,21 @@ function M:reconcile()
         table.sort(to_park, function(p, q)
             return tostring(p) < tostring(q)
         end)
+        local f = self.a.focused()
+        local on = f and self.windows[f] and self:screen_of(f)
         for _, id in ipairs(to_park) do
             self:park_window(id, fulls)
+        end
+        -- What you type never goes to a window you can't see: one parked
+        -- with the focus, as a relaunched app's window going back to a
+        -- workspace you've left, hands it to the workspace showing, on the
+        -- display it was on.
+        if f and self.parked[f] and not self:shown(self.windows[f] and self.windows[f].ws) then
+            self:because("parking " .. self:named(f) .. ", which had the focus", function()
+                if not self:refocus_ws(self:current_ws(), on) then
+                    self:unfocus_parked()
+                end
+            end)
         end
     end
     table.sort(hide)
@@ -3424,7 +3437,15 @@ function M:refuse(id, w)
     local last = self.last_steal
     self.last_steal = { id = id, at = now }
     -- One that takes focus straight back is left with it, marked, rather
-    -- than fought over.
+    -- than fought over; unless it's parked, where what you type would go
+    -- to a window you can't see: then no window has it, which ends the
+    -- fight as well.
+    if last and last.id == id and now - last.at <= M.GRACE and self.parked[id] and not self:shown(w.ws) then
+        self.a.log("not leaving the focus with " .. tostring(w.app) .. "'s parked window")
+        self:note("focus", "none: " .. self:named(id) .. " took the focus back, parked")
+        self.a.focus_none()
+        return
+    end
     if last and last.id == id and now - last.at <= M.GRACE then
         self.a.log("letting " .. tostring(w.app) .. " keep the focus it took back")
         -- It's the window you're in now, so its own dialogs may follow.

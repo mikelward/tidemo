@@ -1031,6 +1031,13 @@ numbered ones:
 - **`Super+1…9` count along the bar,** as on tide for Linux (tide for
   Linux §6.6): `Super+1` is "in", as `Super+Home` is, and `Super+0` is
   the last (§7.2).
+- **The rules every change keeps,** which `tests/workspace_rules_test.lua`
+  checks against random runs of what macOS and apps do (§18):
+  1. The workspace showing changes only when you show one, or choose a
+     window on another one.
+  2. A window changes workspace only when you send it.
+  3. A workspace with windows is listed, and so is the one showing.
+  4. The window with the focus isn't parked (§14.1).
 - **An empty workspace is removed once you leave it,** other than "in" and
   the standing ones. Leaving means no display shows it any more. A workspace holding only
   windows you minimized isn't empty.
@@ -3636,6 +3643,15 @@ Each one names a workaround, or says there is none.
   it, the last used window on its workspace that isn't goes instead
   (§5.1). macOS 14 added cooperative activation, which already stops many
   apps taking focus unasked *(unverified how many apps it covers)*.
+  An app that takes the focus straight back is left with it, marked,
+  rather than fought over, unless its window is parked: then no window
+  has the focus.
+- **The focus is never left in a parked window.** What you type would
+  reach a window you can't see. However a parked window gets the focus,
+  by an app taking it or by tide parking it while it had it, as when a
+  relaunched app's window goes back to a workspace you've left, the
+  workspace showing gets it back, on that window's display, or with
+  nothing there, no window has it.
 - **Pulled back to another workspace** (tide for Linux §14.2): an app launched on
   "work" whose window appears after you've moved to "home" opens on "work",
   marked for attention, not on "home" (§6.1).
@@ -4683,6 +4699,11 @@ Each one names a workaround, or says there is none.
   - the geometry against tide for Linux's own fixtures;
   - the workspace model (§6.1) and focus follows mouse's decisions (§5.2)
     against a fake Accessibility layer, with no sleeps;
+  - the workspace rules (§6.1) against random runs of what you, macOS and
+    apps do, from seeds, so a failure names its seed and steps and
+    replays the same way: `TIDE_RULE_SEED=n make test`, with
+    `TIDE_RULE_TRAIL=1` for tide's own reasons, as Report a bug gives
+    them, and `TIDE_RULE_RUNS` for more runs than CI's 200;
   - in CI on a macOS runner, a smoke test in a real Hammerspoon
     (`ci/hs-smoke.sh`): every `hs.*` name tide uses exists, tide starts
     with its bar along the top of each display, and opens its dashboard,
