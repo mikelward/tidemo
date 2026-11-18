@@ -401,6 +401,7 @@ function M.start(config)
         self.adapter.log)
     local launcher_module = launcherpage.MODULE[self.launcher_choice]
     config.saved = adapter_mod.load()
+    config.session = adapter_mod.session(self.adapter.log)
     -- The tiling area starts below the bar.
     config.top = config.bar ~= false and bar.HEIGHT or 0
     config.bar_position = self.bar_position

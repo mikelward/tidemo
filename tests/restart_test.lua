@@ -464,4 +464,38 @@ t.test("an app's own launch and one for any app both find their windows in one s
     t.eq(got, { "dev", "tools" })
 end)
 
+-- A login (SPEC.md §6.5): the last session's state, saved for session
+-- "1:100", read again by `session`.
+local function login(session)
+    local a = fake.new()
+    a.add(10, { app = "chat", pid = 200, title = "Team" })
+    local wm = start(a, {
+        windows = { ["1"] = place("chat", "Team", "ti", 1) },
+        gone = { { app = "chat", title = "Team", ws = "ti", mine = false, at = 0 } },
+        names = { "in", "ti" },
+        current = "ti",
+        session = "1:100",
+    }, { session = session })
+    return a, wm
+end
+
+t.test("after a new login, you start on home with nothing placed", function()
+    local _, wm = login("1:200")
+    t.eq(wm.current, "in", "home shows, not the last session's workspace")
+    t.eq(wm.windows[10].ws, "in", "a window opened at login joins home")
+    t.eq(wm:find("ti"), nil, "the last session's own workspaces are gone")
+    t.eq(wm:snapshot().session, "1:200", "the state is saved for this session")
+end)
+
+t.test("a restart of tide in the same login keeps its places", function()
+    local _, wm = login("1:100")
+    t.eq(wm.current, "ti")
+    t.eq(wm.windows[10].ws, "ti")
+end)
+
+t.test("a state saved before sessions were kept, or with none to compare, is kept", function()
+    local _, wm = login(nil)
+    t.eq(wm.windows[10].ws, "ti")
+end)
+
 t.done("restart")
