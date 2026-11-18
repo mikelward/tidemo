@@ -607,6 +607,14 @@ function M.new()
 
     local function new_window(spec, running, env)
         local function cmd_n()
+            -- New Window first, without bringing the app forward:
+            -- activating it would raise its last window, which may be on
+            -- another workspace, before the new one opens (SPEC.md §6).
+            -- The new window comes forward by itself *(unverified on a Mac
+            -- for every app that a menu press works while it's behind)*.
+            if new_window_item(running) and running:selectMenuItem(NEW_WINDOW, true) then
+                return
+            end
             if new_window_item(running) and running:activate() then
                 if not running:selectMenuItem(NEW_WINDOW, true) then
                     a.log("couldn't choose New Window in " .. spec.bundle .. "; using Cmd+N")
