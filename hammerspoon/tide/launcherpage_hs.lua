@@ -9,6 +9,7 @@
 -- outside Hammerspoon.
 
 local brand = require("tide.brand")
+local clickaway = require("tide.clickaway_hs")
 local dashboard = require("tide.dashboard")
 local launcher_hs = require("tide.launcher_hs")
 local launcherpage = require("tide.launcherpage")
@@ -48,6 +49,7 @@ function M.new(tide)
     local self = { tide = tide, recency = saved.get(hs.settings, launcher_hs.RECENCY_KEY, launcher_hs.OLD_RECENCY_KEY) or {} }
     local page = build()
     local view, before, uuid, scope
+    local away = clickaway.new(hs, clickaway.deps(hs, tide))
     -- The page has started, so tide.open can fill it; it's showing; and
     -- what to do once it has started, when a key came first.
     local loaded, visible, pending = false, false, nil
@@ -91,6 +93,7 @@ function M.new(tide)
             return
         end
         visible = false
+        away.stop()
         pending = nil
         self.opened = nil
         if esc_key then
@@ -336,6 +339,7 @@ function M.new(tide)
         if w then
             w:focus()
         end
+        away.start({ launcherpage.frame(s.full) }, close)
         step("focus")
     end
 
@@ -343,6 +347,9 @@ function M.new(tide)
     function self.toggle()
         if visible then
             close(true)
+        elseif away.reopening() then
+            -- The logo's click that just closed it.
+            return
         else
             self.show("launch")
         end

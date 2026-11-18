@@ -4,6 +4,7 @@
 -- shows that workspace. Not runnable outside Hammerspoon.
 
 local brand = require("tide.brand")
+local clickaway = require("tide.clickaway_hs")
 local dashboard = require("tide.dashboard")
 local jsonsafe = require("tide.jsonsafe")
 
@@ -36,11 +37,13 @@ function M.new(tide)
     local self = {}
     local page = build()
     local view, before, uuid
+    local away = clickaway.new(hs, clickaway.deps(hs, tide))
 
     local function close(refocus)
         if not view then
             return
         end
+        away.stop()
         local v = view
         view = nil
         tide.wm:hold("dashboard", false)
@@ -104,6 +107,10 @@ function M.new(tide)
             close(true)
             return
         end
+        -- The clocks' click that just closed it.
+        if away.reopening() then
+            return
+        end
         before = tide.adapter.focused()
         uuid = on or tide.wm:current_screen()
         local s = tide.wm:screen_by_uuid(uuid)
@@ -141,6 +148,7 @@ function M.new(tide)
         if w then
             w:focus()
         end
+        away.start({ s.full }, close)
     end
 
     -- The clocks files changed: an open dashboard shows them now.

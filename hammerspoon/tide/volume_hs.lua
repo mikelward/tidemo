@@ -4,6 +4,7 @@
 -- Hammerspoon.
 
 local brand = require("tide.brand")
+local clickaway = require("tide.clickaway_hs")
 local dashboard = require("tide.dashboard")
 local volume = require("tide.volume")
 
@@ -39,11 +40,13 @@ function M.new(tide, ops)
     local log = tide.adapter.log
     local page = M.page()
     local view, before
+    local away = clickaway.new(hs, clickaway.deps(hs, tide))
 
     local function close(refocus)
         if not view then
             return
         end
+        away.stop()
         local v = view
         view = nil
         tide.wm:hold("volume", false)
@@ -104,6 +107,10 @@ function M.new(tide, ops)
             close(true)
             return
         end
+        -- The speaker's click that just closed it.
+        if away.reopening() then
+            return
+        end
         local state = ops.state()
         before = tide.adapter.focused()
         local box = volume.frame(frame, right, #state.outputs, at)
@@ -143,6 +150,7 @@ function M.new(tide, ops)
         if w then
             w:focus()
         end
+        away.start({ box }, close)
     end
 
     -- The output, its volume or the outputs changed: an open popover shows
