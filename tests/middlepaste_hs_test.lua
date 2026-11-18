@@ -90,6 +90,15 @@ local function world()
             changeCount = function()
                 return w.count
             end,
+            readString = function()
+                return w.board[TEXT]
+            end,
+            -- A named pasteboard, such as Ghostty's selection.
+            setContents = function(text, name)
+                w.named = w.named or {}
+                w.named[name] = text
+                return true
+            end,
         },
         eventtap = {
             event = {
@@ -167,6 +176,14 @@ local function world()
             end,
         },
         window = {
+            get = function(id)
+                return {
+                    focus = function()
+                        w.events[#w.events + 1] = "focus window " .. tostring(id)
+                        w.front, w.focus_win = w.under and w.under:pid(), id
+                    end,
+                }
+            end,
             focusedWindow = function()
                 if w.focus_win == nil then
                     return nil
@@ -183,6 +200,10 @@ local function world()
                 return {
                     bundleID = function()
                         return w.bundles[pid]
+                    end,
+                    activate = function()
+                        w.events[#w.events + 1] = "activate " .. pid
+                        w.front = pid
                     end,
                 }
             end,
@@ -486,14 +507,120 @@ t.test("off, kitty isn't asked for its selection, and its middle click is its ow
     t.eq(w.paste.click(1, 1), false)
 end)
 
-t.test("a click on a link, or in another terminal, is left to the app", function()
+-- A terminal's window as the app with pid 4, `bundle`, saying nothing
+-- under the pointer through Accessibility.
+local function terminal(w, bundle)
+    w.bundles[4] = bundle
+    return el({ pid = 4 })
+end
+
+t.test("another app's selection goes on Ghostty's selection pasteboard, and its own middle click pastes it", function()
+    local w = world()
+    w.paste.set(true)
+    w.select("picked words", 1)
+    w.front, w.under = 4, terminal(w, "com.mitchellh.ghostty")
+    t.eq(w.paste.click(1, 1), false, "the click is Ghostty's")
+    t.eq(w.named, { [middlepaste.GHOSTTY_BOARD] = "picked words" })
+    w.run()
+    t.eq(w.events, {})
+    t.eq(w.board, { [TEXT] = "the clipboard" }, "the clipboard is untouched")
+end)
+
+t.test("Ghostty's own selection, read through Accessibility, is left on its pasteboard", function()
+    local w = world()
+    w.paste.set(true)
+    w.under = terminal(w, "com.mitchellh.ghostty")
+    w.select("ghostty words", 4)
+    t.eq(w.paste.click(1, 1), false)
+    t.eq(w.named, nil)
+    w.front, w.focused, w.under = 2, focused(""), field(2)
+    t.eq(w.paste.click(1, 1), true, "and pastes into another app")
+    w.run()
+    t.eq(w.events[3], "cmd+v pastes ghostty words")
+end)
+
+t.test("iTerm2 is lent the clipboard for its own middle click, until the button comes up", function()
+    local w = world()
+    w.paste.set(true)
+    w.select("picked words", 1)
+    w.front, w.under = 4, terminal(w, "com.googlecode.iterm2")
+    t.eq(w.paste.click(1, 1), false, "the click is iTerm2's")
+    t.eq(w.board[TEXT], "picked words", "iTerm2 pastes the clipboard")
+    t.eq(w.board[middlepaste.TRANSIENT], "")
+    t.eq(w.timers[1].seconds, middlepaste.LEND_AT_MOST)
+    w.paste.released()
+    t.eq(w.timers[1].stopped, true)
+    t.eq(w.timers[2].seconds, middlepaste.RESTORE_AFTER)
+    w.run()
+    t.eq(w.board, { [TEXT] = "the clipboard" })
+    t.eq(w.logs, {})
+end)
+
+t.test("a clipboard lent to iTerm2 comes back though the button's release is never seen", function()
+    local w = world()
+    w.paste.set(true)
+    w.select("picked words", 1)
+    w.under = terminal(w, "com.googlecode.iterm2")
+    w.paste.click(1, 1)
+    w.run()
+    t.eq(w.board, { [TEXT] = "the clipboard" })
+    w.paste.released()
+    t.eq(#w.timers, 0, "a late release starts nothing")
+end)
+
+t.test("a selection made in iTerm2 is its copy on the clipboard when Accessibility says nothing", function()
+    local w = world()
+    w.paste.set(true)
+    w.under = terminal(w, "com.googlecode.iterm2")
+    w.front, w.focused = 4, nil
+    w.paste.selected()
+    -- iTerm2 copies as the button comes up.
+    w.board, w.count = { [TEXT] = "iterm words" }, w.count + 1
+    w.run()
+    w.board = { [TEXT] = "the clipboard" }
+    w.front, w.focused, w.under = 2, focused(""), field(2)
+    t.eq(w.paste.click(1, 1), true)
+    w.run()
+    t.eq(w.events[3], "cmd+v pastes iterm words")
+end)
+
+t.test("an unchanged clipboard isn't taken for iTerm2's selection", function()
+    local w = world()
+    w.paste.set(true)
+    w.under = terminal(w, "com.googlecode.iterm2")
+    w.front, w.focused = 4, nil
+    w.paste.selected()
+    w.run()
+    w.front, w.focused, w.under = 2, focused(""), field(2)
+    t.eq(w.paste.click(1, 1), false, "nothing selected anywhere")
+end)
+
+t.test("into Terminal, tide focuses the window without clicking, and sends Command+V", function()
+    local w = world()
+    w.paste.set(true)
+    w.select("picked words", 1)
+    w.under, w.under_win = terminal(w, "com.apple.Terminal"), 77
+    t.eq(w.paste.click(1, 1), true, "the click is taken")
+    w.run()
+    t.eq(w.events, { "focus window 77", "cmd+v pastes picked words" })
+    t.eq(w.board, { [TEXT] = "the clipboard" })
+end)
+
+t.test("Terminal's own selection is left to Terminal", function()
+    local w = world()
+    w.paste.set(true)
+    w.under = terminal(w, "com.apple.Terminal")
+    w.select("terminal words", 4)
+    t.eq(w.paste.click(1, 1), false)
+    w.run()
+    t.eq(w.events, {})
+end)
+
+t.test("a click on a link is left to the app", function()
     local w = world()
     w.paste.set(true)
     w.select("picked words", 1)
     w.under = el({ AXRole = "AXLink", pid = 2, AXParent = el({ AXRole = "AXWebArea", pid = 2 }) })
-    t.eq(w.paste.click(1, 1), false)
-    w.bundles[2] = "com.mitchellh.ghostty"
-    w.under = field(2)
     t.eq(w.paste.click(1, 1), false)
     w.run()
     t.eq(w.events, {})

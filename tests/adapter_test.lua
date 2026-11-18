@@ -337,4 +337,22 @@ t.test("tide's own paste click into kitty passes its mouse tap untouched", funct
     t.eq(pastes, 1)
 end)
 
+t.test("a middle click tide leaves to the app says when the button comes up", function()
+    local released = 0
+    local fire = tapped({
+        paste = function()
+            return false
+        end,
+        released = function()
+            released = released + 1
+        end,
+        clicked = function() end,
+    })
+    t.eq(fire("otherMouseDown", 2, {}), false)
+    t.eq(fire("otherMouseUp", 2, {}), false)
+    t.eq(released, 1)
+    fire("otherMouseUp", 3, {})
+    t.eq(released, 1, "another button isn't the middle one")
+end)
+
 t.done("adapter")

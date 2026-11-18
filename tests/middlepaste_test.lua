@@ -34,23 +34,28 @@ t.test("a link, a tab, a page's text and a field that only shows text don't take
     t.eq(middlepaste.takes_text(deep), false, "too far up to be what was clicked")
 end)
 
-t.test("a middle click is tide's only with the setting on, on a text field, outside a terminal", function()
+t.test("a middle click is tide's only with the setting on, on a text field or in a terminal", function()
     t.eq(middlepaste.wants(true, "com.apple.TextEdit", FIELD), true)
     t.eq({ middlepaste.wants(false, "com.apple.TextEdit", FIELD) }, { false, "off" })
     t.eq({ middlepaste.wants(true, "com.google.Chrome", { { role = "AXLink" } }) }, { false, "not a text field" })
-    for _, app in ipairs({ "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal" }) do
-        t.eq({ middlepaste.wants(true, app, FIELD) }, { false, "a terminal's own" }, app)
+    for _, app in ipairs({ "net.kovidgoyal.kitty", "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal" }) do
+        t.eq(middlepaste.wants(true, app, {}), true, app .. ", anywhere in it")
+        t.eq({ middlepaste.wants(false, app, {}) }, { false, "off" }, app)
     end
     t.eq(middlepaste.wants(true, nil, FIELD), true, "an app with no bundle ID")
-    t.eq(middlepaste.wants(true, "net.kovidgoyal.kitty", {}), true, "anywhere in kitty, which says nothing")
-    t.eq({ middlepaste.wants(false, "net.kovidgoyal.kitty", {}) }, { false, "off" })
 end)
 
-t.test("a middle click in kitty pastes another app's selection, and leaves kitty's own to kitty", function()
-    t.eq(middlepaste.into_kitty({ text = "from Chrome", pid = 1 }, 9), "from Chrome")
-    t.eq(middlepaste.into_kitty({ text = "from kitty", pid = 9 }, 9), nil)
-    t.eq(middlepaste.into_kitty(nil, 9), nil)
-    t.eq(middlepaste.into_kitty({ text = "", pid = 1 }, 9), nil)
+t.test("a middle click in a terminal pastes another app's selection, and leaves its own to it", function()
+    t.eq(middlepaste.into_terminal({ text = "from Chrome", pid = 1 }, 9), "from Chrome")
+    t.eq(middlepaste.into_terminal({ text = "from the terminal", pid = 9 }, 9), nil)
+    t.eq(middlepaste.into_terminal(nil, 9), nil)
+    t.eq(middlepaste.into_terminal({ text = "", pid = 1 }, 9), nil)
+end)
+
+t.test("each terminal has a way in", function()
+    for _, app in ipairs({ "net.kovidgoyal.kitty", "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal" }) do
+        t.eq(type(middlepaste.TERMINALS[app]), "string", app)
+    end
 end)
 
 t.test("kitty's selection is its get-text output without the newline kitten adds", function()

@@ -1564,7 +1564,8 @@ end
 -- Middle click paste (middlepaste.lua) rides the same tap: `h.selected()`
 -- after a left-button gesture that may have selected text, and
 -- `h.paste(x, y)` for a plain middle click, which says whether it took it.
--- One it took is swallowed, press and release.
+-- One it took is swallowed, press and release; for one it didn't,
+-- `h.released()` as the button comes up.
 function M.mouse(is_super, h)
     local t = hs.eventtap.event.types
     local props = hs.eventtap.event.properties
@@ -1640,9 +1641,14 @@ function M.mouse(is_super, h)
             pasting = middlepaste.plain(button, flags) and h.paste(p.x, p.y) == true
             return pasting
         elseif kind == t.otherMouseUp then
-            if pasting and e:getProperty(props.mouseEventButtonNumber) == 2 then
-                pasting = false
-                return true
+            if e:getProperty(props.mouseEventButtonNumber) == 2 then
+                if pasting then
+                    pasting = false
+                    return true
+                end
+                if h.released then
+                    h.released()
+                end
             end
         end
         return false
