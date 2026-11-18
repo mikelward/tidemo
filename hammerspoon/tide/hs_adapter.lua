@@ -1502,6 +1502,25 @@ function M.mouse(is_super, h)
     -- Whether the left button has dragged since it went down, and whether
     -- the middle button's press was swallowed for a paste.
     local dragged, pasting = false, false
+    -- Whether x, y is on the bare desktop: no window on screen there at
+    -- the normal level or above, so the Dock, the menu bar, a notification,
+    -- a parked window's sliver and every window aren't (wm:you_chose). The
+    -- desktop's icons and picture sit below. Nil if the list can't be read.
+    local function on_desktop(x, y)
+        local ok, list = pcall(hs.window.list, true)
+        if not ok or not list then
+            return nil
+        end
+        for _, info in ipairs(list) do
+            local b = info.kCGWindowBounds
+            if (info.kCGWindowLayer or 0) >= 0 and (info.kCGWindowAlpha or 1) > 0 and b
+                and x >= (b.X or 0) and x < (b.X or 0) + (b.Width or 0)
+                and y >= (b.Y or 0) and y < (b.Y or 0) + (b.Height or 0) then
+                return false
+            end
+        end
+        return true
+    end
     local tap = hs.eventtap.new({
         t.leftMouseDown, t.leftMouseDragged, t.leftMouseUp,
         t.rightMouseDown, t.rightMouseDragged, t.rightMouseUp,
@@ -1515,7 +1534,7 @@ function M.mouse(is_super, h)
             dragged = true
         end
         if kind == t.leftMouseDown or kind == t.rightMouseDown then
-            h.clicked()
+            h.clicked(on_desktop(p.x, p.y))
             if not is_super(e:getFlags()) then
                 return false
             end

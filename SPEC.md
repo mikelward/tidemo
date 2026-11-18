@@ -950,7 +950,15 @@ API: the same Accessibility move a retile makes.
   - Cmd+Tab lists every app, as before. Choosing one whose window is
     parked focuses that window, and tide brings its workspace along
     (Activate, §6.1), so no window turns up on the wrong workspace. So does
-    clicking a sliver, or an app's window coming to the front.
+    clicking a sliver, the app in the Dock, or a notification, or choosing
+    it in Spotlight: any click but one on the bare desktop.
+  - Nothing else brings a parked window's workspace along. An app that
+    comes to the front by itself, or restores its own minimized window,
+    is marked for attention (§14.2), and you stay. So does a click on the
+    desktop, which brings up Finder's window from wherever it is.
+  - Nor does opening a new window of an app that has one elsewhere, as a
+    new Chrome window from the launcher: macOS brings the old window
+    forward first, but you stay, and the new window opens where you are.
   - That's only while the window still has the focus, so a late report
     of a focus from before a switch doesn't flip you back.
   - Nor when what you were in just went away: the window you were in, or
@@ -1091,7 +1099,7 @@ never empty in between.
 | **Activate**: an app key, the switcher, Cmd+Tab, a Dock click, a notification click | If the window's workspace isn't showing, show it. | that window |
 | **Moved to another display** by you (a drag, `Super+Shift` and an arrow, or macOS) | It joins that display's stack, in the same workspace. | that window |
 | **Minimize** by you (`Super+Z`, Cmd+M, the yellow button) | Set the flag. The window joins its display's tray (§6.7). | `Super+Z`: the workspace's last used window still showing; otherwise macOS decides |
-| **Restore** by you, from the tray (§6.7), the switcher's Windows tab (§9), the Dock or Cmd+Tab | Clear the flag. If its workspace is hidden, this is Activate. | that window |
+| **Restore** by you, from the tray (§6.7), the switcher's Windows tab (§9), the Dock or Cmd+Tab | Clear the flag. If its workspace is hidden, this is Activate. An app restoring its own window is marked for attention instead. | that window |
 | **Hide** an app (Cmd+H) | Nothing: hidden apps are macOS's, and come back where they were. | macOS decides |
 
 - **The current Mac setup follows a thrown window**

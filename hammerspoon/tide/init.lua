@@ -573,8 +573,8 @@ function M.start(config)
         middle = function(x, y)
             self.wm:maximize_at(x, y)
         end,
-        clicked = function()
-            self.wm:clicked()
+        clicked = function(desktop)
+            self.wm:clicked(desktop)
         end,
     })
     self.pointer = adapter_mod.pointer_moves(function(x, y, flags)

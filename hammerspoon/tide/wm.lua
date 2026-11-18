@@ -1114,6 +1114,18 @@ function M:takes_launch(id, f)
     return not (rules.decide(f, self.rules) == "float" and self:parent_ws(id, f))
 end
 
+-- Whether a launch that a window of `app` could be from is waiting: one of
+-- `app`, or a helper's, for any app.
+function M:launching(app)
+    local now = self.a.now()
+    for _, l in ipairs(self.launches or {}) do
+        if (l.app == nil or l.app == app) and self:launch_live(l, now) then
+            return true
+        end
+    end
+    return false
+end
+
 -- Whether a launch of app `app` (a bundle ID) is waiting for its window.
 function M:launch_pending(app)
     local now = self.a.now()
@@ -2027,8 +2039,16 @@ function M:unminimized(id)
     if w and w.ws then
         w.mine = false
         if not self:shown(w.ws) then
-            self:activate(id)
-            return
+            -- Restored by you, from the Dock or Cmd+Tab: its workspace
+            -- comes along. An app restoring its own, as a call app does, is
+            -- marked instead, and goes back with its workspace.
+            if self:you_chose(id) then
+                self:activate(id)
+                return
+            end
+            self.a.log(tostring(w.app) .. " restored its window on " .. tostring(w.ws) .. " by itself")
+            self.attention:activated(id, w.app)
+            self:changed()
         end
     end
     self:schedule()
@@ -3166,7 +3186,7 @@ end
 -- and than a switch that kept keys on its display. (A focus report alone
 -- can't say this: macOS moves focus itself as tide minimizes, and a click
 -- on the window that already has focus reports nothing.)
-function M:clicked()
+function M:clicked(desktop)
     self.focus_after = nil
     self.kbd = nil
     -- A click is yours, and so is what it starts: a Dock icon, a link, a
@@ -3174,6 +3194,8 @@ function M:clicked()
     local now = self.a.now()
     self.last_input = now
     self.last_switch = now
+    -- Whether it was on the bare desktop, for M:you_chose.
+    self.click = { at = now, desktop = desktop or false }
     -- A menu item you chose is yours whatever it opens, even a window of an
     -- app that has one already: About This Mac is System Settings'.
     self:grant(nil, not self.a.menu_open())
@@ -3197,6 +3219,13 @@ end
 function M:key_down(key, cmd)
     local now = self.a.now()
     self.last_input = now
+    -- Cmd+Tab or Cmd+`: the app or window it picks comes forward when
+    -- Command goes up (M:modifiers, M:you_chose).
+    if cmd and (key == "tab" or key == "`") then
+        self.cmd_tab = true
+    elseif key == "return" or key == "padenter" then
+        self.chose_at = now
+    end
     if cmd or key == "return" or key == "padenter" then
         self.last_switch = now
         self:grant(nil, true)
@@ -3208,7 +3237,35 @@ function M:modifiers(cmd)
     if cmd or self.cmd_down then
         self.last_switch = self.a.now()
     end
+    if self.cmd_down and not cmd and self.cmd_tab then
+        self.chose_at = self.a.now()
+    end
+    if not cmd or not self.cmd_down then
+        self.cmd_tab = false
+    end
     self.cmd_down = cmd or false
+end
+
+-- Whether you chose window `id` just now, as bringing a hidden workspace
+-- back needs (SPEC.md §6.1): Cmd+Tab or Cmd+` (or still holding Command
+-- after either), Return, as Spotlight opens what you picked, or a click
+-- on anything but the bare desktop, within M.GRACE: the Dock, the menu
+-- bar, a notification, the window's own sliver. A click on the desktop,
+-- which brings up Finder's window, isn't, nor is an app coming forward by
+-- itself. A click tide wasn't told the desktop of counts.
+function M:you_chose(id)
+    local now = self.a.now()
+    if self.cmd_down and self.cmd_tab then
+        return true
+    end
+    if self.chose_at and now - self.chose_at <= M.GRACE then
+        return true
+    end
+    local c = self.click
+    if not (c and now - c.at <= M.GRACE) then
+        return false
+    end
+    return not c.desktop
 end
 
 -- Whether `app` had a window open before time `t`: if so, a window of
@@ -3359,9 +3416,11 @@ function M:focused_window(id)
     if changed then
         self:retile()
     end
-    -- A parked window that took focus, from Cmd+Tab, a click on its sliver
-    -- or its app coming to the front, brings its workspace along, as one
-    -- restored from the Dock does (M:unminimized).
+    -- A parked window that took focus because you chose it, by Cmd+Tab, a
+    -- click on its sliver or in the Dock, brings its workspace along, as
+    -- one restored from the Dock does (M:unminimized). One whose app came
+    -- forward by itself, or that a click on the desktop brought up, as
+    -- Finder's, is marked for attention, and you stay (M:you_chose).
     -- Only while it still has the focus: a late report of a focus from
     -- before a switch, its window parked since, mustn't pull you back.
     -- Not when the window you were in just closed: macOS moving the focus
@@ -3373,6 +3432,27 @@ function M:focused_window(id)
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
         if self:just_closed(prev) or self:let_go_lately() or self:just_emptied(self:current_ws()) then
             self.a.log("staying on " .. tostring(self.current) .. " after a close")
+            if not self:refocus_ws(self:current_ws()) then
+                self:unfocus_parked()
+            end
+        elseif self:launching(w.app) then
+            -- A new window of an app you launched, which macOS brings
+            -- forward with the app's window elsewhere first: the new one
+            -- is on its way to the workspace you launched it for.
+            self.a.log("staying on " .. tostring(self.current) .. " while " .. tostring(w.app) .. " opens a window")
+            remove_value(self.history, id)
+            table.insert(self.history, math.min(2, #self.history + 1), id)
+            if not self:refocus_ws(self:current_ws()) then
+                self:unfocus_parked()
+            end
+        elseif not self:you_chose(id) then
+            self.a.log(tostring(w.app) .. " came forward on " .. tostring(w.ws) .. " by itself; staying on "
+                .. tostring(self.current))
+            -- It isn't the window you're in: that stays the one before.
+            remove_value(self.history, id)
+            table.insert(self.history, math.min(2, #self.history + 1), id)
+            self.attention:activated(id, w.app)
+            self:changed()
             if not self:refocus_ws(self:current_ws()) then
                 self:unfocus_parked()
             end
