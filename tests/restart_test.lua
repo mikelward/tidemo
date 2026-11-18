@@ -498,4 +498,43 @@ t.test("a state saved before sessions were kept, or with none to compare, is kep
     t.eq(wm.windows[10].ws, "ti")
 end)
 
+t.test("a window that drops out of macOS's list for a moment goes back to its workspace", function()
+    local a = fake.new()
+    a.add(1, { app = "mail", pid = 200, title = "Inbox" })
+    a.add(2, { app = "notes", pid = 300, title = "Ideas" })
+    local wm = start(a, nil)
+    wm:send(2, "ti")
+    t.eq(wm.current, "in")
+    -- Notes is busy, and its window misses a sync, though Notes runs.
+    local f = a.wins[2]
+    a.pids[300] = true
+    a.drop(2)
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[2], nil)
+    a.add(2, f)
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[2].ws, "ti", "back on its own workspace, not the one showing")
+    t.eq(wm.current, "in")
+end)
+
+t.test("a window that comes back after the places lapse joins the workspace showing", function()
+    local a = fake.new()
+    a.add(1, { app = "mail", pid = 200, title = "Inbox" })
+    a.add(2, { app = "notes", pid = 300, title = "Ideas" })
+    local wm = start(a, nil)
+    wm:send(2, "ti")
+    local f = a.wins[2]
+    a.pids[300] = true
+    a.drop(2)
+    wm:schedule()
+    a.tick()
+    a.clock = a.clock + wm_mod.KEEP + 1
+    a.add(2, f)
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[2].ws, "in")
+end)
+
 t.done("restart")

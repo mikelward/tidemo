@@ -1352,6 +1352,10 @@ the home workspace, the first standing one (§6.1), which is "in" unless
   tide matches each to its old place by app and title, closest first, as
   tide for Chrome matches by tab addresses (tide for Chrome §14.2). A window it can't match joins
   the workspace showing.
+- **A window that leaves macOS's list while its app still runs,** as a
+  busy app's can for a moment, keeps its place by its ID for
+  10 minutes. If it comes back, it goes back to its own workspace, not
+  the one showing.
 - **A relaunch you named a workspace for** (§6.2) puts its first window
   there, not back in its old place, so you stay where you named. Any
   other windows it restores go back to their places.
