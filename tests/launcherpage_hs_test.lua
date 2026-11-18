@@ -26,6 +26,12 @@ local function stub()
             end,
         },
         drawing = { windowLevels = { modalPanel = 8 } },
+        eventtap = {
+            event = { types = { leftMouseDown = 1, rightMouseDown = 3, otherMouseDown = 25 } },
+            new = function()
+                return { start = function() end, stop = function() end }
+            end,
+        },
         hotkey = {
             bind = function(mods, key, fn)
                 local k = { mods = mods, key = key, fn = fn }

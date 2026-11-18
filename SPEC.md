@@ -1542,7 +1542,8 @@ together (§6). tide turns it off (§6.6), and has its own.
     matcher (`tide-fuzzy.js`, the launcher's). Backspace takes a letter
     back.
 - **Closing:** Esc, the same key again, a click on empty space, or a click
-  on another window. The other key while it's open switches it to that
+  anywhere else, another display included (§8's volume popover says how).
+  The other key while it's open switches it to that
   scope.
 - **Focus follows mouse pauses** while it's open, as for the dashboard
   (§5.2).
@@ -2497,7 +2498,17 @@ stock keys:
       tool. An output with no volume control says so in place of the
       slider, and its mute is off unless it can mute. A second click on
       the speaker, Esc, or a click anywhere else closes it; focus follows
-      mouse waits while it's open. No per-app volumes or inputs, which
+      mouse waits while it's open.
+    - **A click outside a popup closes it:** the volume popover, the
+      dashboard, the dashboard launcher and the overview. Its window
+      losing focus catches only a click in another app. A click on the bar,
+      or on another display's overlay, lands on Hammerspoon's own windows
+      and takes no focus. So while one is open, an event tap watches for a
+      mouse button going down outside it, and passes the click on
+      (`clickaway_hs.lua`). That click does nothing else of tide's: on the
+      speaker, it doesn't open the popover again. After a click on a bar,
+      focus goes back to the window you were in; after a click on anything
+      else, it stays with what you clicked. No per-app volumes or inputs, which
       tide for Linux's has: macOS has no API for an app's volume *(unverified on a
       Mac)*.
     - **An output with no volume control still shows:** a monitor's own
@@ -2689,8 +2700,10 @@ stock keys:
     copied unchanged, and CI checks they still match tide for Chrome's.
   - A webview can't load ES modules from files, so tide joins them into one
     script, each module in its own scope.
-  - A click on a workspace's chip shows it. Esc, the key again,
-    or clicking away closes it.
+  - A click on a workspace's chip shows it. Esc, the key again, or a
+    click off the clock panel closes it: the page fills the display, so
+    a click there is the page's own, and it closes itself. A click on
+    another display closes it too (§8's volume popover says how).
   - The switcher stays `hs.chooser` (§9) by default, so the dashboard has no
     search. tide for Chrome's own dashboard page, with its search, is built as the
     dashboard launcher (§9.2), switched off.
@@ -3004,8 +3017,8 @@ on the display you're on, in place of the switcher.
     commands.
 - **A switcher key pressed while it's open** closes it on that key's
   scope, and otherwise moves there, as the switcher does. Esc, a choice,
-  or clicking away closes it, and Esc gives focus back to the window you
-  were in.
+  or a click outside it closes it (§8), and Esc gives focus back to the
+  window you were in.
 - **Esc is tide's while it's open,** an `hs.hotkey`, so it closes at
   once, however long WebKit takes to wake the hidden page: on CI's Mac the
   page has answered from 100 ms to 3.8 s after an open, and a key it hears

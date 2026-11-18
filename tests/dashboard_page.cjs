@@ -22,7 +22,22 @@ class Element {
     };
   }
   append(...xs) {
-    for (const x of xs) this.children.push(typeof x === "string" ? { text: x } : x);
+    for (const x of xs) {
+      if (typeof x === "object") x.parent = this;
+      this.children.push(typeof x === "string" ? { text: x } : x);
+    }
+  }
+  // Only the selectors the page uses: "#id", and "#id tag" within it.
+  closest(selectors) {
+    const matches = (e, sel) => {
+      const [outer, inner] = sel.trim().split(/\s+/);
+      if (!inner) return e.tag === outer.slice(1);
+      if (e.tag !== inner) return false;
+      for (let p = e.parent; p; p = p.parent) if (p.tag === outer.slice(1)) return true;
+      return false;
+    };
+    for (let e = this; e; e = e.parent) if (selectors.split(",").some((sel) => matches(e, sel))) return e;
+    return null;
   }
   replaceChildren() {
     this.children = [];
@@ -126,6 +141,18 @@ assert.deepStrictEqual(
     ["Asia/Tokyo", "America/Chicago"],
   ],
 );
+
+// The dashboard fills the display: a click off the clock panel closes it,
+// and one on the panel, the clocks' button or a workspace doesn't.
+sent.length = 0;
+const down = (target) => docListeners.mousedown({ target });
+down(ids["clock-detail"].children.find((c) => c.className === "calendar"));
+down(ids["edit-clocks"]);
+down(chips[0]);
+assert.strictEqual(sent.length, 0, "a click on the panel keeps it open");
+down(new Element("main"));
+down(ids.title);
+assert.strictEqual(JSON.stringify(sent), JSON.stringify([{ close: true }, { close: true }]));
 
 // A dashboard opened while a file is wrong shows the clocks tide kept from
 // the pages before it, as the bar still does, not SPEC.md §8's.

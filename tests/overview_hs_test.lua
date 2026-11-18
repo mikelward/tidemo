@@ -18,6 +18,31 @@ local function stub()
             end,
         },
         drawing = { windowLevels = { modalPanel = 8 } },
+        timer = {
+            secondsSinceEpoch = function()
+                return s.clock or 0
+            end,
+        },
+        -- The tap watching for a click outside it (clickaway_hs.lua).
+        eventtap = {
+            event = { types = { leftMouseDown = 1, rightMouseDown = 3, otherMouseDown = 25 } },
+            new = function(_, fn)
+                local tap = {}
+                function tap:start()
+                    s.click = function(x, y)
+                        return fn({
+                            location = function()
+                                return { x = x, y = y }
+                            end,
+                        })
+                    end
+                end
+                function tap:stop()
+                    s.click = nil
+                end
+                return tap
+            end,
+        },
         -- Each window's picture, 2880 by 1800 but window 2's, which
         -- macOS won't give, and window 3's, which fails.
         window = {
@@ -113,6 +138,11 @@ local function stub()
     s.a, s.wm = a, wm
     s.tide = {
         wm = wm,
+        bar = {
+            frames = function()
+                return { A = { x = 0, y = 0, w = 1920, h = 30, hidden = false } }
+            end,
+        },
         adapter = {
             focused = a.focused,
             screen_recording = function()
@@ -149,6 +179,21 @@ t.test("Ctrl+Up opens it over the display, pausing focus follows mouse, and agai
     s.overview.show("all")
     t.eq(v.deleted, true)
     t.eq(s.wm.holding_keyboard, false)
+end)
+
+t.test("a click on another display closes it, and the click's own open is dropped", function()
+    local s = stub()
+    local v = open(s, "all")
+    t.eq(s.click(500, 500), false, "a click on it is the page's")
+    t.eq(v.deleted, false)
+    t.eq(s.click(2500, 500), false, "the click passes on")
+    t.eq(v.deleted, true)
+    t.eq(s.wm.holding_keyboard, false)
+    s.overview.show("all")
+    t.eq(#s.views, 1, "that click's open is dropped")
+    s.clock = 1
+    open(s, "all")
+    t.eq(#s.views, 2)
 end)
 
 t.test("the page starts on the window focused before it took the focus", function()

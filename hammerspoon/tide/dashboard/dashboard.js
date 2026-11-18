@@ -71,6 +71,18 @@ window.tide = {
 
 document.getElementById("edit-clocks").addEventListener("click", () => send({ settings: true }));
 
+// The dashboard fills the display, so a click off the clock panel lands on
+// the page itself: it closes it, as a click outside it does. Read as the
+// button goes down, before a click redraws the calendar under it.
+const KEEP = "#clock-detail, #edit-clocks, #workspaces button";
+document.addEventListener(
+  "mousedown",
+  (e) => {
+    if (!e.target?.closest?.(KEEP)) send({ close: true });
+  },
+  true,
+);
+
 document.addEventListener("keydown", (e) => {
   // Workspaces have names now, so a digit no longer picks one.
   if (e.key === "Escape") send({ close: true });

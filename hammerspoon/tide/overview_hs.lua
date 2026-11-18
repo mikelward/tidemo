@@ -8,6 +8,7 @@
 -- runnable outside Hammerspoon.
 
 local brand = require("tide.brand")
+local clickaway = require("tide.clickaway_hs")
 local dashboard = require("tide.dashboard")
 local overview = require("tide.overview")
 local jsonsafe = require("tide.jsonsafe")
@@ -45,6 +46,7 @@ function M.new(tide)
     local page = build()
     local log = tide.adapter.log
     local view, before, uuid, scope
+    local away = clickaway.new(hs, clickaway.deps(hs, tide))
 
     -- Each app's icon as a PNG data URL, from its bundle, which needs no
     -- Screen Recording. Made once per bundle ID; an app with no icon is
@@ -98,6 +100,7 @@ function M.new(tide)
         if not view then
             return
         end
+        away.stop()
         local v = view
         view = nil
         pictures = nil
@@ -172,6 +175,9 @@ function M.new(tide)
             end
             return
         end
+        if away.reopening() then
+            return
+        end
         scope = which
         before = tide.adapter.focused()
         -- Pictures only with the switch on and Screen Recording granted:
@@ -218,6 +224,7 @@ function M.new(tide)
         if w then
             w:focus()
         end
+        away.start({ s.full }, close)
     end
 
     return self

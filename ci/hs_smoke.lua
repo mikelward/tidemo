@@ -1267,6 +1267,50 @@ local function check_centered_bar(after)
     try()
 end
 
+-- A click outside the volume popover closes it (SPEC.md §8): here one on
+-- the bar, which lands on Hammerspoon's own window, so no focus moves and
+-- only the click watcher (clickaway_hs.lua) can see it. Waits for the
+-- close, up to a deadline.
+local CLICK_WAIT = 5
+local function check_click_away(after)
+    local _, v = next(tide.bar and tide.bar.views or {})
+    if not (v and v.ready and tide.bar.output_ops) then
+        after()
+        return
+    end
+    local made, p = pcall(require("tide.volume_hs").new, tide, tide.bar.output_ops)
+    if not made then
+        fail("click away: %s", tostring(p))
+        after()
+        return
+    end
+    local f = v.view:frame()
+    p.toggle(f, f.w - 40, "top")
+    if not p.shown() then
+        fail("click away: the volume popover didn't open")
+        after()
+        return
+    end
+    -- A global, like smoke_timer, so it isn't collected.
+    smoke_click_timer = hs.timer.doAfter(1, function()
+        hs.eventtap.leftClick({ x = f.x + 60, y = f.y + math.floor(f.h / 2) })
+        local started = hs.timer.secondsSinceEpoch()
+        local function wait()
+            if not p.shown() then
+                say("click away: a click on the bar closed the volume popover")
+                after()
+            elseif hs.timer.secondsSinceEpoch() - started < CLICK_WAIT then
+                smoke_click_timer = hs.timer.doAfter(0.25, wait)
+            else
+                fail("click away: the volume popover stayed open after a click on the bar")
+                p.toggle(f, f.w - 40, "top")
+                after()
+            end
+        end
+        wait()
+    end)
+end
+
 local function check_tiling()
     if not hs.accessibilityState() then
         fail("tiling: Hammerspoon doesn't have Accessibility on this runner")
@@ -1309,7 +1353,9 @@ local function check_tiling()
                         check_launcher_keys(function()
                             check_middle_paste(function()
                                 check_centered_bar(function()
-                                    check_workspace_keys(finish)
+                                    check_click_away(function()
+                                        check_workspace_keys(finish)
+                                    end)
                                 end)
                             end)
                         end)
