@@ -546,6 +546,7 @@ function M.start(config)
         window_id = function(x, y)
             return self.wm:window_at(x, y)
         end,
+        kitty_selection = self.adapter.kitty_selection,
     })
     -- Home and End go to the line's ends in a text field, and are the
     -- keys themselves elsewhere, as on a PC (SPEC.md §10).

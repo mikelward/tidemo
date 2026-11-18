@@ -19,8 +19,10 @@ local M = {}
 -- notification that calls fn when clicked; open_accessibility(), which
 -- opens Privacy & Security's Accessibility list; window_pid(x, y), the
 -- pid of the app whose window is at a point, nil where there's none or
--- it's one of tide's own; and window_id(x, y), that window's id, nil
--- where it's not known.
+-- it's one of tide's own; window_id(x, y), that window's id, nil
+-- where it's not known; and kitty_selection(pid, done), which asks the
+-- kitty with that pid for its selection and calls done(text), text nil
+-- when there's none or kitty can't be asked.
 function M.new(hs, d)
     local self = {}
     local log = d.log
@@ -91,10 +93,12 @@ function M.new(hs, d)
         return chain, pid, app and app:bundleID()
     end
 
-    -- What has the keyboard in the app in front, and that app's pid.
+    -- What has the keyboard in the app in front, and that app's pid and
+    -- bundle ID.
     local function focus()
         local front = hs.application.frontmostApplication()
-        return hs.axuielement.systemWideElement():attributeValue("AXFocusedUIElement"), front and front:pid()
+        return hs.axuielement.systemWideElement():attributeValue("AXFocusedUIElement"), front and front:pid(),
+            front and front:bundleID()
     end
 
     -- What's selected in `focused`. A password field's is never read.
@@ -127,7 +131,9 @@ function M.new(hs, d)
         end)
     end
 
-    local function paste(text, x, y, target, target_win)
+    -- Keep the clipboard and put `text` there, marked transient. False,
+    -- with the clipboard back, when it can't.
+    local function hold(text)
         -- A paste already under way holds the real clipboard: keep that
         -- one, not the text tide put there.
         if restore_timer then
@@ -142,7 +148,7 @@ function M.new(hs, d)
         if held == nil then
             held = try("reading the clipboard", hs.pasteboard.readAllData)
             if held == nil then
-                return
+                return false
             end
         end
         local wrote = try("writing the selection", function()
@@ -154,6 +160,43 @@ function M.new(hs, d)
         if not wrote then
             log("middle click paste: couldn't put the selection on the pasteboard, so nothing is pasted")
             restore()
+            return false
+        end
+        return true
+    end
+
+    -- A middle click with M.KITTY_PASTE's modifiers at x, y, which conf's
+    -- kitty maps to pasting the clipboard into the kitty window there,
+    -- marked so tide's own tap lets it by.
+    local function kitty_click(x, y)
+        local t = hs.eventtap.event.types
+        local props = hs.eventtap.event.properties
+        local p = { x = x, y = y }
+        for _, kind in ipairs({ t.otherMouseDown, t.otherMouseUp }) do
+            local e = hs.eventtap.event.newMouseEvent(kind, p, middlepaste.KITTY_PASTE)
+            e:setProperty(props.mouseEventButtonNumber, 2)
+            e:setProperty(props.eventSourceUserData, middlepaste.MARK)
+            e:setFlags(middlepaste.KITTY_PASTE)
+            e:post()
+        end
+        return true
+    end
+
+    -- Paste into kitty: the clipboard, then kitty's paste click, so kitty
+    -- pastes into the window under the pointer as its own middle click
+    -- does, bracketed when the program there asks.
+    local function paste_kitty(text, x, y)
+        if not hold(text) then
+            return
+        end
+        if try("clicking kitty's paste", kitty_click, x, y) == nil then
+            log("middle click paste: nothing was pasted into kitty")
+        end
+        restore_timer = hs.timer.doAfter(middlepaste.RESTORE_AFTER, restore)
+    end
+
+    local function paste(text, x, y, target, target_win)
+        if not hold(text) then
             return
         end
         -- The click places the caret, and gives the window focus.
@@ -215,7 +258,22 @@ function M.new(hs, d)
         if not on then
             return
         end
-        local focused, pid = try("reading what's focused", focus)
+        local focused, pid, bundle = try("reading what's focused", focus)
+        -- kitty says nothing through Accessibility: it's asked over its
+        -- socket instead, and what it says is newer than anything kept.
+        if bundle == middlepaste.KITTY then
+            if not d.kitty_selection then
+                return
+            end
+            hs.timer.doAfter(middlepaste.READ_AFTER, function()
+                try("asking kitty for its selection", d.kitty_selection, pid, function(text)
+                    if middlepaste.usable(text) then
+                        remembered = { text = text, pid = pid }
+                    end
+                end)
+            end)
+            return
+        end
         nudge(pid)
         hs.timer.doAfter(middlepaste.READ_AFTER, function()
             local text = try("reading the selection", selected_in, focused)
@@ -232,6 +290,17 @@ function M.new(hs, d)
             return false
         end
         local chain, pid, bundle = try("reading what's under the pointer", at, x, y)
+        if bundle == middlepaste.KITTY then
+            -- kitty's own selection, or none, is kitty's to paste.
+            local text = middlepaste.into_kitty(remembered, pid)
+            if not text then
+                return false
+            end
+            hs.timer.doAfter(0, function()
+                paste_kitty(text, x, y)
+            end)
+            return true
+        end
         nudge(pid)
         if not middlepaste.wants(on, bundle, chain) then
             return false

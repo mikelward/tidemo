@@ -38,10 +38,32 @@ t.test("a middle click is tide's only with the setting on, on a text field, outs
     t.eq(middlepaste.wants(true, "com.apple.TextEdit", FIELD), true)
     t.eq({ middlepaste.wants(false, "com.apple.TextEdit", FIELD) }, { false, "off" })
     t.eq({ middlepaste.wants(true, "com.google.Chrome", { { role = "AXLink" } }) }, { false, "not a text field" })
-    for _, app in ipairs({ "net.kovidgoyal.kitty", "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal" }) do
+    for _, app in ipairs({ "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal" }) do
         t.eq({ middlepaste.wants(true, app, FIELD) }, { false, "a terminal's own" }, app)
     end
     t.eq(middlepaste.wants(true, nil, FIELD), true, "an app with no bundle ID")
+    t.eq(middlepaste.wants(true, "net.kovidgoyal.kitty", {}), true, "anywhere in kitty, which says nothing")
+    t.eq({ middlepaste.wants(false, "net.kovidgoyal.kitty", {}) }, { false, "off" })
+end)
+
+t.test("a middle click in kitty pastes another app's selection, and leaves kitty's own to kitty", function()
+    t.eq(middlepaste.into_kitty({ text = "from Chrome", pid = 1 }, 9), "from Chrome")
+    t.eq(middlepaste.into_kitty({ text = "from kitty", pid = 9 }, 9), nil)
+    t.eq(middlepaste.into_kitty(nil, 9), nil)
+    t.eq(middlepaste.into_kitty({ text = "", pid = 1 }, 9), nil)
+end)
+
+t.test("kitty's selection is its get-text output without the newline kitten adds", function()
+    t.eq(middlepaste.kitty_text("ls -l\n"), "ls -l")
+    t.eq(middlepaste.kitty_text("two\nlines\n"), "two\nlines")
+    t.eq(middlepaste.kitty_text("\n"), nil)
+    t.eq(middlepaste.kitty_text(""), nil)
+    t.eq(middlepaste.kitty_text(nil), nil)
+end)
+
+t.test("kitty's paste click isn't one tide takes, nor Super's", function()
+    t.eq(middlepaste.plain(2, middlepaste.KITTY_PASTE), false)
+    t.eq(middlepaste.KITTY_PASTE.alt, nil, "Option is Super")
 end)
 
 t.test("a drag, a double click and a Shift click may select; a plain click doesn't", function()

@@ -10,9 +10,22 @@ local M = {}
 -- macos.json's switch, off unless turned on (macprefs.lua).
 M.SETTING = "mouse.middleClickPaste"
 
--- Terminals paste their own selection on a middle click, so theirs is left
--- to them: kitty from its own buffer (conf's kitty/macos.conf), Ghostty,
--- iTerm2 and Terminal from theirs.
+-- kitty shares the one selection: tide reads what's selected there over
+-- its remote control socket, and pastes into it with a click conf's
+-- kitty/macos.conf maps to pasting the clipboard (M.KITTY_PASTE).
+M.KITTY = "net.kovidgoyal.kitty"
+
+-- The modifiers on the middle click tide sends kitty to paste, which conf's
+-- kitty/macos.conf maps to paste_from_clipboard, grabbed or not. Neither
+-- is Super, so the click doesn't maximize.
+M.KITTY_PASTE = { ctrl = true, shift = true }
+
+-- What tide marks the events it posts with (eventSourceUserData), so its
+-- own mouse tap lets them through untouched.
+M.MARK = 0x7469646d
+
+-- The terminals. Each pastes its own selection on a middle click, so the
+-- click is left to them, all but kitty's (M.KITTY).
 M.TERMINALS = {
     ["net.kovidgoyal.kitty"] = true,
     ["com.mitchellh.ghostty"] = true,
@@ -87,12 +100,15 @@ function M.takes_text(chain)
 end
 
 -- Whether a middle click is tide's to look into, before the selection is
--- read: the setting is on, and it's on a text field outside a terminal.
+-- read: the setting is on, and it's on a text field outside a terminal,
+-- or anywhere in kitty, which says nothing through Accessibility.
 -- Anything else is the app's, so a link still opens in a new tab and a tab
 -- still closes. Returns false and why.
 function M.wants(on, app, chain)
     if not on then
         return false, "off"
+    elseif app == M.KITTY then
+        return true
     elseif M.TERMINALS[app] then
         return false, "a terminal's own"
     elseif not M.takes_text(chain) then
@@ -126,6 +142,30 @@ function M.pick(remembered, front, live)
         return live
     end
     return remembered and remembered.text or nil
+end
+
+-- What a middle click in kitty (`pid`) pastes: the last selection, when it
+-- came from another app. kitty's own is left to kitty, which pastes it
+-- from its buffer, so a program that has the mouse there, such as vim,
+-- still gets its middle click.
+function M.into_kitty(remembered, pid)
+    if remembered and remembered.pid ~= pid and M.usable(remembered.text) then
+        return remembered.text
+    end
+    return nil
+end
+
+-- kitty's selection, from `kitten @ get-text --extent=selection`'s output,
+-- which ends in a newline it adds; nil for none.
+function M.kitty_text(out)
+    if type(out) ~= "string" then
+        return nil
+    end
+    local text = out:gsub("\n$", "")
+    if text == "" then
+        return nil
+    end
+    return text
 end
 
 -- What goes on the pasteboard for the paste: the text, marked transient.
