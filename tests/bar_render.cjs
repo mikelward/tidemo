@@ -2,7 +2,8 @@
 // the command line) in Chromium, standing in for WebKit, and checks the
 // layout's zones where only a real browser lays them out: a side wider
 // than its half keeps its whole width, and the center zone moves over to
-// clear it, so nothing overlaps; only the title gives way.
+// clear it, so nothing overlaps; only the title gives way. A hover lights
+// only the item's own cell, not the rest of its click target.
 //
 // Needs Playwright with Chromium, and skips with a note without it.
 
@@ -91,6 +92,15 @@ const clockFiles = [{ path: "clocks.json", text: JSON.stringify({ clocks: ["Amer
     await update({ uuid: "A", workspaces: workspaces.slice(0, 2), title: "Notes", icons: {}, clockFiles });
     const c = await box("center");
     assert.ok(Math.abs((c.left + c.right) / 2 - 550) < 1, `centered (${c.left}..${c.right})`);
+    // The clocks' click target reaches the bar's right edge, but their
+    // hover lights only their own cell, as every item's does.
+    const [hit, lit] = await tab.evaluate(() => {
+      const clocks = document.getElementById("clocks");
+      const at = (pseudo) => -parseFloat(getComputedStyle(clocks, pseudo).right);
+      return [at("::before"), at("::after")];
+    });
+    assert.ok(hit > 4, `the clocks' click target reaches the bar's edge (${hit}px)`);
+    assert.ok(lit <= 4, `but their hover stops by their cell (${lit}px)`);
     assert.deepStrictEqual(errors, []);
     await context.close();
   } finally {

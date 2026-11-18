@@ -2389,11 +2389,14 @@ stock keys:
     the chip's height and halfway to its neighbors. `bar.js` measures the
     items on each fit and draws each target as a box under the item's
     content.
-  - **Hover shows the target.** Under the pointer, an item's whole target
+  - **Hover shows the item's own cell.** Under the pointer, the item
     shows as a rounded rect, half pressed: tide for Chrome's `--hover`, a shade
-    darker than the bar in light and lighter in dark. A chip shows with
-    the space around it, a window icon as its own, the title as the free
-    bar, a status item with its text, the logo, and the clocks as one row. The
+    darker than the bar in light and lighter in dark. It reaches at most
+    4 px past each end, never the rest of the click target, as tide for
+    Linux's does: the clocks don't light up to the bar's edge, nor the
+    title across the free bar. A chip shows with the space around it, a
+    window icon as its own, a status item with its text, the logo, and
+    the clocks as one row. The
     rounding is drawn, not hit-tested, so it moves no click. WebKit
     follows the pointer only in the key window, which the bar never is
     (WebKit's `trackingAreaOptions` in `WebViewImpl.mm`), so `:hover`
