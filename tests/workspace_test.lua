@@ -293,9 +293,24 @@ t.test("restoring a hidden window from the Dock brings its workspace along", fun
     wm:act("send", "5")
     a.tick() -- tide's expectation lapses
     a.wins[1].minimized = false
+    -- A click on its Dock icon.
+    wm:clicked(false)
     wm:unminimized(1)
     t.eq(wm.current, "5")
     t.eq(a.focus_, 1)
+end)
+
+t.test("an app restoring its own window on a hidden workspace doesn't switch", function()
+    local a, wm = setup(2)
+    a.focus_ = 1
+    wm:act("send", "5")
+    wm:show("in", nil, true)
+    a.tick()
+    a.clock = a.clock + 30
+    a.wins[1].minimized = false
+    wm:unminimized(1)
+    t.eq(wm.current, "in", "you stay where you are")
+    t.eq(wm:attention_windows(), { 1 }, "marked for attention")
 end)
 
 t.test("a new window joins the workspace showing", function()

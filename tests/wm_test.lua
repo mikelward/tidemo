@@ -822,6 +822,33 @@ t.test("from the launcher, a running app opens a new window here, where it can",
     t.eq(wm:current_ws(), "in", "to its window, on in")
 end)
 
+t.test("a new browser window on a new workspace stays there, though the browser's old window comes forward first", function()
+    local a, wm = setup(1)
+    a.wins[1].app = "com.google.Chrome"
+    wm.windows[1].app = "com.google.Chrome"
+    a.focus_ = 1
+    wm:focused(1)
+    wm:show("proj", nil, true)
+    a.tick()
+    a.can_new_window = function()
+        return true
+    end
+    -- The launcher: Return on Chrome.
+    wm:key_down("return", false)
+    wm:act("app", { bundle = "com.google.Chrome", new_window = true })
+    -- macOS brings Chrome forward with its window on "in" first.
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "proj", "you stay on the new workspace")
+    t.eq(wm:find("proj") ~= nil, true)
+    -- Then the new window opens.
+    a.add(2, { app = "com.google.Chrome" })
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[2].ws, "proj")
+    t.eq(wm.current, "proj")
+end)
+
 t.test("Super+T opens a new terminal window every time, on this workspace, as tide's does", function()
     local a, wm = setup(1)
     a.wins[1].app = "net.kovidgoyal.kitty"
@@ -1015,8 +1042,9 @@ t.test("focusing a parked window, as Cmd+Tab does, brings its workspace along", 
     wm:focused(1)
     wm:show("2", nil, true)
     t.eq(wm.parked[1], true)
-    -- Cmd+Tab: Command down, then macOS focuses the app's window.
+    -- Cmd+Tab: Command down, Tab, then macOS focuses the app's window.
     wm:modifiers(true)
+    wm:key_down("tab", true)
     a.focus_ = 1
     wm:focused(1)
     wm:modifiers(false)
@@ -1143,9 +1171,81 @@ t.test("after the grace, focusing a parked window still brings its workspace", f
     wm:hold("launcher", true)
     wm:hold("launcher", false)
     a.clock = a.clock + wm_mod.GRACE + 1
+    -- Cmd+Tab to it.
+    wm:modifiers(true)
+    wm:key_down("tab", true)
+    wm:modifiers(false)
     a.focus_ = 1
     wm:focused(1)
     t.eq(wm.current, "in", "an app you go to later brings its workspace")
+end)
+
+-- Window 1 on "in", parked, while you're on "work" with window 2.
+local function away()
+    local a, wm = setup(2)
+    wm:send(2, "work")
+    wm:show("work", nil, true)
+    a.focus_ = 2
+    wm:focused(2)
+    t.eq(wm.parked[1], true)
+    return a, wm
+end
+
+t.test("an app bringing its parked window forward by itself is marked, and you stay", function()
+    local a, wm = away()
+    a.clock = a.clock + 30
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "work", "the workspace you're on still shows")
+    t.eq(wm.parked[1], true)
+    t.eq(a.focus_, 2, "the window you were in has the focus back")
+    t.eq(wm:attention_windows(), { 1 }, "marked for attention")
+end)
+
+t.test("on an empty workspace, an app coming forward by itself doesn't take you away", function()
+    local a, wm = on_empty()
+    a.clock = a.clock + 30
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "new")
+    t.eq(wm:find("new") ~= nil, true, "the empty workspace is kept")
+end)
+
+t.test("a click on the desktop that brings up a parked Finder window doesn't switch", function()
+    local a, wm = on_empty()
+    a.clock = a.clock + 30
+    wm:clicked(true)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "new")
+end)
+
+t.test("a click in the Dock that focuses a parked window brings its workspace", function()
+    local a, wm = on_empty()
+    a.clock = a.clock + 30
+    wm:clicked(false)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "in")
+end)
+
+t.test("a click on a notification for a window on another workspace brings its workspace", function()
+    local a, wm = on_empty()
+    a.clock = a.clock + 30
+    -- The banner is a window, over the tiling area.
+    wm:clicked(false)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "in")
+end)
+
+t.test("a click on a parked window's sliver brings its workspace", function()
+    local a, wm = on_empty()
+    a.clock = a.clock + 30
+    wm:clicked(false)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm.current, "in")
 end)
 
 t.test("closing a window with others left on its workspace focuses one of them", function()
