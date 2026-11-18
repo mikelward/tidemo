@@ -208,6 +208,21 @@ nav > button:first-child::after,
   left: calc(-1 * var(--reach-left, 0px));
   right: calc(-1 * var(--reach-right, 0px));
 }
+/* The hover, though, is the item's own cell: at most 4px past each end,
+   never the rest of its reach, so the first or last workspace, whose reach
+   can run to the bar's edge or across its middle, lights up alone, as
+   tide for Linux's do (its barclick.mjs's hoverRect). */
+#apple::after,
+#logo::after,
+nav > button::after,
+nav > button:first-child::after,
+#logo + nav > button:first-child::after,
+#clocks::after,
+#icons > .icon::after,
+#title::after {
+  left: calc(-1 * min(var(--reach-left, 0px), 4px));
+  right: calc(-1 * min(var(--reach-right, 0px), 4px));
+}
 #apple::after,
 #logo::after,
 #icons > .icon::after,
