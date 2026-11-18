@@ -101,6 +101,11 @@ M.FLOAT_CAP = 0.8
 -- window (a cold launch, System Settings showing About This Mac), short
 -- enough that one long after isn't taken for what you asked.
 M.GRANT = 5
+-- How long a launch of a known app waits for its window to take the
+-- workspace you launched it for (M:launch_live): a cold start of a heavy
+-- app can take longer than M.GRANT. A launch of a helper, whose window may
+-- be any app's, waits only M.GRANT, so an unrelated window can't take it.
+M.LAUNCH_WAIT = 60
 M.GRACE = 1
 -- How long after tide first sees a window a new title still decides it
 -- again: a browser's popup can open before its page has named it.
@@ -1082,6 +1087,11 @@ end
 -- you launch it, wherever macOS opens it (SPEC.md §6.1). `screen` is that
 -- display, read as the key was pressed, before a prompt or a switch moved
 -- focus; nil reads it now.
+-- Whether launch `l` still waits for its window at time `now`.
+function M:launch_live(l, now)
+    return now - l.at <= (l.app ~= nil and M.LAUNCH_WAIT or M.GRANT)
+end
+
 function M:launch_to(app, ws, screen)
     self.launches = self.launches or {}
     self.launches[#self.launches + 1] = { app = app, ws = ws, at = self.a.now(), screen = screen or self:current_screen() }
@@ -1108,7 +1118,7 @@ end
 function M:launch_pending(app)
     local now = self.a.now()
     for _, l in ipairs(self.launches or {}) do
-        if app ~= nil and l.app == app and now - l.at <= M.GRANT then
+        if app ~= nil and l.app == app and self:launch_live(l, now) then
             return true
         end
     end
@@ -1122,11 +1132,12 @@ function M:launched_to(w, take, how)
     local now = self.a.now()
     local list = self.launches or {}
     for i = #list, 1, -1 do
-        if now - list[i].at > M.GRANT then
+        if not self:launch_live(list[i], now) then
             table.remove(list, i)
         end
     end
-    local passes = how == "own" and { "own", "any" } or { how or "either" }
+    -- "exact": only a launch of this app, never one for any app.
+    local passes = how == "own" and { "own", "any" } or how == "exact" and { "own" } or { how or "either" }
     for _, pass in ipairs(passes) do
         for i, l in ipairs(list) do
             local fits
@@ -1237,7 +1248,9 @@ function M:add(id)
         -- launch of one was made from.
         w.ws = self.home
         w.mine = f.minimized or false
-        local l = self:launched_to(w, true)
+        -- Only a launch of its own app: a helper's launch, for any app,
+        -- is for the helper's window, not one of home's that opens meanwhile.
+        local l = self:launched_to(w, true, "exact")
         if l then
             self:launched_on(w, l, kind)
         end
@@ -1400,10 +1413,12 @@ function M:match(id, f, live)
     if s then
         return s
     end
+    -- A title with nothing in common with any place's isn't a window
+    -- coming back: it joins the workspace showing (SPEC.md §6.5).
     local best, score
     for _, c in ipairs(self:places(f.app, live)) do
         local l = likeness(f.title, c.place.title)
-        if not best or l > score then
+        if l > 0 and (not best or l > score) then
             best, score = c, l
         end
     end
@@ -1428,13 +1443,29 @@ function M:pair(ids, live)
         end
     end
     -- After every reused id has given up its place, so those count too.
+    -- Only titles with something in common pair (M:match). Ties go in the
+    -- order macOS listed the windows, then the places' order, so the
+    -- same windows always pair the same way.
+    local rank = {}
+    for i, id in ipairs(ids) do
+        rank[id] = i
+    end
     for id, f in pairs(facts) do
-        for _, c in ipairs(self:places(f.app, live)) do
-            pairs_[#pairs_ + 1] = { id = id, c = c, score = likeness(f.title, c.place.title) }
+        for k, c in ipairs(self:places(f.app, live)) do
+            local score = likeness(f.title, c.place.title)
+            if score > 0 then
+                pairs_[#pairs_ + 1] = { id = id, c = c, score = score, k = k }
+            end
         end
     end
     table.sort(pairs_, function(p, q)
-        return p.score > q.score
+        if p.score ~= q.score then
+            return p.score > q.score
+        end
+        if rank[p.id] ~= rank[q.id] then
+            return rank[p.id] < rank[q.id]
+        end
+        return p.k < q.k
     end)
     local taken = {}
     for _, p in ipairs(pairs_) do
@@ -1457,7 +1488,7 @@ function M:reserve_launches(ids, facts)
     local want = {}
     local now = self.a.now()
     for _, l in ipairs(self.launches or {}) do
-        if l.app ~= nil and now - l.at <= M.GRANT then
+        if l.app ~= nil and self:launch_live(l, now) then
             want[l.app] = (want[l.app] or 0) + 1
         end
     end
@@ -2649,6 +2680,12 @@ function M:before_launch(opts, go)
     opts.screen = opts.screen or self:current_screen()
     local cur = self:current_ws()
     local ask = opts.fresh or (self:asks_for_name(cur) and not opts.home_app)
+    -- One of home's apps opens on home, wherever you launch it from
+    -- (SPEC.md §6.2), even run by a helper whose window tide can't tell
+    -- is that app's.
+    if opts.home_app and not opts.fresh then
+        cur = self.home
+    end
     if not ask or not self.ask_launch then
         self:launch_to(opts.app, cur, opts.screen)
         go(self:env(cur))

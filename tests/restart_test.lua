@@ -537,4 +537,19 @@ t.test("a window that comes back after the places lapse joins the workspace show
     t.eq(wm.windows[2].ws, "in")
 end)
 
+t.test("a relaunched app's window with a title like none of its places joins the workspace showing", function()
+    local a = fake.new()
+    a.add(10, { app = "chat", pid = 200, title = "Welcome" })
+    local wm = start(a, {
+        windows = { ["1"] = place("chat", "Team", "ti", 1) },
+        names = { "in", "ti" },
+        current = "in",
+    })
+    t.eq(wm.windows[10].ws, "in")
+    a.add(11, { app = "chat", pid = 200, title = "Team" })
+    wm:schedule()
+    a.tick()
+    t.eq(wm.windows[11].ws, "ti", "its place stays for a window that fits it")
+end)
+
 t.done("restart")
