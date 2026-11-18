@@ -167,10 +167,10 @@ local function open_tab(tide, item)
         return
     end
     if item.win and tide.wm.windows[item.win] then
-        tide.wm:activate(item.win)
+        tide.wm:activate(item.win, nil, "switcher: a tab")
     end
     -- The browser activating is the launch you made (SPEC.md §14.1).
-    tide.wm:grant(b.bundle)
+    tide.wm:because("switcher: a tab", tide.wm.grant, tide.wm, b.bundle)
     local ok, _, err = hs.osascript.applescript(launcher.open_tab_script(b, item))
     if not ok then
         tide.adapter.notify("Couldn't open that " .. item.browser .. " tab: " .. hs.inspect(err))
@@ -313,6 +313,13 @@ end
 -- table kept in hs.settings): `fresh` is Cmd+Return's new workspace. Shared
 -- by the chooser and the dashboard launcher (launcherpage_hs.lua).
 function M.run(tide, recency, item, fresh)
+    -- What you chose, as the trail's why for whatever it switches or
+    -- focuses (wm:because), for Report a bug.
+    return tide.wm:because("switcher: " .. tostring(item.kind or "row") .. " " .. tostring(item.title),
+        M.run_row, tide, recency, item, fresh)
+end
+
+function M.run_row(tide, recency, item, fresh)
     recency[item.key] = os.time()
     hs.settings.set(M.RECENCY_KEY, recency)
     if item.kind == "app" and not item.path and item.action == "app" then
@@ -521,7 +528,7 @@ function M.new(tide)
         if not choice then
             -- Dismissed: back to the window you were in.
             if before then
-                tide.wm:focus_unburied(before)
+                tide.wm:focus_unburied(before, nil, "switcher closed: back to the window you were in")
             end
             return
         end

@@ -83,7 +83,13 @@ local function setup()
     package.loaded["tide.picker_hs"] = nil
     local picker_hs = require("tide.picker_hs")
     local tide = {
-        wm = { hold = function() end },
+        wm = {
+            hold = function() end,
+            note = function(_, kind, what, why)
+                s.trail = s.trail or {}
+                s.trail[#s.trail + 1] = { kind = kind, what = what, why = why }
+            end,
+        },
         adapter = { log = function(m) s.logs[#s.logs + 1] = m end },
     }
     return s, picker_hs.new(tide)
@@ -97,6 +103,8 @@ t.test("Return copies the row and pastes it with Cmd+V into the app that was in 
     t.eq(#s.strokes, 1)
     t.eq(s.strokes[1].keys, "cmd+v")
     t.eq(s.strokes[1].app == s.front, true, "the paste goes to the app that was in front")
+    t.eq(s.trail and s.trail[1].kind, "focus", "the trail says the picker moved the focus")
+    t.eq(s.trail and s.trail[1].why, "picker: Return")
 end)
 
 t.test("Esc pastes nothing", function()

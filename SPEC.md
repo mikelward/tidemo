@@ -1749,6 +1749,7 @@ These are bound another way, or differ:
 | `Super+\` / `Super+/` | grow / shrink the master (`mfact` ±0.025), repeating | hotkey |
 | `Super+Insert` | float or tile, as `Super+Shift+F` | hotkey on the Mac's Help key, which a PC keyboard's Insert sends |
 | `Super+Shift+I` | Tide Settings' Floating section, filled in for the focused window (§15) | hotkey; tide for Linux's `Super+Alt+F`, but Super holds Option already |
+| `Super+B` | Report a bug (§15) | hotkey; tide for Linux's `Super+Alt+B`, but Super holds Option already, and under the rotation physical Alt adds Control, which Super holds too, so physical Win+Alt+B arrives as `Super+B` *(unverified on a Mac)*. tide for Linux's `Super+B`, Bluetooth, isn't bound here |
 | `Super`+drag, `Super`+right-drag, `Super`+middle-click | move, resize, maximize (§5.3) | event tap |
 | `Super+Shift+N` | Notification Center | no public way to open it *(unverified)*; else the clock in the menu bar |
 | `Print` / `Alt+Print` / `Shift+Print`, `Super+Print` | screenshot screen / window / region, Super+Print a region too (§10) | hotkey on F13, which a PC keyboard's Print sends *(unverified)* |
@@ -1767,7 +1768,8 @@ Keys only tide for macOS has:
 
 The app keys, `Super+T` / `W` / `G` / `F` / `Shift+G` / `E` / `C` /
 `Shift+C` / `H` / `I` / `M` / `N` / `R` / `Y`, are conf's (tide for
-Linux §6.6), all but its `Super+B` and `Super+Shift+B` (below).
+Linux §6.6), all but its `Super+B` and `Super+Shift+B`, Bluetooth's.
+Here `Super+B` reports a bug (above).
 
 - **The Super tap** must not fire after Super+T, Super+drag or
   Super+click (tide for Linux §8). A mouse button or scroll counts as "another key"
@@ -2821,7 +2823,7 @@ tab, the search field naming the tab you're in.
     there with its workspace.
   - **Actions:** every quick action, listed with nothing typed, in a fixed
     order: lock, log out, sleep, restart, shut down, reload and check
-    tide, keep awake, presenter mode, Do Not Disturb, dark style, focus
+    tide, report a bug (§15), keep awake, presenter mode, Do Not Disturb, dark style, focus
     follows mouse, then the screenshots. Typing filters them. They're off
     Launch's empty list, and a query there that matches nothing on Launch
     still finds one, as text that matches nothing in a tab searches them
@@ -4549,6 +4551,73 @@ Each one names a workaround, or says there is none.
     in new kitty windows (§6.3);
   - Stage Manager or Sequoia's tiling on (§6.6);
   - a second bar running, such as SketchyBar.
+
+- **Report a bug,** on `Super+B` and the switcher's Actions tab, and on
+  Launch for a query, so the Super tap, "bug" and Return find it. It
+  makes a plain-text report of the 30 seconds before you asked, then:
+  - puts it on the clipboard;
+  - saves it as `~/Library/Logs/tide/tide-report-<date>-<time>.txt`;
+  - opens mikelward/tidemo's new issue page, its title started and its
+    body short: what the report holds, tide's version and macOS's, and
+    "the full report is on your clipboard: paste it below". The address
+    stays under 6,000 characters; past that, it carries the title alone;
+  - says so in a notification.
+
+  **Nothing is sent.** You read the report, paste it and submit the issue
+  yourself. It can name your apps and hold tide's log lines. Your home
+  folder reads `~`, this Mac's names `host1` and your user name `user1`,
+  and the body's first line says so (`report.lua`).
+
+  **What it holds:**
+  - tide for macOS's version and commit, macOS's version and
+    Hammerspoon's. `make install` writes the version, the commit count and
+    commit, to `~/.hammerspoon/tide/version`; from a shallow clone, or
+    without git, it says "unknown";
+  - every workspace switch and focus move in those 30 seconds, each with
+    why (below);
+  - tide's log lines from those 30 seconds. Each goes to Hammerspoon's
+    console and to memory with its time, since the console's text can't
+    be cut by time;
+  - each workspace's windows now, by app and window id, the one showing
+    marked, and the focused window;
+  - `tide doctor`'s findings.
+
+  **Why each switch and focus move happened** (`trail.lua`), since a
+  workspace that changes unasked is the bug this is for. The trail keeps
+  the last 10 minutes, at most 400 entries, in memory only; the report
+  takes its last 30 seconds. Each entry says what changed and why:
+  - **workspace:** which one showed and which it left. Why is the key
+    (`key Super+2`), the action, the switcher's or dashboard launcher's
+    row, the bar, the menu bar item, the tray, the overview, the
+    dashboard, the trackpad swipe, the name prompt, or macOS focusing a
+    window on a hidden workspace that you chose: Cmd+Tab, Return, or a
+    click, and how long before. Start and a numbered workspace left empty
+    say so too.
+  - **focus:** each focus tide asks for, with the same reasons, and focus
+    follows mouse's; each focus macOS reports, with what tide did: kept,
+    and the rule that let it (tide asked, the app you were in, a click or
+    key just before, a launch's grant), taken back from an app that
+    activated itself, or, on a hidden workspace, staying where you are
+    (a close, a launch on its way, an app that came forward by itself)
+    or following it. Focus handed back after a close, a minimize or one
+    of tide's own windows closing, focus given to no window, and the
+    picker activating the app it pastes into are entries too.
+  - **window:** each window opened, and the workspace it went to and why
+    (its place before, a dialog's window, home's apps, a launch, the one
+    showing); each closed; each minimized or restored without tide.
+  - **grant:** each launch's grant (§14.1). Clicks and keys aren't
+    entries: the focus they let in names them.
+  - **space:** each macOS Space change, through `hs.spaces.watcher`.
+    tide doesn't follow Spaces (§2.3), but one can move the focus.
+
+  A switch or focus that names no reason says `unknown`, with the
+  functions that led to it, so a missed call site still shows.
+
+  **Cost and reliability:** no network and no money. The trail costs a
+  table entry per switch, focus and window, trimmed as it's added; the
+  report reads nothing new but the version file.
+  *Unverified on a Mac:* that `hs.spaces.watcher` still fires on macOS
+  26, and that physical Win+Alt+B arrives as `Super+B` (§7.2).
 
 ## 16. Known problems
 

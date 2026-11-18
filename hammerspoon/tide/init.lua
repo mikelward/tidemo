@@ -87,6 +87,7 @@ local linearmouse = require("tide.linearmouse")
 local karabiner = require("tide.karabiner")
 local checklist = require("tide.checklist")
 local inputsrc = require("tide.inputsrc")
+local report_hs = require("tide.report_hs")
 
 local M = {}
 
@@ -118,8 +119,10 @@ local function bind_all(self)
     -- and tide doctor (SPEC.md §15).
     local bound, failed = {}, {}
     local function bind(mods, b)
+        -- The key goes in the trail as why (wm:act), for Report a bug.
+        local why = "key " .. tostring(b.keys or b.key)
         local fn = function()
-            self.wm:act(b.action, b.arg)
+            self.wm:act(b.action, b.arg, why)
         end
         -- One bad or taken key mustn't stop the rest binding.
         local ok, h = pcall(hs.hotkey.bind, mods, b.key, fn, nil, b.repeating and fn or nil)
@@ -156,7 +159,7 @@ local function resize_mode(self)
     end
     for _, b in ipairs(keys.resize) do
         local fn = function()
-            self.wm:act("resize_by", b.d)
+            self.wm:act("resize_by", b.d, "resize mode")
         end
         modal:bind({}, b.key, fn, nil, fn)
     end
@@ -299,7 +302,7 @@ function M:sync_menubar_item()
                 items[#items + 1] = {
                     title = n,
                     fn = function()
-                        self.wm:act("show", n)
+                        self.wm:act("show", n, "menu bar: a click on the workspace")
                     end,
                 }
             end
@@ -500,6 +503,10 @@ function M.start(config)
     end)
     adapter_mod.bells(function(id)
         self.wm:rang(id)
+    end, self.adapter.log)
+    -- A Space change goes in Report a bug's trail (SPEC.md §15).
+    self.space_watch = adapter_mod.spaces(function()
+        self.wm:space_changed()
     end, self.adapter.log)
     -- Quitting or reloading Hammerspoon brings back every hidden window.
     hs.shutdownCallback = function()
@@ -1042,6 +1049,11 @@ function M.start(config)
         end
         hs.settings.set(launcherpage.SETTINGS_KEY, value)
         return true
+    end
+    -- Super+B and the switcher's Report a bug (SPEC.md §15).
+    self.report = report_hs.new(self)
+    self.wm.open_report = function()
+        self.report.run()
     end
     self.dashboard = dashboard_hs.new(self)
     self.wm.open_dashboard = function()

@@ -681,7 +681,12 @@ for _, sec in ipairs(M.SETTINGS_SECTIONS) do
         query_only = true,
     }
 end
+-- Report a bug is on Actions, and on Launch for a query alone, so the
+-- Super tap, "bug" and Return find it there, before a settings section
+-- whose words hold b, u and g (SPEC.md §15).
+local REPORT_SUB = "The report goes on your clipboard, and the issue page opens"
 for _, c in ipairs({
+    { title = "Report a bug", action = "report_bug", sub = REPORT_SUB, logo = true, query_only = true },
     { title = "Layout: tile", action = "layout", arg = "tile" },
     { title = "Layout: three columns", action = "layout", arg = "threecol" },
     { title = "Layout: two columns", action = "layout", arg = "twocol" },
@@ -700,6 +705,7 @@ for _, c in ipairs({
     { title = "Shut down", quick = "shutdown", tab = "actions", group = "Session" },
     { title = "Reload tide", key = "Reload tilemo", quick = "reload", logo = true, tab = "actions", group = "tide" },
     { title = "Check tide (doctor)", key = "Check tilemo (doctor)", quick = "doctor", logo = true, tab = "actions", group = "tide" },
+    { title = "Report a bug", action = "report_bug", sub = REPORT_SUB, logo = true, tab = "actions", group = "tide" },
     { title = "Keep awake", quick = "keep_awake", tab = "actions", group = "Toggles" },
     { title = "Presenter mode: Do Not Disturb and keep awake", quick = "presenter", tab = "actions", group = "Toggles" },
     { title = "Do Not Disturb", quick = "dnd", tab = "actions", group = "Toggles" },

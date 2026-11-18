@@ -53,7 +53,7 @@ function M.new(tide, ops)
         tide.wm:own_window("volume", nil)
         v:delete()
         if refocus and before then
-            tide.wm:focus_unburied(before)
+            tide.wm:focus_unburied(before, nil, "volume closed: back to the window you were in")
         end
     end
 

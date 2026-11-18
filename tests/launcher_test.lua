@@ -947,4 +947,21 @@ t.test("the app scripts in ~/scripts are apps, found by name and run as their ke
     t.eq(launcher.icon(irc), nil, "- shows no app's icon")
 end)
 
+t.test("Report a bug is on the Actions tab, under tide, found by \"bug\", with its key", function()
+    local items = launcher.items({}, {}, launcher.COMMANDS, {})
+    local rows = launcher.sections("actions", "", launcher.rank("", items, { scope = "actions" }))
+    local group
+    for _, r in ipairs(rows) do
+        if r.header then
+            group = r.header
+        elseif r.item.title == "Report a bug" then
+            t.eq(group, "tide", "its group")
+        end
+    end
+    local hit = launcher.rank("bug", items, { scope = "launch" })[1]
+    t.eq(hit.title, "Report a bug", "typed on Launch, as the Super tap opens it")
+    t.eq(hit.action, "report_bug")
+    t.eq(launcher.key_hint(hit), "Super+B")
+end)
+
 t.done("launcher")

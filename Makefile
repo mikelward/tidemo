@@ -89,6 +89,13 @@ lint:
 install:
 	mkdir -p $(HAMMERSPOON_DIR)/tide
 	cp hammerspoon/tide/*.lua $(HAMMERSPOON_DIR)/tide/
+	@# The version and commit, for Report a bug (report.lua); "unknown" from
+	@# a shallow clone, whose commit count isn't the version, or without git.
+	@if test "$$(git rev-parse --is-shallow-repository 2>/dev/null)" = false; then \
+		printf '%s %s\n' "$$(git rev-list --count HEAD)" "$$(git rev-parse --short HEAD)"; \
+	else \
+		echo unknown; \
+	fi > $(HAMMERSPOON_DIR)/tide/version
 	cp hammerspoon/tide/chars.tsv hammerspoon/tide/LICENSE-UNICODE $(HAMMERSPOON_DIR)/tide/
 	cp hammerspoon/tide/cities.tsv $(HAMMERSPOON_DIR)/tide/
 	cp hammerspoon/tide/compose.tsv hammerspoon/tide/LICENSE-X11 $(HAMMERSPOON_DIR)/tide/

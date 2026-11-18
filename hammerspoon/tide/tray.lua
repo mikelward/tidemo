@@ -77,7 +77,7 @@ end
 -- A click on a tray's icon: Restore (SPEC.md §6.1), with its workspace.
 function M.click(wm, id)
     if wm.windows[id] then
-        wm:activate(id)
+        wm:activate(id, nil, "tray: a click on the window's icon")
     end
 end
 

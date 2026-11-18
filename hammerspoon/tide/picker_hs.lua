@@ -157,6 +157,9 @@ function M.new(tide)
     -- front again: keystrokes, never the pasteboard, so no clipboard
     -- history keeps a password.
     local function type_into(into, text)
+        if into then
+            tide.wm:note("focus", "picker: activating " .. tostring(into:name()) .. " to type into", "picker: Fill")
+        end
         if not into or not into:activate() then
             tide.adapter.log("picker: couldn't bring the app back to type into")
             hs.alert.show("Couldn't type that")
@@ -218,6 +221,7 @@ function M.new(tide)
                 tide.adapter.log("picker: couldn't put the selection on the pasteboard")
                 hs.alert.show("Couldn't copy that")
             elseif into then
+                tide.wm:note("focus", "picker: activating " .. tostring(into:name()) .. " to paste into", "picker: Return")
                 if into:activate() then
                     hs.eventtap.keyStroke({ "cmd" }, "v", 0, into)
                 else

@@ -38,7 +38,7 @@ end
 -- A swipe that steps `wm`'s workspaces, as Super+PgUp and PgDn do.
 function M.for_wm(wm)
     return M.new(function(d)
-        wm:act("step", d)
+        wm:act("step", d, "trackpad swipe")
     end)
 end
 
