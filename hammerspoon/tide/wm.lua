@@ -304,12 +304,29 @@ function M.migrate(saved, home)
     return { windows = windows, gone = gone, screens = screens, current = current, names = names }, true
 end
 
+-- The saved state `saved`, if it's from login session `session`: a state
+-- from an earlier login is dropped, so you start on home with nothing
+-- placed, as tide for Linux does at login (SPEC.md §6.5). The apps a login
+-- opens are new windows, not ones coming back. A state saved before
+-- sessions were kept, or with no session to compare, is kept.
+function M.this_session(saved, session, adapter)
+    if type(saved) ~= "table" or session == nil or saved.session == nil or saved.session == session then
+        return saved
+    end
+    if adapter and adapter.log then
+        adapter.log("a new login: starting on home, without the last session's places")
+    end
+    return nil
+end
+
 function M.new(adapter, config)
     config = config or {}
     local standing = M.check_standing(config.workspaces or M.STANDING)
-    local saved, migrated = M.migrate(config.saved, standing[1])
+    local saved, migrated = M.migrate(M.this_session(config.saved, config.session, adapter), standing[1])
     local self = setmetatable({
         a = adapter,
+        -- The login session this state is saved for (M.this_session).
+        session = config.session,
         layout = config.layout or layout.defaults,
         -- The height tide's bar takes from each display, or 0 with the bar
         -- off (bar.lua), and which edge it takes it from: "top" or
@@ -1841,6 +1858,7 @@ function M:snapshot()
         end
     end
     out.current = self.current
+    out.session = self.session
     out.names = {}
     for i, n in ipairs(self.names) do
         out.names[i] = n

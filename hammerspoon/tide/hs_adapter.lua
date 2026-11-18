@@ -74,6 +74,25 @@ function M.load()
     return saved.get(hs.settings, M.SETTINGS_KEY, M.OLD_SETTINGS_KEY)
 end
 
+-- This login session, as text: when the Mac booted and the process ID of
+-- this login's loginwindow, which macOS starts afresh at each login. A
+-- reload or restart of Hammerspoon keeps it; a logout and login, or a
+-- restart of the Mac, changes it (wm.this_session). Nil if either can't
+-- be read, which keeps the saved state as before.
+function M.session(log)
+    local boot, ok = hs.execute("/usr/sbin/sysctl -n kern.boottime")
+    local pid, ok2 = hs.execute("/usr/bin/pgrep -U \"$(/usr/bin/id -u)\" -x loginwindow")
+    boot = ok and boot and boot:match("sec = (%d+)")
+    pid = ok2 and pid and pid:match("^%s*(%d+)")
+    if not (boot and pid) then
+        if log then
+            log("couldn't tell this login session apart; keeping the saved workspaces")
+        end
+        return nil
+    end
+    return boot .. ":" .. pid
+end
+
 function M.new()
     local a = {}
     local cache = {}

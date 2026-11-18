@@ -1341,6 +1341,13 @@ the home workspace, the first standing one (§6.1), which is "in" unless
 
 ### 6.5 Restarts and saved state
 
+- **A new login starts afresh,** as on tide for Linux: home shows, the
+  last session's own workspaces are gone, and the apps that open at login
+  are new windows, not ones coming back, so "in"'s apps go to "in" and
+  the rest join it. The state is saved with its login session, the Mac's
+  boot time and the login's `loginwindow` process. A reload or restart of
+  Hammerspoon in the same login keeps everything below. A state saved
+  before sessions were kept, or a session that can't be read, is kept.
 - **When an app quits and relaunches,** its windows come back with new IDs.
   tide matches each to its old place by app and title, closest first, as
   tide for Chrome matches by tab addresses (tide for Chrome §14.2). A window it can't match joins
