@@ -32,6 +32,14 @@ function M.new(hs, d)
     local asked = false
     -- The last selection a mouse gesture made: { text, pid }.
     local remembered
+    -- Each selecting gesture's number, so a read that answers late, as
+    -- kitty's over its socket can, never replaces a newer one's.
+    local gesture = 0
+    local function remember(text, pid, n)
+        if middlepaste.usable(text) and (remembered == nil or (remembered.n or 0) < n) then
+            remembered = { text = text, pid = pid, n = n }
+        end
+    end
     -- A paste under way: the clipboard as it was before, the pasteboard's
     -- change count after tide's write, and the timer that puts it back.
     local held, written, restore_timer
@@ -293,18 +301,19 @@ function M.new(hs, d)
         if not on then
             return
         end
+        gesture = gesture + 1
+        local n = gesture
         local focused, pid, bundle = try("reading what's focused", focus)
         -- kitty says nothing through Accessibility: it's asked over its
-        -- socket instead, and what it says is newer than anything kept.
+        -- socket instead, and its answer is kept unless a later gesture's
+        -- selection has been by then.
         if bundle == middlepaste.KITTY then
             if not d.kitty_selection then
                 return
             end
             hs.timer.doAfter(middlepaste.READ_AFTER, function()
                 try("asking kitty for its selection", d.kitty_selection, pid, function(text)
-                    if middlepaste.usable(text) then
-                        remembered = { text = text, pid = pid }
-                    end
+                    remember(text, pid, n)
                 end)
             end)
             return
@@ -318,9 +327,7 @@ function M.new(hs, d)
             if not middlepaste.usable(text) and count and count ~= hs.pasteboard.changeCount() then
                 text = try("reading iTerm2's copy", hs.pasteboard.readString)
             end
-            if middlepaste.usable(text) then
-                remembered = { text = text, pid = pid }
-            end
+            remember(text, pid, n)
         end)
     end
 

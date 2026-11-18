@@ -251,7 +251,15 @@ local function world()
         -- kitty's selection: `w.kitty` by pid, answered at once.
         kitty_selection = function(pid, done)
             w.kitty_asked = (w.kitty_asked or 0) + 1
-            done((w.kitty or {})[pid])
+            local text = (w.kitty or {})[pid]
+            -- `w.kitty_late` holds the answer back until it's called.
+            if w.kitty_late then
+                w.kitty_late = function()
+                    done(text)
+                end
+                return
+            end
+            done(text)
         end,
     })
     -- Run the timers still due, and those they start, in the order started.
@@ -476,6 +484,23 @@ t.test("a selection made in kitty is read over its socket and pasted into anothe
     t.eq(w.paste.click(1, 1), true)
     w.run()
     t.eq(w.events[3], "cmd+v pastes make test")
+end)
+
+t.test("kitty's answer, coming after a newer selection elsewhere, doesn't replace it", function()
+    local w = world()
+    w.paste.set(true)
+    with_kitty(w)
+    w.kitty[3] = "older kitty words"
+    w.kitty_late = true
+    w.front, w.focused = 3, nil
+    w.paste.selected()
+    w.run()
+    w.select("newer words", 1)
+    w.kitty_late()
+    w.front, w.focused, w.under = 2, focused(""), field(2)
+    t.eq(w.paste.click(1, 1), true)
+    w.run()
+    t.eq(w.events[3], "cmd+v pastes newer words")
 end)
 
 t.test("kitty's own selection, or none, is left to kitty's middle click", function()
