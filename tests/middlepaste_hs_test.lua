@@ -93,10 +93,30 @@ local function world()
         },
         eventtap = {
             event = {
-                types = { leftMouseDown = "down", leftMouseUp = "up" },
+                types = { leftMouseDown = "down", leftMouseUp = "up", otherMouseDown = "odown", otherMouseUp = "oup" },
+                properties = { mouseEventButtonNumber = "button", eventSourceUserData = "mark" },
                 newMouseEvent = function(kind, p)
+                    local props, flags = {}, {}
                     return {
+                        setProperty = function(_, k, v)
+                            props[k] = v
+                        end,
+                        setFlags = function(_, f)
+                            flags = f
+                        end,
                         post = function()
+                            if kind == "odown" or kind == "oup" then
+                                local mods = {}
+                                for _, m in ipairs({ "cmd", "alt", "ctrl", "shift" }) do
+                                    if flags[m] then
+                                        mods[#mods + 1] = m
+                                    end
+                                end
+                                w.events[#w.events + 1] = table.concat(mods, "+") .. "+" .. kind .. " button " .. tostring(props.button)
+                                    .. (props.mark == middlepaste.MARK and " marked" or "") .. " " .. p.x .. "," .. p.y
+                                    .. (kind == "oup" and " pastes " .. tostring(w.board[TEXT]) or "")
+                                return
+                            end
                             w.events[#w.events + 1] = kind .. " " .. p.x .. "," .. p.y
                             -- A click brings the app clicked to the front,
                             -- unless `w.stays` keeps another there.
@@ -171,6 +191,9 @@ local function world()
                     pid = function()
                         return w.front
                     end,
+                    bundleID = function()
+                        return w.bundles[w.front]
+                    end,
                 }
             end,
         },
@@ -203,6 +226,11 @@ local function world()
         -- And the window's id, `w.under_win`.
         window_id = function()
             return w.under_win
+        end,
+        -- kitty's selection: `w.kitty` by pid, answered at once.
+        kitty_selection = function(pid, done)
+            w.kitty_asked = (w.kitty_asked or 0) + 1
+            done((w.kitty or {})[pid])
         end,
     })
     -- Run the timers still due, and those they start, in the order started.
@@ -389,13 +417,82 @@ t.test("the selection is read from where it was made, though another app is in f
     t.eq(w.events[3], "cmd+v pastes picked words")
 end)
 
-t.test("a click on a link, or in a terminal, is left to the app", function()
+-- kitty as the app with pid 3: a window that says nothing through
+-- Accessibility.
+local function with_kitty(w)
+    w.bundles[3] = "net.kovidgoyal.kitty"
+    w.kitty = {}
+    return el({ pid = 3 })
+end
+
+t.test("another app's selection is pasted into kitty with its paste click, and the clipboard comes back", function()
+    local w = world()
+    w.paste.set(true)
+    w.select("picked words", 1)
+    w.front, w.under = 3, with_kitty(w)
+    t.eq(w.paste.click(300, 400), true, "the click is taken")
+    t.eq(w.events, {}, "nothing until the click's event is done with")
+    w.run()
+    t.eq(w.events, {
+        "ctrl+shift+odown button 2 marked 300,400",
+        "ctrl+shift+oup button 2 marked 300,400 pastes picked words",
+    })
+    t.eq(w.board, { [TEXT] = "the clipboard" })
+    t.eq(w.logs, {})
+end)
+
+t.test("a selection made in kitty is read over its socket and pasted into another app", function()
+    local w = world()
+    w.paste.set(true)
+    with_kitty(w)
+    w.kitty[3] = "make test"
+    w.front, w.focused = 3, nil
+    w.paste.selected()
+    w.run()
+    t.eq(w.kitty_asked, 1)
+    t.eq(w.apps[3], nil, "kitty isn't asked through Accessibility")
+    w.front, w.focused, w.under = 2, focused(""), field(2)
+    t.eq(w.paste.click(1, 1), true)
+    w.run()
+    t.eq(w.events[3], "cmd+v pastes make test")
+end)
+
+t.test("kitty's own selection, or none, is left to kitty's middle click", function()
+    local w = world()
+    w.paste.set(true)
+    local under = with_kitty(w)
+    w.front, w.under = 3, under
+    t.eq(w.paste.click(1, 1), false, "nothing selected anywhere")
+    w.kitty[3] = "make test"
+    w.paste.selected()
+    w.run()
+    t.eq(w.paste.click(1, 1), false, "kitty pastes its own from its buffer")
+    w.kitty[3] = nil
+    w.paste.selected()
+    w.run()
+    t.eq(w.paste.click(1, 1), false, "a click in kitty that selects nothing keeps kitty's")
+    w.run()
+    t.eq(w.events, {})
+    t.eq(w.board, { [TEXT] = "the clipboard" })
+end)
+
+t.test("off, kitty isn't asked for its selection, and its middle click is its own", function()
+    local w = world()
+    w.front, w.under = 3, with_kitty(w)
+    w.kitty[3] = "make test"
+    w.paste.selected()
+    w.run()
+    t.eq(w.kitty_asked, nil)
+    t.eq(w.paste.click(1, 1), false)
+end)
+
+t.test("a click on a link, or in another terminal, is left to the app", function()
     local w = world()
     w.paste.set(true)
     w.select("picked words", 1)
     w.under = el({ AXRole = "AXLink", pid = 2, AXParent = el({ AXRole = "AXWebArea", pid = 2 }) })
     t.eq(w.paste.click(1, 1), false)
-    w.bundles[2] = "net.kovidgoyal.kitty"
+    w.bundles[2] = "com.mitchellh.ghostty"
     w.under = field(2)
     t.eq(w.paste.click(1, 1), false)
     w.run()

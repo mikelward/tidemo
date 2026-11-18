@@ -284,4 +284,57 @@ t.test("if New Window can't be chosen while it's behind, the app comes forward t
     t.eq(new_window(true), { "New Window", "activate", "New Window", "Cmd+N" })
 end)
 
+-- The mouse tap, against a stand-in hs.eventtap: `fire(kind, button,
+-- flags, mark)` hands it an event and gives back whether it swallowed it.
+local function tapped(h)
+    local handler
+    local saved = hs.eventtap
+    local types = {}
+    for _, k in ipairs({ "leftMouseDown", "leftMouseDragged", "leftMouseUp", "rightMouseDown", "rightMouseDragged",
+        "rightMouseUp", "otherMouseDown", "otherMouseUp" }) do
+        types[k] = k
+    end
+    hs.eventtap = {
+        event = {
+            types = types,
+            properties = { mouseEventButtonNumber = "button", eventSourceUserData = "mark", mouseEventClickState = "clicks" },
+        },
+        new = function(_, fn)
+            handler = fn
+            return { start = function() end }
+        end,
+    }
+    package.loaded["tide.hs_adapter"] = nil
+    require("tide.hs_adapter").mouse(function(flags)
+        return flags.alt == true
+    end, h)
+    hs.eventtap = saved
+    return function(kind, button, flags, mark)
+        local props = { button = button, mark = mark or 0, clicks = 1 }
+        return handler({
+            getType = function() return kind end,
+            location = function() return { x = 1, y = 2 } end,
+            getFlags = function() return flags or {} end,
+            getProperty = function(_, k) return props[k] end,
+        })
+    end
+end
+
+t.test("tide's own paste click into kitty passes its mouse tap untouched", function()
+    local middlepaste = require("tide.middlepaste")
+    local pastes = 0
+    local fire = tapped({
+        paste = function()
+            pastes = pastes + 1
+            return true
+        end,
+        clicked = function() end,
+    })
+    t.eq(fire("otherMouseDown", 2, {}), true, "a plain middle click tide pastes is swallowed")
+    t.eq(fire("otherMouseDown", 2, middlepaste.KITTY_PASTE, middlepaste.MARK), false)
+    t.eq(fire("otherMouseUp", 2, middlepaste.KITTY_PASTE, middlepaste.MARK), false, "not taken for the real release")
+    t.eq(fire("otherMouseUp", 2, {}), true, "the real release is still swallowed")
+    t.eq(pastes, 1)
+end)
+
 t.done("adapter")

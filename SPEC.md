@@ -250,7 +250,7 @@ Status: **yes** = tide or macOS meets the tide for Linux or tide for Chrome beha
 | Drag a tiled window's edge to set the split (tide for Chrome §5.3) | Accessibility's resize notification (§5.3) | **yes** |
 | Drop a dragged tile on another to swap them (planned in tide for Chrome §5.3) | Accessibility's move notification (§5.3) | **yes** |
 | Super+middle-click maximizes the window under the pointer (tide for Linux §6.6) | the same event tap (§5.3) | **yes** |
-| Middle click pastes the selection (Linux's primary selection) | `macos.json`'s `mouse.middleClickPaste` (the macOS page's Mouse), off unless turned on: the selection read through Accessibility, pasted where you click (§5.3) | **partial**: text fields only, and not from an app that doesn't say what's selected. CI's Mac pastes between TextEdit windows; a real middle button, Chrome and Electron apps are *(unverified on a Mac)* |
+| Middle click pastes the selection (Linux's primary selection) | `macos.json`'s `mouse.middleClickPaste` (the macOS page's Mouse), off unless turned on: the selection read through Accessibility, pasted where you click (§5.3) | **partial**: text fields and kitty only, and not from an app that doesn't say what's selected. CI's Mac pastes between TextEdit windows; a real middle button, Chrome and Electron apps are *(unverified on a Mac)* |
 | Super+Shift+R reloads (tide for Linux §6.6) | reloads Hammerspoon, and so tide (§7.2) | **yes** |
 | Focus follows mouse (KDE) | tide's own (§5.2) | **yes**, but focusing raises (§13) |
 | Nothing steals focus (tide for Linux §14) | macOS activation rules, plus tide's focus guard (§14) | **partial**: apps can still activate themselves |
@@ -788,11 +788,32 @@ handling (tide for Chrome §5.3):
     - Only the clipboard's first item is kept, as `hs.pasteboard.readAllData`
       reads it: several files copied at once come back as one.
     - Quitting or reloading Hammerspoon mid-paste puts it back first.
-  - **Terminals are left alone:** kitty, Ghostty, iTerm2 and Terminal
-    paste their own selection on a middle click. kitty's is a buffer of
-    its own (conf's `kitty/macos.conf`), so a selection made in kitty
-    doesn't reach other apps, and kitty says nothing through
-    Accessibility.
+  - **kitty shares the selection.** kitty says nothing through
+    Accessibility, so tide asks it over its remote control socket (§6.3).
+    - **From kitty:** after a selecting gesture there, tide runs `kitten @
+      get-text --extent=selection` and remembers what it says. kitten
+      trims trailing spaces and newlines. Without a socket, or with one
+      tide doesn't trust, kitty's selection stays its own.
+    - **Into kitty:** a plain middle click anywhere in kitty pastes the
+      last selection when it came from another app. tide swallows the
+      click, puts the text on the clipboard as above, and sends kitty a
+      Ctrl+Shift+middle click at the same point. conf's
+      `kitty/macos.conf` maps that to `paste_from_clipboard`, so kitty
+      pastes into the window under the pointer, bracketed as any paste.
+      It does so even while a program there has the mouse, such as vim
+      or tmux in mouse mode: tide can't tell from outside. Shift+middle
+      still reaches kitty. tide marks the click so its own tap lets it
+      by. Without conf's mapping, nothing is pasted.
+    - **kitty's own selection is kitty's.** With nothing remembered, or
+      the last selection made in kitty, the click is kitty's, which pastes
+      its own buffer (conf's `copy_on_select a1`), and a program with the
+      mouse gets it.
+    - *(unverified on a Mac)*: that kitty takes a posted click on a window
+      that isn't focused, and that the clipboard is read before it goes
+      back.
+  - **Other terminals are left alone:** Ghostty, iTerm2 and Terminal
+    paste their own selection on a middle click, and a selection made in
+    one doesn't reach other apps (TODO.md).
   - **Chrome and Electron apps say nothing until asked.** Chrome builds
     its accessibility tree once something asks its application element's
     role, and an Electron app once `AXManualAccessibility` is set on it
@@ -810,6 +831,8 @@ handling (tide for Chrome §5.3):
     Accessibility reads after each selecting gesture, what's focused and
     what's selected there, and a few more on a middle click: what's under the pointer, up to six of its parents, and
     the selection. Each is given up after the adapter's timeout (§5.2).
+    In kitty, one short `kitten` process after each selecting gesture,
+    off the main thread.
 - **Resize mode** resizes a float from the keyboard. In it, H J K L or
   the arrows resize the window, and Esc or Return leaves. It's tide's
   own: tide for Linux has none, and its `Super+Shift+R` reloads (tide for

@@ -568,8 +568,9 @@ function M.new()
         end
         return my_uid or nil
     end
-    local function kitty_socket(app)
-        local pid = app and app:pid()
+    -- The socket of the kitty with process ID `pid`, or nil; one that
+    -- isn't safe is refused, saying why to `refused`.
+    local function kitty_socket_for(pid, refused)
         local tmpdir = os.getenv("TMPDIR")
         local path = kitty.path(tmpdir, pid)
         if not (path and hs.fs.attributes(path)) then
@@ -577,9 +578,39 @@ function M.new()
         end
         local socket, why = kitty.socket(tmpdir, pid, uid(), hs.fs.attributes)
         if not socket and why then
-            a.notify("Not using kitty's remote control: " .. why .. ". Opened the window with Cmd+N")
+            refused(why)
         end
         return socket
+    end
+    local function kitty_socket(app)
+        return kitty_socket_for(app and app:pid(), function(why)
+            a.notify("Not using kitty's remote control: " .. why .. ". Opened the window with Cmd+N")
+        end)
+    end
+
+    -- What's selected in the kitty with process ID `pid`, for middle
+    -- click paste (SPEC.md §5.3), through its socket: `done(text)`, nil
+    -- when there's none or kitty can't be asked. Without a socket kitty's
+    -- selection stays its own, as it is with remote control off.
+    function a.kitty_selection(pid, done)
+        local socket = kitty_socket_for(pid, function(why)
+            a.log("middle click paste: not asking kitty for its selection: " .. why)
+        end)
+        if not socket then
+            done(nil)
+            return
+        end
+        if not run(KITTEN, { "@", "--to", socket, "get-text", "--extent=selection" }, function(code, err, out)
+            if code ~= 0 then
+                a.log("middle click paste: kitten @ get-text exited " .. tostring(code) .. ": " .. tostring(err or ""))
+                done(nil)
+                return
+            end
+            done(middlepaste.kitty_text(out))
+        end) then
+            a.log("middle click paste: couldn't run " .. KITTEN)
+            done(nil)
+        end
     end
 
     -- A new window of a running app. kitty is asked for an OS window through
@@ -1565,6 +1596,10 @@ function M.mouse(is_super, h)
         t.rightMouseDown, t.rightMouseDragged, t.rightMouseUp,
         t.otherMouseDown, t.otherMouseUp,
     }, function(e)
+        -- tide's own, such as the click that pastes into kitty.
+        if e:getProperty(props.eventSourceUserData) == middlepaste.MARK then
+            return false
+        end
         local kind = e:getType()
         local p = e:location()
         if kind == t.leftMouseDown then
