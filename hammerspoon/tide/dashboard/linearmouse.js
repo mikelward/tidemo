@@ -98,19 +98,31 @@ export function withMouseScrolling(text, lines, reverse) {
   return { text: JSON.stringify(out, null, 2) + "\n" };
 }
 
-// A mouse's pointer, as the Mac's Speed and Acceleration rows set it:
-// LinearMouse's own `pointer.speed` (0 to 1) and `pointer.acceleration`
-// (macOS's, 0 to 20), kept in linearmouse.json, not tide's input.json. A
-// curve tuned for macOS means nothing to libinput's, so the Mac keeps its
-// own (SPEC.md §10).
-export const POINTER_KEYS = Object.freeze(["speed", "acceleration"]);
-export const POINTER_LADDERS = Object.freeze({
-  speed: Object.freeze([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1]),
-  acceleration: Object.freeze([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4]),
+// A mouse's pointer, as the Mac's Acceleration, Speed and Tracking speed
+// rows set it: LinearMouse's own `pointer.speed` (0 to 1),
+// `pointer.acceleration` (macOS's, which LinearMouse takes from 0 to 40)
+// and `pointer.disableAcceleration`, kept in linearmouse.json, not tide's
+// input.json. A curve tuned for macOS means nothing to libinput's, so the
+// Mac keeps its own (SPEC.md §10). With acceleration off, LinearMouse
+// leaves the speed alone and macOS takes `acceleration` as a flat tracking
+// speed, as LinearMouse's own window shows it (its PointerSettings.swift).
+export const POINTER_KEYS = Object.freeze(["speed", "acceleration", "disableAcceleration"]);
+// Each number's slider: its ends and step.
+export const POINTER_RANGES = Object.freeze({
+  speed: Object.freeze({ min: 0, max: 1, step: 0.05 }),
+  acceleration: Object.freeze({ min: 0, max: 4, step: 0.05 }),
 });
-// Where − and + start from while LinearMouse leaves one to macOS:
+// Where a slider starts while LinearMouse leaves one to macOS:
 // setup-macos's, tried by hand on a PC mouse.
 export const POINTER_START = Object.freeze({ speed: 0.35, acceleration: 1.5 });
+
+// `value` on `key`'s slider: within its ends, to its step, without the
+// float's noise (0.15, not 0.15000000000000002).
+export function onSlider(key, value) {
+  const r = POINTER_RANGES[key];
+  const v = Math.min(r.max, Math.max(r.min, Math.round(value / r.step) * r.step));
+  return Math.round(v * 100) / 100;
+}
 
 function parsed(text) {
   if (text === null || text === undefined) return { config: {} };
@@ -132,35 +144,27 @@ export function mousePointer(text) {
   for (const s of config.schemes) {
     if (!everyMouse(s) || !isObject(s.pointer)) continue;
     for (const k of POINTER_KEYS) {
-      if (typeof s.pointer[k] === "number") out[k] = s.pointer[k];
+      const want = k === "disableAcceleration" ? "boolean" : "number";
+      if (typeof s.pointer[k] === want) out[k] = s.pointer[k];
     }
   }
   return out;
 }
 
-// The next rung of `key`'s ladder from `value` (undefined, left to macOS:
-// POINTER_START, which is where the first step lands), up (1) or down (-1), staying put
-// at either end.
-export function steppedPointer(key, value, step) {
-  const ladder = POINTER_LADDERS[key];
-  if (value === null || value === undefined) return POINTER_START[key];
-  if (step > 0) {
-    const up = ladder.find((v) => v > value);
-    return up === undefined ? value : up;
-  }
-  const down = ladder.filter((v) => v < value);
-  return down.length === 0 ? value : down[down.length - 1];
-}
-
-// linearmouse.json's text with every mouse's pointer `key` set to `value`,
+// linearmouse.json's text with every mouse's pointer `key` set to `value`
+// (a number, or true or false for disableAcceleration),
 // in the same last every-mouse scheme the scrolling goes in, so it wins.
 // Returns { text } when that changes the file, {} when it doesn't, or
 // { error }.
 export function withMousePointer(text, key, value) {
-  if (!POINTER_KEYS.includes(key)) return { error: `"${key}" isn't a pointer setting; expected ${POINTER_KEYS.join(" or ")}` };
-  const ladder = POINTER_LADDERS[key];
-  if (typeof value !== "number" || !isFinite(value) || value < 0 || value > ladder[ladder.length - 1]) {
-    return { error: `pointer ${key} must be from 0 to ${ladder[ladder.length - 1]}` };
+  if (!POINTER_KEYS.includes(key)) return { error: `"${key}" isn't a pointer setting; expected ${POINTER_KEYS.join(", ")}` };
+  if (key === "disableAcceleration") {
+    if (typeof value !== "boolean") return { error: "pointer disableAcceleration must be true or false" };
+  } else {
+    const r = POINTER_RANGES[key];
+    if (typeof value !== "number" || !isFinite(value) || value < r.min || value > r.max) {
+      return { error: `pointer ${key} must be from ${r.min} to ${r.max}` };
+    }
   }
   const { config, error } = parsed(text);
   if (error) return { error };

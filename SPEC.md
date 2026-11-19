@@ -4333,7 +4333,7 @@ Each one names a workaround, or says there is none.
     | Sound | the output and the input in use, each with its mute, volume and level, and the devices to pick from (below); Sound settings |
     | Network | Wi-Fi On or Off, the network it's joined to, and how the Mac's online (below); Network settings |
     | Bluetooth | On or Off, and the paired devices, each connected or disconnected (below); Bluetooth settings |
-    | Mouse | Speed and Acceleration, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
+    | Mouse | Acceleration, Speed and Amount, then Scroll speed and Natural scrolling (below); Mouse settings, LinearMouse settings |
     | Trackpad | Trackpad settings |
     | Keyboard | the input sources, each a click to use (below), the Switcher, tide's or tide for Chrome's dashboard launcher (§9.2), and conf's Karabiner rules, each On or Off (below); Keyboard settings, Karabiner settings |
     | Power | the battery, as the bar's hover says it (below); Battery settings |
@@ -4367,20 +4367,36 @@ Each one names a workaround, or says there is none.
     folder changes (§10). A file that's wrong is named, and nothing
     changes here until it's fixed. Left-handed stays in Mouse settings
     for now (TODO.md).
-  - **Built: the Mouse section's Speed and Acceleration,** the Mac's own,
-    above tide for Linux's rows, as tide for Linux's Mouse page has the same two (tide for Linux §16).
-    They're LinearMouse's `pointer.speed` and `pointer.acceleration` for
-    every mouse, in the same last every-mouse scheme as the scrolling,
-    not tide for Linux's `input.json`: a value tuned for macOS's curve means
-    nothing to libinput's, so the Mac keeps its own (§10).
-    - − and + step through 0.05 to 1 for the speed, and 0 to 4 for the
-      acceleration (macOS's own `com.apple.mouse.scaling`, which
-      LinearMouse sets). Left to macOS, a row says "macOS's", and its
-      first step lands on `setup-macos`'s 0.35 and 1.5.
+  - **Built: the Mouse section's Acceleration, Speed and Amount,** the
+    Mac's own, above tide for Linux's rows, as tide for Linux's Mouse page
+    has its own pointer rows (tide for Linux §16). They're LinearMouse's
+    `pointer.disableAcceleration`, `pointer.speed` and
+    `pointer.acceleration` for every mouse, in the same last every-mouse
+    scheme as the scrolling, so they win over what LinearMouse's own
+    window sets for one mouse: tide's settings are the place to change
+    them. They're not in tide for Linux's `input.json`: a value tuned for
+    macOS's curve means nothing to libinput's, so the Mac keeps its own
+    (§10).
+    - **Acceleration** is On or Off. Off is `disableAcceleration`, a flat
+      curve. Writing On sets it to false, rather than removing it, so a
+      mouse's own scheme can't turn it off unseen.
+    - **With acceleration on,** Speed is LinearMouse's speed, a slider
+      from 0 to 1, and Amount is the acceleration, from 0 to 4 (macOS's
+      own `com.apple.mouse.scaling`, which LinearMouse sets).
+    - **With it off,** LinearMouse leaves the speed alone, and macOS takes
+      the acceleration value as a flat tracking speed, as LinearMouse's
+      own window shows it (its `PointerSettings.swift`). So the one Speed
+      slider there sets that value, from 0 to 4.
+    - Each slider moves in steps of 0.05 and is sent when it's let go; an
+      update while it's held doesn't move it. Left to macOS, a slider
+      sits at `setup-macos`'s 0.35 and 1.5 and says "macOS's".
     - A change goes to tide, which writes it with `linearmouse.js`'s
       `withMousePointer` and shows the result. One it can't make (out of
       range, a config that isn't JSON, LinearMouse not installed) is a
       notification, and nothing's written.
+    - *(unverified on a Mac)*: that the flat tracking speed feels the same
+      across mice; LinearMouse falls back to an acceleration of -1 on a
+      mouse that can't scale linearly.
   - **Built: the Keyboard section switches Karabiner's rules,** each rule
     in the files conf links into Karabiner's assets folder
     (`~/.config/karabiner/assets/complex_modifications/`) with On or Off, so

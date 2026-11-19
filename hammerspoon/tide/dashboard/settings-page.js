@@ -56,7 +56,7 @@ import {
 } from "./tide-dnd.js";
 import { isZone, localText, sharedText } from "./settings.js";
 import { foundText, nearestCities, parseCities, searchCities } from "./tide-cities.js";
-import { steppedPointer } from "./linearmouse.js";
+import { POINTER_RANGES, POINTER_START, onSlider } from "./linearmouse.js";
 import { ZONE_LABELS, byZone, layoutList, moved as movedBarItem, switched as switchedBarItem } from "./tide-barlayout.js";
 import { matches, searchedRows } from "./tide-settingssearch.js";
 
@@ -71,9 +71,11 @@ let layoutFiles = null;
 let inputFiles = null;
 // What's wrong with LinearMouse, from tide, shown with the Mouse rows.
 let mouseProblem = "";
-// Every mouse's pointer as LinearMouse has it: speed and acceleration, each
-// missing while it's left to macOS.
+// Every mouse's pointer as LinearMouse has it: speed, acceleration and
+// disableAcceleration, each missing while it's left to macOS.
 let mousePointer = {};
+// Whether a pointer slider is held: an update mustn't move it under you.
+let pointerDragging = false;
 // What the files lay over, in their names: start()'s layout, which may not
 // be tide's defaults. Empty for tide's defaults alone.
 let layoutBase = {};
@@ -1474,15 +1476,48 @@ function renderLayouts() {
   }
 }
 
-// The Mouse section: the Mac's own Speed and Acceleration, which tide
-// writes straight to LinearMouse's config, then tide's Mouse page's Scroll
-// speed and Natural scrolling rows (tide SPEC.md §16), with tide's own
-// functions: a change writes only input.local.json, keeping whatever else
-// it says, and tide applies it to LinearMouse (SPEC.md §10).
-const POINTER_ROWS = [
-  { key: "speed", label: "Speed" },
-  { key: "acceleration", label: "Acceleration" },
-];
+// The Mouse section: the Mac's own Acceleration switch and its sliders,
+// which tide writes straight to LinearMouse's config, then tide's Mouse
+// page's Scroll speed and Natural scrolling rows (tide SPEC.md §16), with
+// tide's own functions: a change writes only input.local.json, keeping
+// whatever else it says, and tide applies it to LinearMouse (SPEC.md §10).
+// With acceleration on, Speed is LinearMouse's speed and Amount its
+// acceleration; off, Speed is the acceleration value, which macOS then
+// takes as a flat tracking speed (linearmouse.js).
+const pointerRows = (off) => off
+  ? [{ key: "acceleration", label: "Speed" }]
+  : [{ key: "speed", label: "Speed" }, { key: "acceleration", label: "Amount" }];
+
+// A pointer slider: `key`'s value as LinearMouse has it, or setup-macos's
+// start while it's left to macOS, sent when it's let go.
+function pointerSlider(key, label) {
+  const value = typeof mousePointer[key] === "number" ? mousePointer[key] : undefined;
+  const r = POINTER_RANGES[key];
+  const slider = el("input");
+  slider.type = "range";
+  slider.min = String(r.min);
+  slider.max = String(r.max);
+  slider.step = String(r.step);
+  slider.value = String(value === undefined ? POINTER_START[key] : value);
+  slider.setAttribute("aria-label", label);
+  slider.setAttribute("data-key", `pointer-${key}`);
+  const shown = el("span", value === undefined ? "macOS's" : String(value));
+  shown.className = "value";
+  slider.addEventListener("input", () => {
+    pointerDragging = true;
+    shown.textContent = String(onSlider(key, Number(slider.value)));
+  });
+  slider.addEventListener("change", () => {
+    pointerDragging = false;
+    send({ mousePointer: { key, value: onSlider(key, Number(slider.value)) } });
+  });
+  const row = el("div");
+  row.className = "row volume";
+  const name = el("span", label);
+  name.className = "name";
+  row.append(name, slider, shown);
+  return row;
+}
 const inputText = (which) => (typeof inputFiles?.[which] === "string" ? inputFiles[which] : null);
 const MOUSE_ROWS = [
   { key: "scrollSpeed", label: "Scroll speed", kind: "scroll" },
@@ -1501,6 +1536,7 @@ function setMouse(key, value) {
 }
 
 function renderMouse() {
+  if (pointerDragging) return;
   const box = document.getElementById("mouse-rows");
   box.replaceChildren();
   const { input, errors } = loadInput(inputText("shared"), inputText("local"));
@@ -1508,14 +1544,15 @@ function renderMouse() {
   const problems = [mouseProblem];
   if (broken) problems.push(`${errors.join("; ")}. Fix the file to change these here.`);
   document.getElementById("mouse-error").textContent = problems.filter((p) => p !== "").join(" ");
-  for (const r of POINTER_ROWS) {
-    const value = typeof mousePointer[r.key] === "number" ? mousePointer[r.key] : undefined;
-    const less = steppedPointer(r.key, value, -1);
-    const more = steppedPointer(r.key, value, 1);
-    box.append(layoutRow(r.label, value === undefined ? "macOS's" : String(value),
-      button("−", `Less: ${r.label}`, less === value, () => send({ mousePointer: { key: r.key, value: less } })),
-      button("+", `More: ${r.label}`, more === value, () => send({ mousePointer: { key: r.key, value: more } }))));
-  }
+  const off = mousePointer.disableAcceleration === true;
+  const accel = button(off ? "Off" : "On", `Acceleration: ${off ? "off" : "on"}`, false,
+    () => send({ mousePointer: { key: "disableAcceleration", value: !off } }));
+  accel.setAttribute("aria-pressed", String(!off));
+  const accelRow = el("div");
+  accelRow.className = "row";
+  accelRow.append(el("span", "Acceleration"), el("span"), accel, el("span"));
+  box.append(accelRow);
+  for (const r of pointerRows(off)) box.append(pointerSlider(r.key, r.label));
   for (const r of MOUSE_ROWS) {
     const value = shownInput(input, "mouse", r.key);
     if (r.kind === "toggle") {
@@ -2687,7 +2724,7 @@ window.tide = {
     // What's wrong with LinearMouse or the files, only when something is.
     mouseProblem = typeof state.mouse?.problem === "string" ? state.mouse.problem : "";
     mousePointer = state.mouse?.pointer && typeof state.mouse.pointer === "object" ? state.mouse.pointer : {};
-    renderMouse();
+    keepingFocus(renderMouse);
     if (state.setup && typeof state.setup === "object") renderSetup(state.setup);
     if (state.floating && typeof state.floating === "object") {
       floatingState = state.floating;
