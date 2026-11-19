@@ -1091,6 +1091,8 @@ numbered ones:
   2. A window changes workspace only when you send it.
   3. A workspace with windows is listed, and so is the one showing.
   4. The window with the focus isn't parked (§14.1).
+  5. Every window on the workspace showing is on a display that's there,
+     and so are the keys.
 - **An empty workspace is removed once you leave it,** other than "in" and
   the standing ones. Leaving means no display shows it any more. A workspace holding only
   windows you minimized isn't empty.
@@ -4769,7 +4771,7 @@ Each one names a workaround, or says there is none.
   - the workspace model (§6.1) and focus follows mouse's decisions (§5.2)
     against a fake Accessibility layer, with no sleeps;
   - the workspace rules (§6.1) against random runs of what you, macOS and
-    apps do, from seeds, so a failure names its seed and steps and
+    apps do, on one display or two, from seeds, so a failure names its seed and steps and
     replays the same way: `TIDE_RULE_SEED=n make test`, with
     `TIDE_RULE_TRAIL=1` for tide's own reasons, as Report a bug gives
     them, and `TIDE_RULE_RUNS` for more runs than CI's 200;

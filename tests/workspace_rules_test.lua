@@ -6,7 +6,9 @@
 -- What only you do: show a workspace, send a window, Cmd+Tab to a window,
 -- click one in the Dock or a notification for one, close the window
 -- you're in by key, close button or menu, minimize it, open and close
--- tide's launcher, and press Return in it. What macOS and apps do unasked:
+-- tide's launcher, and press Return in it, choose a window or a workspace
+-- in the overview or close it, and move the keys to the other display.
+-- What macOS and apps do unasked: a display goes away or comes back,
 -- an app brings its window forward, as you click in another or not, a
 -- click on the desktop brings up Finder's, a window drops out of macOS's
 -- list for a moment, an app opens a window, an app quits and comes back
@@ -19,6 +21,8 @@
 -- 3. A workspace with windows is listed, and so is the one showing.
 -- 4. Once tide has synced, the window with the focus isn't parked: what
 --    you type reaches a window you can see.
+-- 5. Once tide has synced, every window on the workspace showing is on a
+--    display that's there, and so are the keys.
 
 local t = require("t")
 local fake = require("fake")
@@ -32,6 +36,9 @@ local APPS = {
     { app = "com.example.browser", pid = 200 },
     { app = "com.apple.finder", pid = 300 },
 }
+
+-- The second display, to the right of the first.
+local B = { uuid = "B", area = { x = 1920, y = 25, w = 1920, h = 1055 }, full = { x = 1920, y = 0, w = 1920, h = 1080 } }
 
 -- A small PRNG of its own, so a seed gives the same run on Lua 5.4 and 5.5.
 local function rng(seed)
@@ -50,10 +57,19 @@ end
 local function world(seed)
     local r = rng(seed)
     local a = fake.new()
-    local w = { r = r, a = a, trail = {}, next_id = 1 }
+    local w = { r = r, a = a, trail = {}, next_id = 1, seed = seed }
+    -- Every other run has a second display, to the right, with some of
+    -- the windows on it.
+    if seed % 2 == 0 then
+        a.screens_[2] = B
+    end
     for i = 1, 5 do
         local app = APPS[r(#APPS)]
-        a.add(i, { app = app.app, pid = app.pid, title = app.app .. " " .. i })
+        local on_b = a.screens_[2] and r(2) == 1
+        a.add(i, {
+            app = app.app, pid = app.pid, title = app.app .. " " .. i,
+            frame = on_b and { x = 2020, y = 100, w = 800, h = 600 } or nil,
+        })
     end
     w.next_id = 6
     local wm = wm_mod.new(a, {})
@@ -274,7 +290,72 @@ local STEPS_LIST = {
         macos_focuses(w, to)
         return {}, "then " .. tostring(to)
     end },
+    { "you choose a window in the overview", function(w)
+        local id = pick(w)
+        if not id then
+            return {}
+        end
+        local ws = w.wm.windows[id].ws
+        local before = w.a.focus_
+        w.wm:hold("overview", true)
+        w.wm:own_window("overview", { x = 0, y = 0, w = 1920, h = 1080 })
+        w.wm:hold("overview", false)
+        w.wm:own_window("overview", nil)
+        w.wm:activate(id, "A", "overview: a click on the window")
+        return { current = ws }, tostring(id) .. " from " .. tostring(before)
+    end },
+    { "you choose a workspace in the overview", function(w)
+        -- It lists only the workspaces there are.
+        local ws = WORKSPACES[w.r(#WORKSPACES)]
+        if not w.wm:find(ws) then
+            return {}
+        end
+        w.wm:hold("overview", true)
+        w.wm:hold("overview", false)
+        w.wm:show(ws, "A", nil, "overview: a click on the workspace")
+        return { current = ws }, ws
+    end },
+    { "you close the overview, and macOS passes the focus on", function(w)
+        local before = w.a.focus_
+        w.wm:hold("overview", true)
+        w.wm:own_window("overview", { x = 0, y = 0, w = 1920, h = 1080 })
+        w.wm:hold("overview", false)
+        w.wm:own_window("overview", nil)
+        if before then
+            w.wm:focus_unburied(before)
+        end
+        macos_focuses(w, next_focus(w))
+        return {}
+    end },
+    { "you move the keys to the other display", function(w)
+        w.wm:act("select", w.r(2) == 1 and 1 or -1)
+        return {}
+    end },
     -- macOS and apps, unasked.
+    { "a display goes away, its windows moved to the first", function(w)
+        later(w)
+        if not w.a.screens_[2] then
+            return nil
+        end
+        w.a.screens_[2] = nil
+        for _, id in ipairs(w.a.order) do
+            local f = w.a.wins[id].frame
+            if f.x >= 1920 then
+                w.a.wins[id].frame = { x = f.x - 1920, y = f.y, w = f.w, h = f.h }
+            end
+        end
+        sync(w)
+        return nil, "B"
+    end },
+    { "a display comes back", function(w)
+        later(w)
+        if w.a.screens_[2] or w.seed % 2 == 1 then
+            return nil
+        end
+        w.a.screens_[2] = B
+        sync(w)
+        return nil, "B"
+    end },
     { "an app brings its window forward", function(w)
         later(w)
         local id = pick(w)
@@ -416,8 +497,27 @@ local function check(w, seed, allowed, before)
     if not wm:find(wm.current) then
         fail(w, seed, string.format("rule 3: %s shows but isn't listed", tostring(wm.current)))
     end
-    -- 4.
+    -- 4 and 5 hold once tide has synced.
     sync(w)
+    -- 5.
+    for id, o in pairs(wm.windows) do
+        local f = w.a.wins[id]
+        if o.ws == wm.current and not wm.parked[id] and f and not f.minimized then
+            local cx, cy = f.frame.x + f.frame.w / 2, f.frame.y + f.frame.h / 2
+            local on = false
+            for _, sc in ipairs(w.a.screens_) do
+                local b = sc.full
+                on = on or (cx >= b.x and cx < b.x + b.w and cy >= b.y and cy < b.y + b.h)
+            end
+            if not on then
+                fail(w, seed, string.format("rule 5: window %d on %s is on no display", id, tostring(o.ws)))
+            end
+        end
+    end
+    local keys = wm:current_screen()
+    if not wm:screen_by_uuid(keys) then
+        fail(w, seed, string.format("rule 5: the keys are on display %s, which isn't there", tostring(keys)))
+    end
     local f = w.a.focus_
     if f and wm.parked[f] then
         fail(w, seed, string.format("rule 4: window %d has the focus, parked on %s", f, tostring(wm.windows[f].ws)))
