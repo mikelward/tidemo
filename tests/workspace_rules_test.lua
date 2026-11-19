@@ -4,12 +4,13 @@
 -- steps that led to it, and replays the same way.
 --
 -- What only you do: show a workspace, send a window, Cmd+Tab to a window,
--- click one in the Dock, close or minimize the window you're in, open
--- and close tide's launcher. What macOS and apps do unasked: an app brings
--- its window forward, a click on the desktop brings up Finder's, a
--- window drops out of macOS's list for a moment, an app opens a window,
--- an app quits and comes back with its windows, a sync, and each of those
--- reported early or late.
+-- click one in the Dock or a notification for one, close the window
+-- you're in by key, close button or menu, minimize it, open and close
+-- tide's launcher, and press Return in it. What macOS and apps do unasked:
+-- an app brings its window forward, as you click in another or not, a
+-- click on the desktop brings up Finder's, a window drops out of macOS's
+-- list for a moment, an app opens a window, an app quits and comes back
+-- with its windows, a sync, and each of those reported early or late.
 --
 -- The rules, after every step:
 -- 1. The workspace showing changes only when you show one, or choose a
@@ -181,7 +182,7 @@ local STEPS_LIST = {
             return {}
         end
         local ws = w.wm.windows[id].ws
-        w.wm:clicked(false)
+        w.wm:clicked("dock")
         macos_focuses(w, id)
         return { current = ws }, id
     end },
@@ -197,6 +198,51 @@ local STEPS_LIST = {
         w.wm:modifiers(false)
         sync(w)
         return {}, id .. ", then " .. tostring(to)
+    end },
+    { "you click the close button of the window you're in", function(w)
+        local id = w.a.focus_
+        if not id then
+            return {}
+        end
+        w.wm:clicked("window", id)
+        local to = next_focus(w, id)
+        w.a.drop(id)
+        macos_focuses(w, to)
+        sync(w)
+        return {}, id .. ", then " .. tostring(to)
+    end },
+    { "you choose File > Close", function(w)
+        local id = w.a.focus_
+        if not id then
+            return {}
+        end
+        w.wm:clicked("menu")
+        local to = next_focus(w, id)
+        w.a.drop(id)
+        sync(w)
+        macos_focuses(w, to)
+        return {}, id .. ", then " .. tostring(to)
+    end },
+    { "you press Return in tide's launcher", function(w)
+        local to = next_focus(w)
+        w.wm:hold("launcher", true)
+        w.a.own = true
+        w.wm:key_down("return", false)
+        w.wm:hold("launcher", false)
+        w.a.own = false
+        macos_focuses(w, to)
+        return {}, "then " .. tostring(to)
+    end },
+    { "you click a notification for a window", function(w)
+        later(w)
+        local id = pick(w)
+        if not id or w.a.wins[id].minimized then
+            return {}
+        end
+        local ws = w.wm.windows[id].ws
+        w.wm:clicked("notification")
+        macos_focuses(w, id)
+        return { current = ws }, id
     end },
     { "you close the window you're in, synced first", function(w)
         local id = w.a.focus_
@@ -235,6 +281,15 @@ local STEPS_LIST = {
         macos_focuses(w, id)
         return nil, id
     end },
+    { "you click in a window as an app brings its own forward", function(w)
+        later(w)
+        local id = pick(w)
+        if w.a.focus_ then
+            w.wm:clicked("window", w.a.focus_)
+        end
+        macos_focuses(w, id)
+        return nil, id
+    end },
     { "a click on the desktop brings up Finder's window", function(w)
         later(w)
         local list = {}
@@ -248,7 +303,7 @@ local STEPS_LIST = {
             return nil
         end
         local id = list[w.r(#list)]
-        w.wm:clicked(true)
+        w.wm:clicked("desktop")
         macos_focuses(w, id)
         return nil, id
     end },

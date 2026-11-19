@@ -294,7 +294,7 @@ t.test("restoring a hidden window from the Dock brings its workspace along", fun
     a.tick() -- tide's expectation lapses
     a.wins[1].minimized = false
     -- A click on its Dock icon.
-    wm:clicked(false)
+    wm:clicked("dock")
     wm:unminimized(1)
     t.eq(wm.current, "5")
     t.eq(a.focus_, 1)

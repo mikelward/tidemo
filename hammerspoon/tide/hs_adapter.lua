@@ -1566,6 +1566,44 @@ end
 -- `h.paste(x, y)` for a plain middle click, which says whether it took it.
 -- One it took is swallowed, press and release; for one it didn't,
 -- `h.released()` as the button comes up.
+-- What's under x, y, for a click (wm:clicked): the front window there, in
+-- `list`, the window server's on-screen list front to back
+-- (hs.window.list(true)), read as "dock" (the Dock's), "notification"
+-- (Notification Center's), "tide" (Hammerspoon's own, `own_pid`), "menu"
+-- (the menu bar, a menu or a status item: the main menu's level or
+-- above), "window" (any other), with that window's number, or "desktop"
+-- with nothing there.
+-- `bundle_of(pid)` names an app's bundle, or nil. The window server
+-- names the owner too, which stands in when the bundle can't be read.
+-- *(Unverified on a Mac: the Dock's and the banners' owners.)*
+M.MAIN_MENU_LEVEL = 24
+function M.click_target(list, x, y, own_pid, bundle_of)
+    for _, info in ipairs(list) do
+        local b = info.kCGWindowBounds
+        local layer = info.kCGWindowLayer or 0
+        if layer >= 0 and (info.kCGWindowAlpha or 1) > 0 and b
+            and x >= (b.X or 0) and x < (b.X or 0) + (b.Width or 0)
+            and y >= (b.Y or 0) and y < (b.Y or 0) + (b.Height or 0) then
+            local pid = info.kCGWindowOwnerPID
+            if pid ~= nil and pid == own_pid then
+                return "tide"
+            end
+            local bundle = pid and bundle_of(pid)
+            local owner = tostring(info.kCGWindowOwnerName or "")
+            if bundle == "com.apple.dock" or (bundle == nil and owner == "Dock") then
+                return "dock"
+            elseif bundle == "com.apple.notificationcenterui"
+                or (bundle == nil and owner:gsub(" ", "") == "NotificationCenter") then
+                return "notification"
+            elseif layer >= M.MAIN_MENU_LEVEL then
+                return "menu"
+            end
+            return "window", info.kCGWindowNumber
+        end
+    end
+    return "desktop"
+end
+
 function M.mouse(is_super, h)
     local t = hs.eventtap.event.types
     local props = hs.eventtap.event.properties
@@ -1573,24 +1611,20 @@ function M.mouse(is_super, h)
     -- Whether the left button has dragged since it went down, and whether
     -- the middle button's press was swallowed for a paste.
     local dragged, pasting = false, false
-    -- Whether x, y is on the bare desktop: no window on screen there at
-    -- the normal level or above, so the Dock, the menu bar, a notification,
-    -- a parked window's sliver and every window aren't (wm:you_chose). The
-    -- desktop's icons and picture sit below. Nil if the list can't be read.
-    local function on_desktop(x, y)
+    -- What's under x, y (M.click_target), or nil if the window server's
+    -- list can't be read.
+    local function target(x, y)
         local ok, list = pcall(hs.window.list, true)
         if not ok or not list then
             return nil
         end
-        for _, info in ipairs(list) do
-            local b = info.kCGWindowBounds
-            if (info.kCGWindowLayer or 0) >= 0 and (info.kCGWindowAlpha or 1) > 0 and b
-                and x >= (b.X or 0) and x < (b.X or 0) + (b.Width or 0)
-                and y >= (b.Y or 0) and y < (b.Y or 0) + (b.Height or 0) then
-                return false
-            end
-        end
-        return true
+        return M.click_target(list, x, y, hs.processInfo.processID, function(pid)
+            local found, bundle = pcall(function()
+                local app = hs.application.applicationForPID(pid)
+                return app and app:bundleID()
+            end)
+            return found and bundle or nil
+        end)
     end
     local tap = hs.eventtap.new({
         t.leftMouseDown, t.leftMouseDragged, t.leftMouseUp,
@@ -1609,7 +1643,7 @@ function M.mouse(is_super, h)
             dragged = true
         end
         if kind == t.leftMouseDown or kind == t.rightMouseDown then
-            h.clicked(on_desktop(p.x, p.y))
+            h.clicked(target(p.x, p.y))
             if not is_super(e:getFlags()) then
                 return false
             end

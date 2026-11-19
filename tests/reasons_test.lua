@@ -90,7 +90,7 @@ end)
 
 t.test("a click that brings a hidden workspace says it was a click", function()
     local a, wm = setup()
-    wm:clicked(false)
+    wm:clicked("dock")
     a.focus_ = 2
     wm:focused(2)
     local e = last(wm, "workspace")
@@ -101,7 +101,7 @@ end)
 t.test("an app coming forward by itself is noted, and you stay", function()
     local a, wm = setup()
     -- A click on the desktop lets the focus move, but isn't choosing it.
-    wm:clicked(true)
+    wm:clicked("desktop")
     a.focus_ = 2
     wm:focused(2)
     t.eq(wm.current, "in")
@@ -150,7 +150,7 @@ t.test("a window restored from the Dock brings its workspace and says so", funct
     a.wins[2].minimized = true
     wm:minimized(2)
     a.clock = 200
-    wm:clicked(false)
+    wm:clicked("dock")
     a.wins[2].minimized = false
     wm:unminimized(2)
     local e = last(wm, "workspace")

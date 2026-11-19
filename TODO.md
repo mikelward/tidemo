@@ -229,7 +229,11 @@ tests have run it. **Check on a Mac:**
 - apps that refuse a move, or snap back, such as a terminal or a window
   with a minimum size larger than what's left on screen;
 - Cmd+Tab to an app whose window is parked brings its workspace along,
-  as does clicking a sliver, a Dock click and a notification;
+  as does clicking a sliver, a Dock click and a notification; and that
+  the window server names the Dock's and the banners' owners as
+  `hs_adapter.click_target` expects, while clicking a window's close
+  button, a menu or the desktop as an app brings a parked window forward
+  leaves you where you are;
 - after a switch to an empty workspace, Hammerspoon takes the focus
   without opening its console (SPEC.md §6);
 - a native full-screen window on a hidden workspace minimizes and comes

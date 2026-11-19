@@ -3275,11 +3275,26 @@ function M:choose(id)
     self:focus_window(id)
 end
 
+-- What a click on each kind of thing says about a parked window that
+-- takes the focus straight after it (M:chose_how): the Dock, a
+-- notification and a parked window's sliver pick a window, so its
+-- workspace comes along. A click anywhere else doesn't: a window's close
+-- button, the desktop, a menu (File > Close as much as Window > a
+-- window), tide's own bar or launcher, or a place tide couldn't read.
+M.CHOOSES = { dock = "the Dock", notification = "a notification", sliver = "its sliver" }
+
 -- A click: whatever it picks is newer than a restore still on its way,
 -- and than a switch that kept keys on its display. (A focus report alone
 -- can't say this: macOS moves focus itself as tide minimizes, and a click
--- on the window that already has focus reports nothing.)
-function M:clicked(desktop)
+-- on the window that already has focus reports nothing.) `where` is what
+-- was under it, as hs_adapter.click_target reads it: "dock",
+-- "notification", "menu", "tide", "window", "desktop", or nil if it
+-- couldn't tell; for a "window", its id, which says whether it's a parked
+-- window's sliver.
+function M:clicked(where, id)
+    if where == "window" and id ~= nil and self.parked[id] then
+        where = "sliver"
+    end
     self.focus_after = nil
     self.kbd = nil
     -- A click is yours, and so is what it starts: a Dock icon, a link, a
@@ -3287,8 +3302,8 @@ function M:clicked(desktop)
     local now = self.a.now()
     self.last_input = now
     self.last_switch = now
-    -- Whether it was on the bare desktop, for M:you_chose.
-    self.click = { at = now, desktop = desktop or false }
+    -- What it was on, for M:you_chose.
+    self.click = { at = now, where = where }
     -- A menu item you chose is yours whatever it opens, even a window of an
     -- app that has one already: About This Mac is System Settings'. Not in
     -- the trail: every click would be; a focus it lets in says so.
@@ -3319,7 +3334,10 @@ function M:key_down(key, cmd)
     -- Command goes up (M:modifiers, M:you_chose).
     if cmd and (key == "tab" or key == "`") then
         self.cmd_tab = true
-    elseif key == "return" or key == "padenter" then
+    elseif (key == "return" or key == "padenter") and not self.a.own_front() then
+        -- Return in Spotlight or Finder opens what it picks. In tide's own
+        -- launcher or prompt, tide shows what you picked itself, and a
+        -- window macOS brings forward meanwhile isn't it.
         self.chose_at, self.chose_by = now, "Return"
     end
     if cmd or key == "return" or key == "padenter" then
@@ -3366,10 +3384,10 @@ function M:chose_how(_)
         return string.format("%s %.1f s before", self.chose_by or "Return", now - self.chose_at)
     end
     local c = self.click
-    if not (c and now - c.at <= M.GRACE) or c.desktop then
+    if not (c and now - c.at <= M.GRACE and M.CHOOSES[c.where]) then
         return nil
     end
-    return string.format("a click %.1f s before", now - c.at)
+    return string.format("a click on %s %.1f s before", M.CHOOSES[c.where], now - c.at)
 end
 
 -- Whether `app` had a window open before time `t`: if so, a window of
@@ -3496,6 +3514,14 @@ function M:focused_window(id)
         self:note("focus", by .. ": not a window tide places", "macOS")
         return
     end
+    -- A choice of yours (M:chose_how) explains the first focus after it,
+    -- and no later one: a close straight after a Cmd+Tab isn't another.
+    local how = self:chose_how(id)
+    self.chose_at, self.click = nil, nil
+    if how then
+        -- Command going up after this doesn't choose again (M:modifiers).
+        self.cmd_tab = false
+    end
     local ok, rule = self:may_focus(id, w)
     if not ok then
         self:note("focus", by .. ": taken back, as nothing you did asked for it", "macOS")
@@ -3541,55 +3567,45 @@ function M:focused_window(id)
     if changed then
         self:retile()
     end
-    -- A parked window that took focus because you chose it, by Cmd+Tab, a
-    -- click on its sliver or in the Dock, brings its workspace along, as
-    -- one restored from the Dock does (M:unminimized). One whose app came
-    -- forward by itself, or that a click on the desktop brought up, as
-    -- Finder's, is marked for attention, and you stay (M:you_chose).
+    -- One rule for a parked window taking the focus: only you choosing it
+    -- brings its workspace along, by Cmd+Tab, Return in Spotlight or
+    -- Finder, or a click in the Dock, on a notification or on its sliver
+    -- (M:chose_how). However else it got the focus, you stay: the focus
+    -- goes back to the last used window on the workspace showing, or with
+    -- none, to no window, and the workspace you're on stays, empty or not
+    -- (SPEC.md §6.1). tide's own keys, bar and launcher show a workspace
+    -- themselves, and don't come here.
     -- Only while it still has the focus: a late report of a focus from
     -- before a switch, its window parked since, mustn't pull you back.
-    -- Not when the window you were in just closed: macOS moving the focus
-    -- on to another app's window isn't you leaving, and leaving would
-    -- remove the workspace you're on if that was its last window
-    -- (SPEC.md §6.1), whether tide's sync has forgotten that window yet or
-    -- not. The focus goes to the last used window left there,
-    -- or with none, to no window.
     if self.parked[id] and not self:shown(w.ws) and self.a.focused() == id then
-        local stay = function()
-            if not self:refocus_ws(self:current_ws()) then
-                self:unfocus_parked()
-            end
+        if how then
+            self.a.log("following the focus to " .. tostring(w.ws))
+            self:activate(id, nil, by .. ", which you chose (" .. how .. ")")
+            return
         end
-        if self:just_closed(prev) or self:let_go_lately() or self:just_emptied(self:current_ws()) then
-            self.a.log("staying on " .. tostring(self.current) .. " after a close")
-            self:note("focus", by .. ": the window you were in just went, so staying on " .. tostring(self.current),
-                "macOS")
-            self:because(by .. " after a close", stay)
-        elseif self:launching(w.app) then
-            -- A new window of an app you launched, which macOS brings
-            -- forward with the app's window elsewhere first: the new one
-            -- is on its way to the workspace you launched it for.
-            self.a.log("staying on " .. tostring(self.current) .. " while " .. tostring(w.app) .. " opens a window")
-            self:note("focus", by .. ": " .. tostring(w.app) .. " is opening a window you launched, so staying on "
-                .. tostring(self.current), "macOS")
-            remove_value(self.history, id)
-            table.insert(self.history, math.min(2, #self.history + 1), id)
-            self:because(by .. " while a launch opens", stay)
-        elseif not self:you_chose(id) then
-            self.a.log(tostring(w.app) .. " came forward on " .. tostring(w.ws) .. " by itself; staying on "
-                .. tostring(self.current))
-            -- It isn't the window you're in: that stays the one before.
-            remove_value(self.history, id)
-            table.insert(self.history, math.min(2, #self.history + 1), id)
+        -- It isn't the window you're in: that stays the one before.
+        remove_value(self.history, id)
+        table.insert(self.history, math.min(2, #self.history + 1), id)
+        -- It wants attention when its app brought it forward. Not when
+        -- macOS gave it the focus because the window you were in went,
+        -- one of tide's own windows closed, or an app you launched is on
+        -- its way to a new window.
+        local passed = self:just_closed(prev) or self:just_emptied(self:current_ws()) or self:let_go_lately()
+            or self:launching(w.app)
+        if passed then
+            self:note("focus", by .. ": macOS passed it the focus, so staying on " .. tostring(self.current), "macOS")
+        else
             self:note("focus", by .. ": came forward by itself, so staying on " .. tostring(self.current), "macOS")
             self.attention:activated(id, w.app)
             self:changed()
-            self:because(by .. " by itself", stay)
-        else
-            local how = self:chose_how(id)
-            self.a.log("following the focus to " .. tostring(w.ws))
-            self:activate(id, nil, by .. ", which you chose (" .. tostring(how) .. ")")
         end
+        self.a.log("staying on " .. tostring(self.current) .. " as " .. tostring(w.app) .. " took the focus on "
+            .. tostring(w.ws))
+        self:because(by .. (passed and " in passing" or " by itself"), function()
+            if not self:refocus_ws(self:current_ws()) then
+                self:unfocus_parked()
+            end
+        end)
     end
 end
 

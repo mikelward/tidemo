@@ -355,4 +355,39 @@ t.test("a middle click tide leaves to the app says when the button comes up", fu
     t.eq(released, 1, "another button isn't the middle one")
 end)
 
+-- What a click is on, from the window server's list, front to back.
+t.test("a click says whether it's on the Dock, a notification, a menu, tide, a window or the desktop", function()
+    package.loaded["tide.hs_adapter"] = nil
+    local target = require("tide.hs_adapter").click_target
+    local function win(n, pid, owner, layer, x, y, w, h)
+        return {
+            kCGWindowNumber = n, kCGWindowOwnerPID = pid, kCGWindowOwnerName = owner, kCGWindowLayer = layer,
+            kCGWindowBounds = { X = x, Y = y, Width = w, Height = h },
+        }
+    end
+    local bundles = { [10] = "com.apple.dock", [11] = "com.apple.notificationcenterui", [12] = "com.example.app" }
+    local function bundle_of(pid)
+        return bundles[pid]
+    end
+    local list = {
+        win(1, 99, "Hammerspoon", 3, 0, 0, 1920, 30),
+        win(2, 11, "Notification Center", 23, 1500, 40, 400, 100),
+        win(3, 12, "App", 101, 200, 30, 200, 300),
+        win(4, 10, "Dock", 20, 400, 1000, 1100, 80),
+        win(5, 12, "App", 24, 0, 0, 1920, 25),
+        win(6, 12, "App", 0, 100, 100, 800, 600),
+    }
+    local function at(x, y, l)
+        return { target(l or list, x, y, 99, bundle_of) }
+    end
+    t.eq(at(10, 10), { "tide" }, "tide's bar, in front of the menu bar")
+    t.eq(at(1600, 50), { "notification" })
+    t.eq(at(250, 100), { "menu" }, "an open menu")
+    t.eq(at(500, 1010), { "dock" })
+    t.eq(at(300, 400), { "window", 6 })
+    t.eq(at(1800, 900), { "desktop" })
+    t.eq(at(10, 10, { list[5] }), { "menu" }, "the menu bar")
+    t.eq(at(500, 1010, { win(4, 13, "Dock", 20, 400, 1000, 1100, 80) }), { "dock" }, "by name, with no bundle")
+end)
+
 t.done("adapter")
