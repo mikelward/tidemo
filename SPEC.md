@@ -3896,6 +3896,15 @@ Each one names a workaround, or says there is none.
     quotes and dashes, and a double space's period; and font smoothing,
     off, light, medium or strong. So tide can be published with them, and
     `setup-macos` need only write its choices to the file.
+  - Two of System Settings' Appearance, found by comparing `defaults
+    read` before and after a change on macOS 26: the Liquid Glass tint,
+    `appearance.liquidGlassTint`, a whole number from 0 (clear) to 100
+    (tinted), saved as macOS's `NSGlassTintAmount` from 0 to 1, and the
+    page steps it by 10; and tinting window backgrounds with the
+    wallpaper's color, `appearance.wallpaperTint`, which macOS saves as
+    `AppleReduceDesktopTinting`, the other way round. Both are in the
+    global domain *(unverified: whether open apps follow a write at once,
+    or only as they reopen, as the page says)*.
   - A setting the files leave out is macOS's own: tide doesn't touch it.
     One taken out gives its keys back to macOS (`defaults delete`); a key
     that's already gone is fine, and any other delete that fails is a
