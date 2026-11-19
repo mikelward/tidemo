@@ -56,7 +56,8 @@ end
 -- every 30 s otherwise.
 function M.shown(state)
     local p = state.pointer or {}
-    return table.concat({ state.problem or "", tostring(p.speed), tostring(p.acceleration) }, "\0")
+    return table.concat({ state.problem or "", tostring(p.speed), tostring(p.acceleration),
+        tostring(p.disableAcceleration) }, "\0")
 end
 
 -- The two places LinearMouse reads its config from, the first that exists
@@ -252,8 +253,9 @@ function M.new(deps)
         end)
     end
 
-    -- The Mac's own Speed and Acceleration rows (dashboard/linearmouse.js's
-    -- withMousePointer): every mouse's pointer `key` set to `value` in
+    -- The Mac's own Acceleration, Speed and Tracking speed rows
+    -- (dashboard/linearmouse.js's withMousePointer): every mouse's pointer
+    -- `key` set to `value`, a number or, for disableAcceleration, a boolean, in
     -- LinearMouse's config, which LinearMouse reads as it changes. Returns
     -- true, or nil and why, with nothing written.
     function self.set_pointer(key, value)
@@ -265,7 +267,7 @@ function M.new(deps)
         local source = "(function(){" .. bundle
             .. "const L = modules[\"./linearmouse.js\"];\n"
             .. "const r = L.withMousePointer(" .. (config and js(config) or "null") .. ", " .. js(tostring(key)) .. ", "
-            .. (type(value) == "number" and string.format("%.17g", value) or "null") .. ");\n"
+            .. (type(value) == "number" and string.format("%.17g", value) or type(value) == "boolean" and tostring(value) or "null") .. ");\n"
             .. "return JSON.stringify({ text: r.text, error: r.error,"
             .. " pointer: L.mousePointer(r.text !== undefined ? r.text : " .. (config and js(config) or "null") .. ") });})()"
         local ok, out = deps.run_js(source)

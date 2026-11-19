@@ -1652,33 +1652,61 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   assert.strictEqual(ids["keys-presets"].hidden, true);
 }
 
-// The Mouse section: the Mac's own Speed and Acceleration, sent for
-// LinearMouse's config; then tide's Scroll speed and Natural scrolling
+// The Mouse section: the Mac's own Acceleration switch and sliders, sent
+// for LinearMouse's config; then tide's Scroll speed and Natural scrolling
 // rows, each change written to input.local.json, keeping what else it says.
 {
   const all = () => ids["mouse-rows"].children;
-  // tide's rows, after the Mac's two.
-  const rows = () => all().slice(2);
+  const labels = () => all().map((r) => r.children[0].textContent);
+  // tide's rows, after the Mac's three.
+  const rows = () => all().slice(3);
   const lastInput = () => JSON.parse(sent[sent.length - 1].writeInput);
+  const slide = (row, value) => {
+    const s = row.children[1];
+    s.value = String(value);
+    s.listeners.input();
+    s.listeners.change();
+  };
   sandbox.tide.update({ clockFiles: [], mouse: { problem: "" } });
-  assert.deepStrictEqual(all().map((r) => r.children[0].textContent), ["Speed", "Acceleration", "Scroll speed", "Natural scrolling"]);
-  // Left to macOS: said so, and the first step lands on setup-macos's.
-  assert.strictEqual(all()[0].children[2].textContent, "macOS's");
+  assert.deepStrictEqual(labels(), ["Acceleration", "Speed", "Amount", "Scroll speed", "Natural scrolling"]);
+  // Left to macOS: acceleration on, and each slider says so, starting at
+  // setup-macos's.
+  assert.strictEqual(all()[0].children[2].textContent, "On");
+  assert.strictEqual(all()[1].children[2].textContent, "macOS's");
+  assert.strictEqual(all()[1].children[1].value, "0.35");
+  assert.strictEqual(all()[2].children[1].value, "1.5");
+  assert.strictEqual(all()[1].children[1].step, "0.05");
+  assert.strictEqual(all()[2].children[1].max, "4");
+  // A slider sends where it's let go, to its step, without float noise.
   sent.length = 0;
-  all()[0].children[3].listeners.click();
-  all()[1].children[1].listeners.click();
-  assert.deepStrictEqual(sent, [{ mousePointer: { key: "speed", value: 0.35 } }, { mousePointer: { key: "acceleration", value: 1.5 } }]);
-  // As LinearMouse has them, stepped along the Mac's ladders.
+  slide(all()[1], 0.15000000000000002);
+  slide(all()[2], 1.05);
+  assert.deepStrictEqual(sent, [{ mousePointer: { key: "speed", value: 0.15 } }, { mousePointer: { key: "acceleration", value: 1.05 } }]);
+  // While one is held, an update doesn't move it.
+  all()[1].children[1].value = "0.6";
+  all()[1].children[1].listeners.input();
+  assert.strictEqual(all()[1].children[2].textContent, "0.6");
+  sandbox.tide.update({ clockFiles: [], mouse: { problem: "", pointer: { speed: 0.35 } } });
+  assert.strictEqual(all()[1].children[2].textContent, "0.6", "held");
+  all()[1].children[1].listeners.change();
+  // As LinearMouse has them.
   sandbox.tide.update({ clockFiles: [], mouse: { problem: "", pointer: { speed: 0.35, acceleration: 1.5 } } });
-  assert.strictEqual(all()[0].children[2].textContent, "0.35");
+  assert.strictEqual(all()[1].children[2].textContent, "0.35");
+  assert.strictEqual(all()[2].children[2].textContent, "1.5");
+  // Acceleration off: one Speed slider, the flat tracking speed, which is
+  // LinearMouse's acceleration value.
+  sent.length = 0;
+  all()[0].children[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ mousePointer: { key: "disableAcceleration", value: true } }]);
+  sandbox.tide.update({ clockFiles: [], mouse: { problem: "", pointer: { speed: 0.35, acceleration: 1.5, disableAcceleration: true } } });
+  assert.deepStrictEqual(labels(), ["Acceleration", "Speed", "Scroll speed", "Natural scrolling"]);
+  assert.strictEqual(all()[0].children[2].textContent, "Off");
+  assert.strictEqual(all()[0].children[2].attrs["aria-pressed"], "false");
   assert.strictEqual(all()[1].children[2].textContent, "1.5");
   sent.length = 0;
-  all()[0].children[3].listeners.click();
-  all()[1].children[1].listeners.click();
-  assert.deepStrictEqual(sent, [{ mousePointer: { key: "speed", value: 0.4 } }, { mousePointer: { key: "acceleration", value: 1.25 } }]);
-  sandbox.tide.update({ clockFiles: [], mouse: { problem: "", pointer: { speed: 1, acceleration: 0 } } });
-  assert.strictEqual(all()[0].children[3].disabled, true, "the fastest");
-  assert.strictEqual(all()[1].children[1].disabled, true, "no acceleration");
+  slide(all()[1], 2);
+  all()[0].children[2].listeners.click();
+  assert.deepStrictEqual(sent, [{ mousePointer: { key: "acceleration", value: 2 } }, { mousePointer: { key: "disableAcceleration", value: false } }]);
   sandbox.tide.update({ clockFiles: [], mouse: { problem: "" } });
   // tide's defaults for a mouse: 1x, natural scrolling off.
   assert.strictEqual(rows()[0].children[2].textContent, "1×");
