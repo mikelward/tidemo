@@ -136,6 +136,16 @@ choices to tide's `macos.json` (SPEC.md §15).
   - Spotlight's services (`pbs`);
   - the menu bar's auto-hide, which bar_hs.lua already reads;
   - the lock screen's message, which needs an administrator's password.
+- **Liquid Glass: Clear or Tinted** (System Settings → Appearance, macOS
+  26.1 and later), as a row on the macOS page, if macOS keeps it where
+  tide can write it. Tinted may soften the thin glass edge macOS 26 draws
+  round windows. Where it's stored isn't documented: on a Mac, compare
+  `defaults read` before and after switching it. A key in the global
+  domain, as Dark mode's is, becomes a `macos.json` setting; one that's
+  guarded or takes a login gets a button to the Appearance pane instead.
+  The workarounds posted online set other things:
+  `com.apple.SwiftUI.DisableSolarium`, and the Accessibility
+  `reduceTransparency`.
 
 ## Free-standing tide
 
