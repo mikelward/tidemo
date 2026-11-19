@@ -794,10 +794,11 @@ tide. INFEASIBLE.md lists what can't be fixed.
   bottom-right. The top corners are unchecked on a Mac.
 - **A native full-screen window still hides by minimizing** in park mode
   (SPEC.md §6), as it did before: a move can't take it off its own Space.
-- **A focus of a parked window brings its workspace along** (Cmd+Tab, a
-  click on its sliver, its app coming to the front) only while that window
-  still has the focus, so a late report from before a switch doesn't flip
-  you back.
+- **A focus of a parked window brings its workspace along** only when you
+  chose it (Cmd+Tab, Return in Spotlight or Finder, a click in the Dock,
+  on a notification or on its sliver), and only while that window still
+  has the focus, so a late report from before a switch doesn't flip you
+  back (SPEC.md §6).
 - **A switch to an empty workspace gives the focus to Hammerspoon,** with
   no window of its own, so typing doesn't reach a parked window.
 
