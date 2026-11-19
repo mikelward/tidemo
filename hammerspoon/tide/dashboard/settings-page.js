@@ -1910,11 +1910,13 @@ function renderLauncher(launcher) {
 
 // The macOS page: macOS's own settings that tide keeps (macprefs.lua),
 // update()'s `macos`, each group's rows. A row is a switch, a choice with
-// ‹ and ›, or a folder typed and set with Enter; one tide sets has a button
+// ‹ and ›, a percentage that ‹ and › step by MAC_PERCENT_STEP, or a folder
+// typed and set with Enter; one tide sets has a button
 // giving it back to macOS. A change sends { macSet: { name, value } }, a
 // reset { macReset: name }, and tide answers with tide.update().
 const MAC_CHOICE_LABELS = { off: "Off", light: "Light", medium: "Medium", strong: "Strong", mac: "Mac", pc: "PC" };
 const MAC_WHEN = { "as apps reopen": "As apps reopen", "at next login": "At next login" };
+const MAC_PERCENT_STEP = 10;
 let macState = null;
 // What the page shows now, so the same again draws nothing and the keyboard
 // keeps its control, as Sound's does.
@@ -1955,6 +1957,17 @@ function macRow(r) {
       keyed(button("‹", `Previous: ${r.label}`, choices.length < 2, () => step(-1)), `mac-${r.name}-prev`),
       shown,
       keyed(button("›", `Next: ${r.label}`, choices.length < 2, () => step(1)), `mac-${r.name}-next`),
+    );
+  } else if (r.kind === "percent") {
+    const at = Number.isFinite(r.value) ? Math.round(r.value) : 0;
+    const to = (d) => Math.max(0, Math.min(100, Math.round((at + d * MAC_PERCENT_STEP) / MAC_PERCENT_STEP) * MAC_PERCENT_STEP));
+    const step = (d) => send({ macSet: { name: r.name, value: to(d) } });
+    const shown = el("span", `${at}%`);
+    shown.className = "value";
+    row.append(
+      keyed(button("‹", `Less: ${r.label}`, at <= 0, () => step(-1)), `mac-${r.name}-prev`),
+      shown,
+      keyed(button("›", `More: ${r.label}`, at >= 100, () => step(1)), `mac-${r.name}-next`),
     );
   } else {
     const base = String(r.value ?? "");

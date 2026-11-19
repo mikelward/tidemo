@@ -2236,6 +2236,30 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   sandbox.tide.update({ clockFiles: [], macos: macos("medium", "~/Pictures") });
   assert.strictEqual(box.children[2].children[1].value, "~/Pictures", "a new folder set replaces it");
 
+  // A percentage steps by 10, stopping at 0 and 100.
+  const glass = (value) => ({ error: "", groups: [
+    { label: "Appearance", rows: [
+      { name: "appearance.liquidGlassTint", label: "Liquid Glass tint", kind: "percent", value, set: false,
+        when: "as apps reopen" },
+    ] },
+  ] });
+  sandbox.tide.update({ clockFiles: [], macos: glass(37) });
+  let tint = box.children[1];
+  assert.strictEqual(tint.children[3].textContent, "37%");
+  sent.length = 0;
+  tint.children[2].listeners.click();
+  tint.children[4].listeners.click();
+  assert.deepStrictEqual(sent, [
+    { macSet: { name: "appearance.liquidGlassTint", value: 30 } },
+    { macSet: { name: "appearance.liquidGlassTint", value: 50 } },
+  ]);
+  sandbox.tide.update({ clockFiles: [], macos: glass(0) });
+  tint = box.children[1];
+  assert.strictEqual(tint.children[2].disabled, true, "no less than 0");
+  assert.strictEqual(tint.children[4].disabled, false);
+  sandbox.tide.update({ clockFiles: [], macos: glass(100) });
+  assert.strictEqual(box.children[1].children[4].disabled, true, "no more than 100");
+
   sandbox.tide.update({ clockFiles: [], macos: { error: "macos.json doesn't parse", groups: [] } });
   assert.strictEqual(ids["mac-error"].textContent, "macos.json doesn't parse");
 }

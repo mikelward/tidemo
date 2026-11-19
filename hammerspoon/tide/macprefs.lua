@@ -137,6 +137,22 @@ local function window_animations()
     }
 end
 
+-- A percentage, 0 to 100, as a fraction from 0 to 1, macOS's.
+local function fraction(k)
+    return {
+        keys = { k },
+        to = function(v)
+            return { v / 100 }
+        end,
+        from = function(v)
+            if type(v) ~= "number" then
+                return nil
+            end
+            return math.tointeger(math.floor(math.max(0, math.min(1, v)) * 100 + 0.5))
+        end,
+    }
+end
+
 local SMOOTHING = { off = 0, light = 1, medium = 2, strong = 3 }
 
 local function smoothing()
@@ -172,6 +188,7 @@ M.GROUPS = {
     { id = "screenshots", label = "Screenshots" },
     { id = "missionControl", label = "Dock and Mission Control" },
     { id = "windows", label = "Windows" },
+    { id = "appearance", label = "Appearance" },
     { id = "dialogs", label = "Dialogs" },
     { id = "mouse", label = "Mouse" },
     { id = "keyboard", label = "Keyboard" },
@@ -180,12 +197,21 @@ M.GROUPS = {
 }
 
 -- Every setting, in the page's order: its `group` and `key` in the files
--- (`name` is both), what the page calls it, its `kind` ("bool", "choice" or
--- "folder"), macOS's own value, and `effect`, when a change shows (M.WHEN).
+-- (`name` is both), what the page calls it, its `kind` ("bool", "choice",
+-- "percent", a whole number from 0 to 100, or "folder"), macOS's own value, and `effect`, when a change shows (M.WHEN).
 -- One that's `own` has no `defaults` keys: tide applies it itself, with
 -- the values macprefs_hs hands it (`own`), as it starts, after a wake and
 -- as the files change.
 M.SETTINGS = {
+    -- System Settings' Appearance: Liquid Glass from clear (0) to tinted
+    -- (1), macOS 26.1 and later, and window backgrounds tinted with the
+    -- wallpaper's color, which macOS saves as reducing it. Read from the
+    -- keys System Settings wrote on macOS 26 *(unverified: whether open
+    -- apps follow a write at once; macOS's own Liquid Glass value)*.
+    setting("appearance", "liquidGlassTint", "Liquid Glass tint", "percent", 0, "apps",
+        fraction(key(G, "NSGlassTintAmount", "float"))),
+    setting("appearance", "wallpaperTint", "Tint window backgrounds with the wallpaper color", "bool", true, "apps",
+        one(key(G, "AppleReduceDesktopTinting", "bool"), invert)),
     setting("finder", "showHiddenFiles", "Show hidden files", "bool", false, "Finder",
         one(key("com.apple.finder", "AppleShowAllFiles", "bool"))),
     setting("finder", "showPathBar", "Show the path bar", "bool", false, "Finder",
@@ -268,6 +294,10 @@ local function valid(s, v)
         end
         return false
     end
+    if s.kind == "percent" then
+        -- JSON and the page may give a whole number as a float.
+        return type(v) == "number" and v == math.floor(v) and v >= 0 and v <= 100
+    end
     -- A folder: absolute, or from ~/.
     return type(v) == "string" and (v:sub(1, 1) == "/" or v:sub(1, 2) == "~/") and not v:find("[%c]")
 end
@@ -280,10 +310,21 @@ local function wanted(s)
     if s.kind == "choice" then
         return table.concat(s.choices, ", ") .. ' or "macos"'
     end
+    if s.kind == "percent" then
+        return 'a whole number from 0 to 100, or "macos"'
+    end
     return 'a folder, from / or ~/, or "macos"'
 end
 
 M.valid = valid
+
+-- `v`, a value `s` takes, as it's kept: a percentage as an integer.
+local function kept(s, v)
+    if s.kind == "percent" and type(v) == "number" then
+        return math.tointeger(v)
+    end
+    return v
+end
 
 -- One file's settings, `obj` as decoded, checked: name -> value, and the
 -- errors, each naming `file` and the setting.
@@ -322,7 +363,7 @@ function M.check(obj, file)
                 elseif not valid(s, values[k]) then
                     errors[#errors + 1] = file .. ": " .. name .. " takes " .. wanted(s)
                 else
-                    out[name] = values[k]
+                    out[name] = kept(s, values[k])
                 end
             end
         end
@@ -523,7 +564,7 @@ function M.edit(obj, name, value, shared)
             value = M.MACOS
         end
     end
-    group[s.key] = value
+    group[s.key] = kept(s, value)
     if next(group) == nil then
         obj[s.group] = nil
     else

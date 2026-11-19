@@ -202,4 +202,42 @@ t.test('"macos" in the local file leaves a setting the shared one sets to macOS'
     t.eq(macprefs.edit({ finder = { showPathBar = false } }, "finder.showPathBar", nil, {}), {}, "nothing shared to take back")
 end)
 
+t.test("Liquid Glass's tint is a percentage, written as macOS's fraction", function()
+    local values, errors = macprefs.merge({ appearance = { liquidGlassTint = 40.0 } },
+        { appearance = { wallpaperTint = false } })
+    t.eq(errors, {})
+    t.eq(values, { ["appearance.liquidGlassTint"] = 40, ["appearance.wallpaperTint"] = false })
+    t.eq(math.type(values["appearance.liquidGlassTint"]), "integer", "a float from JSON is kept whole")
+    t.eq(args_of(macprefs.plan(values, {}, "/h")), {
+        "write NSGlobalDomain NSGlassTintAmount -float 0.4",
+        "write NSGlobalDomain AppleReduceDesktopTinting -bool true",
+    })
+    t.eq(args_of(macprefs.plan({ ["appearance.liquidGlassTint"] = 100 }, {}, "/h")),
+        { "write NSGlobalDomain NSGlassTintAmount -float 1.0" })
+    local _, bad = macprefs.merge({ appearance = { liquidGlassTint = 101 } }, { appearance = { liquidGlassTint = 2.5 } })
+    t.eq(bad, {
+        'macos.json: appearance.liquidGlassTint takes a whole number from 0 to 100, or "macos"',
+        'macos.local.json: appearance.liquidGlassTint takes a whole number from 0 to 100, or "macos"',
+    })
+    local edited = macprefs.edit(nil, "appearance.liquidGlassTint", 70.0)
+    t.eq(edited, { appearance = { liquidGlassTint = 70 } })
+    t.eq(math.type(edited.appearance.liquidGlassTint), "integer", "the page's number is saved whole")
+end)
+
+t.test("what macOS has for Liquid Glass and the wallpaper's tint", function()
+    local s = macprefs.BY_NAME
+    t.eq(macprefs.parse(s["appearance.liquidGlassTint"], 0, "0.6\n"), 60)
+    t.eq(macprefs.parse(s["appearance.liquidGlassTint"], 0, "1\n"), 100)
+    t.eq(macprefs.parse(s["appearance.liquidGlassTint"], 1, ""), nil, "unset is macOS's own")
+    t.eq(macprefs.parse(s["appearance.wallpaperTint"], 0, "1\n"), false, "macOS saves it as reducing the tint")
+    t.eq(macprefs.read_args(s["appearance.liquidGlassTint"]), { "read", "NSGlobalDomain", "NSGlassTintAmount" })
+    local page = macprefs.page({}, { ["appearance.liquidGlassTint"] = 60 }, {})
+    for _, g in ipairs(page.groups) do
+        if g.label == "Appearance" then
+            t.eq({ g.rows[1].kind, g.rows[1].value, g.rows[1].set }, { "percent", 60, false })
+            t.eq({ g.rows[2].label, g.rows[2].value }, { "Tint window backgrounds with the wallpaper color", true })
+        end
+    end
+end)
+
 t.done("macprefs")
