@@ -1214,7 +1214,7 @@ end)
 t.test("a click on the desktop that brings up a parked Finder window doesn't switch", function()
     local a, wm = on_empty()
     a.clock = a.clock + 30
-    wm:clicked(true)
+    wm:clicked("desktop")
     a.focus_ = 1
     wm:focused(1)
     t.eq(wm.current, "new")
@@ -1223,7 +1223,7 @@ end)
 t.test("a click in the Dock that focuses a parked window brings its workspace", function()
     local a, wm = on_empty()
     a.clock = a.clock + 30
-    wm:clicked(false)
+    wm:clicked("dock")
     a.focus_ = 1
     wm:focused(1)
     t.eq(wm.current, "in")
@@ -1232,8 +1232,8 @@ end)
 t.test("a click on a notification for a window on another workspace brings its workspace", function()
     local a, wm = on_empty()
     a.clock = a.clock + 30
-    -- The banner is a window, over the tiling area.
-    wm:clicked(false)
+    -- The banner is Notification Center's window, over the tiling area.
+    wm:clicked("notification")
     a.focus_ = 1
     wm:focused(1)
     t.eq(wm.current, "in")
@@ -1242,7 +1242,7 @@ end)
 t.test("a click on a parked window's sliver brings its workspace", function()
     local a, wm = on_empty()
     a.clock = a.clock + 30
-    wm:clicked(false)
+    wm:clicked("window", 1)
     a.focus_ = 1
     wm:focused(1)
     t.eq(wm.current, "in")

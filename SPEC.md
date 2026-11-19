@@ -996,13 +996,29 @@ API: the same Accessibility move a retile makes.
     and may be confused *(unverified which)*.
   - Cmd+Tab lists every app, as before. Choosing one whose window is
     parked focuses that window, and tide brings its workspace along
-    (Activate, §6.1), so no window turns up on the wrong workspace. So does
-    clicking a sliver, the app in the Dock, or a notification, or choosing
-    it in Spotlight: any click but one on the bare desktop.
-  - Nothing else brings a parked window's workspace along. An app that
-    comes to the front by itself, or restores its own minimized window,
-    is marked for attention (§14.2), and you stay. So does a click on the
-    desktop, which brings up Finder's window from wherever it is.
+    (Activate, §6.1), so no window turns up on the wrong workspace.
+  - **One rule decides the rest:** a parked window that takes the focus
+    brings its workspace along only when you chose it, and otherwise you
+    stay. Choosing it is one of:
+    - Cmd+Tab;
+    - Return in Spotlight or Finder, but not in tide's own launcher or
+      prompt, which show what you picked themselves;
+    - a click in the Dock, on a notification, or on its sliver.
+
+    What was under a click is read from the window server's list, its
+    front window's owner and level (`hs_adapter.click_target`). A click
+    anywhere else isn't choosing: a window's close button, the desktop,
+    a menu, tide's bar. A menu is out because File > Close and Window >
+    a window look the same. A choice explains the first focus after it
+    and no later one, so a close straight after a Cmd+Tab doesn't switch.
+  - However else a parked window gets the focus, you stay. The focus goes
+    back to the last used window on the workspace showing, or with none,
+    to no window, and the workspace stays, empty or not, until you leave
+    it. That covers an app coming forward by itself or restoring its own
+    window, a click on the desktop bringing up Finder's, and macOS
+    passing the focus on as a window closes or one of tide's own windows
+    closes. An app that came forward by itself is marked for attention
+    (§14.2). One macOS passed the focus to isn't.
   - Opening a new window of an app that has one elsewhere, as a new
     Chrome window from the launcher, chooses the app's New Window without
     bringing the app forward, so its old window stays where it is. If the
@@ -1010,19 +1026,9 @@ API: the same Accessibility move a retile makes.
     opens where you are.
   - That's only while the window still has the focus, so a late report
     of a focus from before a switch doesn't flip you back.
-  - Nor when what you were in just went away: the window you were in, or
-    the last window on the workspace, closed or was minimized, or the
-    launcher, the name prompt, the overview, Tide Settings or another of
-    tide's own windows closed. macOS moving the focus on to another app's
-    window isn't you leaving, so you stay on the workspace, empty or not,
-    and an empty one is kept until you leave it. The last window counts
-    even if macOS never said it had the focus, as for one named at the
-    prompt.
   - Going back to the window you were in, as Esc from the launcher does,
     never goes to one on a workspace you've left: the workspace showing
     keeps the focus, or with no window, nothing has it.
-    That holds for a second after the close, whichever macOS reports
-    first, so a Cmd+Tab in that second doesn't switch.
   - A switch to an empty workspace gives the focus to Hammerspoon, which
     has no window to type into, so keys don't reach a parked window
     (`wm:unfocus_parked`) *(unverified on a Mac that activating it opens
@@ -4654,15 +4660,15 @@ Each one names a workaround, or says there is none.
     row, the bar, the menu bar item, the tray, the overview, the
     dashboard, the trackpad swipe, the name prompt, or macOS focusing a
     window on a hidden workspace that you chose: Cmd+Tab, Return, or a
-    click, and how long before. Start and a numbered workspace left empty
+    click on the Dock, a notification or its sliver, and how long before. Start and a numbered workspace left empty
     say so too.
   - **focus:** each focus tide asks for, with the same reasons, and focus
     follows mouse's; each focus macOS reports, with what tide did: kept,
     and the rule that let it (tide asked, the app you were in, a click or
     key just before, a launch's grant), taken back from an app that
     activated itself, or, on a hidden workspace, staying where you are
-    (a close, a launch on its way, an app that came forward by itself)
-    or following it. Focus handed back after a close, a minimize or one
+    (macOS passing it on, or an app that came forward by itself) or
+    following it. Focus handed back after a close, a minimize or one
     of tide's own windows closing, focus given to no window, and the
     picker activating the app it pastes into are entries too.
   - **window:** each window opened, and the workspace it went to and why
