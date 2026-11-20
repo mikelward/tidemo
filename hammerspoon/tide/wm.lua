@@ -2531,7 +2531,7 @@ function M:focus_scene()
     end
     local above = {}
     if not next(others) then
-        return { focused = st.frame, above = above, alone = true }
+        return { focused = st.frame, id = id, above = above, alone = true }
     end
     for _, oid in ipairs(self.a.ordered()) do
         if oid == id then
@@ -2541,7 +2541,7 @@ function M:focus_scene()
             above[#above + 1] = others[oid]
         end
     end
-    return { focused = st.frame, above = above }
+    return { focused = st.frame, id = id, above = above }
 end
 
 -- Coalesce a burst of events into one sync and retile.

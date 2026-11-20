@@ -102,4 +102,28 @@ t.test("no shadow and no dim draws nothing, and the dim alone is as it was", fun
         dim.layer({ focused = win, above = {} }, { focused = win, above = {} }, full, 0.12, 10, 0))
 end)
 
+-- A window with a toolbar, as System Settings', is rounder on macOS 26: the
+-- shadow and the hole follow its corners, so neither pokes out past them;
+-- a window in front keeps the usual corners.
+t.test("the shadow and the hole follow the focused window's own corners", function()
+    local front = { x = 495, y = 150, w = 200, h = 100 }
+    local els = dim.layer(nil, { focused = win, above = { front } }, full, 0, 16, 8, 26)
+    t.eq(els[1].roundedRectRadii, { xRadius = 26, yRadius = 26 }, "the shadow")
+    t.eq(els[2].roundedRectRadii, { xRadius = 26, yRadius = 26 }, "the hole")
+    t.eq(els[3].roundedRectRadii, { xRadius = 16, yRadius = 16 }, "the window in front")
+    t.eq(dim.layer(nil, { focused = win, above = {} }, full, 0, 16, 8)[1].roundedRectRadii,
+        { xRadius = 16, yRadius = 16 }, "with no corners of its own, the usual")
+end)
+
+t.test("the focus scene names the focused window, for its corners", function()
+    local a = fake.new()
+    a.add(1, {})
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:retile()
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm:focus_scene().id, 1)
+end)
+
 t.done("shadow")

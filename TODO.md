@@ -63,8 +63,9 @@ so on macOS 26; ticks survive a reload. What's left:
   says; and that choosing a dynamic one sets it changing with the
   appearance.
 - **The dim (SPEC.md §5.6). Check on a Mac:** every window but the focused
-  one is dimmed, and the desktop; the hole's corners match the window's on
-  macOS 26 and before; clicks go through the layer; menus, popovers, the
+  one is dimmed, and the desktop; the hole's and the shadow's corners match
+  the window's on macOS 26 and before, for a window with a toolbar (System
+  Settings, LinearMouse: 26 points, a guess) and one without (16); clicks go through the layer; menus, popovers, the
   bar, the tray, picture-in-picture and Mission Control look right; a
   float over the focused tile is dimmed all over, once; the hole keeps up
   with a drag well enough; the Appearance page's − and + change it at

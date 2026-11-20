@@ -97,6 +97,8 @@ end
 function M.new()
     local a = {}
     local cache = {}
+    -- Whether each open window has a toolbar (a.has_toolbar), by id.
+    local toolbars = {}
     -- Windows on screen that no filter watches, id -> frame (a.ordered).
     local strangers = {}
     local system = hs.axuielement.systemWideElement()
@@ -132,13 +134,17 @@ function M.new()
     function a.windows()
         cache = {}
         local ids = {}
+        local still = {}
         for _, w in ipairs(every:getWindows()) do
             local id = try(w.id, w)
             if id then
                 cache[id] = w
                 ids[#ids + 1] = id
+                still[id] = toolbars[id]
             end
         end
+        -- A window that's gone is forgotten.
+        toolbars = still
         return ids
     end
 
@@ -352,6 +358,37 @@ function M.new()
         else
             outline:frame(b)
         end
+    end
+
+    -- Whether window `id` has a toolbar, which rounds its corners more on
+    -- macOS 26 (dim.radius): Accessibility lists one among the window's
+    -- children *(unverified for every app's)*. Asked once a window, while
+    -- it's open; one that can't be asked yet is taken to have none and is
+    -- asked again next time.
+    function a.has_toolbar(id)
+        local known = toolbars[id]
+        if known ~= nil then
+            return known
+        end
+        local w = win(id)
+        if not w then
+            return false
+        end
+        local ok, found = pcall(function()
+            local el = hs.axuielement.windowElement(w)
+            for _, child in ipairs(el and el:attributeValue("AXChildren") or {}) do
+                if child:attributeValue("AXRole") == "AXToolbar" then
+                    return true
+                end
+            end
+            return false
+        end)
+        if not ok then
+            a.log("shadows: couldn't ask whether window " .. tostring(id) .. " has a toolbar: " .. tostring(found))
+            return false
+        end
+        toolbars[id] = found
+        return found
     end
 
     function a.title(id)
