@@ -1228,9 +1228,11 @@ function M:add(id)
     -- launch opened from one that was already there.
     -- `opened`: the frame it opened at, which a tile no longer has, so one
     -- decided again (M:retitled) floats at the size it asked for.
+    -- `dialog`: a window that floats as a dialog, panel or other window
+    -- that isn't standard (rules.step), whose corners its app may draw.
     local w = {
         id = id, app = f.app, name = f.name, pid = f.pid, kind = kind, seen = self.a.now(), title = f.title,
-        opened = f.frame,
+        opened = f.frame, dialog = f.role == "AXWindow" and rules.step(f) == "float",
     }
     self.windows[id] = w
     if kind == "ignore" then
@@ -2531,7 +2533,7 @@ function M:focus_scene()
     end
     local above = {}
     if not next(others) then
-        return { focused = st.frame, id = id, above = above, alone = true }
+        return { focused = st.frame, id = id, dialog = w.dialog, above = above, alone = true }
     end
     for _, oid in ipairs(self.a.ordered()) do
         if oid == id then
@@ -2541,7 +2543,7 @@ function M:focus_scene()
             above[#above + 1] = others[oid]
         end
     end
-    return { focused = st.frame, id = id, above = above }
+    return { focused = st.frame, id = id, dialog = w.dialog, above = above }
 end
 
 -- Coalesce a burst of events into one sync and retile.

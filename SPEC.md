@@ -968,6 +968,10 @@ value is logged, naming the setting (`shadow.load`).
     unshaded sliver between *(unverified: 26 points is from how macOS 26
     draws them, not a documented value, and an app may draw its toolbar
     otherwise)*.
+  - A dialog casts none: one that floats as a dialog, a panel or another
+    window that isn't standard (§5.1's steps), whose corners its app may
+    draw itself, as Chrome's "Leave site?" does. A shadow of the wrong
+    shape pokes out past them. The dim still has its hole.
 - **macOS's shadows come back on** when Hammerspoon quits or reloads
   (`hs.shutdownCallback` calls `dim_hs.stop`), and a reload sets them as
   the setting says again.
