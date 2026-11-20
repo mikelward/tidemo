@@ -506,7 +506,9 @@ local function check_launcher_page(after)
         end
         -- The page's own clock says where the time went: from the key to
         -- the page hearing tide.open, drawing it, and answering this.
-        page.evaluate([[JSON.stringify({ scope: tide.scope(), at: Date.now(), opened: tide.opened })]],
+        -- And whether tileco's bar shows: tide's own bar shows all it holds.
+        page.evaluate([[JSON.stringify({ scope: tide.scope(), at: Date.now(), opened: tide.opened,
+            bar: getComputedStyle(document.getElementById("bar")).display })]],
             function(answer, err)
             local back = hs.timer.secondsSinceEpoch()
             local ms = math.floor((back - asked) * 1000)
@@ -520,6 +522,9 @@ local function check_launcher_page(after)
                     fail("launcher: tileco's launcher on %s: %s", tab, hs.inspect(err))
                     done()
                     return
+                end
+                if got.bar ~= "none" then
+                    fail("launcher: tileco's bar shows in the panel, as display %s", tostring(got.bar))
                 end
                 local o = got.opened or {}
                 local t0 = asked * 1000
