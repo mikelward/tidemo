@@ -3728,29 +3728,27 @@ function M:covered(id)
     return f ~= nil and rules.decide(f, self.rules) == "float"
 end
 
--- The Floating page's "Floating now": the floating windows no rule covers,
--- one per app, each the page's fill-in for it (floating.prefill), ordered
--- by app name.
+-- The Floating page's "Floating now": every floating window, each the
+-- page's fill-in for it (floating.prefill) with its title as it shows
+-- (`shown`), ordered by app name, then title. One `covered` floats
+-- without your asking, a dialog or by a rule, and the page lists it apart.
 function M:floating_now()
-    local out, seen = {}, {}
-    local ids = {}
+    local out = {}
     for id, w in pairs(self.windows) do
         if w.ws and w.floating then
-            ids[#ids + 1] = id
-        end
-    end
-    table.sort(ids, function(a, b)
-        return tostring(a) < tostring(b)
-    end)
-    for _, id in ipairs(ids) do
-        local f = self.a.facts(id)
-        if f and f.app and f.app ~= "" and not seen[f.app] and rules.decide(f, self.rules) ~= "float" then
-            seen[f.app] = true
-            out[#out + 1] = self:float_prefill(id, f)
+            local f = self.a.facts(id)
+            local fill = f and f.app and f.app ~= "" and self:float_prefill(id, f)
+            if fill then
+                fill.shown = f.title or ""
+                out[#out + 1] = fill
+            end
         end
     end
     table.sort(out, function(a, b)
-        return a.name:lower() < b.name:lower()
+        if a.name:lower() ~= b.name:lower() then
+            return a.name:lower() < b.name:lower()
+        end
+        return a.shown < b.shown
     end)
     return out
 end

@@ -1857,14 +1857,26 @@ function renderFloating() {
     );
     list.append(li);
   });
+  // Every floating window: those you floated by hand, which Always float
+  // can make a rule, then those that float anyway, saying what floats them.
   const now = document.getElementById("floating-now");
+  const byDefault = document.getElementById("floating-default");
   now.replaceChildren();
+  byDefault.replaceChildren();
   const windows = Array.isArray(f.now) ? f.now : [];
-  if (windows.length === 0) now.append(el("li", "None. Super+Shift+F floats a window."));
-  for (const w of windows) {
+  const hand = windows.filter((w) => !w.covered);
+  const covered = windows.filter((w) => w.covered);
+  if (hand.length === 0) now.append(el("li", "None. Super+Shift+F floats a window."));
+  for (const w of hand) {
     const li = el("li");
-    li.append(el("span", w.name), el("span", w.title), button("Always float", `Always float ${w.name}`, broken, () => fillFloating(w)));
+    li.append(el("span", w.name), el("span", w.shown ?? ""), button("Always float", `Always float ${w.name}`, broken, () => fillFloating(w)));
     now.append(li);
+  }
+  if (covered.length === 0) byDefault.append(el("li", "None."));
+  for (const w of covered) {
+    const li = el("li");
+    li.append(el("span", w.name), el("span", w.shown ?? ""), el("span", w.covered));
+    byDefault.append(li);
   }
 }
 

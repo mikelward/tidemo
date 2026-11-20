@@ -4601,9 +4601,11 @@ Each one names a workaround, or says there is none.
     pattern, and names a rule by its place, app and title, so a hand edit
     that has moved it since is refused. A refusal says why under the
     fields.
-  - *Floating now* lists the floating windows no rule covers, one per app,
-    by app name. Every rule counts, and so do the dialog steps (§5.1). A
-    window with no bundle ID can't be named, so it isn't listed.
+  - *Floating now* lists every floating window you floated by hand, by
+    app name, then title, each with *Always float*. *Floating by default*,
+    at the foot, lists the rest: those a rule floats and dialogs (§5.1),
+    each saying what floats it, as the fields do below. A window with no
+    bundle ID can't be named, so it isn't listed.
   - *Always float* adds nothing yet. It fills the fields with the
     window's bundle ID and a pattern for its exact title: the title with
     Lua's magic characters escaped (`.` as `%.`), between `^` and `$`.
