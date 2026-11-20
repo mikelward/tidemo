@@ -421,6 +421,10 @@ body.settings {
 .settings #floating-now li {
   grid-template-columns: 1fr 1fr auto;
 }
+/* A window floating by default: its app, its title and what floats it. */
+.settings #floating-default li {
+  grid-template-columns: 1fr 1fr 1fr;
+}
 /* More about this window: a dim row that opens what macOS says of it. */
 .settings summary {
   display: flex;
@@ -909,6 +913,9 @@ body.settings {
 <h2>Floating now</h2>
 <p class="note">Windows you floated by hand.</p>
 <ul id="floating-now"></ul>
+<h2>Floating by default</h2>
+<p class="note">Dialogs, and windows a rule floats.</p>
+<ul id="floating-default"></ul>
 </section>
 <section class="page" id="page-appearance" hidden>
 <h1 id="appearance">Appearance</h1>

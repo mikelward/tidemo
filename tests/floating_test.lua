@@ -298,7 +298,7 @@ t.test("start()'s rules come before the files', and keep working", function()
     t.eq(not wm.windows[1].floating, true)
 end)
 
-t.test("Floating now lists the floating windows no rule covers, one per app", function()
+t.test("Floating now lists every floating window, saying what floats those you didn't", function()
     local a, wm = setup({ "com.a", "com.a", "com.b", "com.c" })
     a.add(5, { app = "com.d", subrole = "AXDialog", title = "Dialog" })
     a.app_names = {}
@@ -310,10 +310,17 @@ t.test("Floating now lists the floating windows no rule covers, one per app", fu
     end
     wm:set_float_rules({ rule("com.b") })
     local now = wm:floating_now()
-    t.eq(#now, 1, "one for Alpha; Beta has a rule, the dialog floats anyway")
-    t.eq(now[1].app, "com.a")
-    t.eq(now[1].name, "Alpha")
-    t.eq(now[1].title, "^Window 1$")
+    local seen = {}
+    for _, w in ipairs(now) do
+        seen[#seen + 1] = { w.name, w.shown, w.covered or "by hand" }
+    end
+    t.eq(seen, {
+        { "Alpha", "Window 1", "by hand" },
+        { "Alpha", "Window 2", "by hand" },
+        { "Beta", "Window 3", "rule 1" },
+        { "com.d", "Dialog", "macOS reports it as a dialog or panel" },
+    }, "every window, by app then title; Beta's rule and the dialog say why")
+    t.eq(now[1].title, "^Window 1$", "Always float's pattern")
 end)
 
 t.test("floating a window by the key asks only when no rule covers it", function()

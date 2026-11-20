@@ -1432,7 +1432,10 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
     floating: {
       rules: [{ app: "com.example.a", title: "" }, { app: "com.example.b", title: "^Save" }],
       source: "floating-macos.local.json",
-      now: [{ ...fill, covered: undefined, about: [] }],
+      now: [
+        { ...fill, shown: "Info (1)", covered: undefined, about: [] },
+        { app: "com.example.c", name: "Chrome", title: "^Leave site%?$", shown: "Leave site?", covered: "it's modal", about: [] },
+      ],
     },
   });
   assert.match(get("floating-source").textContent, /this Mac's own list/);
@@ -1448,7 +1451,11 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
     { floatRemove: { index: 2, app: "com.example.b", title: "^Save" } },
   ]);
   // Always float fills the fields, adding nothing yet.
-  assert.deepStrictEqual(now()[0].children.map((c) => c.textContent), ["Viewer", "^Info %(1%)$", "Always float"]);
+  assert.deepStrictEqual(now()[0].children.map((c) => c.textContent), ["Viewer", "Info (1)", "Always float"]);
+  assert.strictEqual(now().length, 1, "only those floated by hand");
+  // One that floats anyway is listed apart, saying what floats it.
+  assert.deepStrictEqual(get("floating-default").children.map((li) => li.children.map((c) => c.textContent)),
+    [["Chrome", "Leave site?", "it's modal"]]);
   sent.length = 0;
   now()[0].children[2].listeners.click();
   assert.deepStrictEqual(sent, []);
