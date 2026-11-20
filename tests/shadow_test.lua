@@ -126,4 +126,25 @@ t.test("the focus scene names the focused window, for its corners", function()
     t.eq(wm:focus_scene().id, 1)
 end)
 
+-- A dialog's corners are its app's own, so tide paints no shadow round it;
+-- the dim still has its hole.
+t.test("a dialog casts no painted shadow", function()
+    t.eq(dim.layer(nil, { focused = win, dialog = true, above = {} }, full, 0, 16, 8), nil, "no dim, nothing")
+    local els = dim.layer({ focused = win, above = {} }, { focused = win, dialog = true, above = {} }, full, 0.12, 16, 8)
+    t.eq(#els, 2, "the dim and its hole")
+    t.eq(els[2].compositeRule, "destinationOut")
+    local a = fake.new()
+    a.add(1, {})
+    a.add(2, { subrole = "AXDialog", title = "Leave site?" })
+    local wm = wm_mod.new(a, {})
+    wm:sync()
+    wm:retile()
+    a.focus_ = 2
+    wm:focused(2)
+    t.eq(wm:focus_scene().dialog, true)
+    a.focus_ = 1
+    wm:focused(1)
+    t.eq(wm:focus_scene().dialog, false, "a standard window")
+end)
+
 t.done("shadow")

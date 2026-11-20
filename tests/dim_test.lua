@@ -38,7 +38,7 @@ t.test("the focused tile is the hole, and nothing is in front of it", function()
     local a, wm = setup(2)
     a.focus(1)
     wm:focused(1)
-    t.eq(wm:dim_scene(), { focused = a.wins[1].frame, id = 1, above = {} })
+    t.eq(wm:dim_scene(), { focused = a.wins[1].frame, id = 1, dialog = false, above = {} })
 end)
 
 t.test("a lone window, a full-screen one or none focused isn't dimmed", function()

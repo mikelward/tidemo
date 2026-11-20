@@ -68,7 +68,9 @@ M.SHADOW_ALPHA = 0.45
 function M.layer(dim_scene, focus, full, strength, radius, size, own)
     local dimming = dim_scene ~= nil and strength ~= nil and strength > 0
     local f = focus and focus.focused
-    local shadow = f ~= nil and (size or 0) > 0 and overlap(grown(f, size), full)
+    -- A dialog's corners are its app's to draw, such as Chrome's "Leave
+    -- site?": a shadow of the wrong shape pokes out past them, so none.
+    local shadow = f ~= nil and not focus.dialog and (size or 0) > 0 and overlap(grown(f, size), full)
     if not dimming and not shadow then
         return nil
     end
