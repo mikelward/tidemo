@@ -22,7 +22,8 @@ function M.new(tide)
     local self = { canvases = {}, drawn = {} }
     local a = tide.adapter
     local strength = dim.STRENGTH
-    local radius = dim.radius(hs.host.operatingSystemVersion().major)
+    local major = hs.host.operatingSystemVersion().major
+    local radius = dim.radius(major)
     local reported = ""
     local pending
     -- The shadows set, and whether macOS draws its own, as tide last set it
@@ -78,10 +79,13 @@ function M.new(tide)
             local scene = tide.wm:dim_scene()
             local focus = shadow.painted(shadows) and tide.wm:focus_scene() or nil
             local size = shadow.painted(shadows) and shadows.size or 0
+            -- The focused window's own corners, rounder with a toolbar.
+            local id = (focus and focus.id) or (scene and scene.id)
+            local own = id and a.has_toolbar and dim.radius(major, a.has_toolbar(id)) or radius
             local seen = {}
             for _, s in ipairs(tide.wm:screens()) do
                 seen[s.uuid] = true
-                local els = dim.layer(scene, focus, s.full, strength, radius, size)
+                local els = dim.layer(scene, focus, s.full, strength, radius, size, own)
                 local key = els and hs.inspect(els) .. hs.inspect(s.full)
                 if not els then
                     drop(s.uuid)

@@ -62,9 +62,10 @@ M.SHADOW_ALPHA = 0.45
 -- with no focused frame when every window's to be dimmed, or nil when
 -- nothing is. `focus` is wm:focus_scene(), the same for the shadow, which a
 -- lone window casts too, or nil for no shadow. `full` is the display's
--- whole frame, `strength` the dim's, `radius` a window's corner radius and
--- `size` how far the shadow reaches (0 for none).
-function M.layer(dim_scene, focus, full, strength, radius, size)
+-- whole frame, `strength` the dim's, `radius` a window's corner radius,
+-- `size` how far the shadow reaches (0 for none), and `own` the focused
+-- window's corner radius, if it isn't `radius` (M.radius).
+function M.layer(dim_scene, focus, full, strength, radius, size, own)
     local dimming = dim_scene ~= nil and strength ~= nil and strength > 0
     local f = focus and focus.focused
     local shadow = f ~= nil and (size or 0) > 0 and overlap(grown(f, size), full)
@@ -73,6 +74,11 @@ function M.layer(dim_scene, focus, full, strength, radius, size)
     end
     local color = { red = 0, green = 0, blue = 0, alpha = dimming and strength or 0 }
     local corners = { xRadius = radius, yRadius = radius }
+    -- The focused window's, which the shadow and the hole follow: a
+    -- corner rounder than them leaves a wedge outside the window with
+    -- neither the shadow nor the dim.
+    own = own or radius
+    local own_corners = { xRadius = own, yRadius = own }
     local out = {}
     if dimming then
         out[#out + 1] = { type = "rectangle", action = "fill", fillColor = color, frame = { x = 0, y = 0, w = full.w, h = full.h } }
@@ -84,7 +90,7 @@ function M.layer(dim_scene, focus, full, strength, radius, size)
             type = "rectangle",
             action = "fill",
             fillColor = { red = 0, green = 0, blue = 0, alpha = 1 },
-            roundedRectRadii = corners,
+            roundedRectRadii = own_corners,
             withShadow = true,
             shadow = {
                 blurRadius = size,
@@ -103,7 +109,7 @@ function M.layer(dim_scene, focus, full, strength, radius, size)
             action = "fill",
             fillColor = { red = 0, green = 0, blue = 0, alpha = 1 },
             compositeRule = "destinationOut",
-            roundedRectRadii = corners,
+            roundedRectRadii = own_corners,
             frame = relative(hole, full),
         }
         -- A window in front of the focused one is dimmed where it covers the
@@ -133,11 +139,15 @@ function M.elements(scene, full, strength, radius)
     return M.layer(scene, scene, full, strength, radius, 0)
 end
 
--- The corner radius of a window on macOS `major`: larger from macOS 26
--- *(unverified: it differs by kind of window)*.
-function M.radius(major)
+-- The corner radius of a window on macOS `major`, one with a toolbar
+-- (`toolbar`) or not. macOS 26 rounds every window more, and one with a
+-- toolbar more again, as System Settings' and LinearMouse's are; one with
+-- only a title bar, as kitty's and Chrome's, less *(the toolbar's radius
+-- is a guess from how macOS 26 draws it)*.
+M.TOOLBAR_RADIUS = 26
+function M.radius(major, toolbar)
     if (major or 0) >= 26 then
-        return 16
+        return toolbar and M.TOOLBAR_RADIUS or 16
     end
     return 10
 end

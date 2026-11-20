@@ -958,6 +958,16 @@ value is logged, naming the setting (`shadow.load`).
     crosses it, and it lags a window you drag, as dimming does.
   - How dark it is (`dim.SHADOW_ALPHA`, 0.45) is a guess, to compare with
     macOS's own.
+  - Its corners, and the dim's hole, follow the focused window's. macOS
+    26 rounds a window with a toolbar, as System Settings' and
+    LinearMouse's, more than one with only a title bar, as a terminal's
+    or Chrome's: 26 points against 16 (`dim.radius`; 10 before macOS 26).
+    tide asks Accessibility once a window whether it has a toolbar
+    (`AXToolbar` among its children). With corners less round than the
+    window's, the shadow's squarer corners poked out past it, with an
+    unshaded sliver between *(unverified: 26 points is from how macOS 26
+    draws them, not a documented value, and an app may draw its toolbar
+    otherwise)*.
 - **macOS's shadows come back on** when Hammerspoon quits or reloads
   (`hs.shutdownCallback` calls `dim_hs.stop`), and a reload sets them as
   the setting says again.
