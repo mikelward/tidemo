@@ -12,8 +12,9 @@
 /* tide shows this page in a panel about tide's switcher's size, not over
    the whole display (launcherpage.lua's frame), and its own bar already
    shows the workspaces, clocks and status icons: so no bar here, and the
-   card sits near the panel's top rather than 12% down the display. */
-header.bar {
+   card sits near the panel's top rather than 12% down the display. By its
+   id, so it outranks tileco's own rules for the bar, as .bar.zoned's grid. */
+#bar {
   display: none;
 }
 main {
