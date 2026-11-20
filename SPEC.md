@@ -4602,10 +4602,13 @@ Each one names a workaround, or says there is none.
     that has moved it since is refused. A refusal says why under the
     fields.
   - *Floating now* lists every floating window you floated by hand, by
-    app name, then title, each with *Always float*. *Floating by default*,
-    at the foot, lists the rest: those a rule floats and dialogs (§5.1),
-    each saying what floats it, as the fields do below. A window with no
-    bundle ID can't be named, so it isn't listed.
+    app name, then title, each with *Always float*. *Also floating*, at
+    the foot, lists every other floating window, as tide for Linux's
+    does: those a rule floats already, dialogs (§5.1) among them, each
+    saying whose rule, *Built in* (tide's own, or a dialog step) or *Your
+    rule* (the files' or `start()`'s). *Details* fills the fields as
+    *Always float* does, saying what floats it and what macOS says of it.
+    A window with no bundle ID can't be named, so it isn't listed.
   - *Always float* adds nothing yet. It fills the fields with the
     window's bundle ID and a pattern for its exact title: the title with
     Lua's magic characters escaped (`.` as `%.`), between `^` and `$`.

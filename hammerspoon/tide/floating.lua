@@ -278,26 +278,34 @@ end
 
 -- What floats window `facts` without your asking, as a phrase for the
 -- page, or nil when nothing does: a rule in the files, one in start(), one
--- of tide's own, or the step that floats a dialog (rules.decide).
+-- of tide's own, or the step that floats a dialog (rules.decide). Then
+-- whether it's tide's, built in, rather than yours, as tide for Linux's
+-- page says.
 function M.covered_by(facts, start_rules, file_rules)
     if facts.role ~= "AXWindow" then
         return nil
     end
     local r, i = rules.first(start_rules, facts)
     if r then
-        return r.action == "float" and "a start() rule" or nil
+        if r.action == "float" then
+            return "a start() rule", false
+        end
+        return nil
     end
     r, i = rules.first(file_rules, facts)
     if r then
-        return string.format("rule %d", i)
+        return string.format("rule %d", i), false
     end
     r = rules.first(rules.defaults, facts)
     if r then
-        return r.action == "float" and "built-in rule" or nil
+        if r.action == "float" then
+            return "built-in rule", true
+        end
+        return nil
     end
     local action, step = rules.step(facts)
     if action == "float" then
-        return rules.STEPS[step]
+        return rules.STEPS[step], true
     end
 end
 
@@ -353,11 +361,13 @@ function M.prefill(facts, info, start_rules, file_rules)
         return nil
     end
     local title = facts.title or ""
+    local covered, built_in = M.covered_by(facts, start_rules, file_rules)
     return {
         app = facts.app,
         name = facts.name or facts.app,
         title = title ~= "" and M.exact(title) or "",
-        covered = M.covered_by(facts, start_rules, file_rules),
+        covered = covered,
+        builtIn = built_in == true,
         about = M.about(info),
     }
 end

@@ -1858,7 +1858,10 @@ function renderFloating() {
     list.append(li);
   });
   // Every floating window: those you floated by hand, which Always float
-  // can make a rule, then those that float anyway, saying what floats them.
+  // can make a rule, then Also floating, those a rule floats already,
+  // dialogs among them, each saying whose rule, as tide for Linux's page
+  // does. Details fills the fields, saying what floats it and what macOS
+  // says of it.
   const now = document.getElementById("floating-now");
   const byDefault = document.getElementById("floating-default");
   now.replaceChildren();
@@ -1875,7 +1878,10 @@ function renderFloating() {
   if (covered.length === 0) byDefault.append(el("li", "None."));
   for (const w of covered) {
     const li = el("li");
-    li.append(el("span", w.name), el("span", w.shown ?? ""), el("span", w.covered));
+    const who = el("span", w.builtIn ? "Built in" : "Your rule");
+    who.title = w.covered;
+    li.append(el("span", w.name), el("span", w.shown ?? ""), who,
+      button("Details", `Details of ${w.name}`, broken, () => fillFloating(w)));
     byDefault.append(li);
   }
 }

@@ -49,7 +49,7 @@ t.test("each list's rows have a column for every part, so none wraps", function(
     t.eq(columns(html, ".settings #shortcut-failed li"), 2, "a key that didn't register and why")
     t.eq(columns(html, ".settings #floating-list li"), 5, "an app, its title, up, down and remove")
     t.eq(columns(html, ".settings #floating-now li"), 3, "an app, its title and Always float")
-    t.eq(columns(html, ".settings #floating-default li"), 3, "an app, its title and what floats it")
+    t.eq(columns(html, ".settings #floating-default li"), 4, "an app, its title, whose rule and Details")
     t.eq(columns(html, ".settings #ws-list-standing li"), 5, "a workspace, its note, up, down and remove")
     t.eq(columns(html, ".settings #ws-list-namePatterns li"), 5, "a pattern, its note, up, down and remove")
     t.eq(columns(html, ".settings #ws-list-inApps li"), 2, "an app and remove")

@@ -1434,7 +1434,8 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
       source: "floating-macos.local.json",
       now: [
         { ...fill, shown: "Info (1)", covered: undefined, about: [] },
-        { app: "com.example.c", name: "Chrome", title: "^Leave site%?$", shown: "Leave site?", covered: "it's modal", about: [] },
+        { app: "com.example.c", name: "Chrome", title: "^Leave site%?$", shown: "Leave site?", covered: "it's modal", builtIn: true,
+          about: [{ label: "Modal", value: "yes" }] },
       ],
     },
   });
@@ -1453,9 +1454,24 @@ assert.strictEqual(clip("clipboard-clear").disabled, true);
   // Always float fills the fields, adding nothing yet.
   assert.deepStrictEqual(now()[0].children.map((c) => c.textContent), ["Viewer", "Info (1)", "Always float"]);
   assert.strictEqual(now().length, 1, "only those floated by hand");
-  // One that floats anyway is listed apart, saying what floats it.
-  assert.deepStrictEqual(get("floating-default").children.map((li) => li.children.map((c) => c.textContent)),
-    [["Chrome", "Leave site?", "it's modal"]]);
+  // One a rule floats already is listed apart, saying whose rule; Details
+  // fills the fields and says what floats it and what macOS says of it.
+  const also = get("floating-default").children;
+  assert.deepStrictEqual(also.map((li) => li.children.map((c) => c.textContent)),
+    [["Chrome", "Leave site?", "Built in", "Details"]]);
+  assert.strictEqual(also[0].children[2].title, "it's modal");
+  also[0].children[3].listeners.click();
+  assert.strictEqual(get("floating-app").value, "com.example.c");
+  assert.strictEqual(get("floating-covered").textContent, "Already floats (it's modal).");
+  assert.strictEqual(get("floating-about").hidden, false);
+  sandbox.tide.update({
+    clockFiles: [],
+    floating: {
+      rules: [{ app: "com.example.a", title: "" }, { app: "com.example.b", title: "^Save" }],
+      source: "floating-macos.local.json",
+      now: [{ ...fill, shown: "Info (1)", covered: undefined, about: [] }],
+    },
+  });
   sent.length = 0;
   now()[0].children[2].listeners.click();
   assert.deepStrictEqual(sent, []);

@@ -321,6 +321,7 @@ t.test("Floating now lists every floating window, saying what floats those you d
         { "com.d", "Dialog", "macOS reports it as a dialog or panel" },
     }, "every window, by app then title; Beta's rule and the dialog say why")
     t.eq(now[1].title, "^Window 1$", "Always float's pattern")
+    t.eq({ now[3].builtIn, now[4].builtIn }, { false, true }, "your rule; the dialog's step is tide's")
 end)
 
 t.test("floating a window by the key asks only when no rule covers it", function()
