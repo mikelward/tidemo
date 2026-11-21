@@ -1816,6 +1816,7 @@ These are bound another way, or differ:
 | `Super+Alt+Space` | next input source | macOS's own "Select next source" *(unverified key)* |
 | `Super+Backspace` | close the window, unless it's pinned on its workspace (§6.2) | hotkey, on `Super+F19` with Karabiner's rule (below); Accessibility presses its close button |
 | `Cmd+W` / `Cmd+Shift+W` / `Cmd+Q` | the app's own, except while a window pinned on its workspace has focus, which never sees them (§6.2); tide for Linux's `Ctrl+W`, `Ctrl+Shift+W`, `Ctrl+Q` and `Alt+F4` | hotkeys, enabled only then |
+| physical `Ctrl+H` / `Alt+/` on Google Docs, Sheets and Slides | find and replace / search the menus, as on a PC, under the rotation (site keys, below) | hotkeys, enabled only then |
 | `Super+L` | lock | hotkey; macOS's lock screen |
 | `Super+S` | keep awake on or off (§10) | hotkey; `hs.caffeinate`, with an on-screen sign |
 | `Super+P` | presenter mode: Do Not Disturb and keep awake together (§10) | hotkey; keep awake as `Super+S`, Do Not Disturb through shortcuts you make in Shortcuts (§10) |
@@ -2039,6 +2040,42 @@ Here `Super+Shift+B` reports a bug (above).
     and the app. Its changes go to `apps.local.json`, and what can't be
     an app key is said there, writing nothing. A file that's wrong is said
     once, and none of its keys bind until it's fixed.
+- **Site keys give a web app its PC keys under the rotation**
+  (`sitekeys.lua`). conf's Karabiner rules fix PC keys app by app, but
+  Karabiner can't tell one site from another. tide reads the focused
+  window's title, so it can.
+  - **A site is told by its title's ending,** in Chrome or Brave (the
+    launcher's Chromium browsers, §9): `<name> - Google Docs`, `- Google
+    Sheets` or `- Google Slides`. A title that only contains "Google Docs",
+    or ends `- Google Drive`, is no site.
+  - **Google's three take the same keys** *(unverified: Google's
+    shortcut pages weren't reachable)*:
+    - `Cmd+Y` and `Cmd+H` send `Cmd+Shift+H`, find and replace, which is
+      `Ctrl+H` on a PC. conf's rule for Chrome and Brave makes physical
+      `Ctrl+H` `Cmd+Y`, History, rather than `Cmd+H`, which hides the
+      browser; without that rule it arrives as `Cmd+H`. Under the
+      rotation `Cmd` comes only from physical Ctrl, so both are
+      physical `Ctrl+H`.
+    - `Ctrl+/` sends `Option+/`, search the menus, which is `Alt+/` on a
+      PC. Physical Alt+/ arrives as `Ctrl+/`.
+  - **Only under the rotation:** Super on the Win key (`--super win`, read
+    from karabiner.json, §7.1), with Karabiner running. With Super on left
+    Option, or plain Option, a Mac's keys are its own, and nothing is
+    changed.
+  - **Hotkeys, enabled only while such a window has focus,** as a pinned
+    window's close keys are (above): tide checks on each focus change, on
+    each title change, since a tab switch changes the title, and when the
+    Super key or Karabiner changes. Everywhere else `Cmd+H`, `Cmd+Y` and
+    `Ctrl+/` mean what they always do. A press that finds the site gone
+    before tide heard goes on to the app unchanged.
+  - **Hammerspoon says a title change half a second late,** so the keys
+    can lag a tab switch by that much *(unverified on a Mac: that Chrome's
+    tab switch reaches the window filter as a title change)*.
+  - **The log names the site and the keys,** never the title. The Report
+    a bug trail (§15) gets nothing: a key sent isn't a workspace or focus
+    change.
+  - **More sites and keys go in `sitekeys.lua`'s table:** a title ending,
+    and each key taken with the key sent.
 - **Keyboard's Shortcuts,** in Tide Settings, list every binding
   that registered, and every key that didn't, as tide for Linux's Keyboard page does
   (§15, tide for Linux §16).
