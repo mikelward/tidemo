@@ -50,6 +50,9 @@ It brings tide for Linux's desktop to macOS:
 - Home and End as on a PC: the line's start and end in a text field,
   the page's top and bottom elsewhere, rather than Back and Forward in a
   browser (§10);
+- with the PC keyboard rotation, Ctrl+H as find and replace and Alt+/ as
+  search the menus on Google Docs, Sheets and Slides in Chrome and Brave,
+  as on a PC (§7.2);
 - Caps Lock as Compose, as on Linux, with Linux's own sequences, when
   turned on under Keyboard on Tide Settings' macOS page, or in
   `macos.json` (§10);

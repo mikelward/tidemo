@@ -547,6 +547,17 @@ tide. INFEASIBLE.md lists what can't be fixed.
 
 ## Decisions needing review
 
+- **Site keys need Karabiner running as well as Super on the Win key**
+  (2026-11-21): with Karabiner stopped nothing turns physical Ctrl into
+  Command, so a Mac keyboard's own Command+H would be taken. Reversible:
+  `sitekeys.rotated`.
+- **Site keys are told by the window title's ending, in Chrome and Brave
+  only** (2026-11-21), the launcher's Chromium browsers; Safari's tab
+  titles would serve too, but conf's rule is for Chrome and Brave.
+  Reversible: `sitekeys.BROWSERS`, `sitekeys.SITES`.
+- **Site keys write nothing to Report a bug's trail** (2026-11-21), only
+  the log, by site and keys, never the title: a key sent isn't a workspace
+  or focus change. Reversible: `sitekeys_hs.lua`'s press.
 - **Report a bug is on Launch too, for a query alone** (2026-11-18), as
   Tide Settings' sections are: on Actions alone, "bug" typed after the
   Super tap found "Tide Settings: Bar" first, whose words hold b, u and
@@ -1676,3 +1687,21 @@ on the clipboard and in `~/Library/Logs/tide`; that the issue page opens
 with the body filled in; that `hs.spaces.watcher` adds a line when you
 change Space; and, the point of it, that a workspace jumping unasked
 shows in the report with why.
+
+## Check site keys on a real Mac
+
+Only the tests have run these, against a stand-in hs (SPEC.md §7.2). With
+`--super win` and Karabiner running, in Chrome and in Brave:
+
+- On a Google Docs, Sheets and Slides page, physical Ctrl+H opens find and
+  replace, with conf's Ctrl+H rule on and with it off, and physical Alt+/
+  opens search the menus. Check Google's keys themselves: Cmd+Shift+H and
+  Option+/ weren't checked against Google's shortcut pages.
+- Switching to a Drive or Gmail tab gives Cmd+Y back to History, and
+  another app gets Cmd+H, Cmd+Y and Ctrl+/ as ever, within about half a
+  second of the switch.
+- The window title is the tab's alone, with no browser or profile name
+  after it, in Chrome and in Brave.
+- `hs.eventtap.keyStroke`'s Cmd+Shift+H arrives as that while physical
+  Ctrl, which is Command, is still held.
+- With `--super option`, Cmd+H still hides Chrome on a Docs page.

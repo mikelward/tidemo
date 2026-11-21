@@ -53,6 +53,8 @@ local dndsched_hs = require("tide.dndsched_hs")
 local floating_hs = require("tide.floating_hs")
 local keys_hs = require("tide.keys_hs")
 local pinned_hs = require("tide.pinned_hs")
+local sitekeys = require("tide.sitekeys")
+local sitekeys_hs = require("tide.sitekeys_hs")
 local dashboard = require("tide.dashboard")
 local shots = require("tide.shots")
 local tap_mod = require("tide.tap")
@@ -191,8 +193,16 @@ end
 local function choose_super(self, announce)
     local super, karabiner = keys.super(self.adapter.read, self.adapter.running, os.getenv("HOME") or "",
         self.adapter.decode)
+    -- Karabiner, or the Super key in its rules, may have changed, and a
+    -- site's keys with them (sitekeys.rotated).
+    local function check_sites()
+        if self.site_keys then
+            self.site_keys.check()
+        end
+    end
     if self.karabiner == karabiner then
         check_rule(self)
+        check_sites()
         return
     end
     self.karabiner = karabiner
@@ -202,6 +212,7 @@ local function choose_super(self, announce)
         self.adapter.notify(keys.FALLBACK_NOTICE)
     end
     check_rule(self)
+    check_sites()
 end
 
 -- LinearMouse installed and running, for the mouse wheel (SPEC.md §10):
@@ -437,6 +448,19 @@ function M.start(config)
     self.wm = wm_mod.new(self.adapter, config)
     -- An app's own close and quit keys, kept from a pinned window.
     self.pinned_keys = pinned_hs.new(hs, self.wm, self.adapter.log)
+    -- A site's own keys under the rotation, as Google Docs' find and
+    -- replace (SPEC.md §7.2).
+    self.site_keys = sitekeys_hs.new(hs, {
+        rotated = function()
+            return sitekeys.rotated(self.karabiner, self.karabiner_rules and self.karabiner_rules.super())
+        end,
+        front = self.adapter.frontmost_app,
+        title = function()
+            local id = self.adapter.focused()
+            return id and self.adapter.title(id)
+        end,
+        log = self.adapter.log,
+    })
     -- Hammerspoon's console floats (rules.lua) at a floating window level of
     -- its own, so no tile's raise can bury it (SPEC.md §5.1).
     local ok, err = pcall(hs.console.level, hs.drawing.windowLevels.floating)
@@ -477,6 +501,7 @@ function M.start(config)
         self.wm:schedule()
     end, function(id)
         self.wm:focused(id)
+        self.site_keys.check()
         -- Focus may have gone to a window tide doesn't manage, which
         -- changes nothing else.
         if self.dim then
@@ -493,6 +518,8 @@ function M.start(config)
         self.wm:unminimized(id)
     end, function(id)
         self.wm:retitled(id)
+        -- A tab switch changes the title, and maybe the site.
+        self.site_keys.check()
     end)
     -- Notifications and bells want attention (SPEC.md §14.2).
     -- Banners under tide's bar move down below it (SPEC.md §8).
