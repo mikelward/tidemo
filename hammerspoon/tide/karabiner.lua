@@ -34,8 +34,10 @@ M.ORDER = {
 -- conf's rule files: one of their rules off is a doctor line.
 M.CONF_FILES = {
     ["pc-alt-tab.json"] = true,
+    ["pc-apps.json"] = true,
     ["pc-arrows.json"] = true,
     ["pc-lock.json"] = true,
+    ["pc-nav.json"] = true,
     ["pc-terminal.json"] = true,
     ["tide.json"] = true,
     ["tilemo.json"] = true,

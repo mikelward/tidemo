@@ -354,6 +354,26 @@ t.test("conf's lock screen rule goes on above tide's, and the doctor names it wh
         lines[1])
 end)
 
+-- conf's newer rule files, pc-nav.json and pc-apps.json: the doctor names
+-- one of their rules when it's off, as it does conf's others.
+for _, f in ipairs({
+    { "pc-nav.json", "PC keyboard navigation", "Caps Lock or Fn with the arrows is Home, End, Page Up and Page Down (PC muscle memory)", "left_arrow" },
+    { "pc-apps.json", "PC keyboard apps", "Ctrl+J opens Downloads and Ctrl+H History in Chrome and Brave (PC muscle memory)", "j" },
+}) do
+    t.test("the doctor names a rule of conf's " .. f[1] .. " when it's off", function()
+        local assets = conf_assets()
+        assets[f[1]] = rule_file(f[2], f[3], f[4])
+        local m = machine(with_assets(EMPTY_CONFIG, assets))
+        m.k.check()
+        m.k.set(f[3], false)
+        local lines = m.k.doctor()
+        t.eq(#lines, 1)
+        -- The label leaves out the description's "(PC muscle memory)".
+        local label = f[3]:gsub(" %(PC muscle memory%)$", "")
+        t.eq(lines[1], "conf's Karabiner rules that are off: " .. label .. ". Turn them on under Keyboard in tide's settings.")
+    end)
+end
+
 -- The Super key: tide's two rules, as installed beside karabiner.lua.
 local OPTION_RULE = read_file("hammerspoon/tide/karabiner/tide-option.json")
 local WIN_RULE = read_file("hammerspoon/tide/karabiner/tide.json")
