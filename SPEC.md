@@ -3296,6 +3296,12 @@ on the display you're on, in place of the switcher.
       now or Dark now, holds until the next change, or until the settings
       change, as tide for Linux's flip does. tide's own changes aren't taken for
       one.
+    - It outlasts a reload, as tide for Linux's flip outlasts a shell
+      reload: `make install` and setup reload Hammerspoon through tide's
+      own reload, which otherwise put back the schedule's mode. It's kept
+      in `hs.settings` with Hammerspoon's process ID, so quitting
+      Hammerspoon or logging out ends it, as logging out ends tide for
+      Linux's.
     - macOS's Auto can't be turned on from here: no AppleScript sets it,
       and System Settings ignores its `defaults` key. Sunrise and sunset is
       tide for Linux's instead.

@@ -12,9 +12,20 @@ if not run then
     return
 end
 
-local function stub(files)
-    local s = { dark = false, scripts = {}, logged = {}, timers = {} }
+-- `kept` is hs.settings, which outlasts a reload: pass the last stub's to
+-- reload, and `pid` Hammerspoon's process ID, 1 unless it restarted.
+local function stub(files, kept, pid, dark)
+    local s = { dark = dark == true, scripts = {}, logged = {}, timers = {}, kept = kept or {} }
     _G.hs = {
+        settings = {
+            get = function(key)
+                return s.kept[key]
+            end,
+            set = function(key, value)
+                s.kept[key] = value
+            end,
+        },
+        processInfo = { processID = pid or 1 },
         json = { encode = json.encode, decode = json.decode },
         inspect = tostring,
         host = {
@@ -132,6 +143,27 @@ t.test("a file that's wrong is logged once", function()
     local s = stub({ shared = '{"mode": "dusk"}' })
     s.theme.apply()
     t.eq(s.logged, { 'appearance: appearance.json: mode must be one of "schedule", "sun", "light", "dark"' })
+end)
+
+t.test("a switch by hand outlasts a reload, as setup's brings, but not a restart", function()
+    local s = stub({ shared = '{"mode": "light"}' })
+    s.dark = true
+    s.changed()
+    local reloaded = stub({ shared = '{"mode": "light"}' }, s.kept, 1, true)
+    t.eq(reloaded.scripts, {}, "still dark after the reload")
+    t.eq(reloaded.theme.state().dark, true)
+    local restarted = stub({ shared = '{"mode": "light"}' }, s.kept, 2, true)
+    t.eq(restarted.scripts, { 'tell application "System Events" to tell appearance preferences to set dark mode to false' },
+        "a new Hammerspoon, as after logging out, follows the schedule")
+end)
+
+t.test("a switch by hand that new settings drop is forgotten for a reload too", function()
+    local s = stub({ shared = '{"mode": "light"}' })
+    s.theme.flip()
+    t.eq(type(s.kept["tide.theme.held"]), "table")
+    s.tide.appearance_files = { shared = '{"mode": "light"}', ["local"] = '{"light": "08:00"}' }
+    s.theme.apply()
+    t.eq(s.kept["tide.theme.held"], nil)
 end)
 
 t.done("theme_hs")
