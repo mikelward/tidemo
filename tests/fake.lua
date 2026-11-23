@@ -120,6 +120,12 @@ function M.new()
         return a.px, a.py
     end
 
+    -- The modifiers held, as hs.eventtap's flags.
+    a.mods = {}
+    function a.modifiers()
+        return a.mods
+    end
+
     a.buttons = false
     function a.buttons_down()
         return a.buttons

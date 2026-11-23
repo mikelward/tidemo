@@ -1982,6 +1982,20 @@ Here `Super+Shift+B` reports a bug (above).
   works with no window to move.
 - **`Alt+Tab` takes `Super+Return`'s first job,** the master swap. It
   makes the focused window the master. On the master, it swaps with the one that was master before.
+  - Held, it chooses the window first, as on tide for Linux. Each further
+    `Tab` while Alt is down moves focus to the next tile, round from the
+    end, and letting go of Alt makes the focused window the master, or
+    leaves it if it's the master already. `Escape` while Alt is down puts
+    focus back and makes no master. A tap is the swap, made as Alt comes
+    up.
+  - tide hears Alt come up through its event tap's flag changes. Karabiner
+    sends Alt+Tab with modifiers of its own, then gives back the ones held,
+    so choosing ends when every modifier but Shift is up, whichever Alt
+    sends. Run with none held, from the switcher, it's the swap at once.
+  - Unlike Linux, `Alt+Shift+Tab` doesn't go back: Karabiner's rule
+    leaves it as it is, an app's own key. And `Escape` reaches the app as
+    well, since the tap passes every key on *(a guess that's harmless:
+    Option+Escape does nothing in most apps)*.
   - Under the rotation, physical Alt sends Control, so physical Alt+Tab
     arrives as Ctrl+Tab, which is the apps' own next tab (scripts
     `docs/MACOS.md`, "The one binding the rotation inverts").

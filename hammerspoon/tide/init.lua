@@ -1171,6 +1171,8 @@ function M.start(config)
         self.tap:flags(not none and keys.super_alone(self.super, flags), none, hs.timer.secondsSinceEpoch())
         -- Cmd+Tab switches apps when Command goes up (SPEC.md §14.1).
         self.wm:modifiers(flags.cmd or false)
+        -- Alt+Tab's choosing ends as Alt comes up (SPEC.md §7.2).
+        self.wm:cycle_flags(flags)
     end, function(kind, key, flags)
         self.tap:other()
         if kind == "key" then
