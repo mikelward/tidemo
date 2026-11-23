@@ -1,12 +1,18 @@
 -- The Mac's light or dark on tide's schedule (theme.lua): set through System
 -- Events as tide starts, at each change, on a wake, and as tide's
 -- appearance files change. A switch by hand, in Control Center or the
--- settings window, holds until the next change, as tide's flip does.
+-- settings window, holds until the next change, as tide's flip does, and
+-- through a reload, which a `make install` or setup brings: it's kept in
+-- hs.settings with Hammerspoon's process ID, so quitting it or logging out
+-- ends it, as logging out ends tide's.
 
 local theme = require("tide.theme")
 local dashboard = require("tide.dashboard")
 
 local M = {}
+
+-- Where a switch by hand is kept: { pid, held }.
+M.HELD_KEY = "tide.theme.held"
 
 local DIR = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") .. "/dashboard/"
 
@@ -27,6 +33,25 @@ function M.new(tide)
 
     local function now()
         return os.time() * 1000
+    end
+
+    -- Keep `held`, or forget it, for a reload.
+    local function keep()
+        local ok, err = pcall(hs.settings.set, M.HELD_KEY,
+            held and { pid = hs.processInfo.processID, held = held } or nil)
+        if not ok then
+            a.log("appearance: couldn't keep the switch by hand for a reload: " .. tostring(err))
+        end
+    end
+
+    -- A switch by hand from before a reload, in this same Hammerspoon.
+    do
+        local ok, saved = pcall(hs.settings.get, M.HELD_KEY)
+        if not ok then
+            a.log("appearance: couldn't read the switch by hand kept for a reload: " .. tostring(saved))
+        elseif type(saved) == "table" and saved.pid == hs.processInfo.processID and type(saved.held) == "table" then
+            held = saved.held
+        end
     end
 
     local function dark()
@@ -65,8 +90,9 @@ function M.new(tide)
         end
         good = p.good
         say(#p.errors > 0 and table.concat(p.errors, "; ") or nil)
-        if not p.held then
+        if not p.held and held then
             held = nil
+            keep()
         end
         return p
     end
@@ -117,6 +143,7 @@ function M.new(tide)
         local p = work_out()
         if p and p.chosen then
             held = theme.hold(p, now_dark)
+            keep()
             plan = work_out()
         end
         shown()
@@ -128,6 +155,7 @@ function M.new(tide)
         local p = work_out()
         if p and p.chosen then
             held = theme.hold(p, want)
+            keep()
         end
         set(want)
         plan = work_out()
