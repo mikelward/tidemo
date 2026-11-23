@@ -3330,6 +3330,18 @@ end
 -- (Cmd+Tab, tide's own keys) or Return (Spotlight, a file in Finder) is a
 -- choice, so what it activates is yours.
 function M:key_down(key, cmd)
+    -- Escape while Alt+Tab is choosing puts focus back where it was, if
+    -- that window is still on the part shown (A.swap_master).
+    if key == "escape" and self.cycle then
+        local start = self.cycle.start
+        self.cycle = nil
+        local _, n, uuid = self:current_part()
+        for _, id in ipairs(self:tiled(n, uuid)) do
+            if id == start and id ~= self:focused_tile() then
+                self:choose(id)
+            end
+        end
+    end
     local now = self.a.now()
     self.last_input = now
     -- Cmd+Tab or Cmd+`: the app or window it picks comes forward when
@@ -3946,12 +3958,60 @@ function A.move(self, delta)
     end
 end
 
-function A.swap_master(self)
+local function swap_master(self)
     local id, w = self:focused_tile()
     if id then
         layout.swap_master(self:part_of(w), self:tiled(w.ws, w.screen), id)
         self:retile()
     end
+end
+
+-- Whether flags (hs.eventtap's) hold a modifier but Shift: Alt+Tab's
+-- choosing lasts while one does.
+local function held(flags)
+    return flags ~= nil and (flags.alt or flags.cmd or flags.ctrl) and true or false
+end
+
+-- Alt+Tab (SPEC.md §7.2). A tap is the swap with the master. Held, it
+-- chooses the window first: the press that begins it notes where focus
+-- is and moves nothing, each further press moves focus to the next tile
+-- of the part, round from the end, and letting go of the modifiers
+-- (M:cycle_flags) makes that one the master, unless it's the master
+-- already. Escape (M:key_down) puts focus back. Karabiner sends Alt+Tab
+-- with modifiers of its own and then gives back the ones you hold, so it
+-- ends when every modifier but Shift is up, whichever Alt sends. Run with
+-- none held, from the switcher say, it's the swap at once.
+function A.swap_master(self)
+    if self.cycle then
+        local _, n, uuid = self:current_part()
+        local ids = self:tiled(n, uuid)
+        local id = self:focused_tile()
+        local target = layout.neighbor(ids, id, 1)
+        if target and target ~= id then
+            self:choose(target)
+            self.cycle.stepped = true
+        end
+        return
+    end
+    if not held(self.a.modifiers()) then
+        return swap_master(self)
+    end
+    self.cycle = { start = self:focused_tile(), stepped = false }
+end
+
+-- The modifiers changed (hs.eventtap's flags): every one but Shift up
+-- ends Alt+Tab's choosing, making the focused window the master.
+function M:cycle_flags(flags)
+    local c = self.cycle
+    if not c or held(flags) then
+        return
+    end
+    self.cycle = nil
+    local id, w = self:focused_tile()
+    if c.stepped and id and self:tiled(w.ws, w.screen)[1] == id then
+        return -- the master already, which the swap would undo
+    end
+    self:because("Alt+Tab, as Alt came up", swap_master, self)
 end
 
 -- Each does nothing with no display, so no part to change.

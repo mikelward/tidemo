@@ -150,6 +150,62 @@ t.test("Alt+Tab swaps with the master", function()
     t.eq(wm:part("in", "A").order, { 3, 2, 1 })
 end)
 
+t.test("an Alt+Tab tap swaps with the master as Alt comes up", function()
+    local a, wm = setup(3)
+    a.focus_ = 3
+    a.mods = { alt = true }
+    wm:act("swap_master")
+    t.eq(wm:part("in", "A").order, { 1, 2, 3 }, "nothing moves while Alt is held")
+    wm:cycle_flags({ alt = true, cmd = true, shift = true }) -- Karabiner's own, and back
+    wm:cycle_flags({ alt = true })
+    t.eq(wm:part("in", "A").order, { 1, 2, 3 }, "still held")
+    wm:cycle_flags({})
+    t.eq(wm:part("in", "A").order, { 3, 2, 1 })
+end)
+
+t.test("Alt held, each Tab moves focus on, and letting go makes it the master", function()
+    local a, wm = setup(3)
+    a.focus_ = 3
+    a.mods = { ctrl = true } -- physical Alt, under the rotation
+    wm:act("swap_master")
+    wm:act("swap_master")
+    t.eq(a.focus_, 1, "from the last, round to the master")
+    wm:act("swap_master")
+    t.eq(a.focus_, 2)
+    wm:cycle_flags({ shift = true })
+    t.eq(wm:part("in", "A").order, { 2, 1, 3 })
+end)
+
+t.test("letting go of Alt on the master leaves it", function()
+    local a, wm = setup(3)
+    a.focus_ = 3
+    a.mods = { alt = true }
+    wm:act("swap_master")
+    wm:act("swap_master")
+    wm:cycle_flags({})
+    t.eq(wm:part("in", "A").order, { 1, 2, 3 })
+end)
+
+t.test("Escape while Alt is held puts focus back and makes no master", function()
+    local a, wm = setup(3)
+    a.focus_ = 3
+    a.mods = { alt = true }
+    wm:act("swap_master")
+    wm:act("swap_master")
+    wm:act("swap_master")
+    wm:key_down("escape", false)
+    t.eq(a.focus_, 3)
+    wm:cycle_flags({})
+    t.eq(wm:part("in", "A").order, { 1, 2, 3 })
+end)
+
+t.test("Alt+Tab with no modifier held, from the switcher say, swaps at once", function()
+    local a, wm = setup(3)
+    a.focus_ = 3
+    wm:act("swap_master")
+    t.eq(wm:part("in", "A").order, { 3, 2, 1 })
+end)
+
 t.test("Super+\\ grows the master by 0.025", function()
     local a, wm = setup(2)
     a.focus_ = 1

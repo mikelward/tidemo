@@ -326,6 +326,11 @@ function M.new()
         return p.x, p.y
     end
 
+    -- The modifiers held now, as hs.eventtap's flags: { alt = true, ... }.
+    function a.modifiers()
+        return hs.eventtap.checkKeyboardModifiers()
+    end
+
     function a.buttons_down()
         for _, down in pairs(hs.eventtap.checkMouseButtons()) do
             if down then
