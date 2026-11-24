@@ -434,6 +434,19 @@ Only the tests and CI's smoke test have run these (SPEC.md §8):
 - How far status items reach on a plain display, against the 62% guess.
 - The cost of reading the app's menus every 2 s through Accessibility.
 
+## Check the shadow on a real Mac
+
+Only the tests have run these (SPEC.md §5.7):
+
+- **Day shadow's strength.** By day tidemo paints the focused window's
+  shadow black at 45% (`dim.SHADOW_ALPHA`), blurred over 16 px by macOS;
+  tide for Linux's compositors draw it black at 27% by the edge
+  (`appearance.mjs`'s `SHADOW_COLORS.light`), gone 16 px out. A mock
+  shows both look fine (maintainer, 2026-11-24): try each on a Mac and
+  keep one, matching tide's `00000044` if they're alike.
+- **Night glow.** In Dark Mode it's a light glow (`#ededf1` at 33%): that
+  it shows round the focused window, and redraws when Dark Mode flips.
+
 ## Check Position: Menu bar on a real Mac
 
 Only the tests have run these (SPEC.md §8):
