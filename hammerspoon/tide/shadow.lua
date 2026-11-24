@@ -6,6 +6,8 @@
 -- window's itself, on the dim's layer (dim.layer). Pure Lua: dim_hs.lua
 -- draws what this says.
 
+local dim = require("tide.dim")
+
 local M = {}
 
 -- tide-appearance.js's SHADOWS, SHADOWS_DEFAULT, SHADOW_SIZE and
@@ -53,6 +55,33 @@ function M.load(shared, own, decode)
         end
     end
     return out, errors
+end
+
+-- tide-appearance.js's SHADOW_COLORS, rrggbbaa, which make check-tide
+-- compares with tide's (ci/check_defaults.lua): black in light mode, and in
+-- dark mode a soft light glow, the dark palette's fg, which shows on a dark
+-- desktop where a black shadow doesn't.
+M.COLORS = { light = "00000044", dark = "ededf155" }
+
+-- `hex` (rrggbbaa) as an hs.canvas color.
+function M.rgba(hex)
+    local function byte(i)
+        return tonumber(hex:sub(i, i + 1), 16) / 255
+    end
+    return { red = byte(1), green = byte(3), blue = byte(5), alpha = byte(7) }
+end
+
+-- The color tide paints the focused window's shadow in, in dark mode
+-- (`dark`) or light. Dark mode's is tide's. Light mode's is tide's black,
+-- as dark at its darkest as tidemo's always was (dim.SHADOW_ALPHA): a
+-- blur on hs.canvas fades from its peak differently from Hyprland's.
+function M.color(dark)
+    if dark then
+        return M.rgba(M.COLORS.dark)
+    end
+    local c = M.rgba(M.COLORS.light)
+    c.alpha = dim.SHADOW_ALPHA
+    return c
 end
 
 -- Whether macOS draws its own shadows for `mode`. It shadows every window

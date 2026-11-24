@@ -2,7 +2,8 @@
 -- display, over the windows and under the bar, the tray, panels, menus and
 -- the Dock, that the pointer clicks through. It paints the focused window's
 -- shadow too, when tide's appearance says only that one casts one, with
--- macOS's own shadows off (§5.7; shadow.lua). Not runnable outside
+-- macOS's own shadows off (§5.7; shadow.lua): black in light mode, a light
+-- glow in dark mode, redrawn as the Mac changes. Not runnable outside
 -- Hammerspoon.
 
 local dim = require("tide.dim")
@@ -76,6 +77,7 @@ function M.new(tide)
 
     local function draw()
         local ok, err = pcall(function()
+            local color = shadow.color(hs.host.interfaceStyle() == "Dark")
             local scene = tide.wm:dim_scene()
             local focus = shadow.painted(shadows) and tide.wm:focus_scene() or nil
             local size = shadow.painted(shadows) and shadows.size or 0
@@ -85,7 +87,7 @@ function M.new(tide)
             local seen = {}
             for _, s in ipairs(tide.wm:screens()) do
                 seen[s.uuid] = true
-                local els = dim.layer(scene, focus, s.full, strength, radius, size, own)
+                local els = dim.layer(scene, focus, s.full, strength, radius, size, own, color)
                 local key = els and hs.inspect(els) .. hs.inspect(s.full)
                 if not els then
                     drop(s.uuid)
@@ -136,8 +138,16 @@ function M.new(tide)
     end)
     self.apps:start()
 
+    -- The Mac turning light or dark, by tide or by hand: the shadow's
+    -- color follows. Kept, as Hammerspoon stops one that's collected.
+    self.theme_watch = hs.distributednotifications.new(function()
+        self.update()
+    end, "AppleInterfaceThemeChangedNotification")
+    self.theme_watch:start()
+
     function self.stop()
         self.apps:stop()
+        self.theme_watch:stop()
         for uuid in pairs(self.canvases) do
             drop(uuid)
         end

@@ -20,9 +20,13 @@ return M
 ]]
 end
 
+-- tide's SHADOW_COLORS as appearance.mjs exports it.
+local SHADOW_COLORS = 'export const SHADOW_COLORS = Object.freeze({ light: "00000044", dark: "ededf155" });\n'
+
 -- A tide checkout's files that tide_defaults.lua reads, in a fresh
--- directory, removed after `f` has it.
-local function with_tide(tile_mfact, f)
+-- directory, removed after `f` has it. `appearance` is appearance.mjs's
+-- text, SHADOW_COLORS's by default.
+local function with_tide(tile_mfact, f, appearance)
     local dir = os.tmpname()
     os.remove(dir)
     assert(os.execute("mkdir -p '" .. dir .. "/hypr/tide' '" .. dir .. "/shell/lib'"))
@@ -33,6 +37,7 @@ local function with_tide(tile_mfact, f)
     end
     write("hypr/tide/layout.lua", layout_lua(tile_mfact))
     write("shell/lib/workspacenames.mjs", 'export const DEFAULT_STANDING = Object.freeze(["in", "re"]);\n')
+    write("shell/lib/appearance.mjs", appearance or SHADOW_COLORS)
     local ok, err = pcall(f, dir)
     os.execute("rm -rf '" .. dir .. "'")
     assert(ok, err)
@@ -51,6 +56,7 @@ local SAME = {
         },
     },
     { from = "hammerspoon/tide/wm.lua", values = { standing = { "in", "re" } } },
+    { from = "hammerspoon/tide/shadow.lua", values = { shadow_colors = { light = "00000044", dark = "ededf155" } } },
 }
 
 local function tide(over)
@@ -61,6 +67,7 @@ local function tide(over)
         cycle = { "tile", "threecol", "twocol" },
         mfact_step = 0.025,
         standing = { "in", "re" },
+        shadow_colors = { light = "00000044", dark = "ededf155" },
     }
     for k, v in pairs(over or {}) do
         out[k] = v
@@ -77,6 +84,8 @@ t.test("a default that drifts fails, naming the setting and both values", functi
         { "modes.tile.mfact: tide for macOS 0.55 (hammerspoon/tide/layout.lua), tide for Linux 0.6" })
     t.eq(defaults.compare("tide for macOS", SAME, tide({ standing = { "in" } })),
         { 'standing: tide for macOS {"in","re"} (hammerspoon/tide/wm.lua), tide for Linux {"in"}' })
+    t.eq(defaults.compare("tide for macOS", SAME, tide({ shadow_colors = { light = "00000044", dark = "ffffff55" } })),
+        { 'shadow_colors.dark: tide for macOS "ededf155" (hammerspoon/tide/shadow.lua), tide for Linux "ffffff55"' })
 end)
 
 t.test("a default tide doesn't have fails, so a rename in tide is seen", function()
@@ -110,6 +119,17 @@ if io.popen("command -v node"):read("l") then
             t.eq(defaults.check("tide for macOS", SAME, dir, {}, function(s) errors[#errors + 1] = s end), false)
             t.eq(errors, { "check_defaults: modes.tile.mfact: tide for macOS 0.55 (hammerspoon/tide/layout.lua), tide for Linux 0.6\n" })
         end)
+    end)
+
+    -- A tide from before SHADOW_COLORS: the shadow's colors can't be
+    -- compared, so the check fails rather than passing them unchecked.
+    t.test("a checkout without SHADOW_COLORS fails, naming it", function()
+        with_tide("0.55", function(dir)
+            local errors = {}
+            t.eq(defaults.check("tide for macOS", SAME, dir, {}, function(s) errors[#errors + 1] = s end), false)
+            t.eq(#errors, 1)
+            assert(errors[1]:find("appearance.mjs has no SHADOW_COLORS", 1, true), errors[1])
+        end, "export const SHADOWS_DEFAULT = \"focused\";\n")
     end)
 elseif os.getenv("TIDE_NEED_NODE") then
     error("node is needed to read a tide checkout")

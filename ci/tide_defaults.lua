@@ -1,9 +1,9 @@
 -- tide for Linux's defaults, read from a tide checkout, and a comparison
 -- with tidemo's own, so a default that drifts fails make check-tide rather
 -- than waiting for a review (ci/check_defaults.lua). tide's layout.lua is
--- loaded as it is, and its standing workspaces are read from
--- shell/lib/workspacenames.mjs through node, as check_keymaps.lua reads
--- its key presets.
+-- loaded as it is, and its standing workspaces and shadow colors are read
+-- from shell/lib/workspacenames.mjs and shell/lib/appearance.mjs through
+-- node, as check_keymaps.lua reads its key presets.
 package.path = "tests/?.lua;" .. package.path
 local json = require("json")
 
@@ -102,8 +102,29 @@ function M.compare(name, sources, tide, exceptions)
     return problems
 end
 
+-- What tide's module at `mjs` exports as `name`, read with node: false if
+-- it exports nothing by that name (or null), or nil and why if node can't load it.
+function M.export(mjs, name)
+    -- A path, relative or not, as a file URL: import() takes "tide/..." for
+    -- a package.
+    local p = io.popen("node --input-type=module -e 'import(\"node:url\").then(u => import(u.pathToFileURL(process.argv[1])))"
+        .. ".then(m => process.stdout.write(JSON.stringify([m[process.argv[2]] ?? null])))' " .. quote(mjs) .. " "
+        .. quote(name) .. " 2>&1")
+    local text = p:read("a")
+    if not p:close() then
+        return nil, "can't read " .. M.TIDE .. "'s " .. mjs .. " with node: " .. text
+    end
+    local ok, v = pcall(json.decode, text)
+    if not ok or type(v) ~= "table" then
+        return nil, "can't read " .. M.TIDE .. "'s " .. mjs .. " with node: " .. text
+    end
+    -- tests/json.lua reads JSON's null as "null".
+    return (v[1] ~= nil and v[1] ~= "null") and v[1] or false
+end
+
 -- tide for Linux's defaults in the checkout at `dir`: layout.lua's
--- M.defaults, in its own names, and `standing`, the standing workspaces.
+-- M.defaults, in its own names, `standing`, the standing workspaces, and
+-- `shadow_colors`, the painted shadow's colors by light and dark.
 -- Nil and why, if a file can't be read.
 function M.read(dir)
     local path = dir .. "/hypr/tide/layout.lua"
@@ -114,24 +135,25 @@ function M.read(dir)
     if type(layout) ~= "table" or type(layout.defaults) ~= "table" then
         return nil, path .. " has no M.defaults table"
     end
-    local mjs = dir .. "/shell/lib/workspacenames.mjs"
-    -- A path, relative or not, as a file URL: import() takes "tide/..." for
-    -- a package.
-    local p = io.popen("node --input-type=module -e 'import(\"node:url\").then(u => import(u.pathToFileURL(process.argv[1])))"
-        .. ".then(m => process.stdout.write(JSON.stringify(m.DEFAULT_STANDING ?? null)))' " .. quote(mjs) .. " 2>&1")
-    local text = p:read("a")
-    if not p:close() then
-        return nil, "can't read " .. M.TIDE .. "'s " .. mjs .. " with node: " .. text
+    local standing, why = M.export(dir .. "/shell/lib/workspacenames.mjs", "DEFAULT_STANDING")
+    if standing == nil then
+        return nil, why
+    elseif type(standing) ~= "table" then
+        return nil, dir .. "/shell/lib/workspacenames.mjs has no DEFAULT_STANDING list"
     end
-    local standing = json.decode(text)
-    if type(standing) ~= "table" then
-        return nil, mjs .. " has no DEFAULT_STANDING list"
+    local colors
+    colors, why = M.export(dir .. "/shell/lib/appearance.mjs", "SHADOW_COLORS")
+    if colors == nil then
+        return nil, why
+    elseif type(colors) ~= "table" then
+        return nil, dir .. "/shell/lib/appearance.mjs has no SHADOW_COLORS"
     end
     local out = {}
     for k, v in pairs(layout.defaults) do
         out[k] = v
     end
     out.standing = standing
+    out.shadow_colors = colors
     return out
 end
 

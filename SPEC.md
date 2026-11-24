@@ -956,8 +956,16 @@ value is logged, naming the setting (`shadow.load`).
   - It lies over the other windows, not under the focused one: a menu or
     popover reaching outside the focused window is shaded where it
     crosses it, and it lags a window you drag, as dimming does.
-  - How dark it is (`dim.SHADOW_ALPHA`, 0.45) is a guess, to compare with
-    macOS's own.
+  - In light mode it's black, 0.45 at its darkest (`dim.SHADOW_ALPHA`), a
+    guess to compare with macOS's own. In dark mode, where a black shadow
+    barely shows on a dark desktop, it's a soft light glow: the dark
+    palette's fg, `#ededf1`, at 0x55 at its peak, as tide draws it on
+    Hyprland, tidewm, tidesway and KDE (`shadow.color`). Both colors restate
+    tide's `SHADOW_COLORS` (`00000044` and `ededf155`, rrggbbaa), which make
+    check-tide compares; light mode keeps its own 0.45, since a blur on
+    `hs.canvas` fades from its peak differently from Hyprland's. It follows
+    the Mac's light or dark, tide's schedule's or set by hand, and is
+    redrawn when that changes.
   - Its corners, and the dim's hole, follow the focused window's. macOS
     26 rounds a window with a toolbar, as System Settings' and
     LinearMouse's, more than one with only a title bar, as a terminal's
