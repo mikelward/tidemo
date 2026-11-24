@@ -147,4 +147,22 @@ t.test("a dialog casts no painted shadow", function()
     t.eq(wm:focus_scene().dialog, false, "a standard window")
 end)
 
+-- In dark mode the shadow is a soft light glow, tide's dark palette's fg,
+-- so it shows on a dark desktop, as tide's other desktops draw it
+-- (tide-appearance.js's SHADOW_COLORS); in light mode it's black, as dark
+-- as it always was.
+t.test("the painted shadow is black in light mode and a light glow in dark mode", function()
+    t.eq(shadow.COLORS, { light = "00000044", dark = "ededf155" }, "tide's, rrggbbaa")
+    t.eq(shadow.color(false), { red = 0 / 255, green = 0 / 255, blue = 0 / 255, alpha = dim.SHADOW_ALPHA })
+    t.eq(shadow.color(true), { red = 0xed / 255, green = 0xed / 255, blue = 0xf1 / 255, alpha = 0x55 / 255 })
+end)
+
+t.test("the layer paints the shadow in the color it's given, black if none", function()
+    local els = dim.layer(nil, { focused = win, above = {} }, full, 0, 10, 8, nil, shadow.color(true))
+    t.eq(els[1].shadow.color, shadow.color(true))
+    t.eq(els[1].shadow.blurRadius, 8)
+    t.eq(dim.layer(nil, { focused = win, above = {} }, full, 0, 10, 8)[1].shadow.color,
+        { red = 0, green = 0, blue = 0, alpha = dim.SHADOW_ALPHA }, "today's look")
+end)
+
 t.done("shadow")

@@ -51,8 +51,8 @@ local function grown(b, by)
     return { x = b.x - by, y = b.y - by, w = b.w + 2 * by, h = b.h + 2 * by }
 end
 
--- How dark a painted shadow is at its darkest *(a guess, to compare with
--- macOS's own)*.
+-- How dark a painted shadow is at its darkest in light mode *(a guess, to
+-- compare with macOS's own)*; dark mode's is a light glow (shadow.color).
 M.SHADOW_ALPHA = 0.45
 
 -- What one display's layer draws, as hs.canvas elements in the display's
@@ -63,9 +63,10 @@ M.SHADOW_ALPHA = 0.45
 -- nothing is. `focus` is wm:focus_scene(), the same for the shadow, which a
 -- lone window casts too, or nil for no shadow. `full` is the display's
 -- whole frame, `strength` the dim's, `radius` a window's corner radius,
--- `size` how far the shadow reaches (0 for none), and `own` the focused
--- window's corner radius, if it isn't `radius` (M.radius).
-function M.layer(dim_scene, focus, full, strength, radius, size, own)
+-- `size` how far the shadow reaches (0 for none), `own` the focused
+-- window's corner radius, if it isn't `radius` (M.radius), and
+-- `shadow_color` the shadow's (shadow.color), black if none.
+function M.layer(dim_scene, focus, full, strength, radius, size, own, shadow_color)
     local dimming = dim_scene ~= nil and strength ~= nil and strength > 0
     local f = focus and focus.focused
     -- A dialog's corners are its app's to draw, such as Chrome's "Leave
@@ -96,7 +97,7 @@ function M.layer(dim_scene, focus, full, strength, radius, size, own)
             withShadow = true,
             shadow = {
                 blurRadius = size,
-                color = { red = 0, green = 0, blue = 0, alpha = M.SHADOW_ALPHA },
+                color = shadow_color or { red = 0, green = 0, blue = 0, alpha = M.SHADOW_ALPHA },
                 offset = { h = 0, w = 0 },
             },
             frame = relative(f, full),
